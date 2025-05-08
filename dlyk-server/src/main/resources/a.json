@@ -1,0 +1,19 @@
+{
+  "id": 1,
+  "loginAct": "admin",
+  "loginPwd": "$2a$10$Nlhwhtd0BSCBK95CAifv7eWpCjHloPBMZ3Gaehcc56hRAV3DZALJO",
+  "name": "管理员",
+  "phone": "13700000000",
+  "email": "admin@qq.com",
+  "accountNoExpired": 1,
+  "credentialsNoExpired": 1,
+  "accountNoLocked": 1,
+  "accountEnabled": 1,
+  "createTime": 1677029832000,
+  "createBy": null,
+  "editTime": 1684772466000,
+  "editBy": null,
+  "lastLoginTime": 1702541694000,
+  "roleList": null,
+  "permissionList": null
+}
