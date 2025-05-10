@@ -4,15 +4,15 @@
     <el-aside width="200px">
       <img src="../assets/loginBox.svg">
       <p class="imgTitle">
-        欢迎使用动力云客系统
+        欢迎使用电子商务管理系统
       </p>
     </el-aside>
 
     <!--右侧-->
     <el-main>
-      <div class="loginTile">欢迎登录</div>
+      <div class="loginTile">登录您的账号</div>
 
-      <el-form ref="loginRefForm" :model="user" label-width="120px" :rules="loginRules">
+      <el-form ref="loginRefForm" :model="user" :rules="loginRules" label-width="auto">
         <el-form-item label="账号" prop="loginAct">
           <el-input v-model="user.loginAct" />
         </el-form-item>
@@ -21,11 +21,11 @@
           <el-input type="password" v-model="user.loginPwd" />
         </el-form-item>
 
-        <el-form-item>
+        <el-form-item label-position="left" style="margin-left: 50px">
           <el-button type="primary" @click="login">登 录</el-button>
         </el-form-item>
 
-        <el-form-item>
+        <el-form-item style="margin-left: 50px">
           <el-checkbox label="记住我" v-model="user.rememberMe" />
         </el-form-item>
       </el-form>
@@ -38,6 +38,7 @@
 import {defineComponent} from 'vue'
 import {doGet, doPost} from "../http/httpRequest.js";
 import {getTokenName, messageTip, removeToken} from "../util/util.js";
+
 
 export default defineComponent({
   //组件的名字
@@ -136,29 +137,48 @@ export default defineComponent({
 .el-aside {
   background: #1a1a1a;
   width: 40%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
 }
 .el-main {
   height: calc(100vh);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 img {
   height: 413px;
 }
 .imgTitle {
   color: #f9f9f9;
-  font-size: 28px;
+  font-size: 40px;
 }
 .el-form {
-  width: 60%;
-  margin: auto;
+  width: 25%; /* 原来是60%，缩短到三分之一，即20% */
+  margin: 0; /* 移除auto，因为flex会处理居中 */
+  padding: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: left;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
 }
 .loginTile {
   text-align: center;
-  margin-top: 100px;
+  /* margin-top: 100px;  移除，因为flex会处理居中 */
   margin-bottom: 25px;
+  font-size: 30px;
   font-weight: bold;
 }
 .el-button {
   width: 100%;
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
 }
 </style>
