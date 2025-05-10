@@ -2,7 +2,7 @@
   <el-container>
     <!--左侧-->
     <el-aside :width="isCollapse ? '64px' : '200px'">
-      <div class="menuTitle">@动力云客管理系统</div>
+      <div class="menuTitle">@电子商务管理系统</div>
       <el-menu
           active-text-color="#ffd04b"
           background-color="#334157"
@@ -57,7 +57,7 @@
       </el-main>
 
       <!--右侧：下-->
-      <el-footer>@版权所有 2009-2099 动力节点 北京市通州区马驹桥镇景盛中街17号顺景总部公元B4栋</el-footer>
+      <el-footer>@徐州工程学院中心校区一期</el-footer>
     </el-container>
   </el-container>
 </template>
