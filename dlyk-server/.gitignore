@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Database ###
+*.sql
+*.sql.gz
+*.sql.bz2
+*.sql.zip
+*.sql.tar
+*.sql.tar.gz
+*.sql.tar.bz2

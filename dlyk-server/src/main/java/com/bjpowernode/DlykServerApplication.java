@@ -38,12 +38,8 @@ public class DlykServerApplication implements CommandLineRunner {
             System.out.println(s);
         }
 
-
         Object obj = context.getBean("applicationTaskExecutor");
         System.out.println(obj);
-
-
-
     }
 
     @Override

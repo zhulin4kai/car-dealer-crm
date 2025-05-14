@@ -92,9 +92,31 @@ let router = createRouter({
                     path: 'customer',
                     //路由路径所对应的页面
                     component : () => import('../view/CustomerView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'product',
+                    //路由路径所对应的页面
+                    component : () => import('../view/ProductView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'product/category',
+                    //路由路径所对应的页面
+                    component : () => import('../view/ProductCategoryView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'product/promotion',
+                    //路由路径所对应的页面
+                    component : () => import('../view/ProductPromotionView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'product/stock',
+                    //路由路径所对应的页面
+                    component : () => import('../view/ProductStockAlertView.vue'),
                 }
-
-
             ]
         },
         {

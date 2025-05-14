@@ -71,12 +71,12 @@ axios.interceptors.response.use( (response) => {
     // 对响应数据做点什么，拦截token验证的结果，进行相应的提示和页面跳转
     if (response.data.code > 900) { //code大于900说明是token验证未通过
         //给前端用户提示，并且跳转页面
-        messageConfirm(response.data.msg + "，是否重新去登录？").then(() => { //用户点击“确定”按钮就会触发then函数
+        messageConfirm(response.data.msg + "，是否重新去登录？").then(() => { //用户点击"确定"按钮就会触发then函数
             //既然后端验证token未通过，那么前端的token肯定是有问题的，那没必要存储在浏览器中，直接删除一下
             removeToken();
             //跳到登录页
             window.location.href = "/";
-        }).catch(() => { //用户点击“取消”按钮就会触发catch函数
+        }).catch(() => { //用户点击"取消"按钮就会触发catch函数
             messageTip("取消去登录", "warning");
         })
         return ;

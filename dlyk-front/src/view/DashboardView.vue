@@ -13,7 +13,7 @@
           :collapse="isCollapse"
           :collapse-transition="false"
           :router="true"
-          :unique-opened="true">
+          :unique-opened="false">
 
         <el-sub-menu :index="index" v-for="(menuPermission, index) in user.menuPermissionList" :key="menuPermission.id">
           <template #title>
@@ -57,7 +57,7 @@
       </el-main>
 
       <!--右侧：下-->
-      <el-footer>@徐州工程学院中心校区一期</el-footer>
+      <el-footer>徐州工程学院@信息工程学院（大数据学院）</el-footer>
     </el-container>
   </el-container>
 </template>

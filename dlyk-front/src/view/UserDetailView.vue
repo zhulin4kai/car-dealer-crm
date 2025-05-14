@@ -115,8 +115,8 @@ export default defineComponent({
 
 <style scoped>
 .detail {
-  background-color: #F0FFFF;
-  width: 100%;
+  background-color: #e9eae3;
+  width: 20%;
   padding-left: 15px;
 }
 </style>

@@ -62,4 +62,84 @@ public class TProduct implements Serializable {
     private Integer editBy;
 
     private static final long serialVersionUID = 1L;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public BigDecimal getGuidePriceS() {
+        return guidePriceS;
+    }
+
+    public void setGuidePriceS(BigDecimal guidePriceS) {
+        this.guidePriceS = guidePriceS;
+    }
+
+    public BigDecimal getGuidePriceE() {
+        return guidePriceE;
+    }
+
+    public void setGuidePriceE(BigDecimal guidePriceE) {
+        this.guidePriceE = guidePriceE;
+    }
+
+    public BigDecimal getQuotation() {
+        return quotation;
+    }
+
+    public void setQuotation(BigDecimal quotation) {
+        this.quotation = quotation;
+    }
+
+    public Integer getState() {
+        return state;
+    }
+
+    public void setState(Integer state) {
+        this.state = state;
+    }
+
+    public Date getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(Date createTime) {
+        this.createTime = createTime;
+    }
+
+    public Integer getCreateBy() {
+        return createBy;
+    }
+
+    public void setCreateBy(Integer createBy) {
+        this.createBy = createBy;
+    }
+
+    public Date getEditTime() {
+        return editTime;
+    }
+
+    public void setEditTime(Date editTime) {
+        this.editTime = editTime;
+    }
+
+    public Integer getEditBy() {
+        return editBy;
+    }
+
+    public void setEditBy(Integer editBy) {
+        this.editBy = editBy;
+    }
 }
