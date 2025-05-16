@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bjpowernode.mapper.TTranProductMapper">
+    <resultMap id="BaseResultMap" type="com.bjpowernode.model.TTranProduct">
+        <id column="id" jdbcType="INTEGER" property="id" />
+        <result column="tran_id" jdbcType="INTEGER" property="tranId" />
+        <result column="product_id" jdbcType="INTEGER" property="productId" />
+        <result column="quantity" jdbcType="INTEGER" property="quantity" />
+        <result column="price" jdbcType="DECIMAL" property="price" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="create_by" jdbcType="INTEGER" property="createBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, tran_id, product_id, quantity, price, create_time, create_by
+    </sql>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_tran_product
+        where id = #{id,jdbcType=INTEGER}
+    </select>
+
+    <select id="selectByTranId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_tran_product
+        where tran_id = #{tranId,jdbcType=INTEGER}
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+        delete from t_tran_product
+        where id = #{id,jdbcType=INTEGER}
+    </delete>
+
+    <insert id="insert" parameterType="com.bjpowernode.model.TTranProduct">
+        insert into t_tran_product (id, tran_id, product_id,
+            quantity, price, create_time,
+            create_by)
+        values (#{id,jdbcType=INTEGER}, #{tranId,jdbcType=INTEGER}, #{productId,jdbcType=INTEGER},
+            #{quantity,jdbcType=INTEGER}, #{price,jdbcType=DECIMAL}, #{createTime,jdbcType=TIMESTAMP},
+            #{createBy,jdbcType=INTEGER})
+    </insert>
+
+    <insert id="insertSelective" parameterType="com.bjpowernode.model.TTranProduct">
+        insert into t_tran_product
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="tranId != null">
+                tran_id,
+            </if>
+            <if test="productId != null">
+                product_id,
+            </if>
+            <if test="quantity != null">
+                quantity,
+            </if>
+            <if test="price != null">
+                price,
+            </if>
+            <if test="createTime != null">
+                create_time,
+            </if>
+            <if test="createBy != null">
+                create_by,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                #{id,jdbcType=INTEGER},
+            </if>
+            <if test="tranId != null">
+                #{tranId,jdbcType=INTEGER},
+            </if>
+            <if test="productId != null">
+                #{productId,jdbcType=INTEGER},
+            </if>
+            <if test="quantity != null">
+                #{quantity,jdbcType=INTEGER},
+            </if>
+            <if test="price != null">
+                #{price,jdbcType=DECIMAL},
+            </if>
+            <if test="createTime != null">
+                #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="createBy != null">
+                #{createBy,jdbcType=INTEGER},
+            </if>
+        </trim>
+    </insert>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TTranProduct">
+        update t_tran_product
+        <set>
+            <if test="tranId != null">
+                tran_id = #{tranId,jdbcType=INTEGER},
+            </if>
+            <if test="productId != null">
+                product_id = #{productId,jdbcType=INTEGER},
+            </if>
+            <if test="quantity != null">
+                quantity = #{quantity,jdbcType=INTEGER},
+            </if>
+            <if test="price != null">
+                price = #{price,jdbcType=DECIMAL},
+            </if>
+            <if test="createTime != null">
+                create_time = #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="createBy != null">
+                create_by = #{createBy,jdbcType=INTEGER},
+            </if>
+        </set>
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TTranProduct">
+        update t_tran_product
+        set tran_id = #{tranId,jdbcType=INTEGER},
+            product_id = #{productId,jdbcType=INTEGER},
+            quantity = #{quantity,jdbcType=INTEGER},
+            price = #{price,jdbcType=DECIMAL},
+            create_time = #{createTime,jdbcType=TIMESTAMP},
+            create_by = #{createBy,jdbcType=INTEGER}
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+</mapper> 

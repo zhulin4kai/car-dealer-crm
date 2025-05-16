@@ -20,13 +20,13 @@ public class StatisticController {
     private StatisticService statisticService;
 
     @GetMapping(value = "/api/summary/data")
-    public R summaryData() {
+    public R<SummaryData> summaryData() {
         SummaryData summaryData = statisticService.loadSummaryData();
         return R.OK(summaryData);
     }
 
     @GetMapping(value = "/api/saleFunnel/data")
-    public R saleFunnelData() {
+    public R<List<NameValue>> saleFunnelData() {
         /**
          * [
          *    { value: 20, name: '成交' },
@@ -41,7 +41,7 @@ public class StatisticController {
     }
 
     @GetMapping(value = "/api/sourcePie/data")
-    public R sourcePieData() {
+    public R<List<NameValue>> sourcePieData() {
         /**
          *   [
          *       { value: 1048, name: 'Search Engine' },

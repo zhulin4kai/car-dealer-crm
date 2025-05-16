@@ -27,6 +27,11 @@ public class TTran implements Serializable {
     private Integer customerId;
 
     /**
+     * 客户名称（非数据库字段）
+     */
+    private String customerName;
+
+    /**
      * 交易金额
      */
     private BigDecimal money;

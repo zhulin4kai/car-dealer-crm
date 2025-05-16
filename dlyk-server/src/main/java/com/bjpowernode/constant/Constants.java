@@ -33,4 +33,35 @@ public class Constants {
 
     public static final String EXCEL_FILE_NAME = "客户信息数据";
 
+    /** 交易缓存key前缀 */
+    public static final String REDIS_TRAN_KEY = "dlyk:tran:";
+    
+    /** 交易列表缓存key */
+    public static final String REDIS_TRAN_LIST_KEY = REDIS_TRAN_KEY + "list:";
+    
+    /** 交易详情缓存key */
+    public static final String REDIS_TRAN_DETAIL_KEY = REDIS_TRAN_KEY + "detail:";
+    
+    /** 交易生产状态缓存key */
+    public static final String REDIS_TRAN_PRODUCTION_KEY = REDIS_TRAN_KEY + "production:";
+    
+    /** 交易发票缓存key */
+    public static final String REDIS_TRAN_INVOICE_KEY = REDIS_TRAN_KEY + "invoice:";
+    
+    /** 缓存过期时间（1天） */
+    public static final long CACHE_EXPIRE_TIME = 24 * 60 * 60L;
+
+    /** 交易缓存相关常量 */
+    public static final String CACHE_KEY_TRAN = "dlyk:tran:detail:";
+    public static final String CACHE_KEY_TRAN_LIST = "dlyk:tran:list:";
+    public static final String CACHE_KEY_TRAN_PRODUCTS = "dlyk:tran:products:";
+    public static final String CACHE_KEY_TRAN_PRODUCTION = "dlyk:tran:production:";
+    public static final String CACHE_KEY_TRAN_INVOICES = "dlyk:tran:invoices:";
+
+    /** 交易状态相关常量 */
+    public static final String TRAN_STATUS_PENDING = "pending";
+    public static final String TRAN_STATUS_IN_PROGRESS = "in_progress";
+    public static final String TRAN_STATUS_COMPLETED = "completed";
+    public static final String TRAN_STATUS_CANCELLED = "cancelled";
 }
+

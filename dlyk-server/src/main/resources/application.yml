@@ -34,6 +34,12 @@ spring:
   jackson:
     time-zone: GMT+8
     date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+    deserialization:
+      ADJUST_DATES_TO_CONTEXT_TIME_ZONE: false
+    modules:
+      - com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 
 #指定一下mapper.xml文件的位置
 mybatis:
@@ -41,9 +47,3 @@ mybatis:
   configuration:
     #在控制台打印sql语句
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-
-#定义定时任务的调度时间
-project:
-  task:
-    cron: '* */5 * * * *'
-    delay: 180000

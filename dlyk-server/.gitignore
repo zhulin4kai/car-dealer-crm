@@ -40,3 +40,8 @@ build/
 *.sql.tar
 *.sql.tar.gz
 *.sql.tar.bz2
+
+### cursor ###
+.cursor/
+.cursorignore
+.tran_api.md

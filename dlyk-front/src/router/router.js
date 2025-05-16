@@ -116,6 +116,42 @@ let router = createRouter({
                     path: 'product/stock',
                     //路由路径所对应的页面
                     component : () => import('../view/ProductStockAlertView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'tran',
+                    //路由路径所对应的页面
+                    component : () => import('../view/TranView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'tran/add',
+                    //路由路径所对应的页面
+                    component : () => import('../view/TranRecordView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'tran/edit/:id',
+                    //路由路径所对应的页面
+                    component : () => import('../view/TranRecordView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'tran/:id',
+                    //路由路径所对应的页面
+                    component : () => import('../view/TranDetailView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'tran/approve/:id',
+                    //路由路径所对应的页面
+                    component : () => import('../view/TranApproveView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'tran/invoice/:id',
+                    //路由路径所对应的页面
+                    component : () => import('../view/TranInvoiceView.vue'),
                 }
             ]
         },

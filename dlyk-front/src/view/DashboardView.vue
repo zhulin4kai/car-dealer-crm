@@ -15,7 +15,7 @@
           :router="true"
           :unique-opened="false">
 
-        <el-sub-menu :index="index" v-for="(menuPermission, index) in user.menuPermissionList" :key="menuPermission.id">
+        <el-sub-menu :index="String(index)" v-for="(menuPermission, index) in user.menuPermissionList" :key="menuPermission.id">
           <template #title>
             <el-icon><component :is="menuPermission.icon"></component></el-icon>
             <span> {{menuPermission.name}} </span>
@@ -141,12 +141,12 @@ export default defineComponent({
           //跳到登录页
           window.location.href = "/";
         } else {
-          messageConfirm("退出异常，是否要强制退出？").then(() => { //用户点击“确定”按钮就会触发then函数
+          messageConfirm("退出异常，是否要强制退出？").then(() => { //用户点击"确定"按钮就会触发then函数
             //既然后端验证token未通过，那么前端的token肯定是有问题的，那没必要存储在浏览器中，直接删除一下
             removeToken();
             //跳到登录页
             window.location.href = "/";
-          }).catch(() => { //用户点击“取消”按钮就会触发then函数
+          }).catch(() => { //用户点击"取消"按钮就会触发then函数
             messageTip("取消强制退出", "warning");
           })
         }

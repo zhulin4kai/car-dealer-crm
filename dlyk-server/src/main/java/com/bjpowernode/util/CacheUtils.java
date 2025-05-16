@@ -33,4 +33,17 @@ public class CacheUtils {
         //返回数据
         return data;
     }
+
+    /**
+     * 生成缓存key
+     */
+    public static String generateKey(Object... params) {
+        StringBuilder key = new StringBuilder();
+        for (Object param : params) {
+            if (param != null) {
+                key.append(param.toString()).append(":");
+            }
+        }
+        return key.length() > 0 ? key.substring(0, key.length() - 1) : "";
+    }
 }

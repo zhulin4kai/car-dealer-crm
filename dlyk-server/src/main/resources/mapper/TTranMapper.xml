@@ -6,6 +6,7 @@
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="tran_no" jdbcType="VARCHAR" property="tranNo" />
     <result column="customer_id" jdbcType="INTEGER" property="customerId" />
+    <result column="customer_name" jdbcType="VARCHAR" property="customerName" />
     <result column="money" jdbcType="DECIMAL" property="money" />
     <result column="expected_date" jdbcType="TIMESTAMP" property="expectedDate" />
     <result column="stage" jdbcType="INTEGER" property="stage" />
@@ -18,9 +19,72 @@
   </resultMap>
 
   <sql id="Base_Column_List">
-    id, tran_no, customer_id, money, expected_date, stage, description, next_contact_time, 
-    create_time, create_by, edit_time, edit_by
+    t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time, 
+    t.create_time, t.create_by, t.edit_time, t.edit_by
   </sql>
+
+  <select id="selectByQuery" parameterType="com.bjpowernode.query.TranQuery" resultMap="BaseResultMap">
+    SELECT DISTINCT 
+    <include refid="Base_Column_List" />
+    FROM t_tran t
+    LEFT JOIN t_customer c ON t.customer_id = c.id
+    LEFT JOIN t_clue cl ON c.clue_id = cl.id
+    LEFT JOIN t_tran_product tp ON t.id = tp.tran_id
+    LEFT JOIN t_product p ON tp.product_id = p.id
+    LEFT JOIN t_tran_production tprod ON tp.id = tprod.tran_product_id
+    LEFT JOIN t_tran_invoice ti ON t.id = ti.tran_id
+    <where>
+      <if test="tranNo != null and tranNo != ''">
+        AND t.tran_no LIKE CONCAT('%', #{tranNo}, '%')
+      </if>
+      <if test="customerId != null">
+        AND t.customer_id = #{customerId}
+      </if>
+      <if test="customerName != null and customerName != ''">
+        AND cl.full_name LIKE CONCAT('%', #{customerName}, '%')
+      </if>
+      <if test="stage != null">
+        AND t.stage = #{stage}
+      </if>
+      <if test="minMoney != null">
+        AND t.money <![CDATA[>=]]> #{minMoney}
+      </if>
+      <if test="maxMoney != null">
+        AND t.money <![CDATA[<=]]> #{maxMoney}
+      </if>
+      <if test="expectedDateStart != null">
+        AND t.expected_date <![CDATA[>=]]> #{expectedDateStart}
+      </if>
+      <if test="expectedDateEnd != null">
+        AND t.expected_date <![CDATA[<=]]> #{expectedDateEnd}
+      </if>
+      <if test="createTimeStart != null">
+        AND t.create_time <![CDATA[>=]]> #{createTimeStart}
+      </if>
+      <if test="createTimeEnd != null">
+        AND t.create_time <![CDATA[<=]]> #{createTimeEnd}
+      </if>
+      <if test="createBy != null">
+        AND t.create_by = #{createBy}
+      </if>
+      <if test="productId != null">
+        AND tp.product_id = #{productId}
+      </if>
+      <if test="productName != null and productName != ''">
+        AND p.name LIKE CONCAT('%', #{productName}, '%')
+      </if>
+      <if test="productionStatus != null and productionStatus != ''">
+        AND tprod.status = #{productionStatus}
+      </if>
+      <if test="invoiceStatus != null and invoiceStatus != ''">
+        AND ti.status = #{invoiceStatus}
+      </if>
+      <if test="filterSQL != null and filterSQL != ''">
+        AND ${filterSQL}
+      </if>
+    </where>
+    ORDER BY t.create_time DESC
+  </select>
 
   <select id="selectBySuccessTranAmount" resultType="java.math.BigDecimal">
     select
@@ -60,6 +124,7 @@
     delete from t_tran
     where id = #{id,jdbcType=INTEGER}
   </delete>
+
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TTran" useGeneratedKeys="true">
     insert into t_tran (tran_no, customer_id, money, 
       expected_date, stage, description, 
@@ -70,6 +135,7 @@
       #{nextContactTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, 
       #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER})
   </insert>
+
   <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TTran" useGeneratedKeys="true">
     insert into t_tran
     <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -143,6 +209,7 @@
       </if>
     </trim>
   </insert>
+
   <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TTran">
     update t_tran
     <set>
@@ -182,6 +249,7 @@
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
+
   <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TTran">
     update t_tran
     set tran_no = #{tranNo,jdbcType=VARCHAR},

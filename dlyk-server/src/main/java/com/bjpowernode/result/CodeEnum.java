@@ -1,38 +1,36 @@
 package com.bjpowernode.result;
 
-import lombok.*;
+import lombok.Getter;
 
 @Getter
-@RequiredArgsConstructor
-@NoArgsConstructor
-@AllArgsConstructor
 public enum CodeEnum {
+    OK(200, "操作成功"),
+    FAIL(500, "操作失败"),
+    PARAM_ERROR(501, "请求参数格式有误"),
+    LOGIN_ERROR(502, "登录失败"),
+    UNAUTHORIZED_ERROR(503, "没有访问权限"),
+    TOKEN_ERROR(504, "token无效"),
+    TOKEN_EXPIRED(505, "token已过期"),
+    SYSTEM_ERROR(506, "系统异常"),
+    
+    // Token相关错误
+    TOKEN_IS_EMPTY(510, "token为空"),
+    TOKEN_IS_ERROR(511, "token无效"),
+    TOKEN_IS_EXPIRED(512, "token已过期"),
+    TOKEN_IS_NONE_MATCH(513, "token不匹配"),
+    
+    // 权限相关错误
+    ACCESS_DENIED(520, "没有访问权限"),
+    DATA_ACCESS_EXCEPTION(521, "数据访问异常"),
+    
+    // 用户相关
+    USER_LOGOUT(200, "退出成功");
 
-    OK(200, "成功"),
+    private final int code;
+    private final String msg;
 
-    FAIL(500, "失败"),
-
-    TOKEN_IS_EMPTY(901, "请求Token参数为空"),
-
-    TOKEN_IS_ERROR(902, "请求Token有误"),
-
-    TOKEN_IS_EXPIRED(903, "请求Token已过期"),
-
-    TOKEN_IS_NONE_MATCH(904, "请求Token不匹配"),
-
-    USER_LOGOUT(200, "退出成功"),
-
-    DATA_ACCESS_EXCEPTION(500,"数据库操作失败"),
-
-    ACCESS_DENIED(500, "权限不足")
-
-    ;
-
-    //结果码
-    private int code;
-
-    //结果信息
-    @NonNull
-    private String msg;
-
+    CodeEnum(int code, String msg) {
+        this.code = code;
+        this.msg = msg;
+    }
 }

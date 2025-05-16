@@ -1,9 +1,12 @@
 package com.bjpowernode.mapper;
 
 import com.bjpowernode.model.TTran;
-
+import com.bjpowernode.query.TranQuery;
 import java.math.BigDecimal;
+import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
 
+@Mapper
 public interface TTranMapper {
 
     int deleteByPrimaryKey(Integer id);
@@ -25,4 +28,9 @@ public interface TTranMapper {
     int selectByTotalTranCount();
 
     int selectBySuccessTranCount();
+    
+    /**
+     * 根据查询条件查询交易列表
+     */
+    List<TTran> selectByQuery(TranQuery query);
 }
