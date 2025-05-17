@@ -21,7 +21,11 @@ public class CorsConfig {
         config.addAllowedHeader("*");
         
         // 允许跨域的请求方法
-        config.addAllowedMethod("*");
+        config.addAllowedMethod("GET");
+        config.addAllowedMethod("POST");
+        config.addAllowedMethod("PUT");
+        config.addAllowedMethod("DELETE");
+        config.addAllowedMethod("OPTIONS");
         
         // 是否允许携带cookie
         config.setAllowCredentials(true);

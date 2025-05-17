@@ -26,7 +26,7 @@ public class TDicValue implements Serializable {
     private String typeValue;
 
     /**
-     * 字典值排序
+     * 排序号
      */
     private Integer order;
 

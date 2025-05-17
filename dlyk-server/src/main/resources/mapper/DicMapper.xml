@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bjpowernode.mapper.DicMapper">
+    <resultMap id="DicTypeMap" type="com.bjpowernode.model.TDicType">
+        <id column="id" property="id"/>
+        <result column="type_code" property="typeCode"/>
+        <result column="type_name" property="typeName"/>
+        <result column="remark" property="remark"/>
+    </resultMap>
+
+    <resultMap id="DicValueMap" type="com.bjpowernode.model.TDicValue">
+        <id column="id" property="id"/>
+        <result column="type_code" property="typeCode"/>
+        <result column="type_value" property="typeValue"/>
+        <result column="order" property="order"/>
+        <result column="remark" property="remark"/>
+    </resultMap>
+
+    <select id="selectDicTypes" resultMap="DicTypeMap">
+        SELECT 
+            dt.id,
+            dt.type_code,
+            dt.type_name,
+            dt.remark
+        FROM t_dic_type dt
+        <where>
+            <if test="typeCode != null and typeCode != ''">
+                AND dt.type_code LIKE CONCAT('%', #{typeCode}, '%')
+            </if>
+            <if test="typeName != null and typeName != ''">
+                AND dt.type_name LIKE CONCAT('%', #{typeName}, '%')
+            </if>
+        </where>
+        ORDER BY dt.type_code
+    </select>
+
+    <select id="selectDicValues" resultMap="DicValueMap">
+        SELECT 
+            dv.id,
+            dv.type_code,
+            dv.type_value,
+            dv.`order`,
+            dv.remark
+        FROM t_dic_value dv
+        LEFT JOIN t_dic_type dt ON dv.type_code = dt.type_code
+        <where>
+            <if test="typeCode != null and typeCode != ''">
+                AND dv.type_code = #{typeCode}
+            </if>
+            <if test="typeValue != null and typeValue != ''">
+                AND dv.type_value LIKE CONCAT('%', #{typeValue}, '%')
+            </if>
+        </where>
+        ORDER BY dv.`order`
+    </select>
+
+    <select id="selectDicTypeById" resultMap="DicTypeMap">
+        SELECT 
+            id,
+            type_code,
+            type_name,
+            remark
+        FROM t_dic_type
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectDicValueById" resultMap="DicValueMap">
+        SELECT 
+            id,
+            type_code,
+            type_value,
+            `order`,
+            remark
+        FROM t_dic_value
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectDicTypeByCode" resultMap="DicTypeMap">
+        SELECT 
+            id,
+            type_code,
+            type_name,
+            remark
+        FROM t_dic_type
+        WHERE type_code = #{typeCode}
+    </select>
+
+    <select id="selectDicValuesByTypeId" resultMap="DicValueMap">
+        SELECT 
+            dv.id,
+            dv.type_code,
+            dv.type_value,
+            dv.`order`,
+            dv.remark
+        FROM t_dic_value dv
+        INNER JOIN t_dic_type dt ON dv.type_code = dt.type_code
+        WHERE dt.id = #{typeId}
+        ORDER BY dv.`order`
+    </select>
+
+    <insert id="insertDicType" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_dic_type (
+            type_code,
+            type_name,
+            remark
+        ) VALUES (
+            #{typeCode},
+            #{typeName},
+            #{remark}
+        )
+    </insert>
+
+    <insert id="insertDicValue" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_dic_value (
+            type_code,
+            type_value,
+            `order`,
+            remark
+        ) VALUES (
+            #{typeCode},
+            #{typeValue},
+            #{order},
+            #{remark}
+        )
+    </insert>
+
+    <update id="updateDicType">
+        UPDATE t_dic_type
+        <set>
+            <if test="dicType.typeCode != null">type_code = #{dicType.typeCode},</if>
+            <if test="dicType.typeName != null">type_name = #{dicType.typeName},</if>
+            <if test="dicType.remark != null">remark = #{dicType.remark}</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateDicValue">
+        UPDATE t_dic_value
+        <set>
+            <if test="typeCode != null">type_code = #{typeCode},</if>
+            <if test="typeValue != null">type_value = #{typeValue},</if>
+            <if test="order != null">`order` = #{order},</if>
+            <if test="remark != null">remark = #{remark}</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteDicType">
+        DELETE FROM t_dic_type WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteDicValue">
+        DELETE FROM t_dic_value WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteDicValuesByTypeId">
+        DELETE dv FROM t_dic_value dv
+        INNER JOIN t_dic_type dt ON dv.type_code = dt.type_code
+        WHERE dt.id = #{typeId}
+    </delete>
+
+    <select id="selectDicTypesByIds" resultMap="DicTypeMap">
+        SELECT 
+            id,
+            type_code,
+            type_name,
+            remark
+        FROM t_dic_type
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <delete id="deleteDicTypesByIds">
+        DELETE FROM t_dic_type
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper> 

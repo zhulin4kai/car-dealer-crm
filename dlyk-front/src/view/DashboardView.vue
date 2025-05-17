@@ -84,33 +84,6 @@ export default defineComponent({
     }
   },
 
-  //提供者（生产者）
-  provide() {
-    return {
-      //提供一个函数（要求是箭头函数）
-      reload: ()=> {
-        this.isRouterAlive = false; //右侧内容隐藏
-        this.$nextTick(() => { //$nextTick(), 当数据更新了，在dom中渲染后，自动执行该函数，
-          this.isRouterAlive = true;
-        })
-      },
-
-      //提供一个字符串
-      content: "是对负荷计算东方红郡凯撒的合法户籍卡",
-
-      //提供一个数字
-      age: 28,
-
-      //提供一个对象
-      user : {id: 1098, name: "张三", age: 18},
-
-      //提供一个数组
-      arr : [12, 56, 109, 356, 8901]
-
-      //......
-    }
-  },
-
   //vue的生命周期中的一个函数钩子，该钩子是在页面渲染后执行
   mounted() {
     //加载当前登录用户

@@ -35,11 +35,11 @@ export function doPut(url, data) {
     })
 }
 
-export function doDelete(url, params) {
+export function doDelete(url, data) {
     return axios({
         method: "delete",
         url: url,
-        params: params, //{name: "对的", age: 22},
+        data: data, // 改用 data 而不是 params，这样数据会在请求体中
         dataType:"json"
     })
 }

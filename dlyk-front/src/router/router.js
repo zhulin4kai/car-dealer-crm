@@ -152,6 +152,18 @@ let router = createRouter({
                     path: 'tran/invoice/:id',
                     //路由路径所对应的页面
                     component : () => import('../view/TranInvoiceView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'dict/type',
+                    //路由路径所对应的页面
+                    component : () => import('../view/DictTypeView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'dict/value',
+                    //路由路径所对应的页面
+                    component : () => import('../view/DictValueView.vue'),
                 }
             ]
         },
