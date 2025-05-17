@@ -141,28 +141,43 @@ public class DicServiceImpl implements DicService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteDicType(Integer id) {
-        dicMapper.deleteDicValuesByTypeId(id);
-        boolean result = dicMapper.deleteDicType(id) > 0;
-        if (result) {
-            clearCache(CACHE_KEY_PREFIX + "*");
+        try {
+            // 1. 先删除关联的备注记录
+            dicMapper.deleteRemarksByDicTypeId(id);
+            // 2. 再删除字典值
+            dicMapper.deleteDicValuesByTypeId(id);
+            // 3. 最后删除字典类型
+            boolean result = dicMapper.deleteDicType(id) > 0;
+            if (result) {
+                clearCache(CACHE_KEY_PREFIX + "*");
+            }
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("删除字典类型失败: " + e.getMessage(), e);
         }
-        return result;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteDicValue(Integer id) {
-        TDicValue dicValue = getDicValueById(id);
-        if (dicValue != null) {
+        try {
+            // 获取字典值，用于后续清除缓存
+            TDicValue dicValue = dicMapper.selectDicValueById(id);
+            if (dicValue == null) {
+                return false;
+            }
+            
+            // 1. 先删除关联的备注记录
+            dicMapper.deleteRemarksByDicValueId(id);
+            // 2. 再删除字典值
             boolean result = dicMapper.deleteDicValue(id) > 0;
             if (result) {
-                clearCache(CACHE_KEY_PREFIX + "values:*");
-                clearCache(CACHE_KEY_PREFIX + "value:" + id);
-                clearCache(CACHE_KEY_PREFIX + "type:" + dicValue.getTypeCode());
+                clearCache(CACHE_KEY_PREFIX + "*");
             }
             return result;
+        } catch (Exception e) {
+            throw new RuntimeException("删除字典值失败: " + e.getMessage(), e);
         }
-        return false;
     }
 
     @Override
@@ -193,26 +208,44 @@ public class DicServiceImpl implements DicService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteDicTypesByIds(List<Integer> ids) {
-        // 先获取要删除的类型信息，用于后续清除缓存
-        List<TDicType> types = dicMapper.selectDicTypesByIds(ids);
-        
-        // 删除相关的字典值
-        for (Integer id : ids) {
-            dicMapper.deleteDicValuesByTypeId(id);
+        if (ids == null || ids.isEmpty()) {
+            return false;
         }
         
-        // 删除字典类型
-        boolean result = dicMapper.deleteDicTypesByIds(ids) > 0;
-        
-        if (result) {
-            // 清除相关缓存
-            clearCache(CACHE_KEY_PREFIX + "types:*");
-            for (TDicType type : types) {
-                clearCache(CACHE_KEY_PREFIX + "type:" + type.getId());
-                clearCache(CACHE_KEY_PREFIX + "type:code:" + type.getTypeCode());
+        try {
+            // 1. 先删除关联的备注记录
+            dicMapper.deleteRemarksByDicTypeIds(ids);
+            // 2. 再删除字典值
+            dicMapper.deleteDicValuesByTypeIds(ids);
+            // 3. 最后删除字典类型
+            boolean result = dicMapper.deleteDicTypesByIds(ids) > 0;
+            if (result) {
+                clearCache(CACHE_KEY_PREFIX + "*");
             }
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("批量删除字典类型失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteDicValuesByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return false;
         }
         
-        return result;
+        try {
+            // 1. 先删除关联的备注记录
+            dicMapper.deleteRemarksByDicValueIds(ids);
+            // 2. 再删除字典值
+            boolean result = dicMapper.deleteDicValuesByIds(ids) > 0;
+            if (result) {
+                clearCache(CACHE_KEY_PREFIX + "*");
+            }
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("批量删除字典值失败: " + e.getMessage(), e);
+        }
     }
 } 

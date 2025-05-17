@@ -35,4 +35,6 @@ public interface DicService {
     void clearCache(String pattern);
     
     boolean deleteDicTypesByIds(List<Integer> ids);
+    
+    boolean deleteDicValuesByIds(List<Integer> ids);
 } 
