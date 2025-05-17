@@ -47,4 +47,10 @@ public interface DicMapper {
     TDicType selectDicTypeByCode(@Param("typeCode") String typeCode);
     
     List<TDicType> selectDicTypesByIds(@Param("ids") List<Integer> ids);
+    
+    // Additional query methods to handle foreign key constraints
+    List<Integer> selectDicValueIdsByTypeId(@Param("typeId") Integer typeId);
+    List<Integer> selectDicValueIdsByTypeCode(@Param("typeCode") String typeCode);
+    String selectTypeCodeById(@Param("id") Integer id);
+    List<String> selectTypeCodesByIds(@Param("ids") List<Integer> ids);
 } 

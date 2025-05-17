@@ -30,27 +30,29 @@ export function getDictValueList(params) {
     return doGet('/api/dict/values', params)
 }
 
-export function getDictValuesByType(typeCode) {
-    return doGet(`/api/dict/values/type/${typeCode}`)
-}
-
 export function getDictValueDetail(id) {
-    return doGet(`/api/dict/values/${id}`)
+    return doGet(`/api/dict/value/${id}`)
 }
 
 export function createDictValue(data) {
-    return doPost('/api/dict/type/create', data)
+    return doPost('/api/dict/value/create', data)
 }
 
 export function updateDictValue(id, data) {
-    return doPut(`/api/dict/values/${id}`, data)
+    return doPut(`/api/dict/value/update/${id}`, data)
 }
 
 export function deleteDictValue(id) {
-    return doDelete(`/api/dict/values/${id}`)
+    return doDelete(`/api/dict/value/delete/${id}`)
 }
 
 export function batchDeleteDictValues(ids) {
-    return doDelete('/api/dict/values/batch', { ids })
+    return doDelete('/api/dict/value/batch', ids)
 }
 
+// 清除缓存
+export function clearCache() {
+    return doGet('/api/dict/clear', {
+        forceRefresh: true
+    })
+}

@@ -14,7 +14,13 @@
           </el-select>
         </el-form-item>
         <el-form-item label="字典值">
-          <el-input v-model="searchForm.typeValue" placeholder="请输入字典值" clearable style="width: 200px" />
+          <el-input 
+            v-model="searchForm.typeValue" 
+            placeholder="请输入字典值" 
+            clearable 
+            style="width: 200px" 
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -34,7 +40,12 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="80" />
+        <el-table-column 
+          type="index" 
+          label="序号" 
+          width="80"
+          :index="startIndex"
+        />
         <el-table-column prop="typeCode" label="字典类型" width="180">
           <template #default="scope">
             {{ getDictTypeName(scope.row.typeCode) }}
@@ -118,10 +129,11 @@ import {
   updateDictValue, 
   deleteDictValue, 
   batchDeleteDictValues,
-  refreshDictCache
+  clearCache,
+  getDictTypeList
 } from '../api/dict'
-import { getDictTypeList } from '../api/dict'
 import { messageConfirm } from '../util/util'
+import { useRouter } from 'vue-router'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -133,6 +145,7 @@ const pageSize = ref(10)
 const total = ref(0)
 const formRef = ref()
 const dictTypes = ref([])
+const router = useRouter()
 
 const searchForm = reactive({
   typeCode: '',
@@ -187,9 +200,9 @@ const loadData = async () => {
     }
     console.log(params)
     const res = await getDictValueList(params)
-    console.log(res)
     if (res.data.code === 200) {
-      tableData.value = res.data.data.list
+      // 对数据按照id升序排序
+      tableData.value = res.data.data.list.sort((a, b) => a.id - b.id)
       total.value = res.data.data.total
     }
   } catch (error) {
@@ -201,16 +214,26 @@ const loadData = async () => {
 }
 
 // 搜索
-const handleSearch = () => {
-  currentPage.value = 1
-  loadData()
+const handleSearch = async () => {
+  try {
+    loading.value = true
+    const res = await getDictValues(searchForm)
+    if (res.code === 200) {
+      tableData.value = res.data
+    }
+  } catch (error) {
+    console.error('获取字典值列表失败:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 // 重置表单
-const resetForm = () => {
+const resetForm = async () => {
   searchForm.typeCode = ''
   searchForm.typeValue = ''
-  handleSearch()
+  await clearCache()
+  await handleSearch()
 }
 
 // 新增
@@ -255,6 +278,8 @@ const handleBatchDelete = async () => {
     if (res.data.code === 200) {
       ElMessage.success('批量删除成功')
       loadData()
+    } else {
+      ElMessage.error(res.data.msg || '批量删除失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -266,21 +291,42 @@ const handleBatchDelete = async () => {
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        const api = isEdit.value ? updateDictValue : createDictValue
-        const res = await api(isEdit.value ? form.id : null, form)
-        if (res.data.code === 200) {
-          ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-          dialogVisible.value = false
-          loadData()
-        }
-      } catch (error) {
-        ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
-      }
+  
+  try {
+    // 1. 表单验证
+    const valid = await formRef.value.validate()
+    if (!valid) return
+
+    // 2. 准备请求数据
+    const requestData = {
+      typeCode: form.typeCode,
+      typeValue: form.typeValue,
+      order: form.order,
+      remark: form.remark
     }
-  })
+
+    // 3. 根据编辑状态选择API并调用
+    let res
+    if (isEdit.value) {
+      res = await updateDictValue(form.id, requestData)
+    } else {
+      console.log(requestData)
+      res = await createDictValue(requestData)
+    }
+    console.log(res)
+
+    // 4. 处理响应结果
+    if (res.data.code === 200) {
+      ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
+      dialogVisible.value = false
+      loadData()
+    } else {
+      ElMessage.error(res.data.msg || (isEdit.value ? '更新失败' : '创建失败'))
+    }
+  } catch (error) {
+    console.error('提交字典值失败:', error)
+    ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
+  }
 }
 
 // 选择变化
@@ -292,6 +338,11 @@ const handleSelectionChange = (selection) => {
 const handleCurrentChange = (val) => {
   currentPage.value = val
   loadData()
+}
+
+// 计算序号起始值
+const startIndex = (index) => {
+  return (currentPage.value - 1) * pageSize.value + index + 1
 }
 
 onMounted(() => {

@@ -22,7 +22,7 @@ public interface DicService {
     
     boolean updateDicType(Integer id, TDicType dicType);
     
-    boolean updateDicValue(TDicValue dicValue);
+    boolean updateDicValue(Integer id, TDicValue dicValue);
     
     boolean deleteDicType(Integer id);
     
@@ -37,4 +37,14 @@ public interface DicService {
     boolean deleteDicTypesByIds(List<Integer> ids);
     
     boolean deleteDicValuesByIds(List<Integer> ids);
+
+    /**
+     * 刷新字典类型缓存
+     */
+    void refreshTypeCache();
+
+    /**
+     * 刷新字典值缓存
+     */
+    void refreshValueCache();
 } 

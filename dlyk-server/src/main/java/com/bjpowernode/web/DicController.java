@@ -83,29 +83,66 @@ public class DicController {
         return R.OK(dicService.getDicValues(query));
     }
 
-    @GetMapping("/value/{id}")
+    @GetMapping("/value/get/{id}")
     public R getDicValueById(@PathVariable Integer id) {
         return R.OK(dicService.getDicValueById(id));
     }
 
-    @PostMapping("/value")
+    @PostMapping("/value/create")
     public R addDicValue(@RequestBody TDicValue dicValue) {
         return dicService.addDicValue(dicValue) ? R.OK() : R.FAIL("添加字典值失败");
     }
 
-    @PutMapping("/value")
-    public R updateDicValue(@RequestBody TDicValue dicValue) {
-        return dicService.updateDicValue(dicValue) ? R.OK() : R.FAIL("更新字典值失败");
+    @PutMapping("/value/update/{id}")
+    public R updateDicValue(@PathVariable Integer id, @RequestBody TDicValue dicValue) {
+        return dicService.updateDicValue(id, dicValue) ? R.OK() : R.FAIL("更新字典值失败");
     }
 
-    @DeleteMapping("/value/{id}")
+    @DeleteMapping("/value/delete/{id}")
     public R deleteDicValue(@PathVariable Integer id) {
         return dicService.deleteDicValue(id) ? R.OK() : R.FAIL("删除字典值失败");
     }
 
-    @GetMapping("/values/type/{typeId}")
-    public R getDicValuesByTypeId(@PathVariable Integer typeId) {
-        return R.OK(dicService.getDicValuesByTypeId(typeId));
+    @DeleteMapping("/value/batch")
+    public R batchDeleteDicValues(@RequestBody List<Integer> ids) {
+        return dicService.deleteDicValuesByIds(ids) ? R.OK() : R.FAIL("批量删除字典值失败");
     }
 
+    @PostMapping("/value/debug")
+    public R debugAddDicValue(@RequestBody TDicValue dicValue) {
+        logger.info("Received dictionary value: {}", dicValue);
+        // 检查类型是否存在
+        TDicType existingType = dicService.getDicTypeByCode(dicValue.getTypeCode());
+        if (existingType == null) {
+            return R.FAIL("字典类型不存在: " + dicValue.getTypeCode());
+        }
+        return dicService.addDicValue(dicValue) ? R.OK() : R.FAIL("添加字典值失败");
+    }
+    
+    @GetMapping("/clear")
+    public R clearCache(@RequestParam(required = false) Boolean forceRefresh) {
+        dicService.clearCache("*");
+        if (Boolean.TRUE.equals(forceRefresh)) {
+            // 如果需要强制刷新，则重新加载所有缓存
+            dicService.refreshTypeCache();
+            dicService.refreshValueCache();
+        }
+        return R.OK();
+    }
+
+    @GetMapping("/refresh")
+    public R refreshDictData(@RequestParam(required = false) String type) {
+        if ("type".equals(type)) {
+            // 刷新字典类型数据
+            dicService.refreshTypeCache();
+        } else if ("value".equals(type)) {
+            // 刷新字典值数据
+            dicService.refreshValueCache();
+        } else {
+            // 刷新所有数据
+            dicService.refreshTypeCache();
+            dicService.refreshValueCache();
+        }
+        return R.OK();
+    }
 }

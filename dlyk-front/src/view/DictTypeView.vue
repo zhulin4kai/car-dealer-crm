@@ -114,7 +114,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getDictTypeList, createDictType, updateDictType, deleteDictType, batchDeleteDictTypes } from '../api/dict'
+import { getDictTypeList, createDictType, updateDictType, deleteDictType, batchDeleteDictTypes, clearCache } from '../api/dict'
 import { messageConfirm } from '../util/util'
 
 const loading = ref(false)
@@ -171,16 +171,26 @@ const loadData = async () => {
 }
 
 // 搜索
-const handleSearch = () => {
-  currentPage.value = 1
-  loadData()
+const handleSearch = async () => {
+  try {
+    loading.value = true
+    const res = await getDictTypes(searchForm)
+    if (res.code === 200) {
+      tableData.value = res.data
+    }
+  } catch (error) {
+    console.error('获取字典类型列表失败:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 // 重置表单
-const resetForm = () => {
+const resetForm = async () => {
   searchForm.typeCode = ''
   searchForm.typeName = ''
-  handleSearch()
+  await clearCache()
+  await handleSearch()
 }
 
 // 新增
