@@ -1,328 +1,263 @@
 <template>
-  <el-button type="primary" @click="add" v-hasPermission="'user:add'">添加用户</el-button>
-  <el-button type="danger" @click="batchDel" v-hasPermission="'user:delete'">批量删除</el-button>
+  <div>
+    <el-card class="action-card">
+      <el-button type="primary" @click="add" v-hasPermission="'user:add'">添加用户</el-button>
+      <el-button type="danger" @click="batchDel" v-hasPermission="'user:delete'" :disabled="!userIdArray.length">批量删除</el-button>
+    </el-card>
 
-  <el-table
-      :data="userList"
-      style="width: 100%"
-      @selection-change="handleSelectionChange">
-    <el-table-column type="selection" width="55" />
-    <el-table-column type="index" label="序号" width="60" />
-    <el-table-column prop="loginAct" label="账号" />
-    <el-table-column property="name" label="姓名" show-overflow-tooltip />
-    <el-table-column property="phone" label="手机" show-overflow-tooltip />
-    <el-table-column property="email" label="邮箱" show-overflow-tooltip />
-    <el-table-column property="createTime" label="创建时间" show-overflow-tooltip />
-    <el-table-column label="操作" show-overflow-tooltip >
-      <template #default="scope">
-        <el-button type="primary" @click="view(scope.row.id)" v-hasPermission="'user:view'">详情</el-button>
-        <el-button type="success" @click="edit(scope.row.id)" v-hasPermission="'user:edit'">编辑</el-button>
-        <el-button type="danger" @click="del(scope.row.id)" v-hasPermission="'user:delete'">删除</el-button>
+    <el-card class="table-card">
+      <el-table :data="userList" style="width: 100%" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
+        <el-table-column 
+          type="index" 
+          label="序号" 
+          width="60" 
+          :index="startIndex" 
+        />
+        <el-table-column prop="loginAct" label="账号" />
+        <el-table-column property="name" label="姓名" show-overflow-tooltip />
+        <el-table-column property="phone" label="手机" show-overflow-tooltip />
+        <el-table-column property="email" label="邮箱" show-overflow-tooltip />
+        <el-table-column property="createTime" label="创建时间" show-overflow-tooltip />
+        <el-table-column label="操作" show-overflow-tooltip>
+          <template #default="scope">
+            <el-button type="primary" @click="view(scope.row.id)" v-hasPermission="'user:view'">详情</el-button>
+            <el-button type="success" @click="edit(scope.row.id)" v-hasPermission="'user:edit'">编辑</el-button>
+            <el-button type="danger" @click="del(scope.row.id)" v-hasPermission="'user:delete'">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-pagination background layout="prev, pager, next" :page-size="pageSize" :total="total" @prev-click="toPage"
+      @next-click="toPage" @current-change="toPage" />
+
+    <!--新增用户的弹窗(对话框)-->
+    <el-dialog v-model="userDialogVisible" :title="userQuery.id > 0 ? '编辑用户' : '新增用户'" width="20%" center draggable>
+
+      <el-form ref="userRefForm" :model="userQuery" label-width="110px" :rules="userRules">
+        <el-form-item label="账号" prop="loginAct">
+          <el-input v-model="userQuery.loginAct" />
+        </el-form-item>
+
+        <el-form-item label="密码" v-if="userQuery.id > 0"><!--编辑-->
+          <el-input type="password" v-model="userQuery.loginPwd" />
+        </el-form-item>
+
+        <el-form-item label="密码" prop="loginPwd" v-else><!--新增-->
+          <el-input type="password" v-model="userQuery.loginPwd" />
+        </el-form-item>
+
+        <el-form-item label="姓名" prop="name">
+          <el-input v-model="userQuery.name" />
+        </el-form-item>
+
+        <el-form-item label="手机" prop="phone">
+          <el-input v-model="userQuery.phone" />
+        </el-form-item>
+
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="userQuery.email" />
+        </el-form-item>
+
+        <el-form-item label="账号未过期" prop="accountNoExpired">
+          <el-select v-model="userQuery.accountNoExpired" placeholder="请选择">
+            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="密码未过期" prop="credentialsNoExpired">
+          <el-select v-model="userQuery.credentialsNoExpired" placeholder="请选择">
+            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="账号未锁定" prop="accountNoLocked">
+          <el-select v-model="userQuery.accountNoLocked" placeholder="请选择">
+            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="账号是否启用" prop="accountEnabled">
+          <el-select v-model="userQuery.accountEnabled" placeholder="请选择">
+            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="userDialogVisible = false">关 闭</el-button>
+          <el-button type="primary" @click="userSubmit">提 交</el-button>
+        </span>
       </template>
-    </el-table-column>
-  </el-table>
-
-  <el-pagination
-      background
-      layout="prev, pager, next"
-      :page-size="pageSize"
-      :total="total"
-      @prev-click="toPage"
-      @next-click="toPage"
-      @current-change="toPage"/>
-
-  <!--新增用户的弹窗(对话框)-->
-  <el-dialog v-model="userDialogVisible" :title="userQuery.id > 0 ? '编辑用户' : '新增用户'" width="55%" center draggable>
-
-    <el-form ref="userRefForm" :model="userQuery" label-width="110px" :rules="userRules">
-      <el-form-item label="账号" prop="loginAct">
-        <el-input v-model="userQuery.loginAct" />
-      </el-form-item>
-
-      <el-form-item label="密码" v-if="userQuery.id > 0"><!--编辑-->
-        <el-input type="password" v-model="userQuery.loginPwd" />
-      </el-form-item>
-
-      <el-form-item label="密码" prop="loginPwd" v-else><!--新增-->
-        <el-input type="password" v-model="userQuery.loginPwd" />
-      </el-form-item>
-
-      <el-form-item label="姓名" prop="name">
-        <el-input v-model="userQuery.name" />
-      </el-form-item>
-
-      <el-form-item label="手机" prop="phone">
-        <el-input v-model="userQuery.phone" />
-      </el-form-item>
-
-      <el-form-item label="邮箱" prop="email">
-        <el-input v-model="userQuery.email" />
-      </el-form-item>
-
-      <el-form-item label="账号未过期" prop="accountNoExpired">
-        <el-select v-model="userQuery.accountNoExpired" placeholder="请选择">
-          <el-option
-              v-for="item in options"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"/>
-        </el-select>
-      </el-form-item>
-
-      <el-form-item label="密码未过期" prop="credentialsNoExpired">
-        <el-select v-model="userQuery.credentialsNoExpired" placeholder="请选择">
-          <el-option
-              v-for="item in options"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"/>
-        </el-select>
-      </el-form-item>
-
-      <el-form-item label="账号未锁定" prop="accountNoLocked">
-        <el-select v-model="userQuery.accountNoLocked" placeholder="请选择">
-          <el-option
-              v-for="item in options"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"/>
-        </el-select>
-      </el-form-item>
-
-      <el-form-item label="账号是否启用" prop="accountEnabled">
-        <el-select v-model="userQuery.accountEnabled" placeholder="请选择">
-          <el-option
-              v-for="item in options"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"/>
-        </el-select>
-      </el-form-item>
-    </el-form>
-
-    <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="userDialogVisible = false">关 闭</el-button>
-        <el-button type="primary" @click="userSubmit">提 交</el-button>
-      </span>
-    </template>
-  </el-dialog>
+    </el-dialog>
+  </div>
 
 </template>
 
-<script>
-import {defineComponent} from 'vue'
-import {doDelete, doGet, doPost, doPut} from "../http/httpRequest.js";
-import {messageConfirm, messageTip, removeToken} from "../util/util.js";
+<script setup>
+import { ref, inject, onMounted } from 'vue'
+import { doDelete, doGet, doPost, doPut } from "../http/httpRequest.js"
+import { messageConfirm, messageTip } from "../util/util.js"
+import { useRouter } from 'vue-router'
 
-export default defineComponent({
-  name: "UserView",
+// // 注入父级页面提供的属性
+// const age = inject('age')
+// const arr = inject('arr')
+// const content = inject('content')
+// const reload = inject('reload')
+// const user = inject('user')
 
-  //注入父级页面提供的所有属性、函数、对象等等
-  inject: ['age', 'arr', 'content', 'reload', 'user'],
+// 响应式数据
+const userList = ref([{}])
+const pageSize = ref(0)
+const total = ref(0)
+const userDialogVisible = ref(false)
+const userQuery = ref({})
+const userIdArray = ref([])
+const userRefForm = ref(null)
+const currentPage = ref(1)
+const router = useRouter()
 
-  data() {
-    return {
-      //用户列表数据，初始值是空
-      userList : [{}],
-      //分页时每页显示多少条数据
-      pageSize : 0,
-      //分页总共查询出多少条数据
-      total : 0,
-      //用户的弹窗是否弹出来，true就弹出来，false就不弹出来
-      userDialogVisible : false,
-      //定义用户表单对象，初始值是空
-      userQuery : {},
-      //定义用户验证规则
-      userRules : {
-        loginAct : [
-          { required: true, message: '请输入登录账号', trigger: 'blur' }
-        ],
-        loginPwd : [
-          { required: true, message: '请输入登录密码', trigger: 'blur' },
-          { min: 6, max: 16, message: '登录密码长度为6-16位', trigger: 'blur' }
-        ],
-        name : [
-          { required: true, message: '请输入姓名', trigger: 'blur' },
-          { pattern: /^[\u4E00-\u9FA5]{1,5}$/, message: '姓名必须是中文', trigger: 'blur'}
-        ],
-        phone : [
-          { required: true, message: '请输入手机号码', trigger: 'blur' },
-          { pattern : /^1[3-9]\d{9}$/, message: '手机号码格式有误', trigger: 'blur'}
-        ],
-        email : [
-          { required: true, message: '请输入邮箱', trigger: 'blur' },
-          { pattern : /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, message: '邮箱格式有误', trigger: 'blur'}
-        ],
-        accountNoExpired : [
-          { required: true, message: '请选择账号是否未过期', trigger: 'blur' },
-        ],
-        credentialsNoExpired : [
-          { required: true, message: '请选择密码是否未过期', trigger: 'blur' },
-        ],
-        accountNoLocked : [
-          { required: true, message: '请选择账号是否未未锁定', trigger: 'blur' },
-        ],
-        accountEnabled : [
-          { required: true, message: '请选择账号是否可用', trigger: 'blur' },
-        ]
-      },
-      //下拉选项数组
-      options : [
-        {label : '是', value : 1},
-        {label : '否', value : 0}
-      ],
-      //用户id的数组
-      userIdArray : []
+// 表单验证规则
+const userRules = {
+  loginAct: [{ required: true, message: '请输入登录账号', trigger: 'blur' }],
+  loginPwd: [
+    { required: true, message: '请输入登录密码', trigger: 'blur' },
+    { min: 6, max: 16, message: '登录密码长度为6-16位', trigger: 'blur' }
+  ],
+  name: [
+    { required: true, message: '请输入姓名', trigger: 'blur' },
+    { pattern: /^[\u4E00-\u9FA5]{1,5}$/, message: '姓名必须是中文', trigger: 'blur' }
+  ],
+  phone: [
+    { required: true, message: '请输入手机号码', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号码格式有误', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, message: '邮箱格式有误', trigger: 'blur' }
+  ],
+  accountNoExpired: [{ required: true, message: '请选择账号是否未过期', trigger: 'blur' }],
+  credentialsNoExpired: [{ required: true, message: '请选择密码是否未过期', trigger: 'blur' }],
+  accountNoLocked: [{ required: true, message: '请选择账号是否未锁定', trigger: 'blur' }],
+  accountEnabled: [{ required: true, message: '请选择账号是否可用', trigger: 'blur' }]
+}
+
+// 下拉选项
+const options = [
+  { label: '是', value: 1 },
+  { label: '否', value: 0 }
+]
+
+// 方法
+const handleSelectionChange = (selectionnDataArray) => {
+  userIdArray.value = selectionnDataArray.map(data => data.id)
+}
+
+const getData = (current) => {
+  doGet("/api/users", { current }).then(resp => {
+    if (resp.data.code === 200) {
+      userList.value = resp.data.data.list
+      pageSize.value = resp.data.data.pageSize
+      total.value = resp.data.data.total
     }
-  },
+  })
+}
 
-  mounted() {
-    this.getData(1);
-  },
+const toPage = (current) => {
+  getData(current)
+  currentPage.value = current
+}
 
-  methods : {
-    //勾选或者取消勾选时，触发该函数(已经勾选的数据或传给我们这个函数)
-    handleSelectionChange(selectionnDataArray) {
-      this.userIdArray = [];
-      console.log(selectionnDataArray);
-      selectionnDataArray.forEach(data => {
-        let userId = data.id;
-        this.userIdArray.push(userId);
-      })
-    },
+const view = (id) => {
+  router.push("/dashboard/user/" + id)
+}
 
-    //查询用户列表数据
-    getData(current) {
-      doGet("/api/users", {
-        current : current //当前查询第几页
-      }).then(resp => {
-        console.log(resp);
-        if (resp.data.code === 200) {
-          this.userList = resp.data.data.list;
-          this.pageSize = resp.data.data.pageSize;
-          this.total = resp.data.data.total;
-        }
-      })
-    },
+const add = () => {
+  userQuery.value = {}
+  userDialogVisible.value = true
+}
 
-    //分页函数(current这个参数是ele-plus组件传过来，就是传的当前页)
-    toPage(current) {
-      this.getData(current);
-    },
-
-    //详情
-    view(id) {
-      console.log(id);
-      //跳转到/dashboard/user/1路由上
-      this.$router.push("/dashboard/user/" + id);
-    },
-
-    //新增用户
-    add() {
-      this.userQuery = {};
-      this.userDialogVisible = true;
-    },
-
-    //新增用户提交保存
-    userSubmit() {
-      let formData = new FormData();
-      for (let field in this.userQuery) {
-        formData.append(field, this.userQuery[field]);
-      }
-      this.$refs.userRefForm.validate( (isValid) => {
-        if (isValid) {
-
-          if (this.userQuery.id > 0) { /*编辑*/
-            doPut("/api/user", formData).then(resp => {
-              if (resp.data.code === 200) {
-                messageTip("编辑成功", "success");
-                //页面刷新
-                this.reload();
-              } else {
-                messageTip("编辑失败", "error");
-              }
-            })
-          } else {
-            doPost("/api/user", formData).then(resp => {/*新增*/
-              if (resp.data.code === 200) {
-                messageTip("提交成功", "success");
-                //页面刷新
-                this.reload();
-                console.log(this.age)
-                console.log(this.content)
-                console.log(this.arr)
-                console.log(this.user)
-              } else {
-                messageTip("提交失败", "error");
-              }
-            })
-          }
-        }
-      })
-    },
-
-    //编辑用户
-    edit(id) {
-      this.userDialogVisible = true;
-      this.loadUser(id);
-    },
-
-    //加载用户信息
-    loadUser(id) {
-      doGet("/api/user/" + id, {}).then(resp => {
-        if (resp.data.code === 200) {
-          this.userQuery = resp.data.data;
-          this.userQuery.loginPwd = "";
-        }
-      })
-    },
-
-    //删除
-    del(id) {
-      messageConfirm("您确定要删除该数据吗？").then(() => { //用户点击“确定”按钮就会触发then函数
-        doDelete("/api/user/" + id, {}).then(resp => {
-          console.log(resp);
-          if (resp.data.code === 200) {
-            messageTip("删除成功", "success");
-            //页面刷新
-            this.reload();
-          } else {
-            messageTip("删除失败，原因：" + resp.data.msg, "error");
-          }
-        })
-      }).catch(() => { //用户点击“取消”按钮就会触发catch函数
-        messageTip("取消删除", "warning");
-      })
-    },
-
-    //批量删除
-    batchDel() {
-      if (this.userIdArray.length <= 0) {
-        //提示一下
-        messageTip("请选择要删除的数据", "warning");
-        return;
-      }
-      messageConfirm("您确定要删除这些数据吗？").then(() => { //用户点击“确定”按钮就会触发then函数
-        //原来是数组：[1,3,5,6,7,11,15]  --> ids = "1,3,5,6,7,11,15";
-        let ids = this.userIdArray.join(",");
-        doDelete("/api/user", {
-          ids : ids
-        }).then(resp => {
-          console.log(resp);
-          if (resp.data.code === 200) {
-            messageTip("批量删除成功", "success");
-            //页面刷新
-            this.reload();
-          } else {
-            messageTip("批量删除失败，原因：" + resp.data.msg, "error");
-          }
-        })
-      }).catch(() => { //用户点击“取消”按钮就会触发catch函数
-        messageTip("取消批量删除", "warning");
-      })
-    }
+const userSubmit = () => {
+  const formData = new FormData()
+  for (let field in userQuery.value) {
+    formData.append(field, userQuery.value[field])
   }
+  userRefForm.value.validate((isValid) => {
+    if (isValid) {
+      const request = userQuery.value.id > 0 ? doPut : doPost
+      request("/api/user", formData).then(resp => {
+        if (resp.data.code === 200) {
+          messageTip(userQuery.value.id > 0 ? "编辑成功" : "提交成功", "success")
+          getData(currentPage.value) 
+        } else {
+          messageTip(userQuery.value.id > 0 ? "编辑失败" : "提交失败", "error")
+        }
+      })
+    }
+  })
+}
+
+const edit = (id) => {
+  userDialogVisible.value = true
+  loadUser(id)
+}
+
+const loadUser = (id) => {
+  doGet("/api/user/" + id, {}).then(resp => {
+    console.log(resp);
+    if (resp.data.code === 200) {
+      userQuery.value = resp.data.data
+      userQuery.value.loginPwd = ""
+    }
+  })
+}
+
+const del = (id) => {
+  messageConfirm("您确定要删除该数据吗？").then(() => {
+    doDelete("/api/user/" + id, {}).then(resp => {
+      if (resp.data.code === 200) {
+        messageTip("删除成功", "success")
+        getData(currentPage.value) 
+      } else {
+        messageTip("删除失败，原因：" + resp.data.msg, "error")
+      }
+    })
+  }).catch(() => {
+    messageTip("取消删除", "warning")
+  })
+}
+
+const batchDel = () => {
+  if (userIdArray.value.length <= 0) {
+    messageTip("请选择要删除的数据", "warning")
+    return
+  }
+  messageConfirm("您确定要删除这些数据吗？").then(() => {
+    const ids = userIdArray.value.join(",")
+    doDelete("/api/user", { ids }).then(resp => {
+      if (resp.data.code === 200) {
+        messageTip("批量删除成功", "success")
+        getData(currentPage.value) 
+      } else {
+        messageTip("批量删除失败，原因：" + resp.data.msg, "error")
+      }
+    })
+  }).catch(() => {
+    messageTip("取消批量删除", "warning")
+  })
+}
+
+// 计算序号起始值
+const startIndex = (index) => {
+  return (currentPage.value - 1) * pageSize.value + index + 1
+}
+
+// 组件挂载时加载数据
+onMounted(() => {
+  getData(1)
 })
 </script>
 
@@ -330,10 +265,20 @@ export default defineComponent({
 .el-table {
   margin-top: 12px;
 }
+
 .el-pagination {
   margin-top: 12px;
 }
+
 .el-select {
   width: 100%;
+}
+
+.action-card {
+  margin-bottom: 20px;
+}
+
+.table-card {
+  margin-bottom: 20px;
 }
 </style>

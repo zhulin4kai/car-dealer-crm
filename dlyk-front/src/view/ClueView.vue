@@ -1,43 +1,53 @@
 <template>
-  <el-button type="primary" class="btn" @click="addClue" v-hasPermission="'clue:add'">录入线索</el-button>
-  <el-button type="success" class="btn" @click="importExcel" v-hasPermission="'clue:import'">导入线索(Excel)</el-button>
-  <el-button type="danger" class="btn" @click="batchDelClue" v-hasPermission="'clue:delete'">批量删除</el-button>
+  <el-card class="action-card">
+    <el-button type="primary" class="btn" @click="addClue" v-hasPermission="'clue:add'">录入线索</el-button>
+    <el-button type="success" class="btn" @click="importExcel" v-hasPermission="'clue:import'">导入线索(Excel)</el-button>
+    <el-button type="danger" class="btn" @click="batchDelClue" v-hasPermission="'clue:delete'">批量删除</el-button>
+  </el-card>
 
-  <el-table
-      :data="clueList"
-      style="width: 100%"
-      @selection-change="handleSelectionChange">
-    <el-table-column type="selection" width="50"/>
-    <el-table-column type="index" label="序号" width="65"/>
-    <el-table-column property="ownerDO.name" label="负责人" width="120" />
-    <el-table-column property="activityDO.name" label="所属活动"/>
-    <el-table-column label="姓名">
-      <template #default="scope">
-        <a href="javascript:" @click="view(scope.row.id)">{{ scope.row.fullName }}</a>
-      </template>
-    </el-table-column>
-    <el-table-column property="appellationDO.typeValue" label="称呼"/>
-    <el-table-column property="phone" label="手机" width="120"/>
-    <el-table-column property="weixin" label="微信" width="120"/>
-    <el-table-column property="needLoanDO.typeValue" label="是否贷款"/>
-    <el-table-column property="intentionStateDO.typeValue" label="意向状态"/>
-    <el-table-column property="intentionProductDO.name" label="意向产品"/>
-    <el-table-column label="线索状态">
-      <template #default="scope">
-        <span style="background: lightgoldenrodyellow" v-if="scope.row.state === -1"> {{ scope.row.stateDO.typeValue }} </span>
-        <span v-else> {{ scope.row.stateDO.typeValue }} </span>
-      </template>
-    </el-table-column>
-    <el-table-column property="sourceDO.typeValue" label="线索来源"/>
-    <el-table-column property="nextContactTime" label="下次联系时间" width="165"/>
-    <el-table-column label="操作" width="230">
-      <template #default="scope">
-        <el-button type="primary" @click="view(scope.row.id)" v-hasPermission="'clue:view'">详情</el-button>
-        <el-button type="success" @click="edit(scope.row.id)" v-hasPermission="'clue:edit'">编辑</el-button>
-        <el-button type="danger" @click="del(scope.row.id)" v-hasPermission="'clue:delete'">删除</el-button>
-      </template>
-    </el-table-column>
-  </el-table>
+  <el-card class="table-card">
+    <el-table
+        :data="clueList"
+        style="width: 100%"
+        @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="50"/>
+      <el-table-column 
+        type="index" 
+        label="序号" 
+        width="80" 
+        :index="startIndex"
+      />
+      <el-table-column property="ownerDO.name" label="负责人" show-overflow-tooltip />
+      <el-table-column property="activityDO.name" label="所属活动" show-overflow-tooltip />
+      <el-table-column label="姓名" show-overflow-tooltip>
+        <template #default="scope">
+          <a href="javascript:" @click="view(scope.row.id)">{{ scope.row.fullName }}</a>
+        </template>
+      </el-table-column>
+      <el-table-column property="appellationDO.typeValue" label="称呼" show-overflow-tooltip />
+      <el-table-column property="phone" label="手机" show-overflow-tooltip />
+      <el-table-column property="weixin" label="微信" show-overflow-tooltip />
+      <el-table-column property="needLoanDO.typeValue" label="是否贷款" show-overflow-tooltip />
+      <el-table-column property="intentionStateDO.typeValue" label="意向状态" show-overflow-tooltip />
+      <el-table-column property="intentionProductDO.name" label="意向产品" show-overflow-tooltip />
+      <el-table-column label="线索状态">
+        <template #default="scope">
+          <span style="background: lightgoldenrodyellow" v-if="scope.row.state === -1"> {{ scope.row.stateDO.typeValue }} </span>
+          <span v-else> {{ scope.row.stateDO.typeValue }} </span>
+        </template>
+      </el-table-column>
+      <el-table-column property="sourceDO.typeValue" label="线索来源" show-overflow-tooltip />
+      <el-table-column property="nextContactTime" label="下次联系时间" show-overflow-tooltip />
+      <el-table-column label="操作" show-overflow-tooltip>
+        <template #default="scope">
+          <el-button type="primary" @click="view(scope.row.id)" v-hasPermission="'clue:view'">详情</el-button>
+          <el-button type="success" @click="edit(scope.row.id)" v-hasPermission="'clue:edit'">编辑</el-button>
+          <el-button type="danger" @click="del(scope.row.id)" v-hasPermission="'clue:delete'">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+  </el-card>
+
   <p>
     <el-pagination
         background
@@ -115,7 +125,12 @@ export default defineComponent({
       //分页总共查询出多少条数据
       total : 0,
       //导入线索Excel的弹窗，true弹，false不弹
-      importExcelDialogVisible : false
+      importExcelDialogVisible : false,
+      currentPage : 1,
+      // 计算序号起始值
+      startIndex : (index) => {
+        return (this.currentPage - 1) * this.pageSize + index + 1
+      }
     }
   },
 
@@ -139,6 +154,7 @@ export default defineComponent({
           this.total = resp.data.data.total;
         }
       })
+      this.currentPage = current;
     },
 
     //分页函数(current这个参数是ele-plus组件传过来，就是传的当前页)
@@ -219,6 +235,13 @@ export default defineComponent({
 </script>
 
 <style scoped>
+.action-card {
+  margin-bottom: 20px;
+}
+.table-card {
+  margin-bottom: 20px;
+}
+
 .el-table {
   margin-top: 15px;
 }

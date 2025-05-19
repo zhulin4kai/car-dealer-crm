@@ -9,7 +9,7 @@
         <el-form-item label="客户名称">
           <el-input v-model="searchForm.customerName" placeholder="请输入客户名称" clearable />
         </el-form-item>
-        <el-form-item label="交易状态">
+        <el-form-item label="交易状态" style="width: 200px;">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
             <el-option label="待报价" value="QUOTATION" />
             <el-option label="待审批" value="PENDING" />
@@ -30,39 +30,41 @@
     <!-- 数据表格 -->
     <el-card class="table-card">
       <el-table :data="tableData" style="width: 100%" v-loading="loading">
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column prop="tranNo" label="交易编号" width="180" />
-        <el-table-column prop="customerName" label="客户名称" width="160" />
-        <el-table-column prop="amount" label="交易金额" width="140">
+        <el-table-column 
+          type="index" 
+          label="序号" 
+          width="80"
+          :index="startIndex"
+        />
+        <el-table-column prop="tranNo" label="交易编号" show-overflow-tooltip />
+        <el-table-column prop="customerName" label="客户名称" show-overflow-tooltip />
+        <el-table-column prop="amount" label="交易金额" show-overflow-tooltip>
           <template #default="scope">
             ¥{{ scope.row.amount }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="120">
+        <el-table-column prop="status" label="状态" show-overflow-tooltip>
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">
               {{ getStatusText(scope.row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" fixed="right" min-width="240">
+        <el-table-column prop="createTime" label="创建时间" show-overflow-tooltip />
+        <el-table-column label="操作" show-overflow-tooltip>
           <template #default="scope">
-            <el-button size="small" @click="handleView(scope.row)">查看</el-button>
+            <el-button @click="handleView(scope.row)">查看</el-button>
             <el-button 
-              size="small" 
               type="primary" 
               @click="handleEdit(scope.row)"
               v-if="scope.row.status === 'QUOTATION'"
             >编辑</el-button>
             <el-button 
-              size="small" 
               type="success" 
               @click="handleApprove(scope.row)"
               v-if="scope.row.status === 'PENDING'"
             >审批</el-button>
             <el-button 
-              size="small" 
               type="warning" 
               @click="handleInvoice(scope.row)"
               v-if="scope.row.status === 'APPROVED'"
@@ -70,18 +72,18 @@
           </template>
         </el-table-column>
       </el-table>
-
-      <!-- 分页 -->
-      <el-pagination
-          background
-          layout="prev, pager, next"
-          :page-size="pageSize"
-          :total="total"
-          @prev-click="handleCurrentChange"
-          @next-click="handleCurrentChange"
-          @current-change="handleCurrentChange"
-      />
     </el-card>
+    <!-- 分页 -->
+    <el-pagination
+        background
+        layout="prev, pager, next"
+        :page-size="pageSize"
+        :total="total"
+        @prev-click="handleCurrentChange"
+        @next-click="handleCurrentChange"
+        @current-change="handleCurrentChange"
+    />
+    
   </div>
 </template>
 
@@ -212,6 +214,10 @@ const handleSizeChange = (val) => {
 const handleCurrentChange = (val) => {
   currentPage.value = val
   fetchData()
+}
+
+const startIndex = (index) => {
+  return (currentPage.value - 1) * pageSize.value + index + 1
 }
 
 onMounted(() => {

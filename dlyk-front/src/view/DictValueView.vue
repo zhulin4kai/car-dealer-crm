@@ -24,7 +24,7 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="resetForm">重置</el-button>
+          <!-- <el-button @click="resetForm">重置</el-button> -->
           <el-button type="success" @click="handleAdd">新增字典值</el-button>
           <el-button type="danger" @click="handleBatchDelete" :disabled="!selectedIds.length">批量删除</el-button>
         </el-form-item>
@@ -56,22 +56,22 @@
         <el-table-column prop="remark" label="备注" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
-            <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button type="success" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
+    </el-card>
 
-      <!-- 分页 -->
-      <el-pagination
-        background
-        layout="prev, pager, next"
-        :page-size="pageSize"
-        :total="total"
+    <!-- 分页 -->
+    <el-pagination
+      background
+      layout="prev, pager, next"
+      :page-size="pageSize"
+      :total="total"
         @current-change="handleCurrentChange"
         style="margin-top: 20px; width: 100%;"
-      />
-    </el-card>
+    />
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog 

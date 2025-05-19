@@ -1,49 +1,52 @@
 <template>
   <div class="promotion-container">
-    <div class="operation-bar">
+    <el-card class="operation-bar">
       <el-button type="primary" plain @click="goBack">返 回</el-button>
       <el-button type="primary" @click="handleAdd">新增促销</el-button>
-    </div>
+    </el-card>
 
-    <el-table :data="promotionList" style="width: 100%">
-      <el-table-column prop="id" label="ID" min-width="8%" />
-      <el-table-column prop="name" label="促销名称" min-width="18%" />
-      <el-table-column prop="type" label="促销类型" min-width="12%">
-        <template #default="scope">
-          <el-tag :type="getPromotionTypeTag(scope.row.type)">
-            {{ scope.row.type }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="discount" label="折扣/金额" min-width="12%">
-        <template #default="scope">
-          {{ scope.row.type === '折扣' ? scope.row.discount + '折' : '¥' + scope.row.discount }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="startTime" label="开始时间" min-width="16%">
-        <template #default="scope">
-          {{ formatDateTime(scope.row.startTime) }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="endTime" label="结束时间" min-width="16%">
-        <template #default="scope">
-          {{ formatDateTime(scope.row.endTime) }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="status" label="状态" min-width="8%">
-        <template #default="scope">
-          <el-tag :type="getStatusTag(scope.row.status)">
-            {{ scope.row.status }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" min-width="10%">
-        <template #default="scope">
-          <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-card class="table-card">
+      <el-table :data="promotionList" style="width: 100%">
+        <el-table-column prop="id" label="ID" show-overflow-tooltip />
+        <el-table-column prop="name" label="促销名称" show-overflow-tooltip />
+        <el-table-column prop="type" label="促销类型" show-overflow-tooltip>
+          <template #default="scope">
+            <el-tag :type="getPromotionTypeTag(scope.row.type)">
+              {{ scope.row.type }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="discount" label="折扣/金额" show-overflow-tooltip>
+          <template #default="scope">
+            {{ scope.row.type === '折扣' ? scope.row.discount + '折' : '¥' + scope.row.discount }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="startTime" label="开始时间" show-overflow-tooltip>
+          <template #default="scope">
+            {{ formatDateTime(scope.row.startTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="endTime" label="结束时间" show-overflow-tooltip>
+          <template #default="scope">
+            {{ formatDateTime(scope.row.endTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" show-overflow-tooltip>
+          <template #default="scope">
+            <el-tag :type="getStatusTag(scope.row.status)">
+              {{ scope.row.status }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" show-overflow-tooltip>
+          <template #default="scope">
+            <el-button type="default" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <el-pagination
       background
       layout="prev, pager, next"
@@ -52,8 +55,9 @@
       @prev-click="handleCurrentChange"
       @next-click="handleCurrentChange"
       @current-change="handleCurrentChange"
-      style="margin-top: 12px; width: 100%;"
+        style="margin-top: 12px; width: 100%;"
     />
+    
 
     <!-- 促销表单对话框 -->
     <el-dialog

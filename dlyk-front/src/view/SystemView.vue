@@ -2,7 +2,7 @@
   <div class="system-container">
     <!-- 操作栏 -->
     <el-card class="action-card">
-      <el-button type="primary" @click="handleAdd">新增系统</el-button>
+      <el-button type="primary" @click="handleAdd">新增系统信息</el-button>
       <el-button type="danger" @click="handleBatchDelete" :disabled="!selectedIds.length">批量删除</el-button>
     </el-card>
 
@@ -15,12 +15,12 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="systemCode" label="系统代码" width="120" />
-        <el-table-column prop="name" label="系统名称" width="150" />
-        <el-table-column prop="title" label="系统标题" width="150" />
-        <el-table-column prop="description" label="系统描述" width="200" />
-        <el-table-column prop="version" label="版本" width="120" />
-        <el-table-column prop="isopen" label="状态" width="100">
+        <el-table-column prop="systemCode" label="系统代码" show-overflow-tooltip />
+        <el-table-column prop="name" label="系统名称" show-overflow-tooltip />
+        <el-table-column prop="title" label="系统标题" show-overflow-tooltip />
+        <el-table-column prop="description" label="系统描述" show-overflow-tooltip />
+        <el-table-column prop="version" label="版本" show-overflow-tooltip />
+        <el-table-column prop="isopen" label="状态" show-overflow-tooltip>
           <template #default="scope">
             <el-switch
               v-model="scope.row.isopen"
@@ -30,10 +30,10 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" show-overflow-tooltip>
           <template #default="scope">
-            <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button type="success" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

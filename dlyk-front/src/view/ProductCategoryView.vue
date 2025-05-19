@@ -1,30 +1,32 @@
 <template>
   <div class="category-container">
-    <div class="operation-bar">
+    <el-card class="operation-bar">
       <el-button type="primary" plain @click="goBack">返 回</el-button>
       <el-button type="primary" @click="handleAdd">新增分类</el-button>
-    </div>
+    </el-card>
 
-    <el-table :data="categoryList" style="width: 100%">
-      <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column prop="name" label="分类名称" width="180" />
-      <el-table-column prop="code" label="分类编码" width="120" />
-      <el-table-column prop="description" label="描述" />
-      <el-table-column prop="sort" label="排序" width="100" />
-      <el-table-column prop="status" label="状态" width="100">
-        <template #default="scope">
-          <el-tag :type="scope.row.status === '启用' ? 'success' : 'info'">
-            {{ scope.row.status }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="200">
-        <template #default="scope">
-          <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-card class="table-card">
+      <el-table :data="categoryList" style="width: 100%">
+        <el-table-column prop="id" label="ID" show-overflow-tooltip />
+        <el-table-column prop="name" label="分类名称" show-overflow-tooltip />
+        <el-table-column prop="code" label="分类编码" show-overflow-tooltip />
+        <el-table-column prop="description" label="描述" show-overflow-tooltip />
+        <el-table-column prop="sort" label="排序" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" show-overflow-tooltip>
+          <template #default="scope">
+            <el-tag :type="scope.row.status === '启用' ? 'success' : 'info'">
+              {{ scope.row.status }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" show-overflow-tooltip>
+          <template #default="scope">
+            <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+          </template>
+        </el-table-column>
+        </el-table>
+    </el-card>
 
     <el-pagination
       background
@@ -197,6 +199,10 @@ export default defineComponent({
 <style scoped>
 .category-container {
   padding: 20px;
+}
+
+.table-card {
+  margin-top: 20px;
 }
 
 .operation-bar {
