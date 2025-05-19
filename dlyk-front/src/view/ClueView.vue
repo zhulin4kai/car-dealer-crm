@@ -173,6 +173,10 @@ export default defineComponent({
       })
     },
 
+    batchDelClue() {
+      // TODO
+    },
+
     //提交山传Excel文件
     submitExcel() {
       this.$refs.uploadRef.submit();

@@ -164,6 +164,12 @@ let router = createRouter({
                     path: 'dict/value',
                     //路由路径所对应的页面
                     component : () => import('../view/DictValueView.vue'),
+                },
+                {
+                    //路由路径，子路由路径不能以斜杠开头
+                    path: 'system',
+                    //路由路径所对应的页面
+                    component : () => import('../view/SystemView.vue'),
                 }
             ]
         },

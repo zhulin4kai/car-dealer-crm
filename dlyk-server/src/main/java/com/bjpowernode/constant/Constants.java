@@ -63,5 +63,17 @@ public class Constants {
     public static final String TRAN_STATUS_IN_PROGRESS = "in_progress";
     public static final String TRAN_STATUS_COMPLETED = "completed";
     public static final String TRAN_STATUS_CANCELLED = "cancelled";
+
+    /** 系统信息缓存相关常量 */
+    public static final String REDIS_SYSTEM_KEY = "dlyk:system:";
+    public static final String REDIS_SYSTEM_LIST_KEY = REDIS_SYSTEM_KEY + "list";
+    public static final String REDIS_SYSTEM_DETAIL_KEY = REDIS_SYSTEM_KEY + "detail:";
+    
+    /** 系统状态常量 */
+    public static final String SYSTEM_STATUS_OPEN = "y";
+    public static final String SYSTEM_STATUS_CLOSED = "n";
+    
+    /** 系统缓存过期时间（1天） */
+    public static final long SYSTEM_CACHE_EXPIRE_TIME = 24 * 60 * 60L;
 }
 
