@@ -2,9 +2,11 @@
   <el-container>
     <!--左侧-->
     <el-aside width="200px">
-      <img src="../assets/loginBox.svg">
+      <img src="../assets/logo-2.svg" class="login_img">
       <p class="imgTitle">
-        欢迎使用电子商务管理系统
+        欢迎使用
+        <br>
+        徐州工程学院电子商务管理系统
       </p>
     </el-aside>
 
@@ -134,8 +136,12 @@ export default defineComponent({
 </script>
 
 <style scoped>
+.login_img {
+  width: 80%;
+  height: 50%;
+}
 .el-aside {
-  background: #1a1a1a;
+  background: #871d1f;
   width: 40%;
   display: flex;
   flex-direction: column;
@@ -154,7 +160,7 @@ img {
   height: 413px;
 }
 .imgTitle {
-  color: #f9f9f9;
+  color: #ebeef5;
   font-size: 40px;
 }
 .el-form {
