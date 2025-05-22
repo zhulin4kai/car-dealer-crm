@@ -5,7 +5,7 @@
       <div class="menuTitle">@电子商务管理系统</div>
       <el-menu
           active-text-color="#ffd04b"
-          background-color="#334157"
+          background-color="#4c393b"
           class="el-menu-vertical-demo"
           :default-active="currentRouterPath"
           text-color="#fff"
@@ -37,6 +37,7 @@
 
         <el-dropdown :hide-on-click="false">
           <span class="el-dropdown-link">
+            <div class="avatar">{{ getUserFirstChar }}</div>
             {{ user.name }}
             <el-icon class="el-icon--right"><arrow-down /></el-icon>
           </span>
@@ -136,24 +137,34 @@ export default defineComponent({
         this.currentRouterPath = path;
       }
     }
+  },
+
+  computed: {
+    getUserFirstChar() {
+      if (!this.user.name) return '';
+      const name = this.user.name.trim();
+      return name.charAt(0).toUpperCase();
+    }
   }
 })
 </script>
 
 <style scoped>
 .el-aside {
-  background: #1a1a1a;
+  background: #4b1011;
 }
 .el-header {
-  background: azure;
+  background: #871d1f;
   height: 35px;
   line-height: 35px;
 }
 .el-footer {
-  background: aliceblue;
+  background: #871d1f;
+  color: #d6a5a5;
   height: 35px;
   line-height: 35px;
   text-align: center;
+  padding-bottom: 10px;
 }
 .rightContent {
   height: calc(100vh);
@@ -161,14 +172,35 @@ export default defineComponent({
 .menuTitle {
   height: 35px;
   line-height: 35px;
-  color: #f9f9f9;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  color: #d6a5a5;
   text-align: center;
 }
 .show {
   cursor: pointer;
+  color: #d6a5a5;
 }
 .el-dropdown {
   float: right;
   line-height: 35px;
+}
+.el-dropdown-link {
+  display: flex;
+  align-items: center;
+  color: #d6a5a5;
+  cursor: pointer;
+}
+.avatar {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  background-color: #d6a5a5;
+  color: #871d1f;
+  border-radius: 50%;
+  margin-right: 8px;
+  font-weight: bold;
+  font-size: 14px;
 }
 </style>
