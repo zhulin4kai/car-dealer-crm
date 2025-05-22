@@ -59,12 +59,12 @@
         @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" />
       <el-table-column type="index" label="序号" width="80" :index="startIndex" />
-      <el-table-column prop="ownerDO.name" label="负责人" show-overflow-tooltip />
-      <el-table-column property="name" label="活动名称" show-overflow-tooltip />
-      <el-table-column property="startTime" label="开始时间" show-overflow-tooltip />
-      <el-table-column property="endTime" label="结束时间" show-overflow-tooltip />
-      <el-table-column property="cost" label="活动预算" show-overflow-tooltip />
-      <el-table-column property="createTime" label="创建时间" show-overflow-tooltip />
+      <el-table-column prop="ownerDO.name" label="负责人" width="100"/>
+      <el-table-column property="name" label="活动名称" width="150"/>
+      <el-table-column property="startTime" label="开始时间" show-overflow-tooltip/>
+      <el-table-column property="endTime" label="结束时间" show-overflow-tooltip/>
+      <el-table-column property="cost" label="活动预算" width="100"/>
+      <el-table-column property="createTime" label="创建时间" show-overflow-tooltip/>
       <el-table-column label="操作" show-overflow-tooltip>
         <template #default="scope">
           <el-button type="primary" @click="view(scope.row.id)">详情</el-button>
@@ -88,7 +88,7 @@
 
 <script>
 import {defineComponent} from 'vue'
-import {doGet} from "../http/httpRequest.js";
+import {doGet, doPost} from "../http/httpRequest.js";
 
 export default defineComponent({
   name: "ActivityView",
@@ -118,7 +118,8 @@ export default defineComponent({
       startIndex : (index) => {
         return (this.currentPage - 1) * this.pageSize + index + 1
       },
-      currentPage : 1
+      currentPage : 1,
+      selectedActivityIds: [] // 存储选中的活动ID
     }
   },
 
@@ -197,6 +198,36 @@ export default defineComponent({
     //查看详情
     view(id) {
       this.$router.push("/dashboard/activity/" + id);
+    },
+
+    // 处理表格选中项变化
+    handleSelectionChange(selection) {
+      this.selectedActivityIds = selection.map(item => item.id);
+    },
+
+    //批量删除
+    batchDel() {
+      if (this.selectedActivityIds.length === 0) {
+        this.$message.warning('请至少选择一条记录');
+        return;
+      }
+      
+      this.$confirm('确定要删除选中的活动吗?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        doPost("/api/activity/batch", {
+          ids: this.selectedActivityIds
+        }).then(resp => {
+          if (resp.data.code === 200) {
+            this.$message.success('删除成功');
+            this.getData(1);
+          }
+        });
+      }).catch(() => {
+        this.$message.info('已取消删除');
+      });
     }
   }
 })

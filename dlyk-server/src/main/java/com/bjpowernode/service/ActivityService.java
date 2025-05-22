@@ -19,4 +19,6 @@ public interface ActivityService {
     int updateActivity(ActivityQuery activityQuery);
 
     List<TActivity> getOngoingActivity();
+
+    int batchDeleteActivities(List<Integer> ids);
 }

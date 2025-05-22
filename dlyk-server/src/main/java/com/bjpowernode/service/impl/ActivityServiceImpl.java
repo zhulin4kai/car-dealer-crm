@@ -79,4 +79,13 @@ public class ActivityServiceImpl implements ActivityService {
     public List<TActivity> getOngoingActivity() {
         return tActivityMapper.selecOngoingActivity();
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int batchDeleteActivities(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        return tActivityMapper.batchDeleteByIds(ids);
+    }
 }

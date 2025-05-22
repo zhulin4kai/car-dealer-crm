@@ -11,6 +11,7 @@ import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 
 import javax.management.Query;
+import java.util.List;
 
 @RestController
 public class ActivityController {
@@ -54,5 +55,11 @@ public class ActivityController {
         activityQuery.setToken(token);
         int update = activityService.updateActivity(activityQuery);
         return update >= 1 ? R.OK() : R.FAIL();
+    }
+
+    @PostMapping(value = "/api/activity/batch")
+    public R batchDeleteActivities(@RequestBody List<Integer> ids) {
+        int result = activityService.batchDeleteActivities(ids);
+        return result > 0 ? R.OK() : R.FAIL("批量删除失败");
     }
 }

@@ -205,12 +205,6 @@ const handleInvoice = (row) => {
   router.push(`/dashboard/tran/invoice/${row.id}`)
 }
 
-// 分页相关
-const handleSizeChange = (val) => {
-  pageSize.value = val
-  fetchData()
-}
-
 const handleCurrentChange = (val) => {
   currentPage.value = val
   fetchData()

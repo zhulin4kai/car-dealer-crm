@@ -242,4 +242,12 @@
       edit_by = #{editBy,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
+
+  <delete id="batchDeleteByIds">
+    delete from t_activity
+    where id in
+    <foreach collection="list" item="id" open="(" separator="," close=")">
+      #{id}
+    </foreach>
+  </delete>
 </mapper>

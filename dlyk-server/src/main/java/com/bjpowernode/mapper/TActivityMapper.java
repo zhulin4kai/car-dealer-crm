@@ -29,4 +29,6 @@ public interface TActivityMapper {
     List<TActivity> selecOngoingActivity();
 
     Integer selectByCount();
+
+    int batchDeleteByIds(List<Integer> ids);
 }

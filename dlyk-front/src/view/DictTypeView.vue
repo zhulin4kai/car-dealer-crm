@@ -230,9 +230,7 @@ const handleBatchDelete = async () => {
   if (!selectedIds.value.length) return
   try {
     await messageConfirm(`确认删除选中的 ${selectedIds.value.length} 条数据吗？`)
-    console.log(selectedIds.value)
     const res = await batchDeleteDictTypes(selectedIds.value)
-    console.log(res)
     if (res.data.code === 200) {
       ElMessage.success('批量删除成功')
       loadData()

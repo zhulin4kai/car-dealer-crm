@@ -2,7 +2,8 @@
 import { createApp } from 'vue'
 
 //导入css样式，不需要from子句
-//import './style.css'
+// import './style.css'
+import './assets/global.css'
 
 //import...from...语句导入，从element-plus框架导入ElementPlus组件
 import ElementPlus from 'element-plus'
