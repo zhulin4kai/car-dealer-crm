@@ -97,4 +97,13 @@ public class ClueServiceImpl implements ClueService {
 
         return tClueMapper.updateByPrimaryKeySelective(tClue);
     }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public int batchDelClueByIds(List<Integer> ids) {
+        if (ids == null || ids.size() == 0) {
+            return 0;
+        }
+        return tClueMapper.batchDeleteByIds(ids);
+    }
 }

@@ -2,7 +2,7 @@
   <el-card class="action-card">
     <el-button type="primary" class="btn" @click="addClue" v-hasPermission="'clue:add'">录入线索</el-button>
     <el-button type="success" class="btn" @click="importExcel" v-hasPermission="'clue:import'">导入线索(Excel)</el-button>
-    <el-button type="danger" class="btn" @click="batchDelClue" v-hasPermission="'clue:delete'">批量删除</el-button>
+    <el-button type="danger" class="btn" @click="handleBatchDelete" v-hasPermission="'clue:delete'">批量删除</el-button>
   </el-card>
 
   <el-card class="table-card">
@@ -96,142 +96,146 @@
 
 </template>
 
-<script>
-import {defineComponent} from 'vue'
-import {doDelete, doGet, doPost} from "../http/httpRequest.js";
-import {messageConfirm, messageTip} from "../util/util.js";
+<script setup>
+import { ref, inject } from 'vue';
+import { doDelete, doGet, doPost } from "../http/httpRequest.js";
+import { messageConfirm, messageTip } from "../util/util.js";
+import { batchDeleteCluesByIds } from '../api/clue.js';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
-export default defineComponent({
-  name: "ClueView",
+const clueList = ref([{
+  ownerDO: {},
+  activityDO: {},
+  appellationDO: {},
+  needLoanDO: {},
+  intentionStateDO: {},
+  intentionProductDO: {},
+  stateDO: {},
+  sourceDO: {}
+}]);
 
-  //注入
-  inject : ['reload'],
+const pageSize = ref(0);
+const total = ref(0);
+const importExcelDialogVisible = ref(false);
+const currentPage = ref(1);
+const selectedIds = ref([]);
 
-  data()  {
-    return {
-      //线索列表对象，初始值是空
-      clueList : [{
-        ownerDO : {},
-        activityDO : {},
-        appellationDO : {},
-        needLoanDO : {},
-        intentionStateDO : {},
-        intentionProductDO : {},
-        stateDO : {},
-        sourceDO : {}
-      }],
-      //分页时每页显示多少条数据
-      pageSize : 0,
-      //分页总共查询出多少条数据
-      total : 0,
-      //导入线索Excel的弹窗，true弹，false不弹
-      importExcelDialogVisible : false,
-      currentPage : 1,
-      // 计算序号起始值
-      startIndex : (index) => {
-        return (this.currentPage - 1) * this.pageSize + index + 1
-      }
+// Computed
+const startIndex = (index) => {
+  return (currentPage.value - 1) * pageSize.value + index + 1;
+};
+
+// Methods
+const getData = (current) => {
+  doGet("/api/clues", {
+    current: current
+  }).then(resp => {
+    console.log(resp);
+    if (resp.data.code === 200) {
+      clueList.value = resp.data.data.list;
+      pageSize.value = resp.data.data.pageSize;
+      total.value = resp.data.data.total;
     }
-  },
+  });
+  currentPage.value = current;
+};
 
-  mounted() {
-    this.getData(1);
-  },
+const toPage = (current) => {
+  getData(current);
+};
 
-  methods : {
-    handleSelectionChange() {
-    },
+const importExcel = () => {
+  importExcelDialogVisible.value = true;
+};
 
-    //查询用户列表数据
-    getData(current) {
-      doGet("/api/clues", {
-        current : current //当前查询第几页
-      }).then(resp => {
-        console.log(resp);
-        if (resp.data.code === 200) {
-          this.clueList = resp.data.data.list;
-          this.pageSize = resp.data.data.pageSize;
-          this.total = resp.data.data.total;
-        }
-      })
-      this.currentPage = current;
-    },
+const uploadFile = (param) => {
+  console.log(param);
+  let fileObj = param.file;
+  let formData = new FormData();
+  formData.append('file', fileObj);
+  doPost("/api/importExcel", formData).then(resp => {
+    if (resp.data.code === 200) {
+      messageTip("导入成功", "success");
+      // Clear uploaded files
+      uploadRef.value.clearFiles();
+      // Reload page
+      reload();
+    } else {
+      messageTip("导入失败", "error");
+    }
+  });
+};
 
-    //分页函数(current这个参数是ele-plus组件传过来，就是传的当前页)
-    toPage(current) {
-      this.getData(current);
-    },
+const handleSelectionChange = (selection) => {
+  selectedIds.value = selection.map(item => item.id);
+};
 
-    //线索导入（Excel）
-    importExcel()  {
-      //弹个窗
-      this.importExcelDialogVisible = true;
-    },
+const handleBatchDelete = async () => {
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请至少选择一条记录');
+    return;
+  }
 
-    //上传文件的请求提交
-    uploadFile(param) {
-      console.log(param);
-      let fileObj = param.file // 相当于input里取得的files
-      let formData = new FormData() // new一个FormData对象
-      formData.append('file', fileObj)//文件对象，前面file是参数名，后面fileObj是参数值
-      doPost("/api/importExcel", formData).then(resp => {
-        if (resp.data.code === 200) {
-          //Excel导入成功，提示一下
-          messageTip("导入成功", "success");
-          //清理一下上传的文件
-          this.$refs.uploadRef.clearFiles();
-          //页面刷新
-          this.reload();
-        } else {
-          //Excel导入失败
-          messageTip("导入失败", "error");
-        }
-      })
-    },
+  try {
+    await ElMessageBox.confirm('确定要删除选中的线索吗?', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
 
-    batchDelClue() {
-      // TODO
-    },
-
-    //提交山传Excel文件
-    submitExcel() {
-      this.$refs.uploadRef.submit();
-    },
-
-    //录入线索
-    addClue() {
-      this.$router.push("/dashboard/clue/add")
-    },
-
-    //编辑
-    edit(id) {
-      this.$router.push("/dashboard/clue/edit/" + id);
-    },
-
-    //详情
-    view(id) {
-      this.$router.push("/dashboard/clue/detail/" + id);
-    },
-
-    //删除线索
-    del(id) {
-      messageConfirm("您确定要删除该数据吗？").then(() => { //用户点击“确定”按钮就会触发then函数
-        doDelete("/api/clue/" + id, {}).then(resp => {
-          console.log(resp);
-          if (resp.data.code === 200) {
-            messageTip("删除成功", "success");
-            //页面刷新
-            this.reload();
-          } else {
-            messageTip("删除失败，原因：" + resp.data.msg, "error");
-          }
-        })
-      }).catch(() => { //用户点击“取消”按钮就会触发catch函数
-        messageTip("取消删除", "warning");
-      })
+    const res = await batchDeleteCluesByIds(selectedIds.value);
+    console.log(res);
+    if (res.data.code === 200) {
+      ElMessage.success('批量删除成功');
+      getData(currentPage.value);
+    } else {
+      ElMessage.error('批量删除失败');
+      getData(currentPage.value);
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('请求失败，请检查网络或重试');
+    } else {
+      ElMessage.info('已取消删除');
     }
   }
-})
+
+};
+
+const submitExcel = () => {
+  uploadRef.value.submit();
+};
+
+const addClue = () => {
+  router.push("/dashboard/clue/add");
+};
+
+const edit = (id) => {
+  router.push("/dashboard/clue/edit/" + id);
+};
+
+const view = (id) => {
+  router.push("/dashboard/clue/detail/" + id);
+};
+
+const del = (id) => {
+  messageConfirm("您确定要删除该数据吗？").then(() => {
+    doDelete("/api/clue/" + id, {}).then(resp => {
+      console.log(resp);
+      if (resp.data.code === 200) {
+        messageTip("删除成功", "success");
+        reload();
+      } else {
+        messageTip("删除失败，原因：" + resp.data.msg, "error");
+      }
+    });
+  }).catch(() => {
+    messageTip("取消删除", "warning");
+  });
+};
+
+// Mounted
+getData(1);
 </script>
 
 <style scoped>

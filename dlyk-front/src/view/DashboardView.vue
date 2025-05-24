@@ -2,7 +2,7 @@
   <el-container>
     <!--左侧-->
     <el-aside :width="isCollapse ? '64px' : '200px'">
-      <div class="menuTitle">@电子商务管理系统</div>
+      <div class="menuTitle" @click="backToHome()">@电子商务管理系统</div>
       <el-menu
           active-text-color="#ffd04b"
           background-color="#4c393b"
@@ -67,6 +67,7 @@
 import {defineComponent} from 'vue'
 import {doGet} from "../http/httpRequest.js";
 import {messageConfirm, messageTip, removeToken} from "../util/util.js";
+import { backtopEmits } from 'element-plus';
 
 export default defineComponent({
   //定义组件名
@@ -127,6 +128,10 @@ export default defineComponent({
       })
     },
 
+    backToHome() {
+      this.$router.push("/dashboard")
+    },
+
     //加载当前路由路径
     loadCurrentRouterPath() {
       let path = this.$route.path; //   /dashboard/activity/add
@@ -176,6 +181,7 @@ export default defineComponent({
   margin-bottom: 10px;
   color: #d6a5a5;
   text-align: center;
+  cursor: pointer;
 }
 .show {
   cursor: pointer;

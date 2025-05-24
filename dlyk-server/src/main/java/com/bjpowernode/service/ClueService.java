@@ -5,6 +5,7 @@ import com.bjpowernode.query.ClueQuery;
 import com.github.pagehelper.PageInfo;
 
 import java.io.InputStream;
+import java.util.List;
 
 public interface ClueService {
 
@@ -19,4 +20,6 @@ public interface ClueService {
     TClue getClueById(Integer id);
 
     int updateClue(ClueQuery clueQuery);
+
+    int batchDelClueByIds(List<Integer> ids);
 }

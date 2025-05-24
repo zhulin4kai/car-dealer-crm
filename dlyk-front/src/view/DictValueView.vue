@@ -122,7 +122,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   getDictValueList, 
   createDictValue, 
@@ -271,22 +271,33 @@ const handleDelete = async (row) => {
 
 // 批量删除
 const handleBatchDelete = async () => {
-  if (!selectedIds.value.length) return
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请至少选择一条记录');
+    return;
+  }
+
   try {
-    await messageConfirm(`确认删除选中的 ${selectedIds.value.length} 条数据吗？`)
-    const res = await batchDeleteDictValues(selectedIds.value)
+    await ElMessageBox.confirm('确定要删除选中的字典值吗?', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+
+    const res = await batchDeleteDictValues(selectedIds.value);
     if (res.data.code === 200) {
-      ElMessage.success('批量删除成功')
-      loadData()
+      ElMessage.success('批量删除成功');
+      loadData();
     } else {
-      ElMessage.error(res.data.msg || '批量删除失败')
+      loadData();
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('批量删除失败')
+      ElMessage.error('请求失败，请检查网络或重试');
+    } else {
+      ElMessage.info('已取消删除');
     }
   }
-}
+};
 
 // 提交表单
 const handleSubmit = async () => {

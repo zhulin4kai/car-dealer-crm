@@ -86,151 +86,145 @@
 
 </template>
 
-<script>
-import {defineComponent} from 'vue'
-import {doGet, doPost} from "../http/httpRequest.js";
+<script setup>
+import { ref, reactive, onMounted } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { 
+  getActivityList, 
+  getOwnerList, 
+  batchDeleteActivities 
+} from '../api/activity';
 
-export default defineComponent({
-  name: "ActivityView",
+// Reactive state
+const activityQuery = reactive({});
+const activityList = ref([{ ownerDO: {} }]);
+const pageSize = ref(0);
+const total = ref(0);
+const ownerOptions = ref([{}]);
+const currentPage = ref(1);
+const selectedActivityIds = ref([]);
 
-  data() {
-    return {
-      //市场活动搜索表单对象，初始值是空
-      activityQuery : {},
-      //市场活动列表对象，初始值是空
-      activityList : [{
-        ownerDO : {}
-      }],
-      //分页时每页显示多少条数据
-      pageSize : 0,
-      //分页总共查询出多少条数据
-      total : 0,
-      //负责人的下拉列表数据
-      ownerOptions : [{}],
-      //定义市场活动搜索表单验证规则
-      activityRules : {
-        cost : [
-          //正则表达式，从网上找，或者AI工具找，找到后需要测试一下，因为有可能找到的正则有问题
-          { pattern : /^[0-9]+(\.[0-9]{2})?$/, message: '活动预算必须是整数或者两位小数', trigger: 'blur'}
-        ]
-      },
-      // 计算序号起始值
-      startIndex : (index) => {
-        return (this.currentPage - 1) * this.pageSize + index + 1
-      },
-      currentPage : 1,
-      selectedActivityIds: [] // 存储选中的活动ID
+// Validation rules
+const activityRules = {
+  cost: [
+    { pattern: /^[0-9]+(\.[0-9]{2})?$/, message: '活动预算必须是整数或者两位小数', trigger: 'blur' }
+  ]
+};
+
+// Computed property for startIndex
+const startIndex = (index) => {
+  return (currentPage.value - 1) * pageSize.value + index + 1;
+};
+
+// Fetch data
+const getData = async (current) => {
+  let startTime = '';
+  let endTime = '';
+  for (let key in activityQuery.activityTime) {
+    if (key === '0') startTime = activityQuery.activityTime[key];
+    if (key === '1') endTime = activityQuery.activityTime[key];
+  }
+
+  const params = {
+    current: current,
+    ownerId: activityQuery.ownerId,
+    name: activityQuery.name,
+    startTime: startTime,
+    endTime: endTime,
+    cost: activityQuery.cost,
+    createTime: activityQuery.createTime
+  };
+
+  try {
+    const res = await getActivityList(params);
+    if (res.data.code === 200) {
+      activityList.value = res.data.data.list;
+      pageSize.value = res.data.data.pageSize;
+      total.value = res.data.data.total;
     }
-  },
+  } catch (error) {
+    console.error('获取活动列表失败:', error);
+  }
+  currentPage.value = current;
+};
 
-  mounted() {
-    this.getData(1);
-  },
+// Pagination
+const toPage = (current) => {
+  getData(current);
+};
 
-  methods : {
-    //查询用户列表数据
-    getData(current) {
-      let startTime = ''; //开始时间
-      let endTime = ''; //结束时间
-      for (let key in this.activityQuery.activityTime) {
-        if (key === '0') {
-          startTime = this.activityQuery.activityTime[key];
-        }
-        if (key === '1') {
-          endTime = this.activityQuery.activityTime[key];
-        }
-      }
+// Load owner
+const loadOwner = async () => {
+  try {
+    const res = await getOwnerList();
+    if (res.data.code === 200) {
+      ownerOptions.value = res.data.data;
+    }
+  } catch (error) {
+    console.error('获取负责人列表失败:', error);
+  }
+};
 
-      doGet("/api/activitys", {
-        current : current, //当前查询第几页
-        //6个搜索条件参数
-        ownerId : this.activityQuery.ownerId,
-        name : this.activityQuery.name,
-        startTime : startTime,
-        endTime  : endTime,
-        cost : this.activityQuery.cost,
-        createTime : this.activityQuery.createTime
-      }).then(resp => {
-        console.log(resp);
-        if (resp.data.code === 200) {
-          this.activityList = resp.data.data.list;
-          this.pageSize = resp.data.data.pageSize;
-          this.total = resp.data.data.total;
-        }
-      })
-      this.currentPage = current;
-    },
+// Search
+const onSearch = () => {
+  getData(1);
+};
 
-    //分页函数(current这个参数是ele-plus组件传过来，就是传的当前页)
-    toPage(current) {
-      this.getData(current);
-    },
+// Reset search
+const onReset = () => {
+  Object.keys(activityQuery).forEach(key => delete activityQuery[key]);
+};
 
-    //加载负责人
-    loadOwner() {
-      doGet("/api/owner", {}).then(resp => {
-        if (resp.data.code === 200)  {
-          this.ownerOptions = resp.data.data;
-        }
-      })
-    },
+// Navigation
+const add = () => {
+  router.push("/dashboard/activity/add");
+};
 
-    //搜索
-    onSearch() {
-      this.getData(1);
-    },
+const edit = (id) => {
+  router.push("/dashboard/activity/edit/" + id);
+};
 
-    //搜索条件重置（清空）
-    onReset() {
-      this.activityQuery = {};
-    },
+const view = (id) => {
+  router.push("/dashboard/activity/" + id);
+};
 
-    //录入市场活动
-    add() {
-      this.$router.push("/dashboard/activity/add");
-    },
+// Handle selection change
+const handleSelectionChange = (selection) => {
+  selectedActivityIds.value = selection.map(item => item.id);
+};
 
-    //编辑市场活动
-    edit(id){
-      this.$router.push("/dashboard/activity/edit/"  + id);
-    },
+// Batch delete
+const batchDel = async () => {
+  if (selectedActivityIds.value.length === 0) {
+    ElMessage.warning('请至少选择一条记录');
+    return;
+  }
 
-    //查看详情
-    view(id) {
-      this.$router.push("/dashboard/activity/" + id);
-    },
+  try {
+    await ElMessageBox.confirm('确定要删除选中的活动吗?', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
 
-    // 处理表格选中项变化
-    handleSelectionChange(selection) {
-      this.selectedActivityIds = selection.map(item => item.id);
-    },
-
-    //批量删除
-    batchDel() {
-      if (this.selectedActivityIds.length === 0) {
-        this.$message.warning('请至少选择一条记录');
-        return;
-      }
-      
-      this.$confirm('确定要删除选中的活动吗?', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        doPost("/api/activity/batch", {
-          ids: this.selectedActivityIds
-        }).then(resp => {
-          if (resp.data.code === 200) {
-            this.$message.success('删除成功');
-            this.getData(1);
-          }
-        });
-      }).catch(() => {
-        this.$message.info('已取消删除');
-      });
+    const res = await batchDeleteActivities(selectedActivityIds.value);
+    if (res.data.code === 200) {
+      ElMessage.success('删除成功');
+      getData(1);
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('请求失败，请检查网络或重试');
+    } else {
+      ElMessage.info('已取消删除');
     }
   }
-})
+};
+
+// Lifecycle hook
+onMounted(() => {
+  getData(1);
+});
 </script>
 
 <style scoped>

@@ -477,4 +477,12 @@
       edit_by = #{editBy,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
+  <!--批量删除-->
+  <delete id="batchDeleteByIds" parameterType="java.util.List">
+    delete from t_clue
+    where id in
+    <foreach collection="ids" item="id" open="(" separator="," close=")">
+      #{id}
+    </foreach>
+  </delete>
 </mapper>

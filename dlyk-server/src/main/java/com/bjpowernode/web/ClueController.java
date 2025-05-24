@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-
+import java.util.List;
 @RestController
 public class ClueController {
 
@@ -74,6 +74,13 @@ public class ClueController {
     @DeleteMapping(value = "/api/clue/{id}")
     public R delClue(@PathVariable(value = "id") Integer id) {
         int del = 1; //clueService.delClueById(id);
+        return del >= 1 ? R.OK() : R.FAIL();
+    }
+
+    @PreAuthorize(value = "hasAuthority('clue:delete')")
+    @PostMapping(value = "/api/clue/batch")
+    public R batchDelClue(@RequestBody List<Integer> ids) {
+        int del = clueService.batchDelClueByIds(ids);
         return del >= 1 ? R.OK() : R.FAIL();
     }
 }

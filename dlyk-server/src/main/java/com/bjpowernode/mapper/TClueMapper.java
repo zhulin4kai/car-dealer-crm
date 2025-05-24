@@ -31,4 +31,6 @@ public interface TClueMapper {
     TClue selectDetailById(Integer id);
 
     List<NameValue> selectBySource();
+
+    int batchDeleteByIds(List<Integer> ids);
 }
