@@ -165,4 +165,12 @@ public class TranController {
     public R<List<TTranRemark>> remarks(@PathVariable Integer tranId) {
         return R.OK(tranService.getTransactionRemarks(tranId));
     }
+
+    /**
+     * 获取交易产品详情列表
+     */
+    @GetMapping("/products/{id}")
+    public R<List<TTranProduct>> getTransactionProducts(@PathVariable Integer id) {
+        return R.OK(tranService.getTransactionProductDetails(id));
+    }
 } 

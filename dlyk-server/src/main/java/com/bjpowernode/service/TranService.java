@@ -63,6 +63,13 @@ public interface TranService {
     List<TTranProduct> getTransactionProducts(Integer tranId);
     
     /**
+     * 获取交易产品详情列表（包含产品名称）
+     * @param tranId 交易ID
+     * @return 交易产品详情列表
+     */
+    List<TTranProduct> getTransactionProductDetails(Integer tranId);
+    
+    /**
      * 获取交易产品的生产状态
      * @param tranProductId 交易产品ID
      * @return 生产状态

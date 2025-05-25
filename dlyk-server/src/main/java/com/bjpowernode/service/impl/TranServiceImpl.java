@@ -56,16 +56,7 @@ public class TranServiceImpl implements TranService {
 
     @Override
     public TTran getTransactionById(Integer id) {
-        String cacheKey = Constants.CACHE_KEY_TRAN + id;
-        TTran tTran = redisManager.get(cacheKey);
-        if (tTran != null) {
-            return tTran;
-        }
-        
-        tTran = tranMapper.selectByPrimaryKey(id);
-        if (tTran != null) {
-            redisManager.set(cacheKey, tTran, Constants.CACHE_EXPIRE_TIME);
-        }
+        TTran tTran = tranMapper.selectByPrimaryKey(id);
         return tTran;
     }
 
@@ -244,6 +235,12 @@ public class TranServiceImpl implements TranService {
     @Override
     public List<TTranRemark> getTransactionRemarks(Integer tranId) {
         return tranRemarkMapper.selectByTranId(tranId);
+    }
+
+    @Override
+    public List<TTranProduct> getTransactionProductDetails(Integer tranId) {
+        List<TTranProduct> products = tranMapper.selectTranProductsByTranId(tranId);
+        return products;
     }
 
     /**

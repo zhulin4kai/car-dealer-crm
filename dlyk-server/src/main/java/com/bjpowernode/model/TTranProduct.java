@@ -27,6 +27,11 @@ public class TTranProduct implements Serializable {
     private Integer productId;
 
     /**
+     * 产品名称（关联查询字段）
+     */
+    private String productName;
+
+    /**
      * 数量
      */
     private Integer quantity;

@@ -10,6 +10,11 @@ export function getTranDetail(id) {
     return doGet(`/api/tran/${id}`)
 }
 
+// 获取交易产品详情
+export function getTranProducts(id) {
+    return doGet(`/api/tran/products/${id}`)
+}
+
 // 创建新交易
 export function createTran(data) {
     return doPost('/api/tran/create', data)

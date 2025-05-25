@@ -18,6 +18,17 @@
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
   </resultMap>
 
+  <resultMap id="TranProductResultMap" type="com.bjpowernode.model.TTranProduct">
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="tran_id" jdbcType="INTEGER" property="tranId" />
+    <result column="product_id" jdbcType="INTEGER" property="productId" />
+    <result column="product_name" jdbcType="VARCHAR" property="productName" />
+    <result column="quantity" jdbcType="INTEGER" property="quantity" />
+    <result column="price" jdbcType="DECIMAL" property="price" />
+    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="create_by" jdbcType="INTEGER" property="createBy" />
+  </resultMap>
+
   <sql id="Base_Column_List">
     t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time, 
     t.create_time, t.create_by, t.edit_time, t.edit_by
@@ -111,9 +122,12 @@
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
     select 
-    <include refid="Base_Column_List" />
-    from t_tran
-    where id = #{id,jdbcType=INTEGER}
+    t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time, 
+    t.create_time, t.create_by, t.edit_time, t.edit_by
+    from t_tran t
+    LEFT JOIN t_customer c ON t.customer_id = c.id
+    LEFT JOIN t_clue cl ON c.clue_id = cl.id
+    where t.id = #{id,jdbcType=INTEGER}
   </select>
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TTran" useGeneratedKeys="true">
@@ -256,4 +270,20 @@
       edit_by = #{editBy,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
+
+  <select id="selectTranProductsByTranId" parameterType="java.lang.Integer" resultMap="TranProductResultMap">
+    SELECT 
+      tp.id,
+      tp.tran_id,
+      tp.product_id,
+      p.name as product_name,
+      tp.quantity,
+      tp.price,
+      tp.create_time,
+      tp.create_by
+    FROM t_tran_product tp
+    LEFT JOIN t_product p ON tp.product_id = p.id
+    WHERE tp.tran_id = #{tranId,jdbcType=INTEGER}
+    ORDER BY tp.id
+  </select>
 </mapper>

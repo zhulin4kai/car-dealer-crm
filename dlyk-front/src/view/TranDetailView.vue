@@ -5,7 +5,7 @@
       <template #header>
         <div class="card-header">
           <span>交易基本信息</span>
-          <el-tag :type="getStatusType(tranDetail.status)">{{ getStatusText(tranDetail.status) }}</el-tag>
+          <el-tag :type="getStatusType(tranDetail.stage)">{{ getStatusText(tranDetail.stage) }}</el-tag>
         </div>
       </template>
 
@@ -30,7 +30,7 @@
 
       <el-table :data="tranDetail.products" style="width: 100%">
         <el-table-column type="index" label="序号" width="80" />
-        <el-table-column prop="name" label="产品名称" min-width="300" />
+        <el-table-column prop="productName" label="产品名称" min-width="300" />
         <el-table-column prop="quantity" label="数量" width="120" />
         <el-table-column prop="price" label="单价" width="140">
           <template #default="scope">
@@ -43,27 +43,6 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
-
-    <!-- 生产状态 -->
-    <el-card class="detail-card" v-if="productionStatus.length > 0">
-      <template #header>
-        <div class="card-header">
-          <span>生产状态</span>
-          <el-button type="primary" link @click="refreshProductionStatus">刷新状态</el-button>
-        </div>
-      </template>
-
-      <el-timeline>
-        <el-timeline-item
-          v-for="(item, index) in productionStatus"
-          :key="index"
-          :type="getTimelineItemType(item.status)"
-          :timestamp="item.updateTime"
-        >
-          {{ item.description }}
-        </el-timeline-item>
-      </el-timeline>
     </el-card>
 
     <!-- 发票信息 -->
@@ -92,17 +71,17 @@
       <el-button 
         type="primary" 
         @click="handleEdit" 
-        v-if="tranDetail.status === 'QUOTATION'"
+        v-if="tranDetail.stage === 'QUOTATION'"
       >编辑</el-button>
       <el-button 
         type="success" 
         @click="handleApprove" 
-        v-if="tranDetail.status === 'PENDING'"
+        v-if="tranDetail.stage === 'PENDING'"
       >审批</el-button>
       <el-button 
         type="warning" 
         @click="handleInvoice" 
-        v-if="tranDetail.status === 'APPROVED'"
+        v-if="tranDetail.stage === 'APPROVED'"
       >开票</el-button>
     </div>
   </div>
@@ -112,7 +91,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getTranDetail, getProductionStatus, getInvoiceInfo } from '../api/tran'
+import { getTranDetail, getInvoiceInfo, getTranProducts } from '../api/tran'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,7 +100,7 @@ const tranDetail = ref({
   tranNo: '',
   customerName: '',
   amount: 0,
-  status: '',
+  stage: '',
   createTime: '',
   updateTime: '',
   expectedDeliveryDate: '',
@@ -129,7 +108,6 @@ const tranDetail = ref({
   products: []
 })
 
-const productionStatus = ref([])
 const invoiceInfo = ref(null)
 
 // 状态映射
@@ -137,7 +115,6 @@ const statusMap = {
   'QUOTATION': { type: 'info', text: '待报价' },
   'PENDING': { type: 'warning', text: '待审批' },
   'APPROVED': { type: 'success', text: '已审批' },
-  'PRODUCTION': { type: 'primary', text: '生产中' },
   'PAYMENT': { type: 'warning', text: '待收款' },
   'COMPLETED': { type: 'success', text: '已完成' }
 }
@@ -157,7 +134,6 @@ const getInvoiceStatusText = (status) => invoiceStatusMap[status]?.text || statu
 const getTimelineItemType = (status) => {
   switch (status) {
     case 'COMPLETED': return 'success'
-    case 'IN_PROGRESS': return 'primary'
     case 'PENDING': return 'warning'
     default: return ''
   }
@@ -166,9 +142,24 @@ const getTimelineItemType = (status) => {
 // 获取交易详情
 const fetchTranDetail = async () => {
   try {
+    console.log('获取交易详情，ID:', route.params.id) // 添加调试日志
     const res = await getTranDetail(route.params.id)
+    console.log('交易详情响应:', res) // 添加调试日志
     if (res.data.code === 200) {
-      tranDetail.value = res.data.data
+      const data = res.data.data
+      // 根据后端返回的数据结构进行映射
+      tranDetail.value = {
+        tranNo: data.tranNo || '',
+        customerName: data.customerName || '',
+        amount: data.money || data.amount || 0, // 后端可能返回money字段
+        stage: getStageStatus(data.stage), // 转换stage状态
+        createTime: data.createTime || '',
+        updateTime: data.editTime || data.updateTime || '', // 后端可能返回editTime
+        expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
+        description: data.description || '',
+        products: data.products || []
+      }
+      console.log('处理后的交易详情:', tranDetail.value) // 添加调试日志
     } else {
       ElMessage.error(res.data.msg || '获取交易详情失败')
     }
@@ -178,15 +169,28 @@ const fetchTranDetail = async () => {
   }
 }
 
-// 获取生产状态
-const fetchProductionStatus = async () => {
+// 根据阶段获取状态 - 添加这个方法，因为TranDetailView中缺少了
+const getStageStatus = (stage) => {
+  const stageMap = {
+    41: 'QUOTATION', // 待报价
+    42: 'PENDING',   // 待审批
+    43: 'APPROVED',  // 已审批
+    45: 'PAYMENT',   // 待收款
+    46: 'COMPLETED'  // 已完成
+  }
+  return stageMap[stage] || 'QUOTATION'
+}
+
+// 获取交易产品详情
+const fetchProducts = async () => {
   try {
-    const res = await getProductionStatus(route.params.id)
+    const res = await getTranProducts(route.params.id)
+    console.log('交易产品详情:', res)
     if (res.data.code === 200) {
-      productionStatus.value = res.data.data
+      tranDetail.value.products = res.data.data
     }
   } catch (error) {
-    console.error('获取生产状态失败:', error)
+    console.error('获取产品详情失败:', error)
   }
 }
 
@@ -200,12 +204,6 @@ const fetchInvoiceInfo = async () => {
   } catch (error) {
     console.error('获取发票信息失败:', error)
   }
-}
-
-// 刷新生产状态
-const refreshProductionStatus = () => {
-  fetchProductionStatus()
-  ElMessage.success('刷新成功')
 }
 
 // 返回列表页
@@ -229,8 +227,17 @@ const handleInvoice = () => {
 }
 
 onMounted(async () => {
+  console.log('TranDetailView mounted')
+  console.log('route.params:', route.params)
+  console.log('route.params.id:', route.params.id)
+  
+  if (!route.params.id) {
+    ElMessage.error('缺少交易ID参数')
+    return
+  }
+  
   await fetchTranDetail()
-  await fetchProductionStatus()
+  await fetchProducts()
   await fetchInvoiceInfo()
 })
 </script>

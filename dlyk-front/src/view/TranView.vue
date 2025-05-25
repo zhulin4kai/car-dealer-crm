@@ -68,6 +68,11 @@
               @click="handleInvoice(scope.row)"
               v-if="scope.row.stage === 'APPROVED'"
             >开票</el-button>
+            <el-button
+            type="danger"
+            @click="handlePay(scope.row)"
+            v-if="scope.row.stage === 'PAYMENT'"
+            >收款</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -88,7 +93,7 @@
 
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
-import { getTranList } from '../api/tran'
+import { getTranList, updateTran } from '../api/tran'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 
@@ -177,6 +182,22 @@ const handleSearch = () => {
 //   handleSearch()
 // }
 
+// 收款
+const handlePay = async (row) => {
+  // 此功能只是确认已经收款，所以只要更改 stage 状态即可
+  const params = {
+    id: row.id,
+    stage: 46 // 已完成
+  }
+  const res = await updateTran(params)
+  if (res.data.code === 200) {
+    ElMessage.success('收款成功')
+    fetchData()
+  } else {
+    ElMessage.error(res.data.msg || '收款失败')
+  }
+}
+
 // 新增交易
 const handleAdd = () => {
   router.push('/dashboard/tran/add')
@@ -184,6 +205,8 @@ const handleAdd = () => {
 
 // 查看详情
 const handleView = (row) => {
+  console.log('查看详情，row数据:', row)
+  console.log('跳转到详情页面，ID:', row.id)
   router.push(`/dashboard/tran/${row.id}`)
 }
 

@@ -6,6 +6,11 @@ export function getProductList(params) {
     return doGet('/api/products', params)
 }
 
+// 获取产品详情
+export function getProductDetail(id) {
+    return doGet(`/api/products/${id}`)
+}
+
 // 新增产品
 export function createProduct(data) {
     return doPost('/api/products', data)
