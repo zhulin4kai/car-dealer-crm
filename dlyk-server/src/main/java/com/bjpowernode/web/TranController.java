@@ -46,7 +46,7 @@ public class TranController {
     /**
      * 创建交易
      */
-    @PostMapping
+    @PostMapping("/create")
     public R<Integer> create(@RequestBody TranCreateRequest request) {
         // 获取当前登录用户
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -78,7 +78,7 @@ public class TranController {
     /**
      * 更新交易
      */
-    @PutMapping
+    @PutMapping("/update")
     public R<Boolean> update(@RequestBody TTran tran) {
         return R.OK(tranService.updateTransaction(tran));
     }

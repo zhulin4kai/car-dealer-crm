@@ -9,8 +9,6 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface TTranMapper {
 
-    int deleteByPrimaryKey(Integer id);
-
     int insert(TTran record);
 
     int insertSelective(TTran record);

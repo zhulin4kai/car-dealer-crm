@@ -6,7 +6,6 @@ import com.bjpowernode.mapper.*;
 import com.bjpowernode.model.*;
 import com.bjpowernode.query.TranQuery;
 import com.bjpowernode.service.TranService;
-import com.bjpowernode.util.CacheUtils;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
@@ -49,17 +48,9 @@ public class TranServiceImpl implements TranService {
 
     @Override
     public PageInfo<TTran> getTransactionList(TranQuery query, Integer pageNum, Integer pageSize) {
-        String cacheKey = Constants.CACHE_KEY_TRAN_LIST + CacheUtils.generateKey(query, pageNum, pageSize);
-        PageInfo<TTran> pageInfo = redisManager.get(cacheKey);
-        if (pageInfo != null) {
-            return pageInfo;
-        }
-        
         PageHelper.startPage(pageNum, pageSize);
         List<TTran> tTranList = tranMapper.selectByQuery(query);
-        pageInfo = new PageInfo<>(tTranList);
-        
-        redisManager.set(cacheKey, pageInfo, Constants.CACHE_EXPIRE_TIME);
+        PageInfo<TTran> pageInfo = new PageInfo<>(tTranList);
         return pageInfo;
     }
 

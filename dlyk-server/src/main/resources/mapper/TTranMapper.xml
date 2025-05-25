@@ -31,7 +31,6 @@
     LEFT JOIN t_clue cl ON c.clue_id = cl.id
     LEFT JOIN t_tran_product tp ON t.id = tp.tran_id
     LEFT JOIN t_product p ON tp.product_id = p.id
-    LEFT JOIN t_tran_production tprod ON tp.id = tprod.tran_product_id
     LEFT JOIN t_tran_invoice ti ON t.id = ti.tran_id
     <where>
       <if test="tranNo != null and tranNo != ''">
@@ -72,9 +71,6 @@
       </if>
       <if test="productName != null and productName != ''">
         AND p.name LIKE CONCAT('%', #{productName}, '%')
-      </if>
-      <if test="productionStatus != null and productionStatus != ''">
-        AND tprod.status = #{productionStatus}
       </if>
       <if test="invoiceStatus != null and invoiceStatus != ''">
         AND ti.status = #{invoiceStatus}
@@ -119,11 +115,6 @@
     from t_tran
     where id = #{id,jdbcType=INTEGER}
   </select>
-
-  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
-    delete from t_tran
-    where id = #{id,jdbcType=INTEGER}
-  </delete>
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TTran" useGeneratedKeys="true">
     insert into t_tran (tran_no, customer_id, money, 

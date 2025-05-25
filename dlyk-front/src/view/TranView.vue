@@ -4,19 +4,18 @@
     <el-card class="search-card">
       <el-form :inline="true" :model="searchForm" class="demo-form-inline">
         <el-form-item label="交易编号">
-          <el-input v-model="searchForm.tranNo" placeholder="请输入交易编号" clearable />
+          <el-input v-model="searchForm.tranNo" @keyup.enter="handleSearch" placeholder="请输入交易编号" clearable />
         </el-form-item>
         <el-form-item label="客户名称">
-          <el-input v-model="searchForm.customerName" placeholder="请输入客户名称" clearable />
+          <el-input v-model="searchForm.customerName" @keyup.enter="handleSearch" placeholder="请输入客户名称" clearable />
         </el-form-item>
         <el-form-item label="交易状态" style="width: 200px;">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
-            <el-option label="待报价" value="QUOTATION" />
-            <el-option label="待审批" value="PENDING" />
-            <el-option label="已审批" value="APPROVED" />
-            <el-option label="生产中" value="PRODUCTION" />
-            <el-option label="待收款" value="PAYMENT" />
-            <el-option label="已完成" value="COMPLETED" />
+          <el-select v-model="searchForm.stage" @keyup.enter="handleSearch" placeholder="请选择状态" clearable>
+            <el-option label="待报价" value="41" />
+            <el-option label="待审批" value="42" />
+            <el-option label="已审批" value="43" />
+            <el-option label="待收款" value="45" />
+            <el-option label="已完成" value="46" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -45,8 +44,8 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" show-overflow-tooltip>
           <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.status)">
-              {{ getStatusText(scope.row.status) }}
+            <el-tag :type="getStatusType(scope.row.stage)">
+              {{ getStatusText(scope.row.stage) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -57,17 +56,17 @@
             <el-button 
               type="primary" 
               @click="handleEdit(scope.row)"
-              v-if="scope.row.status === 'QUOTATION'"
+              v-if="scope.row.stage === 'QUOTATION'"
             >编辑</el-button>
             <el-button 
               type="success" 
               @click="handleApprove(scope.row)"
-              v-if="scope.row.status === 'PENDING'"
+              v-if="scope.row.stage === 'PENDING'"
             >审批</el-button>
             <el-button 
               type="warning" 
               @click="handleInvoice(scope.row)"
-              v-if="scope.row.status === 'APPROVED'"
+              v-if="scope.row.stage === 'APPROVED'"
             >开票</el-button>
           </template>
         </el-table-column>
@@ -104,7 +103,7 @@ const searchForm = reactive({
   tranNo: '',
   customerId: '',
   customerName: '',
-  status: ''
+  stage: ''
 })
 
 // 状态映射
@@ -112,7 +111,6 @@ const statusMap = {
   'QUOTATION': { type: 'info', text: '待报价' },
   'PENDING': { type: 'warning', text: '待审批' },
   'APPROVED': { type: 'success', text: '已审批' },
-  'PRODUCTION': { type: 'primary', text: '生产中' },
   'PAYMENT': { type: 'warning', text: '待收款' },
   'COMPLETED': { type: 'success', text: '已完成' }
 }
@@ -129,16 +127,16 @@ const fetchData = async () => {
       size: pageSize.value,
       ...searchForm
     }
+    params.status = parseInt(params.status)
+    console.log(params)
     const res = await getTranList(params)
-    console.log(res)
     if (res.data.code === 200) {
-      // Map the response data to match the table columns
       tableData.value = res.data.data.list.map(item => ({
         id: item.id,
         tranNo: item.tranNo,
-        customerName: `客户${item.customerId}`, // Temporarily using customerId as name
+        customerName: `${item.customerName}`, 
         amount: item.money,
-        status: getStageStatus(item.stage),
+        stage: getStageStatus(item.stage),
         createTime: item.createTime
       }))
       total.value = res.data.data.total
@@ -159,7 +157,6 @@ const getStageStatus = (stage) => {
     41: 'QUOTATION', // 待报价
     42: 'PENDING',   // 待审批
     43: 'APPROVED',  // 已审批
-    44: 'PRODUCTION',// 生产中
     45: 'PAYMENT',   // 待收款
     46: 'COMPLETED'  // 已完成
   }
