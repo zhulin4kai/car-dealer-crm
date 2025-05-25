@@ -150,8 +150,8 @@ public class UserServiceImpl implements UserService {
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public int batchDelUserIds(List<String> idList) {
-        return tUserMapper.deleteByIds(idList);
+    public int batchDelUserIds(List<Integer> ids) {
+        return tUserMapper.deleteByIds(ids);
     }
 
     @Override

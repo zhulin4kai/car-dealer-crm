@@ -104,12 +104,9 @@ public class UserController {
 
     @PreAuthorize(value = "hasAuthority('user:delete')")
     @DeleteMapping(value = "/api/user")
-    public R batchDelUser(@RequestParam(value = "ids") String ids) {
-        //ids = "1,3,5,6,7,11,15";
-        List<String> idList = Arrays.asList(ids.split(","));
-
-        int batchDel = userService.batchDelUserIds(idList);
-        return batchDel >= idList.size() ? R.OK() : R.FAIL();
+    public R batchDelUser(@RequestBody List<Integer> ids) {
+        int batchDel = userService.batchDelUserIds(ids);
+        return batchDel >= 0 ? R.OK() : R.FAIL();
     }
 
     @GetMapping(value = "/api/owner")

@@ -20,7 +20,7 @@ public interface UserService extends UserDetailsService {
 
     int delUserById(Integer id);
 
-    int batchDelUserIds(List<String> idList);
+    int batchDelUserIds(List<Integer> ids);
 
     List<TUser> getOwnerList();
 }

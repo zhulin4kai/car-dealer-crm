@@ -100,7 +100,7 @@
   <delete id="deleteByIds" parameterType="java.util.List">
     delete from t_user
     where id in
-    <foreach collection="idList" item="id" open="(" close=")" separator=",">
+    <foreach collection="ids" item="id" open="(" close=")" separator=",">
       #{id, jdbcType=INTEGER}
     </foreach>
   </delete>

@@ -330,8 +330,7 @@ const batchDel = () => {
     return
   }
   messageConfirm("您确定要删除这些数据吗？").then(() => {
-    const ids = userIdArray.value.join(",")
-    doDelete("/api/user", { ids }).then(resp => {
+    doDelete("/api/user", userIdArray.value).then(resp => {
       if (resp.data.code === 200) {
         messageTip("批量删除成功", "success")
         getData(currentPage.value) 

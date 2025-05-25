@@ -27,7 +27,7 @@ public interface TUserMapper {
 
     TUser selectDetailById(Integer id);
 
-    int deleteByIds(List<String> idList);
+    int deleteByIds(List<Integer> ids);
 
     List<TUser> selectByOwner();
 }
