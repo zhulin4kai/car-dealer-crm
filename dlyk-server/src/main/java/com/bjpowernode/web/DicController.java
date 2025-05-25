@@ -36,17 +36,14 @@ public class DicController {
         return R.FAIL("No authentication found");
     }
 
-    @GetMapping("/type/all")
-    public R getDicAllTypes(DicQuery query) {
+    @GetMapping("/types")
+    public R getDicTypes(DicQuery query) {
         if (query.getPage() == null) {
             query.setPage(1);
         }
         if (query.getSize() == null) {
             query.setSize(10);
         }
-        logger.debug("Querying dictionary types with params: {}", query);
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        logger.debug("Current user authorities: {}", auth != null ? auth.getAuthorities() : "none");
         return R.OK(dicService.getDicTypes(query));
     }
 
@@ -80,6 +77,12 @@ public class DicController {
      */
     @GetMapping("/values")
     public R getDicValues(DicQuery query) {
+        if (query.getPage() == null) {
+            query.setPage(1);
+        }
+        if (query.getSize() == null) {
+            query.setSize(10);
+        }
         return R.OK(dicService.getDicValues(query));
     }
 

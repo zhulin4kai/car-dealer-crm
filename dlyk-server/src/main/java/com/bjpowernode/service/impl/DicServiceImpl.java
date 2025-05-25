@@ -33,30 +33,16 @@ public class DicServiceImpl implements DicService {
 
     @Override
     public PageInfo<TDicType> getDicTypes(DicQuery query) {
-        String cacheKey = CACHE_KEY_PREFIX + "types:" + query.toString();
-        return CacheUtils.getCacheData(
-            () -> redisManager.get(cacheKey),
-            () -> {
-                PageHelper.startPage(query.getPage(), query.getSize());
-                List<TDicType> list = dicMapper.selectDicTypes(query);
-                return new PageInfo<>(list);
-            },
-            data -> redisManager.set(cacheKey, data, CACHE_EXPIRE_SECONDS)
-        );
+        PageHelper.startPage(query.getPage(), query.getSize());
+        List<TDicType> list = dicMapper.selectDicTypes(query);
+        return new PageInfo<>(list);
     }
 
     @Override
     public PageInfo<TDicValue> getDicValues(DicQuery query) {
-        String cacheKey = CACHE_KEY_PREFIX + "values:" + query.toString();
-        return CacheUtils.getCacheData(
-            () -> redisManager.get(cacheKey),
-            () -> {
-                PageHelper.startPage(query.getPage(), query.getSize());
-                List<TDicValue> list = dicMapper.selectDicValues(query);
-                return new PageInfo<>(list);
-            },
-            data -> redisManager.set(cacheKey, data, CACHE_EXPIRE_SECONDS)
-        );
+        PageHelper.startPage(query.getPage(), query.getSize());
+        List<TDicValue> list = dicMapper.selectDicValues(query);
+        return new PageInfo<>(list);
     }
 
     @Override

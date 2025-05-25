@@ -21,7 +21,7 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="resetForm">重置</el-button>
+          <!--<el-button @click="resetForm">重置</el-button>-->
           <el-button type="success" @click="handleAdd">新增交易</el-button>
         </el-form-item>
       </el-form>
@@ -172,13 +172,13 @@ const handleSearch = () => {
   fetchData()
 }
 
-// 重置表单
-const resetForm = () => {
-  Object.keys(searchForm).forEach(key => {
-    searchForm[key] = ''
-  })
-  handleSearch()
-}
+// // 重置表单
+// const resetForm = () => {
+//   Object.keys(searchForm).forEach(key => {
+//     searchForm[key] = ''
+//   })
+//   handleSearch()
+// }
 
 // 新增交易
 const handleAdd = () => {

@@ -23,10 +23,10 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button type="primary" @click="handleSearch()">查询</el-button>
           <!-- <el-button @click="resetForm">重置</el-button> -->
-          <el-button type="success" @click="handleAdd">新增字典值</el-button>
-          <el-button type="danger" @click="handleBatchDelete" :disabled="!selectedIds.length">批量删除</el-button>
+          <el-button type="success" @click="handleAdd()">新增字典值</el-button>
+          <el-button type="danger" @click="handleBatchDelete()" :disabled="!selectedIds.length">批量删除</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -133,7 +133,6 @@ import {
   getDictTypeList
 } from '../api/dict'
 import { messageConfirm } from '../util/util'
-import { useRouter } from 'vue-router'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -145,7 +144,6 @@ const pageSize = ref(10)
 const total = ref(0)
 const formRef = ref()
 const dictTypes = ref([])
-const router = useRouter()
 
 const searchForm = reactive({
   typeCode: '',
@@ -198,7 +196,6 @@ const loadData = async () => {
       size: pageSize.value,
       ...searchForm
     }
-    console.log(params)
     const res = await getDictValueList(params)
     if (res.data.code === 200) {
       // 对数据按照id升序排序
@@ -217,9 +214,9 @@ const loadData = async () => {
 const handleSearch = async () => {
   try {
     loading.value = true
-    const res = await getDictValues(searchForm)
-    if (res.code === 200) {
-      tableData.value = res.data
+    const res = await getDictValueList(searchForm)
+    if (res.data.code === 200) {
+      tableData.value = res.data.data.list
     }
   } catch (error) {
     console.error('获取字典值列表失败:', error)
@@ -228,13 +225,13 @@ const handleSearch = async () => {
   }
 }
 
-// 重置表单
-const resetForm = async () => {
-  searchForm.typeCode = ''
-  searchForm.typeValue = ''
-  await clearCache()
-  await handleSearch()
-}
+// // 重置表单
+// const resetForm = async () => {
+//   searchForm.typeCode = ''
+//   searchForm.typeValue = ''
+//   await clearCache()
+//   await handleSearch()
+// }
 
 // 新增
 const handleAdd = () => {

@@ -2,7 +2,7 @@ import { doGet, doPost, doPut, doDelete } from '../http/httpRequest'
 
 // 字典类型管理
 export function getDictTypeList(params) {
-    return doGet('/api/dict/type/all', params)
+    return doGet('/api/dict/types', params)
 }
 
 export function getDictTypeDetail(id) {

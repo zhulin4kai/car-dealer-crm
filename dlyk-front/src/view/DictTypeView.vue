@@ -8,7 +8,7 @@
             v-model="searchForm.typeCode" 
             placeholder="请输入类型代码" 
             clearable 
-            @keyup.enter="handleSearch"
+            @keyup.enter="handleSearch()"
           />
         </el-form-item>
         <el-form-item label="类型名称">
@@ -16,14 +16,14 @@
             v-model="searchForm.typeName" 
             placeholder="请输入类型名称" 
             clearable 
-            @keyup.enter="handleSearch"
+            @keyup.enter="handleSearch()"
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button type="primary" @click="handleSearch()">查询</el-button>
           <!-- <el-button @click="resetForm">重置</el-button> -->
-          <el-button type="success" @click="handleAdd">新增类型</el-button>
-          <el-button type="danger" @click="handleBatchDelete" :disabled="!selectedIds.length">批量删除</el-button>
+          <el-button type="success" @click="handleAdd()">新增类型</el-button>
+          <el-button type="danger" @click="handleBatchDelete()" :disabled="!selectedIds.length">批量删除</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -174,9 +174,9 @@ const loadData = async () => {
 const handleSearch = async () => {
   try {
     loading.value = true
-    const res = await getDictTypes(searchForm)
-    if (res.code === 200) {
-      tableData.value = res.data
+    const res = await getDictTypeList(searchForm)
+    if (res.data.code === 200) {
+      tableData.value = res.data.data.list
     }
   } catch (error) {
     console.error('获取字典类型列表失败:', error)
@@ -185,13 +185,13 @@ const handleSearch = async () => {
   }
 }
 
-// 重置表单
-const resetForm = async () => {
-  searchForm.typeCode = ''
-  searchForm.typeName = ''
-  await clearCache()
-  await handleSearch()
-}
+// // 重置表单
+// const resetForm = async () => {
+//   searchForm.typeCode = ''
+//   searchForm.typeName = ''
+//   await clearCache()
+//   await handleSearch()
+// }
 
 // 新增
 const handleAdd = () => {
