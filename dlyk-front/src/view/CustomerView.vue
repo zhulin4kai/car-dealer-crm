@@ -27,11 +27,6 @@
       <el-table-column property="sourceDO.typeValue" label="线索来源" show-overflow-tooltip />
       <el-table-column property="intentionProductDO.name" label="意向产品" show-overflow-tooltip />
       <el-table-column property="nextContactTime" label="下次联系时间" show-overflow-tooltip />
-      <el-table-column label="操作" show-overflow-tooltip>
-        <template #default="scope">
-          <el-button type="primary" @click="view(scope.row.id)">详情</el-button>
-        </template>
-      </el-table-column>
     </el-table>
   </el-card>
   <p>

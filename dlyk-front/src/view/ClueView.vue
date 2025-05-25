@@ -97,11 +97,11 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue';
-import { doDelete, doGet, doPost } from "../http/httpRequest.js";
+import { ref } from 'vue';
 import { messageConfirm, messageTip } from "../util/util.js";
-import { batchDeleteCluesByIds } from '../api/clue.js';
+import { batchDeleteCluesByIds, getCurrentClues, importExcelAPI } from '../api/clue.js';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import router from '../router/router.js';
 
 const clueList = ref([{
   ownerDO: {},
@@ -127,9 +127,7 @@ const startIndex = (index) => {
 
 // Methods
 const getData = (current) => {
-  doGet("/api/clues", {
-    current: current
-  }).then(resp => {
+  getCurrentClues(current).then(resp => {
     console.log(resp);
     if (resp.data.code === 200) {
       clueList.value = resp.data.data.list;
@@ -153,13 +151,13 @@ const uploadFile = (param) => {
   let fileObj = param.file;
   let formData = new FormData();
   formData.append('file', fileObj);
-  doPost("/api/importExcel", formData).then(resp => {
+  importExcelAPI(formData).then(resp => {
     if (resp.data.code === 200) {
       messageTip("导入成功", "success");
       // Clear uploaded files
       uploadRef.value.clearFiles();
       // Reload page
-      reload();
+      getData(currentPage.value);
     } else {
       messageTip("导入失败", "error");
     }
@@ -215,13 +213,13 @@ const edit = (id) => {
 };
 
 const view = (id) => {
+  console.log(id)
   router.push("/dashboard/clue/detail/" + id);
 };
 
 const del = (id) => {
   messageConfirm("您确定要删除该数据吗？").then(() => {
-    doDelete("/api/clue/" + id, {}).then(resp => {
-      console.log(resp);
+    delClueById(id).then(resp => {
       if (resp.data.code === 200) {
         messageTip("删除成功", "success");
         reload();

@@ -43,8 +43,10 @@
           </span>
           <template #dropdown>
             <el-dropdown-menu>
+              <!--
               <el-dropdown-item>我的资料</el-dropdown-item>
               <el-dropdown-item>修改密码</el-dropdown-item>
+              -->
               <el-dropdown-item divided @click="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
