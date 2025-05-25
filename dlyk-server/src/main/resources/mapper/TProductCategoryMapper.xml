@@ -19,29 +19,29 @@
     
     <select id="selectList" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM product_category
+        FROM t_product_category
         ORDER BY sort ASC, create_time DESC
     </select>
     
     <select id="selectCount" resultType="java.lang.Integer">
         SELECT COUNT(*)
-        FROM product_category
+        FROM t_product_category
     </select>
     
     <select id="selectById" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM product_category
+        FROM t_product_category
         WHERE id = #{id}
     </select>
     
     <select id="selectByCode" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM product_category
+        FROM t_product_category
         WHERE code = #{code}
     </select>
     
     <insert id="insert" parameterType="com.bjpowernode.model.ProductCategory" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO product_category (
+        INSERT INTO t_product_category (
             name, code, description, sort, status, create_time, update_time
         ) VALUES (
             #{name}, #{code}, #{description}, #{sort}, #{status}, #{createTime}, #{updateTime}
@@ -49,7 +49,7 @@
     </insert>
     
     <update id="update" parameterType="com.bjpowernode.model.ProductCategory">
-        UPDATE product_category
+        UPDATE t_product_category
         SET name = #{name},
             code = #{code},
             description = #{description},
@@ -60,7 +60,7 @@
     </update>
     
     <delete id="deleteById">
-        DELETE FROM product_category
+        DELETE FROM t_product_category
         WHERE id = #{id}
     </delete>
 </mapper> 

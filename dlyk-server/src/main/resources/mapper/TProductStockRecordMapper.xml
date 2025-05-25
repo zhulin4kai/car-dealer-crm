@@ -17,19 +17,19 @@
     
     <select id="selectByProductId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM product_stock_record
+        FROM t_product_stock_record
         WHERE product_id = #{productId}
         ORDER BY create_time DESC
     </select>
     
     <select id="selectCountByProductId" resultType="java.lang.Integer">
         SELECT COUNT(*)
-        FROM product_stock_record
+        FROM t_product_stock_record
         WHERE product_id = #{productId}
     </select>
     
     <insert id="insert" parameterType="com.bjpowernode.model.ProductStockRecord" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO product_stock_record (
+        INSERT INTO t_product_stock_record (
             product_id, quantity, type, remark, create_time
         ) VALUES (
             #{productId}, #{quantity}, #{type}, #{remark}, #{createTime}

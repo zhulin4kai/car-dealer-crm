@@ -12,6 +12,8 @@
         :data="productList"
         style="width: 100%"
         @selection-change="handleSelectionChange"
+        v-loading="loading"
+        element-loading-text="加载中..."
       >
         <el-table-column type="selection" width="55" />
         <el-table-column type="index" label="序号" width="60" :index="startIndex" />
@@ -112,9 +114,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { doGet, doPost, doPut, doDelete } from '../http/httpRequest'
 import { messageTip, messageConfirm } from '../util/util'
 import { useRouter } from 'vue-router'
+import { 
+  getProductList, 
+  createProduct, 
+  updateProduct, 
+  deleteProduct 
+} from '../api/product'
 
 const router = useRouter()
 const productList = ref([])
@@ -142,7 +149,7 @@ const categoryOptions = ref([
 // 加载产品列表
 const loadProducts = async () => {
   try {
-    const res = await doGet('/api/products', {
+    const res = await getProductList({
       page: currentPage.value,
       size: pageSize.value
     })
@@ -180,7 +187,7 @@ const handleEdit = (row) => {
 const handleDelete = async (row) => {
   try {
     await messageConfirm('确认删除该产品？')
-    await doDelete(`/api/products/${row.id}`)
+    await deleteProduct(row.id)
     messageTip('删除成功', 'success')
     loadProducts()
   } catch (error) {
@@ -194,10 +201,10 @@ const handleDelete = async (row) => {
 const handleSubmit = async () => {
   try {
     if (dialogType.value === 'add') {
-      await doPost('/api/products', productForm.value)
+      await createProduct(productForm.value)
       messageTip('新增成功', 'success')
     } else {
-      await doPut(`/api/products/${productForm.value.id}`, productForm.value)
+      await updateProduct(productForm.value.id, productForm.value)
       messageTip('编辑成功', 'success')
     }
     dialogVisible.value = false

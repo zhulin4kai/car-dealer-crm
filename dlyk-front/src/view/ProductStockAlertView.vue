@@ -162,10 +162,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { doGet, doPost } from '../http/httpRequest'
 import { messageTip } from '../util/util'
 import { useRouter } from 'vue-router'
 import { MessageBox, Refresh } from '@element-plus/icons-vue'
+import { 
+  getStockAlerts, 
+  restockProduct, 
+  getStockRecords,
+  getCategoryList
+} from '../api/product'
 
 const router = useRouter()
 const stockAlertList = ref([])
@@ -193,7 +198,7 @@ const stockRecords = ref([])
 // 加载分类选项
 const loadCategoryOptions = async () => {
   try {
-    const res = await doGet('/api/product-categories', {
+    const res = await getCategoryList({
       page: 1,
       size: 100
     })
@@ -236,7 +241,7 @@ const loadStockAlerts = async () => {
       params.category = filterForm.value.category
     }
     
-    const res = await doGet('/api/products/stockalerts', params)
+    const res = await getStockAlerts(params)
     
     if (res.data && res.data.data) {
       stockAlertList.value = res.data.data.list || []
@@ -299,7 +304,7 @@ const handleRestockSubmit = async () => {
   
   restockLoading.value = true
   try {
-    await doPost('/api/productstock/restock', restockForm.value)
+    await restockProduct(restockForm.value)
     messageTip('补货成功', 'success')
     restockDialogVisible.value = false
     loadStockAlerts()
@@ -313,7 +318,7 @@ const handleRestockSubmit = async () => {
 // 处理详情
 const handleDetail = async (row) => {
   try {
-    const res = await doGet(`/api/productstock/records/${row.id}`, { page: 1, size: 100 })
+    const res = await getStockRecords(row.id, { page: 1, size: 100 })
     stockRecords.value = res.data.data.list || []
     detailDialogVisible.value = true
   } catch (error) {

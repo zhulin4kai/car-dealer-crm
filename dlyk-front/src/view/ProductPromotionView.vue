@@ -6,7 +6,12 @@
     </el-card>
 
     <el-card class="table-card">
-      <el-table :data="promotionList" style="width: 100%">
+      <el-table 
+        :data="promotionList" 
+        style="width: 100%"
+        v-loading="loading"
+        element-loading-text="加载中..."
+      >
         <el-table-column prop="id" label="ID" show-overflow-tooltip />
         <el-table-column prop="name" label="促销名称" show-overflow-tooltip />
         <el-table-column prop="type" label="促销类型" show-overflow-tooltip>
@@ -119,8 +124,13 @@
 
 <script>
 import { defineComponent, ref, onMounted } from 'vue'
-import { doGet, doPost, doPut, doDelete } from '../http/httpRequest'
 import { messageTip, messageConfirm } from '../util/util'
+import { 
+  getPromotionList, 
+  createPromotion, 
+  updatePromotion, 
+  deletePromotion 
+} from '../api/product'
 
 export default defineComponent({
   name: 'ProductPromotionView',
@@ -177,7 +187,7 @@ export default defineComponent({
     // 加载促销列表
     const loadPromotions = async () => {
       try {
-        const res = await doGet('/api/product-promotions', {
+        const res = await getPromotionList({
           page: currentPage.value,
           size: pageSize.value
         })
@@ -213,7 +223,7 @@ export default defineComponent({
     const handleDelete = async (row) => {
       try {
         await messageConfirm('确认删除该促销活动？')
-        await doDelete(`/api/product-promotions/${row.id}`)
+        await deletePromotion(row.id)
         messageTip('删除成功', 'success')
         loadPromotions()
       } catch (error) {
@@ -227,10 +237,10 @@ export default defineComponent({
     const handleSubmit = async () => {
       try {
         if (dialogType.value === 'add') {
-          await doPost('/api/product-promotions', promotionForm.value)
+          await createPromotion(promotionForm.value)
           messageTip('新增成功', 'success')
         } else {
-          await doPut(`/api/product-promotions/${promotionForm.value.id}`, promotionForm.value)
+          await updatePromotion(promotionForm.value.id, promotionForm.value)
           messageTip('编辑成功', 'success')
         }
         dialogVisible.value = false

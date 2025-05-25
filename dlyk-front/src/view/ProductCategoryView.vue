@@ -6,7 +6,12 @@
     </el-card>
 
     <el-card class="table-card">
-      <el-table :data="categoryList" style="width: 100%">
+      <el-table 
+        :data="categoryList" 
+        style="width: 100%"
+        v-loading="loading"
+        element-loading-text="加载中..."
+      >
         <el-table-column prop="id" label="ID" show-overflow-tooltip />
         <el-table-column prop="name" label="分类名称" show-overflow-tooltip />
         <el-table-column prop="code" label="分类编码" show-overflow-tooltip />
@@ -77,8 +82,13 @@
 
 <script>
 import { defineComponent, ref, onMounted } from 'vue'
-import { doGet, doPost, doPut, doDelete } from '../http/httpRequest'
 import { messageTip, messageConfirm } from '../util/util'
+import { 
+  getCategoryList, 
+  createCategory, 
+  updateCategory, 
+  deleteCategory 
+} from '../api/product'
 
 export default defineComponent({
   name: 'ProductCategoryView',
@@ -101,7 +111,7 @@ export default defineComponent({
     // 加载分类列表
     const loadCategories = async () => {
       try {
-        const res = await doGet('/api/product-categories', {
+        const res = await getCategoryList({
           page: currentPage.value,
           size: pageSize.value
         })
@@ -136,7 +146,7 @@ export default defineComponent({
     const handleDelete = async (row) => {
       try {
         await messageConfirm('确认删除该分类？')
-        await doDelete(`/api/product-categories/${row.id}`)
+        await deleteCategory(row.id)
         messageTip('删除成功', 'success')
         loadCategories()
       } catch (error) {
@@ -150,10 +160,10 @@ export default defineComponent({
     const handleSubmit = async () => {
       try {
         if (dialogType.value === 'add') {
-          await doPost('/api/product-categories', categoryForm.value)
+          await createCategory(categoryForm.value)
           messageTip('新增成功', 'success')
         } else {
-          await doPut(`/api/product-categories/${categoryForm.value.id}`, categoryForm.value)
+          await updateCategory(categoryForm.value.id, categoryForm.value)
           messageTip('编辑成功', 'success')
         }
         dialogVisible.value = false

@@ -40,8 +40,8 @@
           <el-input v-model="userQuery.loginAct" />
         </el-form-item>
 
-        <el-form-item label="密码" v-if="userQuery.id > 0"><!--编辑-->
-          <el-input type="password" v-model="userQuery.loginPwd" />
+        <el-form-item label="密码" prop="loginPwd" v-if="userQuery.id > 0"><!--编辑-->
+          <el-input type="password" v-model="userQuery.loginPwd" placeholder="******" />
         </el-form-item>
 
         <el-form-item label="密码" prop="loginPwd" v-else><!--新增-->
@@ -92,6 +92,77 @@
         </span>
       </template>
     </el-dialog>
+
+    <!--用户详情的弹窗(对话框)-->
+    <el-dialog v-model="userDetailDialogVisible" title="用户详情" width="40%" center draggable>
+      <el-form :model="userDetail" label-width="120px">
+        <el-form-item label="ID">
+          <div class="detail">&nbsp;{{userDetail.id}}</div>
+        </el-form-item>
+
+        <el-form-item label="账号">
+          <div class="detail">&nbsp;{{userDetail.loginAct}}</div>
+        </el-form-item>
+
+        <el-form-item label="密码">
+          <div class="detail">&nbsp;******</div>
+        </el-form-item>
+
+        <el-form-item label="姓名">
+          <div class="detail">&nbsp;{{userDetail.name}}</div>
+        </el-form-item>
+
+        <el-form-item label="手机">
+          <div class="detail">&nbsp;{{userDetail.phone}}</div>
+        </el-form-item>
+
+        <el-form-item label="邮箱">
+          <div class="detail">&nbsp;{{userDetail.email}}</div>
+        </el-form-item>
+
+        <el-form-item label="账号未过期">
+          <div class="detail">&nbsp;{{userDetail.accountNoExpired === 1 ? '是' : '否'}}</div>
+        </el-form-item>
+
+        <el-form-item label="密码未过期">
+          <div class="detail">&nbsp;{{userDetail.credentialsNoExpired === 1 ? '是' : '否'}}</div>
+        </el-form-item>
+
+        <el-form-item label="账号未锁定">
+          <div class="detail">&nbsp;{{userDetail.accountNoLocked === 1 ? '是' : '否'}}</div>
+        </el-form-item>
+
+        <el-form-item label="账号是否启用">
+          <div class="detail">&nbsp;{{userDetail.accountEnabled === 1 ? '是' : '否'}}</div>
+        </el-form-item>
+
+        <el-form-item label="创建时间">
+          <div class="detail">&nbsp;{{userDetail.createTime}}</div>
+        </el-form-item>
+
+        <el-form-item label="创建人">
+          <div class="detail">&nbsp;{{userDetail.createByDO?.name}}</div>
+        </el-form-item>
+
+        <el-form-item label="编辑时间">
+          <div class="detail">&nbsp;{{userDetail.editTime}}</div>
+        </el-form-item>
+
+        <el-form-item label="编辑人">
+          <div class="detail">&nbsp;{{userDetail.editByDO?.name}}</div>
+        </el-form-item>
+
+        <el-form-item label="最近登录时间">
+          <div class="detail">&nbsp;{{userDetail.lastLoginTime}}</div>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button type="success" @click="userDetailDialogVisible = false">返 回</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 
 </template>
@@ -119,6 +190,13 @@ const userIdArray = ref([])
 const userRefForm = ref(null)
 const currentPage = ref(1)
 const router = useRouter()
+
+// 用户详情相关数据
+const userDetailDialogVisible = ref(false)
+const userDetail = ref({
+  createByDO: {},
+  editByDO: {}
+})
 
 // 表单验证规则
 const userRules = {
@@ -172,7 +250,8 @@ const toPage = (current) => {
 }
 
 const view = (id) => {
-  router.push("/dashboard/user/" + id)
+  userDetailDialogVisible.value = true
+  loadUserDetail(id)
 }
 
 const add = () => {
@@ -211,6 +290,21 @@ const loadUser = (id) => {
     if (resp.data.code === 200) {
       userQuery.value = resp.data.data
       userQuery.value.loginPwd = ""
+    }
+  })
+}
+
+// 加载用户详情
+const loadUserDetail = (id) => {
+  doGet("/api/user/" + id, {}).then(resp => {
+    if (resp.data.code === 200) {
+      userDetail.value = resp.data.data
+      if (!userDetail.value.createByDO) {
+        userDetail.value.createByDO = {}
+      }
+      if (!userDetail.value.editByDO) {
+        userDetail.value.editByDO = {}
+      }
     }
   })
 }
@@ -280,5 +374,11 @@ onMounted(() => {
 
 .table-card {
   margin-bottom: 20px;
+}
+
+.detail {
+  background-color: #e9eae3;
+  width: 100%;
+  padding-left: 15px;
 }
 </style>
