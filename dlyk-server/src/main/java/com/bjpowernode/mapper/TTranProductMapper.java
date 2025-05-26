@@ -22,4 +22,11 @@ public interface TTranProductMapper {
      * 根据交易ID查询产品列表
      */
     List<TTranProduct> selectByTranId(Integer tranId);
+    
+    /**
+     * 根据交易ID删除产品列表
+     */
+    int deleteByTranId(Integer tranId);
+
+    int selectClueNameByTranId(Integer tranId);
 } 

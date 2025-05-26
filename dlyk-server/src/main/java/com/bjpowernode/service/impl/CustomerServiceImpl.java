@@ -5,6 +5,7 @@ import com.bjpowernode.manager.CustomerManager;
 import com.bjpowernode.mapper.TClueMapper;
 import com.bjpowernode.mapper.TCustomerMapper;
 import com.bjpowernode.model.TCustomer;
+import com.bjpowernode.model.CustomerOption;
 import com.bjpowernode.query.CustomerQuery;
 import com.bjpowernode.result.CustomerExcel;
 import com.bjpowernode.service.CustomerService;
@@ -75,5 +76,22 @@ public class CustomerServiceImpl implements CustomerService {
             customerExcelList.add(customerExcel);
         });
         return customerExcelList;
+    }
+
+    @Override
+    public PageInfo<TCustomer> getCustomerList(CustomerQuery query, Integer pageNum, Integer pageSize) {
+        PageHelper.startPage(pageNum, pageSize);
+        List<TCustomer> customerList = tCustomerMapper.selectByQuery(query);
+        return new PageInfo<>(customerList);
+    }
+
+    @Override
+    public List<CustomerOption> getCustomerOptions() {
+        return tCustomerMapper.selectCustomerOptions();
+    }
+
+    @Override
+    public TCustomer getCustomerById(Integer id) {
+        return tCustomerMapper.selectByPrimaryKey(id);
     }
 }

@@ -12,7 +12,10 @@
       <el-descriptions title="交易基本信息" :column="2" border>
         <el-descriptions-item label="交易编号">{{ tranDetail.tranNo }}</el-descriptions-item>
         <el-descriptions-item label="客户名称">{{ tranDetail.customerName }}</el-descriptions-item>
-        <el-descriptions-item label="交易金额">¥{{ tranDetail.amount }}</el-descriptions-item>
+        <el-descriptions-item label="交易金额">
+          <span v-if="tranDetail.stage === 'QUOTATION'">?</span>
+          <span v-else>¥{{ tranDetail.amount }}</span>
+        </el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ tranDetail.createTime }}</el-descriptions-item>
         <el-descriptions-item label="预计交付日期">{{ tranDetail.expectedDeliveryDate }}</el-descriptions-item>
         <el-descriptions-item label="最后更新时间">{{ tranDetail.updateTime }}</el-descriptions-item>
@@ -23,7 +26,7 @@
       <div class="section-title">产品信息</div>
       <el-table :data="tranDetail.products" style="width: 100%">
         <el-table-column type="index" label="序号" width="80" />
-        <el-table-column prop="name" label="产品名称" min-width="300" />
+        <el-table-column prop="productName" label="产品名称" min-width="300" />
         <el-table-column prop="quantity" label="数量" width="120" />
         <el-table-column prop="price" label="单价" width="140">
           <template #default="scope">
@@ -74,7 +77,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getTranDetail, approveTran } from '../api/tran'
+import { getTranDetail, getTranProducts, approveTran } from '../api/tran'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,7 +87,7 @@ const tranDetail = ref({
   tranNo: '',
   customerName: '',
   amount: 0,
-  status: '',
+  stage: '',
   createTime: '',
   updateTime: '',
   expectedDeliveryDate: '',
@@ -107,18 +110,58 @@ const rules = reactive({
   ]
 })
 
+// 根据阶段获取状态
+const getStageStatus = (stage) => {
+  const stageMap = {
+    41: 'QUOTATION', // 待报价
+    42: 'PENDING',   // 待审批
+    43: 'APPROVED',  // 已审批
+    45: 'PAYMENT',   // 待收款
+    46: 'COMPLETED'  // 已完成
+  }
+  return stageMap[stage] || 'QUOTATION'
+}
+
 // 获取交易详情
 const fetchTranDetail = async () => {
   try {
+    console.log('获取交易详情，ID:', route.params.id)
     const res = await getTranDetail(route.params.id)
+    console.log('交易详情响应:', res)
     if (res.data.code === 200) {
-      tranDetail.value = res.data.data
+      const data = res.data.data
+      // 根据后端返回的数据结构进行映射
+      tranDetail.value = {
+        tranNo: data.tranNo || '',
+        customerName: data.customerName || '',
+        amount: data.money || data.amount || 0, // 后端可能返回money字段
+        stage: getStageStatus(data.stage), // 转换stage状态
+        createTime: data.createTime || '',
+        updateTime: data.editTime || data.updateTime || '', // 后端可能返回editTime
+        expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
+        description: data.description || '',
+        products: data.products || []
+      }
+      console.log('处理后的交易详情:', tranDetail.value)
     } else {
       ElMessage.error(res.data.msg || '获取交易详情失败')
     }
   } catch (error) {
     console.error('获取交易详情失败:', error)
     ElMessage.error('获取交易详情失败')
+  }
+}
+
+// 获取交易产品详情
+const fetchProducts = async () => {
+  try {
+    const res = await getTranProducts(route.params.id)
+    console.log('交易产品详情:', res)
+    if (res.data.code === 200) {
+      tranDetail.value.products = res.data.data
+    }
+  } catch (error) {
+    console.error('获取产品详情失败:', error)
   }
 }
 
@@ -149,7 +192,17 @@ const goBack = () => {
 }
 
 onMounted(async () => {
+  console.log('TranApproveView mounted')
+  console.log('route.params:', route.params)
+  console.log('route.params.id:', route.params.id)
+  
+  if (!route.params.id) {
+    ElMessage.error('缺少交易ID参数')
+    return
+  }
+  
   await fetchTranDetail()
+  await fetchProducts()
 })
 </script>
 

@@ -39,7 +39,8 @@
         <el-table-column prop="customerName" label="客户名称" show-overflow-tooltip />
         <el-table-column prop="amount" label="交易金额" show-overflow-tooltip>
           <template #default="scope">
-            ¥{{ scope.row.amount }}
+            <span v-if="scope.row.stage === 'QUOTATION'">?</span>
+            <span v-else>¥{{ scope.row.amount }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" show-overflow-tooltip>

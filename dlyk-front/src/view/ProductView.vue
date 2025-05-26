@@ -76,10 +76,10 @@
         <el-form-item label="分类">
           <el-select v-model="productForm.category" placeholder="请选择分类">
             <el-option
-              v-for="item in categoryOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+              v-for="item in categoryOptions.list"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
             />
           </el-select>
         </el-form-item>
@@ -113,14 +113,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { messageTip, messageConfirm } from '../util/util'
 import { useRouter } from 'vue-router'
 import { 
   getProductList, 
   createProduct, 
   updateProduct, 
-  deleteProduct 
+  deleteProduct,
+  getCategoryList
 } from '../api/product'
 
 const router = useRouter()
@@ -140,11 +141,18 @@ const productForm = ref({
   minStock: 0,
   status: '上架'
 })
-const categoryOptions = ref([
-  { value: '电子产品', label: '电子产品' },
-  { value: '服装', label: '服装' },
-  { value: '食品', label: '食品' }
-])
+const categoryOptions = reactive({
+  list: []
+})
+
+const loadCategoryOptions = async () => {
+  try {
+    const res = await getCategoryList()
+    categoryOptions.list = res.data.data.list
+  } catch (error) {
+    messageTip('加载分类列表失败', 'error')
+  }
+}
 
 // 加载产品列表
 const loadProducts = async () => {
@@ -161,7 +169,8 @@ const loadProducts = async () => {
 }
 
 // 处理新增
-const handleAdd = () => {
+const handleAdd = async () => {
+  await loadCategoryOptions()
   dialogType.value = 'add'
   productForm.value = {
     sku: '',
@@ -177,7 +186,8 @@ const handleAdd = () => {
 }
 
 // 处理编辑
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
+  await loadCategoryOptions()
   dialogType.value = 'edit'
   productForm.value = { ...row }
   dialogVisible.value = true

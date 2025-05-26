@@ -118,4 +118,59 @@ public interface TranService {
      * @return 跟踪记录列表
      */
     List<TTranRemark> getTransactionRemarks(Integer tranId);
+    
+    /**
+     * 删除交易的所有产品
+     * @param tranId 交易ID
+     * @return 是否删除成功
+     */
+    boolean deleteTransactionProducts(Integer tranId);
+    
+    /**
+     * 添加交易产品
+     * @param tranId 交易ID
+     * @param products 产品列表
+     * @return 是否添加成功
+     */
+    boolean addTransactionProducts(Integer tranId, List<TTranProduct> products);
+    
+    /**
+     * 审批交易
+     * @param tranId 交易ID
+     * @param approved 审批结果
+     * @param comment 审批意见
+     * @param approveBy 审批人
+     * @return 是否审批成功
+     */
+    boolean approveTran(Integer tranId, Boolean approved, String comment, Integer approveBy);
+    
+    /**
+     * 获取交易审批信息
+     * @param tranId 交易ID
+     * @return 审批信息
+     */
+    TTranApprove getTranApprove(Integer tranId);
+    
+    /**
+     * 创建发票
+     * @param invoice 发票信息
+     * @return 是否创建成功
+     */
+    boolean createTranInvoice(TTranInvoice invoice);
+    
+    /**
+     * 获取交易发票列表
+     * @param tranId 交易ID
+     * @return 发票列表
+     */
+    List<TTranInvoice> getTranInvoices(Integer tranId);
+    
+    /**
+     * 更新发票状态
+     * @param invoiceId 发票ID
+     * @param status 新状态
+     * @param updateBy 更新人
+     * @return 是否更新成功
+     */
+    boolean updateTranInvoiceStatus(Integer invoiceId, String status, Integer updateBy);
 } 

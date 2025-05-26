@@ -41,6 +41,9 @@ public class TranServiceImpl implements TranService {
     private TTranInvoiceMapper tranInvoiceMapper;
 
     @Resource
+    private TTranApproveMapper tranApproveMapper;
+
+    @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
     @Resource
@@ -239,8 +242,204 @@ public class TranServiceImpl implements TranService {
 
     @Override
     public List<TTranProduct> getTransactionProductDetails(Integer tranId) {
-        List<TTranProduct> products = tranMapper.selectTranProductsByTranId(tranId);
-        return products;
+        return tranMapper.selectTranProductsByTranId(tranId);
+    }
+
+    @Override
+    public boolean deleteTransactionProducts(Integer tranId) {
+        try {
+            tranProductMapper.deleteByTranId(tranId);
+            // 清除缓存
+            redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean addTransactionProducts(Integer tranId, List<TTranProduct> products) {
+        try {
+            if (products != null && !products.isEmpty()) {
+                for (TTranProduct product : products) {
+                    product.setTranId(tranId);
+                    tranProductMapper.insertSelective(product);
+                }
+            }
+            // 清除缓存
+            redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean approveTran(Integer tranId, Boolean approved, String comment, Integer approveBy) {
+        try {
+            Date now = new Date();
+            
+            // 1. 创建审批记录
+            TTranApprove approve = new TTranApprove();
+            approve.setTranId(tranId);
+            approve.setApproveResult(approved);
+            approve.setApproveComment(comment);
+            approve.setApproveTime(now);
+            approve.setApproveBy(approveBy);
+            approve.setCreateTime(now);
+            approve.setCreateBy(approveBy);
+            
+            int approveResult = tranApproveMapper.insertSelective(approve);
+            
+            if (approveResult > 0) {
+                // 2. 更新交易状态
+                TTran tran = new TTran();
+                tran.setId(tranId);
+                if (approved) {
+                    tran.setStage(43); // 已审批
+                } else {
+                    tran.setStage(21); // 丢失关闭
+                }
+                tran.setEditTime(now);
+                tran.setEditBy(approveBy);
+                
+                int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
+                
+                if (tranResult > 0) {
+                    // 3. 创建历史记录
+                    TTran current = tranMapper.selectByPrimaryKey(tranId);
+                    TTranHistory history = new TTranHistory();
+                    history.setTranId(tranId);
+                    history.setStage(tran.getStage());
+                    history.setMoney(current.getMoney());
+                    history.setExpectedDate(current.getExpectedDate());
+                    history.setCreateTime(now);
+                    history.setCreateBy(approveBy);
+                    tranHistoryMapper.insert(history);
+                    
+                    // 清除缓存
+                    clearTransactionCache(tranId);
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public TTranApprove getTranApprove(Integer tranId) {
+        return tranApproveMapper.selectByTranId(tranId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean createTranInvoice(TTranInvoice invoice) {
+        try {
+            Date now = new Date();
+            
+            // 生成发票号码
+            invoice.setInvoiceNo(generateInvoiceNo());
+            invoice.setStatus("PENDING"); // 待开具
+            invoice.setCreateTime(now);
+            invoice.setUpdateTime(now);
+            
+            int result = tranInvoiceMapper.insertSelective(invoice);
+            
+            if (result > 0) {
+                // 更新交易状态为待收款
+                TTran tran = new TTran();
+                tran.setId(invoice.getTranId());
+                tran.setStage(45); // 待收款
+                tran.setEditTime(now);
+                tran.setEditBy(invoice.getCreateBy());
+                
+                int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
+                
+                if (tranResult > 0) {
+                    // 创建历史记录
+                    TTran current = tranMapper.selectByPrimaryKey(invoice.getTranId());
+                    TTranHistory history = new TTranHistory();
+                    history.setTranId(invoice.getTranId());
+                    history.setStage(45);
+                    history.setMoney(current.getMoney());
+                    history.setExpectedDate(current.getExpectedDate());
+                    history.setCreateTime(now);
+                    history.setCreateBy(invoice.getCreateBy());
+                    tranHistoryMapper.insert(history);
+                    
+                    // 清除缓存
+                    clearTransactionCache(invoice.getTranId());
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public List<TTranInvoice> getTranInvoices(Integer tranId) {
+        return tranInvoiceMapper.selectByTranId(tranId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateTranInvoiceStatus(Integer invoiceId, String status, Integer updateBy) {
+        try {
+            Date now = new Date();
+            
+            TTranInvoice invoice = new TTranInvoice();
+            invoice.setId(invoiceId);
+            invoice.setStatus(status);
+            invoice.setUpdateTime(now);
+            invoice.setUpdateBy(updateBy);
+            
+            if ("ISSUED".equals(status)) {
+                invoice.setIssueTime(now);
+            }
+            
+            int result = tranInvoiceMapper.updateByPrimaryKeySelective(invoice);
+            
+            if (result > 0) {
+                // 如果发票已开具，更新交易状态为已完成
+                if ("ISSUED".equals(status)) {
+                    TTranInvoice currentInvoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
+                    if (currentInvoice != null) {
+                        TTran tran = new TTran();
+                        tran.setId(currentInvoice.getTranId());
+                        tran.setStage(46); // 已完成
+                        tran.setEditTime(now);
+                        tran.setEditBy(updateBy);
+                        
+                        int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
+                        
+                        if (tranResult > 0) {
+                            // 创建历史记录
+                            TTran current = tranMapper.selectByPrimaryKey(currentInvoice.getTranId());
+                            TTranHistory history = new TTranHistory();
+                            history.setTranId(currentInvoice.getTranId());
+                            history.setStage(46);
+                            history.setMoney(current.getMoney());
+                            history.setExpectedDate(current.getExpectedDate());
+                            history.setCreateTime(now);
+                            history.setCreateBy(updateBy);
+                            tranHistoryMapper.insert(history);
+                            
+                            // 清除缓存
+                            clearTransactionCache(currentInvoice.getTranId());
+                        }
+                    }
+                }
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -251,6 +450,16 @@ public class TranServiceImpl implements TranService {
         String dateStr = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
         String randomStr = String.format("%06d", new java.util.Random().nextInt(1000000));
         return dateStr + randomStr;
+    }
+
+    /**
+     * 生成发票号码
+     * 格式：INV + 年月日 + 6位随机数
+     */
+    private String generateInvoiceNo() {
+        String dateStr = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
+        String randomStr = String.format("%06d", new java.util.Random().nextInt(1000000));
+        return "INV" + dateStr + randomStr;
     }
 
     /**

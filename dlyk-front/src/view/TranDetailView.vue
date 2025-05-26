@@ -12,7 +12,10 @@
       <el-descriptions :column="2" border>
         <el-descriptions-item label="交易编号">{{ tranDetail.tranNo }}</el-descriptions-item>
         <el-descriptions-item label="客户名称">{{ tranDetail.customerName }}</el-descriptions-item>
-        <el-descriptions-item label="交易金额">¥{{ tranDetail.amount }}</el-descriptions-item>
+        <el-descriptions-item label="交易金额">
+          <span v-if="tranDetail.stage === 'QUOTATION'">?</span>
+          <span v-else>¥{{ tranDetail.amount }}</span>
+        </el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ tranDetail.createTime }}</el-descriptions-item>
         <el-descriptions-item label="预计交付日期">{{ tranDetail.expectedDeliveryDate }}</el-descriptions-item>
         <el-descriptions-item label="最后更新时间">{{ tranDetail.updateTime }}</el-descriptions-item>
@@ -46,23 +49,40 @@
     </el-card>
 
     <!-- 发票信息 -->
-    <el-card class="detail-card" v-if="invoiceInfo">
+    <el-card class="detail-card" v-if="invoiceList.length > 0">
       <template #header>
         <div class="card-header">
           <span>发票信息</span>
         </div>
       </template>
 
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="发票号码">{{ invoiceInfo.invoiceNo }}</el-descriptions-item>
-        <el-descriptions-item label="发票金额">¥{{ invoiceInfo.amount }}</el-descriptions-item>
-        <el-descriptions-item label="开票日期">{{ invoiceInfo.issueDate }}</el-descriptions-item>
-        <el-descriptions-item label="发票状态">
-          <el-tag :type="getInvoiceStatusType(invoiceInfo.status)">
-            {{ getInvoiceStatusText(invoiceInfo.status) }}
-          </el-tag>
-        </el-descriptions-item>
-      </el-descriptions>
+      <el-table :data="invoiceList" style="width: 100%">
+        <el-table-column prop="invoiceNo" label="发票号码" width="180" />
+        <el-table-column prop="type" label="发票类型" width="140">
+          <template #default="scope">
+            {{ getInvoiceTypeText(scope.row.type) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="title" label="发票抬头" min-width="200" />
+        <el-table-column prop="amount" label="发票金额" width="120">
+          <template #default="scope">
+            ¥{{ scope.row.amount }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="scope">
+            <el-tag :type="getInvoiceStatusType(scope.row.status)">
+              {{ getInvoiceStatusText(scope.row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="160" />
+        <el-table-column prop="issueTime" label="开票时间" width="160">
+          <template #default="scope">
+            {{ scope.row.issueTime || '-' }}
+          </template>
+        </el-table-column>
+      </el-table>
     </el-card>
 
     <!-- 操作按钮 -->
@@ -73,6 +93,11 @@
         @click="handleEdit" 
         v-if="tranDetail.stage === 'QUOTATION'"
       >编辑</el-button>
+      <el-button 
+        type="success" 
+        @click="handleSettle" 
+        v-if="tranDetail.stage === 'QUOTATION'"
+      >结算</el-button>
       <el-button 
         type="success" 
         @click="handleApprove" 
@@ -90,8 +115,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { getTranDetail, getInvoiceInfo, getTranProducts } from '../api/tran'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran } from '../api/tran'
 
 const route = useRoute()
 const router = useRouter()
@@ -108,7 +133,7 @@ const tranDetail = ref({
   products: []
 })
 
-const invoiceInfo = ref(null)
+const invoiceList = ref([])
 
 // 状态映射
 const statusMap = {
@@ -130,6 +155,15 @@ const getStatusText = (status) => statusMap[status]?.text || status
 
 const getInvoiceStatusType = (status) => invoiceStatusMap[status]?.type || ''
 const getInvoiceStatusText = (status) => invoiceStatusMap[status]?.text || status
+
+// 发票类型映射
+const getInvoiceTypeText = (type) => {
+  const typeMap = {
+    'VAT_NORMAL': '增值税普通发票',
+    'VAT_SPECIAL': '增值税专用发票'
+  }
+  return typeMap[type] || type
+}
 
 const getTimelineItemType = (status) => {
   switch (status) {
@@ -197,9 +231,9 @@ const fetchProducts = async () => {
 // 获取发票信息
 const fetchInvoiceInfo = async () => {
   try {
-    const res = await getInvoiceInfo(route.params.id)
+    const res = await getTranInvoiceList(route.params.id)
     if (res.data.code === 200) {
-      invoiceInfo.value = res.data.data
+      invoiceList.value = res.data.data || []
     }
   } catch (error) {
     console.error('获取发票信息失败:', error)
@@ -214,6 +248,51 @@ const goBack = () => {
 // 编辑交易
 const handleEdit = () => {
   router.push(`/dashboard/tran/edit/${route.params.id}`)
+}
+
+// 结算交易
+const handleSettle = async () => {
+  try {
+    // 检查是否有产品信息
+    if (!tranDetail.value.products || tranDetail.value.products.length === 0) {
+      ElMessage.error('该交易没有产品信息，无法结算')
+      return
+    }
+    
+    // 计算所有产品的总价格用于显示确认信息
+    const totalAmount = tranDetail.value.products.reduce((total, product) => {
+      return total + (product.price * product.quantity)
+    }, 0)
+    
+    // 显示确认对话框
+    const confirmResult = await ElMessageBox.confirm(
+      `确认结算该交易吗？计算出的总金额为：¥${totalAmount}`,
+      '确认结算',
+      {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).catch(() => false)
+    
+    if (!confirmResult) {
+      return
+    }
+    
+    // 调用结算API
+    const res = await settleTran(route.params.id)
+    if (res.data.code === 200) {
+      ElMessage.success('结算成功，交易状态已更新为待审批')
+      // 重新获取交易详情以更新页面显示
+      await fetchTranDetail()
+      goBack()
+    } else {
+      ElMessage.error(res.data.msg || '结算失败')
+    }
+  } catch (error) {
+    console.error('结算失败:', error)
+    ElMessage.error('结算失败')
+  }
 }
 
 // 审批交易

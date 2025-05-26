@@ -37,8 +37,7 @@ public class CustomerManager {
         BeanUtils.copyProperties(customerQuery, tCustomer);
         tCustomer.setCreateTime(new Date()); //创建时间
         //登录人的id
-        Integer loginUserId = JWTUtils.parseUserFromJWT(customerQuery.getToken()).getId();
-        tCustomer.setCreateBy(loginUserId); //创建人
+        tCustomer.setCreateBy(customerQuery.getCreateBy()); //创建人
         int insert = tCustomerMapper.insertSelective(tCustomer);
 
         //3、把线索表的数据状态改为-1（已转客户）

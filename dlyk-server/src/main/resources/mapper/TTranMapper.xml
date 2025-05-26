@@ -286,4 +286,35 @@
     WHERE tp.tran_id = #{tranId,jdbcType=INTEGER}
     ORDER BY tp.id
   </select>
+
+  <!-- 联合查询：获取交易详情和审批信息 -->
+  <select id="selectTranWithApproveByTranId" parameterType="java.lang.Integer" resultType="java.util.Map">
+    SELECT 
+      t.id as tran_id,
+      t.tran_no,
+      t.customer_id,
+      cl.full_name as customer_name,
+      t.money,
+      t.expected_date,
+      t.stage,
+      t.description,
+      t.next_contact_time,
+      t.create_time as tran_create_time,
+      t.create_by as tran_create_by,
+      t.edit_time as tran_edit_time,
+      t.edit_by as tran_edit_by,
+      ta.id as approve_id,
+      ta.approve_result,
+      ta.approve_comment,
+      ta.approve_time,
+      ta.approve_by,
+      ta.create_time as approve_create_time
+    FROM t_tran t
+    LEFT JOIN t_customer c ON t.customer_id = c.id
+    LEFT JOIN t_clue cl ON c.clue_id = cl.id
+    LEFT JOIN t_tran_approve ta ON t.id = ta.tran_id
+    WHERE t.id = #{tranId,jdbcType=INTEGER}
+  </select>
+
+
 </mapper>

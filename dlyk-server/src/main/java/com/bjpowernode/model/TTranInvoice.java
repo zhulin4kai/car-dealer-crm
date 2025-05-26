@@ -91,5 +91,15 @@ public class TTranInvoice implements Serializable {
      */
     private Integer createBy;
 
+    /**
+     * 更新时间
+     */
+    private Date updateTime;
+
+    /**
+     * 更新人
+     */
+    private Integer updateBy;
+
     private static final long serialVersionUID = 1L;
 } 

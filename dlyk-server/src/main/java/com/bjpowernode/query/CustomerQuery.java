@@ -5,8 +5,19 @@ import lombok.Data;
 
 import java.util.Date;
 
+/**
+ * 客户查询条件
+ */
 @Data
-public class CustomerQuery extends BaseQuery {
+public class CustomerQuery {
+    /** 客户名称（线索名称） */
+    private String customerName;
+    
+    /** 产品ID */
+    private Integer productId;
+    
+    /** 创建人 */
+    private Integer createBy;
 
     private Integer clueId;
 

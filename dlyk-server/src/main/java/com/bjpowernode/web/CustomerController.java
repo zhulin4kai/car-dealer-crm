@@ -2,6 +2,7 @@ package com.bjpowernode.web;
 
 import com.alibaba.excel.EasyExcel;
 import com.bjpowernode.constant.Constants;
+import com.bjpowernode.model.CustomerOption;
 import com.bjpowernode.model.TCustomer;
 import com.bjpowernode.query.CustomerQuery;
 import com.bjpowernode.result.CustomerExcel;
@@ -21,18 +22,48 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * 客户管理控制器
+ */
 @RestController
 public class CustomerController {
 
     @Resource
     private CustomerService customerService;
 
+    /**
+     * 获取客户列表
+     */
+    @GetMapping("/api/customer/list")
+    public R<PageInfo<TCustomer>> list(
+            CustomerQuery query,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        return R.OK(customerService.getCustomerList(query, page, size));
+    }
+
+    /**
+     * 获取客户选项（用于下拉选择）
+     */
+    @GetMapping("/api/customer/options")
+    public R<List<CustomerOption>> options() {
+        return R.OK(customerService.getCustomerOptions());
+    }
+
+    /**
+     * 获取客户详情
+     */
+    @GetMapping("/api/customer/{id}")
+    public R<TCustomer> detail(@PathVariable Integer id) {
+        return R.OK(customerService.getCustomerById(id));
+    }
+
     @PostMapping(value = "/api/clue/customer")
-    public R convertCustomer(@RequestBody CustomerQuery customerQuery, @RequestHeader(value = "Authorization") String token) {
-        customerQuery.setToken(token);
+    public R convertCustomer(@RequestBody CustomerQuery customerQuery) {
         Boolean convert = customerService.convertCustomer(customerQuery);
         return convert ? R.OK() : R.FAIL();
     }
+    
 
     @GetMapping(value = "/api/customers")
     public R cluePage(@RequestParam(value = "current", required = false) Integer current) {
@@ -43,6 +74,7 @@ public class CustomerController {
         PageInfo<TCustomer> pageInfo = customerService.getCustomerByPage(current);
         return R.OK(pageInfo);
     }
+
 
     /**
      * 导出Excel
