@@ -44,6 +44,9 @@ public class TranServiceImpl implements TranService {
     private TTranApproveMapper tranApproveMapper;
 
     @Resource
+    private ProductMapper productMapper;
+
+    @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
     @Resource
@@ -64,6 +67,7 @@ public class TranServiceImpl implements TranService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Integer createTransaction(TTran tTran, List<TTranProduct> products) {
         // 设置创建时间等
         Date now = new Date();
@@ -74,12 +78,15 @@ public class TranServiceImpl implements TranService {
         tranMapper.insertSelective(tTran);
         Integer tranId = tTran.getId();
         
-        // 插入产品关联
+        // 插入产品关联并更新库存
         if (products != null && !products.isEmpty()) {
             for (TTranProduct product : products) {
                 product.setTranId(tranId);
                 product.setCreateTime(now);
                 tranProductMapper.insertSelective(product);
+                
+                // 减少产品库存
+                productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
             }
         }
         
@@ -246,8 +253,18 @@ public class TranServiceImpl implements TranService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteTransactionProducts(Integer tranId) {
         try {
+            // 在删除前先恢复库存
+            List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
+            if (products != null && !products.isEmpty()) {
+                for (TTranProduct product : products) {
+                    // 恢复产品库存
+                    productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                }
+            }
+            
             tranProductMapper.deleteByTranId(tranId);
             // 清除缓存
             redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
@@ -258,12 +275,16 @@ public class TranServiceImpl implements TranService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean addTransactionProducts(Integer tranId, List<TTranProduct> products) {
         try {
             if (products != null && !products.isEmpty()) {
                 for (TTranProduct product : products) {
                     product.setTranId(tranId);
                     tranProductMapper.insertSelective(product);
+                    
+                    // 减少产品库存
+                    productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
                 }
             }
             // 清除缓存

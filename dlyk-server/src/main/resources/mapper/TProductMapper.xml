@@ -33,7 +33,7 @@
     
     <select id="selectById" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
-        FROM product
+        FROM t_product
         WHERE id = #{id}
     </select>
     

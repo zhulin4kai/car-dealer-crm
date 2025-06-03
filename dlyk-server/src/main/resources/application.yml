@@ -6,9 +6,9 @@ server:
 #配置数据库连接相关信息
 spring:
   datasource:
-    url: jdbc:mysql://8.155.163.62:3306/dlyk?useUnicode=true&characterEncoding=utf8&useSSL=false
+    url: jdbc:mysql://localhost:3306/dlyk?useUnicode=true&characterEncoding=utf8&useSSL=false
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: yzk
+    username: root
     password: yuzhoukai4dsb
     hikari:
       #最大连接数，默认是10
@@ -26,7 +26,7 @@ spring:
   #配置redis的连接信息
   data:
     redis:
-      host: 8.155.163.62
+      host: localhost
       port: 6379
       database: 0
 
