@@ -2,7 +2,7 @@
   <el-container>
     <!--左侧-->
     <el-aside :width="isCollapse ? '64px' : '200px'">
-      <div class="menuTitle" @click="backToHome()">@电子商务管理系统</div>
+      <div class="menuTitle" @click="backToHome()">@汽车销售管理系统</div>
       <el-menu
           active-text-color="#ffd04b"
           background-color="#4c393b"
