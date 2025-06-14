@@ -1745,15 +1745,7 @@ VALUES ('NIO-ES6-2023', '蔚来 ES6', '电动SUV', '2023款 100kWh 首发纪念�
 INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
 VALUES ('PORSCHE-911-2023', '保时捷 911', '跑车', '2023款 Carrera 4S', 1458000.00, 8, 3, '上架', '2023-05-14 09:00:00', '2023-05-14 09:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('PORSCHE-CAYENNE-2023', '保时捷 卡宴', 'SUV', '2023款 Cayenne S', 928000.00, 10, 4, '上架', '2023-05-14 11:30:00', '2023-05-14 11:30:00');
-
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('MASERATI-GT-2023', '玛莎拉蒂 GranTurismo', '跑车', '2023款 MC Stradale', 1680000.00, 5, 2, '上架', '2023-05-15 10:00:00', '2023-05-15 10:00:00');
-
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('FERRARI-F8-2023', '法拉利 F8', '跑车', '2023款 Tributo', 2738000.00, 3, 1, '上架', '2023-05-15 13:45:00', '2023-05-15 13:45:00');
--- ----------------------------
+INS-- ----------------------------
 -- Table structure for t_product_category
 -- ----------------------------
 DROP TABLE IF EXISTS `t_product_category`;
@@ -1771,6 +1763,24 @@ CREATE TABLE `t_product_category`
     UNIQUE KEY `uk_category_code` (`code`) COMMENT '分类编码唯一约束'
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='产品分类表';
+
+-- ----------------------------
+-- Records of t_product_category
+-- ----------------------------
+INSERT INTO `t_product_category` (`name`, `code`, `description`, `sort`, `status`, `create_time`, `update_time`)
+VALUES ('SUV', 'SUV', '运动型多用途汽车，具有较高的底盘和较强的越野能力', 1, '启用', '2023-05-01 09:00:00', '2023-05-01 09:00:00');
+
+INSERT INTO `t_product_category` (`name`, `code`, `description`, `sort`, `status`, `create_time`, `update_time`)
+VALUES ('轿车', 'SEDAN', '三厢式乘用车，适合日常通勤和商务用途', 2, '启用', '2023-05-01 09:00:00', '2023-05-01 09:00:00');
+
+INSERT INTO `t_product_category` (`name`, `code`, `description`, `sort`, `status`, `create_time`, `update_time`)
+VALUES ('电动轿车', 'ELECTRIC_SEDAN', '纯电动驱动的三厢式乘用车，环保节能', 3, '启用', '2023-05-01 09:00:00', '2023-05-01 09:00:00');
+
+INSERT INTO `t_product_category` (`name`, `code`, `description`, `sort`, `status`, `create_time`, `update_time`)
+VALUES ('电动SUV', 'ELECTRIC_SUV', '纯电动驱动的运动型多用途汽车', 4, '启用', '2023-05-01 09:00:00', '2023-05-01 09:00:00');
+
+INSERT INTO `t_product_category` (`name`, `code`, `description`, `sort`, `status`, `create_time`, `update_time`)
+VALUES ('跑车', 'SPORTS_CAR', '高性能运动型汽车，注重驾驶乐趣和外观设计', 5, '启用', '2023-05-01 09:00:00', '2023-05-01 09:00:00');
 
 -- ----------------------------
 -- Table structure for t_product_promotion
@@ -1792,6 +1802,27 @@ CREATE TABLE `t_product_promotion`
   DEFAULT CHARSET = utf8mb4 COMMENT ='产品促销表';
 
 -- ----------------------------
+-- Records of t_product_promotion
+-- ----------------------------
+INSERT INTO `t_product_promotion` (`name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
+VALUES ('豪华车型五一促销', 'PERCENTAGE', 0.95, '2023-04-28 00:00:00', '2023-05-05 23:59:59', '进行中', '2023-04-25 10:00:00', '2023-04-25 10:00:00');
+
+INSERT INTO `t_product_promotion` (`name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
+VALUES ('电动车购车补贴', 'AMOUNT', 20000.00, '2023-05-01 00:00:00', '2023-06-30 23:59:59', '进行中', '2023-04-30 09:00:00', '2023-04-30 09:00:00');
+
+INSERT INTO `t_product_promotion` (`name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
+VALUES ('SUV车型夏季特惠', 'PERCENTAGE', 0.92, '2023-06-01 00:00:00', '2023-08-31 23:59:59', '待开始', '2023-05-15 14:00:00', '2023-05-15 14:00:00');
+
+INSERT INTO `t_product_promotion` (`name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
+VALUES ('日系车型年中大促', 'PERCENTAGE', 0.88, '2023-07-01 00:00:00', '2023-07-31 23:59:59', '待开始', '2023-06-01 11:00:00', '2023-06-01 11:00:00');
+
+INSERT INTO `t_product_promotion` (`name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
+VALUES ('新能源汽车置换补贴', 'AMOUNT', 30000.00, '2023-05-15 00:00:00', '2023-12-31 23:59:59', '进行中', '2023-05-10 16:00:00', '2023-05-10 16:00:00');
+
+INSERT INTO `t_product_promotion` (`name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
+VALUES ('保时捷限时优惠', 'AMOUNT', 50000.00, '2023-05-20 00:00:00', '2023-05-31 23:59:59', '待开始', '2023-05-16 13:00:00', '2023-05-16 13:00:00');
+
+-- ----------------------------
 -- Table structure for t_product_stock_record
 -- ----------------------------
 DROP TABLE IF EXISTS `t_product_stock_record`;
@@ -1808,97 +1839,6 @@ CREATE TABLE `t_product_stock_record`
     -- CONSTRAINT `fk_product_stock_record_product` FOREIGN KEY (`product_id`) REFERENCES `t_product` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='产品库存记录表';
-
--- ----------------------------
--- Records for t_product
--- ----------------------------
-INSERT INTO `t_product` (`id`, `sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`,
-                         `create_time`, `update_time`)
-VALUES (1, 'SKU001', 'Laptop', 'Electronics', '15-inch, 8GB RAM', 5999.00, 50, 10, '上架', NOW(), NOW()),
-       (2, 'SKU002', 'Smartphone', 'Electronics', '6.5-inch, 128GB', 2999.50, 150, 20, '上架', NOW(), NOW()),
-       (3, 'SKU003', 'T-Shirt (Red)', 'Apparel', 'Large', 99.00, 5, 10, '上架', NOW(), NOW()),
-       (4, 'SKU004', 'Jeans (Blue)', 'Apparel', 'Size 32', 299.80, 8, 5, '上架', NOW(), NOW()),
-       (5, 'SKU005', 'Coffee Beans 500g', 'Food', 'Medium Roast', 88.50, 30, 5, '上架', NOW(), NOW()),
-       (6, 'SKU006', 'Energy Drink', 'Food', '500ml', 8.00, 200, 50, '上架', NOW(), NOW()),
-       (7, 'SKU007', 'Tablet', 'Electronics', '10-inch, 64GB', 1999.00, 12, 10, '上架', NOW(), NOW()),
-       (8, 'SKU008', 'Headphones', 'Electronics', 'Wireless', 450.00, 70, 15, '上架', NOW(), NOW()),
-       (9, 'SKU009', 'Dress Shirt', 'Apparel', 'Medium, White', 180.00, 10, 5, '上架', NOW(), NOW()),
-       (10, 'SKU010', 'Sneakers', 'Apparel', 'Size 43', 550.00, 22, 8, '上架', NOW(), NOW()),
-       (11, 'SKU011', 'Chocolate Bar', 'Food', 'Milk Chocolate', 5.50, 300, 100, '上架', NOW(), NOW()),
-       (12, 'SKU012', 'Pasta (Spaghetti)', 'Food', '500g', 12.00, 80, 20, '上架', NOW(), NOW()),
-       (13, 'SKU013', 'Smartwatch', 'Electronics', 'Series 5', 1200.00, 18, 5, '上架', NOW(), NOW()),
-       (14, 'SKU014', 'Sweater (Grey)', 'Apparel', 'Small', 350.00, 4, 5, '上架', NOW(), NOW()),
-       (15, 'SKU015', 'Bottled Water', 'Food', '1L', 3.00, 500, 200, '下架', NOW(), NOW());
-
--- ----------------------------
--- Records for t_product_category
--- ----------------------------
-INSERT INTO `t_product_category` (`id`, `name`, `code`, `description`, `sort`, `status`, `create_time`, `update_time`)
-VALUES (1, 'Electronics', 'ELEC', 'Electronic devices and accessories', 1, '启用', NOW(), NOW()),
-       (2, 'Apparel', 'APPA', 'Clothing and fashion items', 2, '启用', NOW(), NOW()),
-       (3, 'Food', 'FOOD', 'Groceries and consumables', 3, '启用', NOW(), NOW()),
-       (4, 'Books', 'BOOK', 'Printed and digital books', 4, '启用', NOW(), NOW()),
-       (5, 'Home Appliances', 'HOME', 'Kitchen and household appliances', 5, '启用', NOW(), NOW()),
-       (6, 'Sports & Outdoors', 'SPRT', 'Equipment and gear for sports', 6, '启用', NOW(), NOW()),
-       (7, 'Beauty & Personal Care', 'BEAU', 'Cosmetics and personal hygiene', 7, '启用', NOW(), NOW()),
-       (8, 'Toys & Games', 'TOYS', 'Children\'s toys and adult games', 8, '启用', NOW(), NOW()),
-       (9, 'Automotive', 'AUTO', 'Car parts and accessories', 9, '启用', NOW(), NOW()),
-       (10, 'Health', 'HEAL', 'Health and wellness products', 10, '启用', NOW(), NOW()),
-       (11, 'Pet Supplies', 'PETS', 'Products for pets', 11, '启用', NOW(), NOW()),
-       (12, 'Office Supplies', 'OFFC', 'Stationery and office equipment', 12, '启用', NOW(), NOW()),
-       (13, 'Garden & Outdoor', 'GARD', 'Gardening tools and outdoor items', 13, '启用', NOW(), NOW()),
-       (14, 'Jewelry', 'JEWL', 'Necklaces, rings, and other jewelry', 14, '禁用', NOW(), NOW()),
-       (15, 'Art Supplies', 'ARTS', 'Materials for artists', 15, '启用', NOW(), NOW());
-
--- ----------------------------
--- Records for t_product_promotion
--- ----------------------------
-INSERT INTO `t_product_promotion` (`id`, `name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`,
-                                   `update_time`)
-VALUES (1, 'Summer Sale', '折扣', 8.50, '2023-07-01 00:00:00', '2023-07-31 23:59:59', '已结束', NOW(), NOW()),
-       (2, 'Holiday Discount', '满减', 50.00, '2023-12-01 00:00:00', '2023-12-25 23:59:59', '已结束', NOW(), NOW()),
-       (3, 'Flash Deal', '直降', 20.00, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), '进行中',
-        NOW(), NOW()),
-       (4, 'Back to School', '折扣', 9.00, DATE_ADD(NOW(), INTERVAL 7 DAY), DATE_ADD(NOW(), INTERVAL 30 DAY), '未开始',
-        NOW(), NOW()),
-       (5, 'Weekend Special', '满减', 25.00, DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), '已结束',
-        NOW(), NOW()),
-       (6, 'Clearance', '直降', 10.00, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_ADD(NOW(), INTERVAL 5 DAY), '进行中',
-        NOW(), NOW()),
-       (7, 'Early Bird', '折扣', 9.50, DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 3 DAY), '未开始',
-        NOW(), NOW()),
-       (8, 'Spring Offer', '满减', 30.00, '2024-03-01 00:00:00', '2024-03-31 23:59:59', '已结束', NOW(), NOW()),
-       (9, 'Autumn Promo', '折扣', 8.00, '2024-09-01 00:00:00', '2024-09-30 23:59:59', '未开始', NOW(), NOW()),
-       (10, 'New Year Deal', '直降', 15.00, '2024-01-01 00:00:00', '2024-01-15 23:59:59', '已结束', NOW(), NOW()),
-       (11, 'Loyalty Bonus', '满减', 100.00, DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(NOW(), INTERVAL 10 DAY),
-        '进行中', NOW(), NOW()),
-       (12, 'Referral Special', '折扣', 7.50, DATE_ADD(NOW(), INTERVAL 15 DAY), DATE_ADD(NOW(), INTERVAL 45 DAY),
-        '未开始', NOW(), NOW()),
-       (13, 'Mega Savings', '直降', 50.00, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), '进行中',
-        NOW(), NOW()),
-       (14, 'Limited Time Offer', '折扣', 8.80, DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 5 DAY),
-        '未开始', NOW(), NOW()),
-       (15, 'Seasonal Discount', '满减', 75.00, '2024-06-01 00:00:00', '2024-08-31 23:59:59', '未开始', NOW(), NOW());
-
--- ----------------------------
--- Records for t_product_stock_record
--- ----------------------------
-INSERT INTO `t_product_stock_record` (`id`, `product_id`, `quantity`, `type`, `remark`, `create_time`)
-VALUES (1, 1, 100, '入库', 'Initial stock', NOW()),
-       (2, 2, 200, '入库', 'Initial stock', NOW()),
-       (3, 3, 50, '入库', 'Initial stock', NOW()),
-       (4, 4, 30, '入库', 'Initial stock', NOW()),
-       (5, 5, 100, '入库', 'Initial stock', NOW()),
-       (6, 6, 500, '入库', 'Initial stock', NOW()),
-       (7, 1, -20, '出库', 'Sold', DATE_ADD(NOW(), INTERVAL 1 HOUR)),
-       (8, 2, -30, '出库', 'Sold', DATE_ADD(NOW(), INTERVAL 2 HOUR)),
-       (9, 3, -45, '出库', 'Sold', DATE_ADD(NOW(), INTERVAL 3 HOUR)),
-       (10, 4, -22, '出库', 'Sold', DATE_ADD(NOW(), INTERVAL 4 HOUR)),
-       (11, 5, -70, '出库', 'Sold', DATE_ADD(NOW(), INTERVAL 5 HOUR)),
-       (12, 1, 50, '入库', 'Restock', DATE_ADD(NOW(), INTERVAL 6 HOUR)),
-       (13, 2, 80, '入库', 'Restock', DATE_ADD(NOW(), INTERVAL 7 HOUR)),
-       (14, 7, 50, '入库', 'Initial stock', NOW()),
-       (15, 14, 10, '入库', 'Restock', DATE_ADD(NOW(), INTERVAL 8 HOUR));
 
 -- ----------------------------
 -- Table structure for t_tran_approve
