@@ -41,7 +41,7 @@
       <el-form
         ref="formRef"
         :model="invoiceForm"
-        :rules="rules"
+        :rules="getDynamicRules"
         label-width="120px"
         class="invoice-form"
       >
@@ -52,47 +52,67 @@
             <el-radio label="VAT_NORMAL">增值税普通发票</el-radio>
             <el-radio label="VAT_SPECIAL">增值税专用发票</el-radio>
           </el-radio-group>
+          <div class="form-tip">
+            <el-alert
+              v-if="invoiceForm.type === 'VAT_SPECIAL'"
+              title="提示：开具增值税专用发票需要填写完整的开户行、银行账号、注册地址和注册电话信息"
+              type="info"
+              :closable="false"
+              show-icon
+            />
+          </div>
         </el-form-item>
 
         <el-form-item label="发票抬头" prop="title">
           <el-input
             v-model="invoiceForm.title"
-            placeholder="请输入发票抬头"
+            placeholder="请输入发票抬头（2-100个字符）"
+            maxlength="100"
+            show-word-limit
           />
         </el-form-item>
 
         <el-form-item label="纳税人识别号" prop="taxNumber">
           <el-input
             v-model="invoiceForm.taxNumber"
-            placeholder="请输入纳税人识别号"
+            placeholder="请输入纳税人识别号（15-20位数字和字母组合）"
+            maxlength="20"
+            style="text-transform: uppercase"
+            @input="invoiceForm.taxNumber = invoiceForm.taxNumber.toUpperCase()"
           />
         </el-form-item>
 
         <el-form-item label="开户行" prop="bankName">
           <el-input
             v-model="invoiceForm.bankName"
-            placeholder="请输入开户行"
+            placeholder="请输入开户行（专用发票必填）"
+            maxlength="50"
           />
         </el-form-item>
 
         <el-form-item label="银行账号" prop="bankAccount">
           <el-input
             v-model="invoiceForm.bankAccount"
-            placeholder="请输入银行账号"
+            placeholder="请输入银行账号（10-30位数字，专用发票必填）"
+            maxlength="30"
+            @input="invoiceForm.bankAccount = invoiceForm.bankAccount.replace(/\D/g, '')"
           />
         </el-form-item>
 
         <el-form-item label="注册地址" prop="address">
           <el-input
             v-model="invoiceForm.address"
-            placeholder="请输入注册地址"
+            placeholder="请输入注册地址（专用发票必填）"
+            maxlength="200"
+            show-word-limit
           />
         </el-form-item>
 
         <el-form-item label="注册电话" prop="phone">
           <el-input
             v-model="invoiceForm.phone"
-            placeholder="请输入注册电话"
+            placeholder="请输入注册电话（固话：0xx-xxxxxxxx，手机：1xxxxxxxxx，专用发票必填）"
+            maxlength="20"
           />
         </el-form-item>
 
@@ -100,9 +120,10 @@
           <el-input-number
             v-model="invoiceForm.amount"
             :precision="2"
-            :min="0"
+            :min="0.01"
+            :max="99999999.99"
             style="width: 100%"
-            placeholder="发票金额"
+            placeholder="发票金额（0.01-99,999,999.99）"
           />
         </el-form-item>
 
@@ -111,7 +132,9 @@
             v-model="invoiceForm.remark"
             type="textarea"
             rows="3"
-            placeholder="请输入备注信息"
+            placeholder="请输入备注信息（最多500个字符）"
+            maxlength="500"
+            show-word-limit
           />
         </el-form-item>
 
@@ -164,7 +187,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTranDetail, getTranProducts, createInvoice, getTranInvoiceList, updateInvoiceStatus } from '../api/tran'
@@ -205,14 +228,63 @@ const rules = reactive({
     { required: true, message: '请选择发票类型', trigger: 'change' }
   ],
   title: [
-    { required: true, message: '请输入发票抬头', trigger: 'blur' }
+    { required: true, message: '请输入发票抬头', trigger: 'blur' },
+    { min: 2, max: 100, message: '发票抬头长度应在2-100个字符之间', trigger: 'blur' },
+    { pattern: /^[\u4e00-\u9fa5a-zA-Z0-9\(\)\（\）\-\_\&\＆\s]+$/, message: '发票抬头只能包含中文、英文、数字、括号、连字符、下划线和&符号', trigger: 'blur' }
   ],
   taxNumber: [
-    { required: true, message: '请输入纳税人识别号', trigger: 'blur' }
+    { required: true, message: '请输入纳税人识别号', trigger: 'blur' },
+    { pattern: /^[0-9A-Z]{15}$|^[0-9A-Z]{17}$|^[0-9A-Z]{18}$|^[0-9A-Z]{20}$/, message: '纳税人识别号格式不正确（应为15位、17位、18位或20位数字和大写字母组合）', trigger: 'blur' }
+  ],
+  bankName: [
+    { min: 2, max: 50, message: '开户行名称长度应在2-50个字符之间', trigger: 'blur' },
+    { pattern: /^[\u4e00-\u9fa5a-zA-Z0-9\(\)\（\）\s]+$/, message: '开户行名称只能包含中文、英文、数字、括号和空格', trigger: 'blur' }
+  ],
+  bankAccount: [
+    { pattern: /^[0-9]{10,30}$/, message: '银行账号应为10-30位数字', trigger: 'blur' }
+  ],
+  address: [
+    { min: 5, max: 200, message: '注册地址长度应在5-200个字符之间', trigger: 'blur' },
+    { pattern: /^[\u4e00-\u9fa5a-zA-Z0-9\-\#\s\(\)\（\）\,\，\.\。\号]+$/, message: '注册地址格式不正确', trigger: 'blur' }
+  ],
+  phone: [
+    { pattern: /^(0\d{2,3}-?\d{7,8})|(1[3456789]\d{9})$/, message: '请输入正确的电话号码格式（固话格式：0xx-xxxxxxxx，手机格式：1xxxxxxxxx）', trigger: 'blur' }
   ],
   amount: [
-    { required: true, message: '请输入发票金额', trigger: 'blur' }
+    { required: true, message: '请输入发票金额', trigger: 'blur' },
+    { type: 'number', min: 0.01, message: '发票金额必须大于0', trigger: 'blur' },
+    { type: 'number', max: 99999999.99, message: '发票金额不能超过99,999,999.99元', trigger: 'blur' }
+  ],
+  remark: [
+    { max: 500, message: '备注信息不能超过500个字符', trigger: 'blur' }
   ]
+})
+
+// 动态校验规则 - 专用发票需要额外的必填项
+const getDynamicRules = computed(() => {
+  const dynamicRules = { ...rules }
+  
+  if (invoiceForm.type === 'VAT_SPECIAL') {
+    // 专用发票需要开户行、银行账号、注册地址、注册电话为必填项
+    dynamicRules.bankName = [
+      { required: true, message: '开具专用发票时开户行为必填项', trigger: 'blur' },
+      ...dynamicRules.bankName
+    ]
+    dynamicRules.bankAccount = [
+      { required: true, message: '开具专用发票时银行账号为必填项', trigger: 'blur' },
+      ...dynamicRules.bankAccount
+    ]
+    dynamicRules.address = [
+      { required: true, message: '开具专用发票时注册地址为必填项', trigger: 'blur' },
+      ...dynamicRules.address
+    ]
+    dynamicRules.phone = [
+      { required: true, message: '开具专用发票时注册电话为必填项', trigger: 'blur' },
+      ...dynamicRules.phone
+    ]
+  }
+  
+  return dynamicRules
 })
 
 // 根据阶段获取状态
@@ -414,5 +486,13 @@ onMounted(async () => {
 
 :deep(.el-form-item) {
   margin-bottom: 22px;
+}
+
+.form-tip {
+  margin-top: 8px;
+}
+
+.form-tip .el-alert {
+  margin-bottom: 0;
 }
 </style> 
