@@ -836,27 +836,27 @@ VALUES (35, '字典管理', NULL, NULL, 'menu', 0, 6, 'Grid');
 INSERT INTO `t_permission`
 VALUES (36, '字典类型', NULL, '/dashboard/dict/type', 'menu', 35, 1, 'Postcard');
 INSERT INTO `t_permission`
-VALUES (37, '字典类型-列表', 'dictype:list', NULL, 'button', 36, NULL, NULL);
+VALUES (37, '字典类型-列表', 'dict/type:list', NULL, 'button', 36, NULL, NULL);
 INSERT INTO `t_permission`
-VALUES (38, '字典类型-录入', 'dictype:add', NULL, 'button', 36, NULL, NULL);
+VALUES (38, '字典类型-录入', 'dict/type:add', NULL, 'button', 36, NULL, NULL);
 INSERT INTO `t_permission`
-VALUES (39, '字典类型-编辑', 'dictype:edit', NULL, 'button', 36, NULL, NULL);
+VALUES (39, '字典类型-编辑', 'dict/type:edit', NULL, 'button', 36, NULL, NULL);
 INSERT INTO `t_permission`
-VALUES (40, '字典类型-查看', 'dictype:view', NULL, 'button', 36, NULL, NULL);
+VALUES (40, '字典类型-查看', 'dict/type:view', NULL, 'button', 36, NULL, NULL);
 INSERT INTO `t_permission`
-VALUES (41, '字典类型-删除', 'dictype:delete', NULL, 'button', 36, NULL, NULL);
+VALUES (41, '字典类型-删除', 'dict/type:delete', NULL, 'button', 36, NULL, NULL);
 INSERT INTO `t_permission`
 VALUES (42, '字典数据', '', '/dashboard/dict/value', 'menu', 35, 2, 'DataAnalysis');
 INSERT INTO `t_permission`
-VALUES (43, '字典数据-列表', 'dicvalue:list', NULL, 'button', 42, NULL, NULL);
+VALUES (43, '字典数据-列表', 'dict/value:list', NULL, 'button', 42, NULL, NULL);
 INSERT INTO `t_permission`
-VALUES (44, '字典数据-录入', 'dicvalue:add', NULL, 'button', 42, NULL, NULL);
+VALUES (44, '字典数据-录入', 'dict/value:add', NULL, 'button', 42, NULL, NULL);
 INSERT INTO `t_permission`
-VALUES (45, '字典数据-编辑', 'dicvalue:edit', NULL, 'button', 42, NULL, NULL);
+VALUES (45, '字典数据-编辑', 'dict/value:edit', NULL, 'button', 42, NULL, NULL);
 INSERT INTO `t_permission`
-VALUES (46, '字典数据-查看', 'dicvalue:view', NULL, 'button', 42, NULL, NULL);
+VALUES (46, '字典数据-查看', 'dict/value:view', NULL, 'button', 42, NULL, NULL);
 INSERT INTO `t_permission`
-VALUES (47, '字典数据-删除', 'dicvalue:delete', NULL, 'button', 42, NULL, NULL);
+VALUES (47, '字典数据-删除', 'dict/value:delete', NULL, 'button', 42, NULL, NULL);
 INSERT INTO `t_permission`
 VALUES (48, '用户管理', NULL, NULL, 'menu', 0, 7, 'Stamp');
 INSERT INTO `t_permission`
