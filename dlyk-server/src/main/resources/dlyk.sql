@@ -605,8 +605,7 @@ CREATE TABLE `t_dic_value`
     `order`      int                                                          NULL DEFAULT NULL COMMENT '字典值排序',
     `remark`     varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_dic_value_ibfk_1` (`type_code` ASC) USING BTREE,
-    CONSTRAINT `t_dic_value_ibfk_1` FOREIGN KEY (`type_code`) REFERENCES `t_dic_type` (`type_code`) ON DELETE RESTRICT ON UPDATE CASCADE
+    INDEX `t_dic_value_ibfk_1` (`type_code` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 66
   CHARACTER SET = utf8mb3
@@ -1745,7 +1744,7 @@ VALUES ('NIO-ES6-2023', '蔚来 ES6', '电动SUV', '2023款 100kWh 首发纪念�
 INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
 VALUES ('PORSCHE-911-2023', '保时捷 911', '跑车', '2023款 Carrera 4S', 1458000.00, 8, 3, '上架', '2023-05-14 09:00:00', '2023-05-14 09:00:00');
 
-INS-- ----------------------------
+-- ----------------------------
 -- Table structure for t_product_category
 -- ----------------------------
 DROP TABLE IF EXISTS `t_product_category`;
