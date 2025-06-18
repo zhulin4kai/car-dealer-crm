@@ -4,13 +4,13 @@
     <el-card class="search-card">
       <el-form :inline="true" :model="searchForm" class="demo-form-inline">
         <el-form-item label="交易编号">
-          <el-input v-model="searchForm.tranNo" @keyup.enter="handleSearch" placeholder="请输入交易编号" clearable />
+          <el-input v-model="searchForm.tranNo" @keyup.enter="handleSearch" placeholder="请输入交易编号" clearable style="width: 200px;" />
         </el-form-item>
         <el-form-item label="客户名称">
-          <el-input v-model="searchForm.customerName" @keyup.enter="handleSearch" placeholder="请输入客户名称" clearable />
+          <el-input v-model="searchForm.customerName" @keyup.enter="handleSearch" placeholder="请输入客户名称" clearable style="width: 200px;" />
         </el-form-item>
-        <el-form-item label="交易状态" style="width: 200px;">
-          <el-select v-model="searchForm.stage" @keyup.enter="handleSearch" placeholder="请选择状态" clearable>
+        <el-form-item label="交易状态">
+          <el-select v-model="searchForm.stage" @keyup.enter="handleSearch" placeholder="请选择状态" clearable style="width: 200px;">
             <el-option label="待报价" value="41" />
             <el-option label="待审批" value="42" />
             <el-option label="已审批" value="43" />
@@ -20,7 +20,6 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
-          <!--<el-button @click="resetForm">重置</el-button>-->
           <el-button type="success" @click="handleAdd">新增交易</el-button>
         </el-form-item>
       </el-form>
@@ -75,9 +74,9 @@
             v-if="scope.row.stage === 'PAYMENT'"
             >收款</el-button>
           </template>
-        </el-table-column>
-      </el-table>
+        </el-table-column>      </el-table>
     </el-card>
+    
     <!-- 分页 -->
     <el-pagination
         background
@@ -88,13 +87,127 @@
         @next-click="handleCurrentChange"
         @current-change="handleCurrentChange"
     />
+
+    <!-- 交易编辑Dialog -->
+    <el-dialog 
+      v-model="dialogVisible" 
+      :title="isEdit ? '编辑交易' : '新增交易'"
+      width="800px"
+      :before-close="handleDialogClose"
+    >
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-width="120px"
+        class="tran-form"
+      >
+        <el-form-item label="客户名称" prop="customerId">
+          <el-select
+            v-model="form.customerId"
+            filterable
+            placeholder="请选择客户"
+            style="width: 100%"
+            @change="onCustomerChange"
+          >
+            <el-option
+              v-for="customer in customerOptions"
+              :key="customer.customerId"
+              :label="customer.customerName"
+              :value="customer.customerId"
+            />
+          </el-select>
+        </el-form-item>
+
+        <!-- 产品选择区域 -->
+        <div class="product-section">
+          <div 
+            v-for="(product, index) in form.products" 
+            :key="index" 
+            class="product-item"
+          >
+            <el-form-item 
+              :label="index === 0 ? '产品选择' : ''" 
+              :prop="`products.${index}.productId`"
+              :rules="{ required: true, message: '请选择产品', trigger: 'change' }"
+            >
+              <div class="product-row">
+                <el-select
+                  v-model="product.productId"
+                  filterable
+                  placeholder="请选择产品"
+                  style="width: 60%; margin-right: 10px;"
+                  @change="onProductChange(index, $event)"
+                >
+                  <el-option
+                    v-for="item in productOptions.list"
+                    :key="item.id"
+                    :label="`${item.name} (¥${item.price})`"
+                    :value="item.id"
+                  />
+                </el-select>
+                
+                <el-input-number
+                  v-model="product.quantity"
+                  :min="1"
+                  :max="999"
+                  placeholder="数量"
+                  style="width: 25%; margin-right: 10px;"
+                />
+                
+                <el-button 
+                  v-if="form.products.length > 1"
+                  type="danger" 
+                  size="small" 
+                  @click="removeProduct(index)"
+                  style="width: 10%;"
+                >
+                  删除
+                </el-button>
+              </div>
+            </el-form-item>
+          </div>
+          
+          <el-form-item>
+            <el-button type="primary" plain @click="addProduct">追加商品</el-button>
+          </el-form-item>
+        </div>
+
+        <el-form-item label="交易描述" prop="description">
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            rows="4"
+            placeholder="请输入交易描述"
+          />
+        </el-form-item>
+
+        <el-form-item label="预计交付日期" prop="expectedDeliveryDate">
+          <el-date-picker
+            v-model="form.expectedDeliveryDate"
+            type="date"
+            placeholder="选择日期"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="handleDialogClose">取消</el-button>
+          <el-button type="primary" @click="submitForm">保存</el-button>
+        </div>
+      </template>
+    </el-dialog>
     
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
-import { getTranList, updateTran } from '../api/tran'
+import { getTranList, updateTran, createTran, getTranDetail, getTranProducts } from '../api/tran'
+import { getProductList } from '../api/product'
+import { getCustomerOptions } from '../api/customer'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 
@@ -105,11 +218,47 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
+// Dialog相关
+const dialogVisible = ref(false)
+const isEdit = ref(false)
+const formRef = ref()
+const productOptions = reactive({
+  list: []
+})
+const customerOptions = ref([])
+
 const searchForm = reactive({
   tranNo: '',
   customerId: '',
   customerName: '',
   stage: ''
+})
+
+// 表单数据
+const form = reactive({
+  id: null, // 添加id字段用于编辑
+  customerId: null,
+  customerName: '',
+  amount: 0,
+  products: [
+    {
+      productId: null,
+      quantity: 1,
+      price: 0
+    }
+  ],
+  description: '',
+  expectedDeliveryDate: ''
+})
+
+// 表单验证规则
+const rules = reactive({
+  customerId: [
+    { required: true, message: '请选择客户', trigger: 'change' }
+  ],
+  expectedDeliveryDate: [
+    { required: true, message: '请选择预计交付日期', trigger: 'change' }
+  ]
 })
 
 // 状态映射
@@ -133,8 +282,11 @@ const fetchData = async () => {
       size: pageSize.value,
       ...searchForm
     }
-    params.status = parseInt(params.status)
-    console.log(params)
+    // 只有当searchForm.stage有值时才转换为数字
+    if (params.stage) {
+      params.stage = parseInt(params.stage)
+    }
+    console.log('请求参数:', params)
     const res = await getTranList(params)
     console.log('获取交易列表:', res.data.data.list)
     if (res.data.code === 200) {
@@ -202,7 +354,193 @@ const handlePay = async (row) => {
 
 // 新增交易
 const handleAdd = () => {
-  router.push('/dashboard/tran/add')
+  console.log('点击新增交易按钮')
+  isEdit.value = false
+  resetForm()
+  dialogVisible.value = true
+  console.log('dialogVisible设置为:', dialogVisible.value)
+  loadCustomers()
+  loadProducts()
+}
+
+// 编辑交易
+const handleEdit = (row) => {
+  isEdit.value = true
+  resetForm()
+  dialogVisible.value = true
+  loadCustomers()
+  loadProducts()
+  // 存储当前编辑的交易ID
+  form.id = row.id
+  setTimeout(() => {
+    fetchTranDetail(row.id)
+  }, 100)
+}
+
+// 重置表单
+const resetForm = () => {
+  form.id = null
+  form.customerId = null
+  form.customerName = ''
+  form.amount = 0
+  form.products = [{
+    productId: null,
+    quantity: 1,
+    price: 0
+  }]
+  form.description = ''
+  form.expectedDeliveryDate = ''
+}
+
+// 关闭Dialog
+const handleDialogClose = () => {
+  dialogVisible.value = false
+  resetForm()
+}
+
+// 添加产品
+const addProduct = () => {
+  form.products.push({
+    productId: null,
+    quantity: 1,
+    price: 0
+  })
+}
+
+// 删除产品
+const removeProduct = (index) => {
+  if (form.products.length > 1) {
+    form.products.splice(index, 1)
+  }
+}
+
+// 客户选择变化时更新客户名称
+const onCustomerChange = (customerId) => {
+  const selectedCustomer = customerOptions.value.find(c => c.customerId === customerId)
+  if (selectedCustomer) {
+    form.customerName = selectedCustomer.customerName
+  }
+}
+
+// 产品选择变化时更新价格
+const onProductChange = (index, productId) => {
+  const selectedProduct = productOptions.list.find(p => p.id === productId)
+  if (selectedProduct) {
+    form.products[index].price = selectedProduct.price
+  }
+}
+
+// 加载客户选项
+const loadCustomers = async () => {
+  try {
+    const res = await getCustomerOptions()
+    if (res.data.code === 200) {
+      customerOptions.value = res.data.data
+      console.log("获取客户选项：", customerOptions.value)
+    }
+  } catch (error) {
+    ElMessage.error('加载客户列表失败')
+  }
+}
+
+// 加载产品列表
+const loadProducts = async () => {
+  try {
+    const res = await getProductList({
+      page: 1,
+      size: 1000
+    })
+    if (res.data.code === 200) {
+      productOptions.list = res.data.data.list
+      console.log("获取产品列表：", productOptions.list)
+    }
+  } catch (error) {
+    ElMessage.error('加载产品列表失败')
+  }
+}
+
+// 获取交易详情
+const fetchTranDetail = async (id) => {
+  try {
+    const res = await getTranDetail(id)
+    if (res.data.code === 200) {
+      const data = res.data.data
+      form.customerId = data.customerId
+      form.customerName = data.customerName || ''
+      form.amount = data.money || data.amount || 0
+      form.description = data.description || ''
+      
+      if (data.expectedDate) {
+        form.expectedDeliveryDate = new Date(data.expectedDate)
+      }
+      
+      // 获取产品详情
+      const productRes = await getTranProducts(id)
+      if (productRes.data.code === 200 && productRes.data.data.length > 0) {
+        form.products = productRes.data.data.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price
+        }))
+      }
+    } else {
+      ElMessage.error(res.data.msg || '获取交易详情失败')
+    }
+  } catch (error) {
+    console.error('获取交易详情失败:', error)
+    ElMessage.error('获取交易详情失败')
+  }
+}
+
+// 提交表单
+const submitForm = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        // 验证产品选择
+        const hasEmptyProduct = form.products.some(p => !p.productId)
+        if (hasEmptyProduct) {
+          ElMessage.error('请选择所有产品')
+          return
+        }
+          // 格式化数据
+        const formData = {
+          id: isEdit.value ? form.id : undefined,
+          customerId: form.customerId,
+          customerName: form.customerName,
+          amount: form.amount,
+          products: form.products.map(p => ({
+            productId: p.productId,
+            quantity: p.quantity,
+            price: p.price
+          })),
+          description: form.description,
+          expectedDeliveryDate: form.expectedDeliveryDate ? 
+            new Date(form.expectedDeliveryDate).toISOString().split('T')[0] + ' 00:00:00' : null
+        }
+          console.log('提交数据:', formData)
+        
+        let res
+        if (isEdit.value) {
+          res = await updateTran(formData)
+        } else {
+          res = await createTran(formData)
+        }
+        if (res.data.code === 200) {
+          ElMessage.success('保存成功')
+          dialogVisible.value = false
+          resetForm()
+          fetchData()
+        } else {
+          ElMessage.error(res.data.msg || '保存失败')
+        }
+      } catch (error) {
+        console.error('保存失败:', error)
+        ElMessage.error('保存失败')
+      }
+    }
+  })
 }
 
 // 查看详情
@@ -210,11 +548,6 @@ const handleView = (row) => {
   console.log('查看详情，row数据:', row)
   console.log('跳转到详情页面，ID:', row.id)
   router.push(`/dashboard/tran/${row.id}`)
-}
-
-// 编辑交易
-const handleEdit = (row) => {
-  router.push(`/dashboard/tran/edit/${row.id}`)
 }
 
 // 审批交易
@@ -250,6 +583,23 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.demo-form-inline {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.demo-form-inline .el-form-item {
+  margin-right: 15px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.demo-form-inline .el-form-item:last-child {
+  margin-right: 0;
+  margin-left: 0;
+}
+
 .table-card {
   margin-bottom: 20px;
 }
@@ -262,7 +612,58 @@ onMounted(() => {
   margin-top: 12px;
 }
 
+.product-section {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: #fafafa;
+}
+
+.product-item {
+  margin-bottom: 10px;
+}
+
+.product-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.tran-form {
+  margin-top: 20px;
+}
+
+.dialog-footer {
+  text-align: right;
+}
+
 :deep(.el-table) {
   width: 100% !important;
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 22px;
+  width: 100%;
+}
+
+:deep(.demo-form-inline .el-form-item) {
+  margin-bottom: 0 !important;
+  width: auto !important;
+}
+
+:deep(.demo-form-inline .el-form-item__label) {
+  white-space: nowrap;
+}
+
+:deep(.demo-form-inline .el-form-item__content) {
+  flex-shrink: 0;
+}
+
+:deep(.el-select),
+:deep(.el-input),
+:deep(.el-input-number),
+:deep(.el-date-picker) {
+  width: 100%;
 }
 </style> 

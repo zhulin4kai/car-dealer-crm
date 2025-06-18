@@ -1,6 +1,6 @@
 <template>
   <el-card class="action-card">
-    <el-button type="primary" class="btn" @click="batchExportExcel">批量导出(Excel)</el-button>
+    <el-button type="primary" class="btn" @click="batchExportExcel">全部导出(Excel)</el-button>
     <el-button type="success" class="btn" @click="chooseExportExcel">选择导出(Excel)</el-button>
   </el-card>
 
