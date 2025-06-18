@@ -4,40 +4,41 @@
     <el-button type="success" class="btn" @click="importExcel" v-hasPermission="'clue:import'">导入线索(Excel)</el-button>
     <el-button type="danger" class="btn" @click="handleBatchDelete" v-hasPermission="'clue:delete'">批量删除</el-button>
   </el-card>
-
-  <el-card class="table-card">
-    <el-table
+  <el-card class="table-card">    <el-table
         :data="clueList"
-        style="width: 100%"
-        @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="50"/>
+        style="width: 100%; min-width: 1400px;"
+        @selection-change="handleSelectionChange">      <el-table-column type="selection" width="55"/>
       <el-table-column 
         type="index" 
         label="序号" 
-        width="80" 
+        width="60" 
         :index="startIndex"
-      />
-      <el-table-column property="ownerDO.name" label="负责人" show-overflow-tooltip />
-      <el-table-column property="activityDO.name" label="所属活动" show-overflow-tooltip />
-      <el-table-column label="姓名" show-overflow-tooltip>
+        align="center"
+      />      <el-table-column property="ownerDO.name" label="负责人" width="90" show-overflow-tooltip />      
+      <el-table-column property="activityDO.name" label="所属活动" min-width="120" show-overflow-tooltip align="center"/>
+      <el-table-column label="姓名" width="90" show-overflow-tooltip>
         <template #default="scope">
-          <a href="javascript:" @click="view(scope.row.id)">{{ scope.row.fullName }}</a>
+          <a href="javascript:" @click="view(scope.row.id)" class="name-link">{{ scope.row.fullName }}</a>
         </template>
       </el-table-column>
-      <el-table-column property="appellationDO.typeValue" label="称呼" show-overflow-tooltip />
-      <el-table-column property="phone" label="手机" show-overflow-tooltip />
-      <el-table-column property="weixin" label="微信" show-overflow-tooltip />
-      <el-table-column property="needLoanDO.typeValue" label="是否贷款" show-overflow-tooltip />
-      <el-table-column property="intentionStateDO.typeValue" label="意向状态" show-overflow-tooltip />
-      <el-table-column property="intentionProductDO.name" label="意向产品" show-overflow-tooltip />
-      <el-table-column label="线索状态">
+      <el-table-column property="appellationDO.typeValue" label="称呼" width="70" show-overflow-tooltip />
+      <el-table-column property="phone" label="手机" width="120" show-overflow-tooltip />
+      <el-table-column property="weixin" label="微信" width="110" show-overflow-tooltip />
+      <el-table-column property="needLoanDO.typeValue" label="是否贷款" width="90" show-overflow-tooltip />
+      <el-table-column property="intentionStateDO.typeValue" label="意向状态" width="90" show-overflow-tooltip />
+      <el-table-column property="intentionProductDO.name" label="意向产品" min-width="120" show-overflow-tooltip align="center" />
+      <el-table-column label="线索状态" width="90" align="center">
         <template #default="scope">
-          <span style="background: lightgoldenrodyellow" v-if="scope.row.state === -1"> {{ scope.row.stateDO.typeValue }} </span>
-          <span v-else> {{ scope.row.stateDO.typeValue }} </span>
+          <el-tag 
+            :type="scope.row.state === -1 ? 'warning' : 'info'" 
+            size="small">
+            {{ scope.row.stateDO.typeValue }}
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column property="sourceDO.typeValue" label="线索来源" show-overflow-tooltip />      <el-table-column property="nextContactTime" label="下次联系时间" show-overflow-tooltip />
-      <el-table-column label="操作" width="240" fixed="right">
+      <el-table-column property="sourceDO.typeValue" label="线索来源" width="90" show-overflow-tooltip align="center"/>
+      <el-table-column property="nextContactTime" label="下次联系时间" min-width="150" show-overflow-tooltip align="center"/>
+      <el-table-column label="操作" width="240" fixed="right" align="center">
         <template #default="scope">
           <div class="operation-buttons">
             <el-button size="small" type="primary" @click="view(scope.row.id)" v-hasPermission="'clue:view'">详情</el-button>
@@ -687,6 +688,7 @@ onMounted(() => {
 .action-card {
   margin-bottom: 20px;
 }
+
 .table-card {
   margin-bottom: 20px;
 }
@@ -694,6 +696,7 @@ onMounted(() => {
 .el-table {
   margin-top: 15px;
 }
+
 .fileTip {
   padding-top: 15px;
 }
@@ -704,9 +707,89 @@ onMounted(() => {
   gap: 10px;
 }
 
+.operation-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.operation-buttons .el-button {
+  margin: 0;
+  min-width: 52px;
+}
+
+.name-link {
+  color: #409eff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.name-link:hover {
+  color: #66b1ff;
+  text-decoration: underline;
+}
+
+/* 表格样式优化 */
+:deep(.el-table) {
+  border-radius: 6px;
+  overflow: hidden;
+  width: 100% !important;
+}
+
+:deep(.el-table__body-wrapper) {
+  overflow-x: auto;
+}
+
+:deep(.el-table th) {
+  background-color: #f8f9fa;
+  color: #303133;
+  font-weight: 600;
+  text-align: center;
+}
+
+:deep(.el-table td) {
+  border-bottom: 1px solid #ebeef5;
+}
+
+:deep(.el-table tr:hover > td) {
+  background-color: #f0f9ff;
+}
+
+:deep(.el-table .cell) {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 :deep(.el-dialog__body) {
   max-height: 60vh;
   overflow-y: auto;
 }
 
+/* 分页样式 */
+.el-pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 表格固定列阴影优化 */
+:deep(.el-table__fixed-right) {
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 响应式处理 */
+@media (max-width: 1200px) {
+  .operation-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .operation-buttons .el-button {
+    min-width: 50px;
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+}
 </style>

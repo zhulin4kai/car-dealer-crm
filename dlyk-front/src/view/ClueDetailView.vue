@@ -449,7 +449,7 @@ const clueRemarkSubmit = async () => {
 // 加载字典数据
 const loadDicValue = async (typeCode) => {
   try {
-    const resp = await getDictValueList(typeCode)
+    const resp = await getDictValueList({typeCode})
     if (resp.data.code === 200) {
       if (typeCode === 'noteWay') {
         noteWayOptions.value = resp.data.data.list
