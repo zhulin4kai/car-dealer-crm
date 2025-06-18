@@ -58,9 +58,15 @@
         @prev-click="toPage"
         @next-click="toPage"
         @current-change="toPage"/>
-  </p>
-  <!--导入线索Excel弹窗-->
-  <el-dialog v-model="importExcelDialogVisible" title="导入线索Excel" width="55%" center draggable>
+  </p>  <!--导入线索Excel弹窗-->
+  <el-dialog 
+    v-model="importExcelDialogVisible" 
+    title="导入线索Excel" 
+    width="55%" 
+    center 
+    draggable
+    :append-to-body="true"
+    :destroy-on-close="true">
     <el-upload
         ref="uploadRef"
         method="post"
@@ -98,9 +104,11 @@
   <el-dialog 
     v-model="clueDialogVisible" 
     :title="dialogTitle" 
-    width="80%" 
+    width="55%" 
     center 
     draggable
+    :append-to-body="true"
+    :destroy-on-close="true"
     @close="handleDialogClose">
     <el-form
         ref="clueRefForm"
@@ -309,6 +317,8 @@ import {
 import { getDictValueList } from "../api/dict.js";
 import { ElMessage, ElMessageBox } from 'element-plus';
 import router from '../router/router.js';
+import { getProductList } from '../api/product.js';
+import { getActivityList } from '../api/activity.js';
 
 // 原有的线索列表相关数据
 const clueList = ref([{
@@ -335,10 +345,11 @@ const dialogTitle = ref('录入线索');
 const clueRefForm = ref(null);
 const clueQuery = reactive({});
 
-// 下拉选项数据
-const ownerOptions = ref([{}]);
+// 加载动态数据
 const activityOptions = ref([{}]);
 const productOptions = ref([{}]);
+// 加载字典数据
+const ownerOptions = ref([{}]);
 const appellationOptions = ref([{}]);
 const needLoanOptions = ref([{}]);
 const intentionStateOptions = ref([{}]);
@@ -501,19 +512,19 @@ const del = (id) => {
 };
 
 // 新增的线索录入/编辑相关方法
-const addClue = () => {
+const addClue = async () => {
   dialogTitle.value = '录入线索';
   resetClueForm();
-  loadDictData();
+  await loadData();
   loadOwner();
   loadLoginUser();
   clueDialogVisible.value = true;
 };
 
-const edit = (id) => {
+const edit = async (id) => {
   dialogTitle.value = '编辑线索';
   resetClueForm();
-  loadDictData();
+  await loadData();
   loadOwner();
   loadClue(id);
   clueDialogVisible.value = true;
@@ -533,15 +544,35 @@ const handleDialogClose = () => {
 };
 
 // 加载字典数据
-const loadDictData = () => {
+const loadData = () => {
   loadDicValue('appellation');
   loadDicValue('needLoan');
   loadDicValue('intentionState');
   loadDicValue('clueState');
   loadDicValue('source');
-  loadDicValue('activity');
-  loadDicValue('product');
+  loadActivityAndProduct();
 };
+
+const loadActivityAndProduct = async () => {
+  const param = {
+    startTime: '',
+    endTime: '',
+  }
+  const activityRes = await getActivityList(param);
+  if (activityRes.data.code === 200) {
+    activityOptions.value = activityRes.data.data.list;
+  }
+  const productRes = await getProductList({
+      page: 1,
+      size: 100
+  })
+  if (productRes.data.code === 200) {
+    productOptions.value = productRes.data.data.list;
+  }
+
+  console.log(activityOptions.value);
+  console.log(productOptions.value);
+}
 
 const loadDicValue = async (typeCode) => {
   console.log("加载字典数据：" + typeCode);
@@ -549,19 +580,19 @@ const loadDicValue = async (typeCode) => {
   await getDictValueList({typeCode}).then(resp => {
     if (resp.data.code === 200) {
       if (typeCode === 'appellation') {
-        appellationOptions.value = resp.data.data;
+        appellationOptions.value = resp.data.data.list;
       } else if (typeCode === 'needLoan') {
-        needLoanOptions.value = resp.data.data;
+        needLoanOptions.value = resp.data.data.list;
       } else if (typeCode === 'intentionState') {
-        intentionStateOptions.value = resp.data.data;
+        intentionStateOptions.value = resp.data.data.list;
       } else if (typeCode === 'clueState') {
-        clueStateOptions.value = resp.data.data;
+        clueStateOptions.value = resp.data.data.list;
       } else if (typeCode === 'source') {
-        sourceOptions.value = resp.data.data;
+        sourceOptions.value = resp.data.data.list;
       } else if (typeCode === 'activity') {
-        activityOptions.value = resp.data.data;
+        activityOptions.value = resp.data.data.list;
       } else if (typeCode === 'product') {
-        productOptions.value = resp.data.data;
+        productOptions.value = resp.data.data.list;
       }
     }
   });
@@ -627,7 +658,8 @@ const addClueSubmit = () => {
           }
         });
       } else {
-        addClueAPI(formData).then((resp) => { //获取ajax异步请求后的结果
+        addClueAPI(formData).then((resp) => {
+          console.log(formData) //获取ajax异步请求后的结果
           if (resp.data.code === 200) {
             //录入成功，提示一下
             messageTip("录入成功", "success");
