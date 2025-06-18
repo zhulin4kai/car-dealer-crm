@@ -8,16 +8,14 @@
         </el-form-item>
         <el-form-item label="客户名称">
           <el-input v-model="searchForm.customerName" @keyup.enter="handleSearch" placeholder="请输入客户名称" clearable style="width: 200px;" />
-        </el-form-item>
-        <el-form-item label="交易状态">
+        </el-form-item>        <el-form-item label="交易状态">
           <el-select v-model="searchForm.stage" @keyup.enter="handleSearch" placeholder="请选择状态" clearable style="width: 200px;">
             <el-option label="待报价" value="41" />
             <el-option label="待审批" value="42" />
             <el-option label="已审批" value="43" />
-            <el-option label="待收款" value="45" />
             <el-option label="已完成" value="46" />
           </el-select>
-        </el-form-item>        <el-form-item>
+        </el-form-item><el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button type="success" @click="handleAdd">新增交易</el-button>
           <el-button type="danger" @click="handleBatchDelete" :disabled="selectedIds.length === 0">批量删除</el-button>
@@ -66,17 +64,11 @@
                 type="success" 
                 @click="handleApprove(scope.row)"
                 v-if="scope.row.stage === 'PENDING'"
-              >审批</el-button>
-              <el-button 
+              >审批</el-button>              <el-button 
                 type="warning" 
                 @click="handleInvoice(scope.row)"
                 v-if="scope.row.stage === 'APPROVED'"
               >开票</el-button>
-              <el-button
-                type="danger"
-                @click="handlePay(scope.row)"
-                v-if="scope.row.stage === 'PAYMENT'"
-              >收款</el-button>
               <el-button 
                 type="danger" 
                 @click="handleDelete(scope.row.id)"
@@ -277,7 +269,6 @@ const statusMap = {
   'QUOTATION': { type: 'info', text: '待报价' },
   'PENDING': { type: 'warning', text: '待审批' },
   'APPROVED': { type: 'success', text: '已审批' },
-  'PAYMENT': { type: 'warning', text: '待收款' },
   'COMPLETED': { type: 'success', text: '已完成' }
 }
 
@@ -327,7 +318,6 @@ const getStageStatus = (stage) => {
     41: 'QUOTATION', // 待报价
     42: 'PENDING',   // 待审批
     43: 'APPROVED',  // 已审批
-    45: 'PAYMENT',   // 待收款
     46: 'COMPLETED'  // 已完成
   }
   return stageMap[stage] || 'QUOTATION'
@@ -337,30 +327,6 @@ const getStageStatus = (stage) => {
 const handleSearch = () => {
   currentPage.value = 1
   fetchData()
-}
-
-// // 重置表单
-// const resetForm = () => {
-//   Object.keys(searchForm).forEach(key => {
-//     searchForm[key] = ''
-//   })
-//   handleSearch()
-// }
-
-// 收款
-const handlePay = async (row) => {
-  // 此功能只是确认已经收款，所以只要更改 stage 状态即可
-  const params = {
-    id: row.id,
-    stage: 46 // 已完成
-  }
-  const res = await updateTran(params)
-  if (res.data.code === 200) {
-    ElMessage.success('收款成功')
-    fetchData()
-  } else {
-    ElMessage.error(res.data.msg || '收款失败')
-  }
 }
 
 // 表格选择变化

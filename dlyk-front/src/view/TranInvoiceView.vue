@@ -190,7 +190,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getTranDetail, getTranProducts, createInvoice, getTranInvoiceList, updateInvoiceStatus } from '../api/tran'
+import { getTranDetail, getTranProducts, createInvoice, getTranInvoiceList, updateInvoiceStatus, updateTran } from '../api/tran'
 
 const route = useRoute()
 const router = useRouter()
@@ -293,7 +293,6 @@ const getStageStatus = (stage) => {
     41: 'QUOTATION', // 待报价
     42: 'PENDING',   // 待审批
     43: 'APPROVED',  // 已审批
-    45: 'PAYMENT',   // 待收款
     46: 'COMPLETED'  // 已完成
   }
   return stageMap[stage] || 'QUOTATION'
@@ -406,15 +405,27 @@ const submitForm = async (formEl) => {
 // 标记发票为已开具
 const markAsIssued = async (invoice) => {
   try {
-    const res = await updateInvoiceStatus(invoice.id, 'ISSUED')
-    if (res.data.code === 200) {
-      ElMessage.success('发票状态更新成功')
-      // 重新获取发票列表
-      await fetchInvoiceList()
-      // 返回交易列表
-      goBack()
+    // 更新发票状态为已开具
+    const invoiceRes = await updateInvoiceStatus(invoice.id, 'ISSUED')
+    if (invoiceRes.data.code === 200) {
+      // 同时更新交易状态为已完成（stage: 46）
+      const tranRes = await updateTran({
+        id: parseInt(route.params.id),
+        stage: 46 // 已完成
+      })
+      
+      if (tranRes.data.code === 200) {
+        ElMessage.success('开票完成，交易状态已更新为已完成')
+        // 重新获取发票列表
+        await fetchInvoiceList()
+        // 返回交易列表
+        goBack()
+      } else {
+        ElMessage.warning('发票状态更新成功，但交易状态更新失败')
+        await fetchInvoiceList()
+      }
     } else {
-      ElMessage.error(res.data.msg || '发票状态更新失败')
+      ElMessage.error(invoiceRes.data.msg || '发票状态更新失败')
     }
   } catch (error) {
     console.error('发票状态更新失败:', error)

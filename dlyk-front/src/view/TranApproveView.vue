@@ -116,7 +116,6 @@ const getStageStatus = (stage) => {
     41: 'QUOTATION', // 待报价
     42: 'PENDING',   // 待审批
     43: 'APPROVED',  // 已审批
-    45: 'PAYMENT',   // 待收款
     46: 'COMPLETED'  // 已完成
   }
   return stageMap[stage] || 'QUOTATION'
