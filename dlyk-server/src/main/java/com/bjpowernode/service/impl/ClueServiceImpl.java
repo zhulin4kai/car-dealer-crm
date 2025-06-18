@@ -96,6 +96,15 @@ public class ClueServiceImpl implements ClueService {
         tClue.setEditBy(loginUserId); //编辑人id
 
         return tClueMapper.updateByPrimaryKeySelective(tClue);
+    }    
+    
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public int delClueById(Integer id) {
+        if (id == null) {
+            return 0;
+        }
+        return tClueMapper.deleteByPrimaryKey(id);
     }
 
     @Transactional(rollbackFor = Exception.class)

@@ -68,12 +68,10 @@ public class ClueController {
         int update = clueService.updateClue(clueQuery);
 
         return update >= 1 ? R.OK() : R.FAIL();
-    }
-
-    @PreAuthorize(value = "hasAuthority('clue:delete')")
+    }    @PreAuthorize(value = "hasAuthority('clue:delete')")
     @DeleteMapping(value = "/api/clue/{id}")
     public R delClue(@PathVariable(value = "id") Integer id) {
-        int del = 1; //clueService.delClueById(id);
+        int del = clueService.delClueById(id);
         return del >= 1 ? R.OK() : R.FAIL();
     }
 

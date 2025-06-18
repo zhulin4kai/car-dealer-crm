@@ -17,9 +17,11 @@ public interface ClueService {
 
     int saveClue(ClueQuery clueQuery);
 
-    TClue getClueById(Integer id);
-
+    TClue getClueById(Integer id);    
+    
     int updateClue(ClueQuery clueQuery);
+    
+    int delClueById(Integer id);
 
     int batchDelClueByIds(List<Integer> ids);
 }
