@@ -256,8 +256,7 @@ VALUES
 (8, 8, 10, '市场经理，购买奔驰GLC，已交定金，等待审批', '2025-07-12 13:00:00', '2025-07-06 14:40:00', 3, NULL, NULL),
 (9, 9, 11, '公司CEO，购买奔驰E级，已签约，等待提车', '2025-07-15 10:00:00', '2025-07-08 11:30:00', 1, NULL, NULL),
 (10, 10, 12, '设计师，购买宝马3系，已试驾，考虑全款购车', '2025-07-18 16:00:00', '2025-07-10 12:15:00', 2, NULL, NULL),
-(11, 11, 13, '教师，购买丰田凯美瑞，已交定金，等待交付', '2025-07-20 09:30:00', '2025-07-12 10:00:00', 1, NULL, NULL),
-
+(11, 11, 13, '教师，购买丰田凯美瑞，已交定金，等待交付', '2025-07-20 09:30:00', '2025-07-12 10:00:00', 1, NULL, NULL);
 -- ----------------------------
 -- Table structure for t_customer_remark
 -- ----------------------------
@@ -1335,3 +1334,113 @@ CREATE TABLE `t_tran_approve`
   CHARACTER SET = utf8mb3
   COLLATE = utf8mb3_general_ci COMMENT = '交易审批表'
   ROW_FORMAT = DYNAMIC;
+
+create table t_user
+(
+    id                     int auto_increment comment '主键，自动增长，用户ID'
+        primary key,
+    login_act              varchar(32) null comment '登录账号',
+    login_pwd              varchar(64) null comment '登录密码',
+    name                   varchar(32) null comment '用户姓名',
+    phone                  varchar(18) null comment '用户手机',
+    email                  varchar(64) null comment '用户邮箱',
+    account_no_expired     int         null comment '账户是否没有过期，0已过期 1正常',
+    credentials_no_expired int         null comment '密码是否没有过期，0已过期 1正常',
+    account_no_locked      int         null comment '账号是否没有锁定，0已锁定 1正常',
+    account_enabled        int         null comment '账号是否启用，0禁用 1启用',
+    create_time            datetime    null comment '创建时间',
+    create_by              int         null comment '创建人',
+    edit_time              datetime    null comment '编辑时间',
+    edit_by                int         null comment '编辑人',
+    last_login_time        datetime    null comment '最近登录时间',
+    constraint email
+        unique (email),
+    constraint login_act
+        unique (login_act),
+    constraint phone
+        unique (phone)
+)ENGINE = InnoDB
+ AUTO_INCREMENT = 1
+ CHARACTER SET = utf8mb3
+ COLLATE = utf8mb3_general_ci COMMENT = '用户表'
+ ROW_FORMAT = DYNAMIC;
+
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (1, 'admin', '$2a$10$Nlhwhtd0BSCBK95CAifv7eWpCjHloPBMZ3Gaehcc56hRAV3DZALJO', '管理员', '13700000000', 'admin@qq.com', 1, 1, 1, 1, '2023-02-22 09:37:12', null, '2023-05-23 00:21:06', null, '2023-12-10 21:18:59');
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (2, 'yuyan', '$2a$10$ZzzAd0nDuUGfGSjJDnZIyOaW7mUZkFzsYgOqiF/b07po/BGxBFjJ.', '于嫣', 'null', 'yuyan@163.com', 1, 1, 1, 1, '2023-02-28 12:11:40', null, '2023-05-23 00:21:14', null, '2023-11-29 20:14:31');
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (3, 'zhangqi', '$2a$10$Q0qTW6QqkabTzFyoilViw..YdrVzZkSKe5RvLmjgPgW/IrcPkBoF.', '张琪', '1362362323', 'zhangqi@qq.com', 1, 1, 1, 1, '2023-03-02 11:37:34', null, '2023-05-23 00:21:02', null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (4, 'suwanting', '$2a$10$3bambNLTCAKtQn2OXPiHb.f0SzH.MucTiLi6GPT6nQrYpsxsdxaFi', '苏婉婷', null, 'suwanting@qq.com', 1, 1, 1, 1, '2023-04-03 15:04:54', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (5, 'wuxiaoxiao', '$2a$10$Lmk5wXYkZzQMFJEcXVZAZegIQhnAm6ONHpz09X/.gbOh5ze5fU6MW', '吴潇潇', null, 'wuxiaoxiao@qq.com', 1, 1, 1, 1, '2023-01-27 12:15:26', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (6, 'mengyan', '$2a$10$6zGT7CfeuJ/6jZPk1pAqcuiMYDnCJstrceThGD5DVVOA5XvOP/sQq', '孟岩', null, 'mengyan@163.com', 1, 1, 1, 1, '2023-03-19 10:17:28', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (7, 'yuanhuimin', '$2a$10$mbsloGtPV7cDwfAVYxuvLemQRWumZKrDxVZxg4fnbfaocnfZFlYuu', '袁慧敏', null, 'yuanhuimin@11.com', 1, 1, 1, 1, '2023-04-11 20:18:50', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (8, 'qinxuwen', '$2a$10$ir8uLlBrPMHRtGiu5Ajkv.UKcRacXWRen7zxelp9iUaco3WhGkJ36', '秦旭文', '13820000000', 'qinxuwen@163.com', 1, 1, 1, 1, '2023-03-19 21:11:37', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (9, 'chengjie', '$2a$10$jQR8yyF/ailGP/zW6G4JOOffzWOXhe02Rgw7MZLfxL.IGFdM3cjM2', '程杰', '13500000000', 'chengjie@qq.com', 1, 1, 1, 1, '2023-04-16 07:16:19', null, '2023-04-20 21:42:21', null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (10, 'zhouliang', '$2a$10$0yOGdkAcG8JLEcoEmmCnfO8Vp6rcqBnn30k6pGor5Z0.eLMyLEd7.', '周亮', '13800000008', 'zhouliang@163.com', 1, 1, 1, 1, '2023-03-18 13:13:45', null, '2023-06-06 00:06:31', null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (11, 'zhangwei', '$2a$10$BfOgsdSAZ9VYBOzv692BM.oWGPLktcqhhjU3AaWESkGNRcW484N7O', '张伟', null, 'zhangwei@qq.com', 1, 1, 1, 1, '2023-03-06 09:18:23', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (12, 'dengping', '$2a$10$hpN8orfqUFXb.WWbIoZBkOZrr6D8rdSbl/SWXsMQ0zEuqkldlkpW2', '邓萍', null, 'dengping@qq.com', 1, 1, 1, 1, '2023-02-19 20:10:58', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (13, 'zhangxing', '$2a$10$uBVDcCCJQvTfoFCjbjwrf.MhyczNNJfCn76jD61CsAgsUlXjXhxzG', '张欣', null, 'zhangxing@qq.com', 1, 1, 1, 1, '2023-03-17 12:12:11', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (14, 'zhangmeng', '$2a$10$MMHG2cQh4H4YFbdf48SnyO9IZ78F110x3.7IWGNExrgk2rFmhrd/u', '张萌', null, 'zhangmeng@qq.com', 1, 1, 1, 1, '2023-01-13 08:16:02', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (15, 'shixixiang', '$2a$10$zYwq/QfevFPAZxw4b2DkCeQvjVQ52AUU9c4aC0uS0wTJaRr75G74y', '石喜祥', null, 'shixixiang@qq.com', 1, 1, 1, 1, '2023-03-10 15:19:49', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (16, 'chengjiuming', '$2a$10$yNN5TcFkM4OqRsKGNM8CNeqAJhRYKQgXVFqbre5lQPicnIXT7THTu', '陈久明', null, 'chengjiuming@163.com', 1, 1, 1, 1, '2023-04-09 23:17:37', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (17, 'genghao', '$2a$10$rWHo.vUpJCbqWLGMkPj95O5FlhaQLzro.LY7pVQ/UnVVAdvjEAy0K', '耿浩', null, 'genghao@qq.com', 1, 1, 1, 1, '2023-03-19 12:10:22', null, '2023-04-10 21:42:21', null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (18, 'hanmingyang', '$2a$10$PRMdG7a8nFIN1A3TD584Xe2BZI7Y0mktDL7Wp5lF88E1D1iPijFc6', '韩明洋', null, 'hanmingyang@163.com', 1, 1, 1, 1, '2023-02-12 18:13:01', null, '2023-04-13 23:43:25', null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (19, 'xuyan', '$2a$10$S7MF2dOqFcoOJPqpEH2nu.Muhn2XC0BlBTZ5gAoL3axrQxdJEJNnK', '徐燕', null, 'xuyan@qq.com', 1, 1, 1, 1, '2023-03-29 13:16:15', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (20, 'chengjuan', '$2a$10$m1g5cxikApV05pR7Cx4cy.d4sT3efOl6UvDLvH27WzMjtpymQ5ANi', '程娟', null, 'chengjuan@qq.com', 1, 1, 1, 1, '2023-02-19 15:12:22', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (21, 'huangxiao', '$2a$10$R/RwQd5.3OxYpSZBLIn8DeeYYNF0vgWCrCR4tcyL.c/HtnuIfBRIK', '黄潇', null, 'huangxiao@qq.com', 1, 1, 1, 1, '2023-03-26 22:11:37', null, null, null, null);
+INSERT INTO dlyk.t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) VALUES (22, 'yangyuxin', '$2a$10$ucE/By6NLBb4tN5H3CUimOQ2eAtbjXFf2v77SJUPbHXRI9lTF97Ka', '杨雨欣', null, 'yangyuxin@163.com', 1, 1, 1, 1, '2023-04-13 18:14:59', null, null, null, null);
+
+create table t_user_role
+(
+    id      int auto_increment
+        primary key,
+    user_id int null,
+    role_id int null
+)ENGINE = InnoDB
+ AUTO_INCREMENT = 1
+ CHARACTER SET = utf8mb3
+ COLLATE = utf8mb3_general_ci COMMENT = '用户角色关系表'
+ ROW_FORMAT = DYNAMIC;
+
+create index t_user_role_ibfk_1
+    on t_user_role (user_id);
+
+create index t_user_role_ibfk_2
+    on t_user_role (role_id);
+
+INSERT INTO dlyk.t_user_role (id, user_id, role_id) VALUES (1, 1, 1);
+INSERT INTO dlyk.t_user_role (id, user_id, role_id) VALUES (2, 2, 2);
+INSERT INTO dlyk.t_user_role (id, user_id, role_id) VALUES (3, 3, 2);
+INSERT INTO dlyk.t_user_role (id, user_id, role_id) VALUES (4, 4, 3);
+INSERT INTO dlyk.t_user_role (id, user_id, role_id) VALUES (5, 5, 4);
+INSERT INTO dlyk.t_user_role (id, user_id, role_id) VALUES (6, 6, 5);
+
+create table t_tran_remark
+(
+    id           int auto_increment comment '主键，自动增长，交易备注ID'
+        primary key,
+    tran_id      int          null comment '交易ID',
+    note_way     int          null comment '跟踪方式',
+    note_content varchar(255) null comment '跟踪内容',
+    create_time  datetime     null comment '跟踪时间',
+    create_by    int          null comment '跟踪人',
+    edit_time    datetime     null comment '编辑时间',
+    edit_by      int          null comment '编辑人',
+    deleted      int          null comment '删除状态（0正常，1删除）'
+)ENGINE = InnoDB
+ AUTO_INCREMENT = 1
+ CHARACTER SET = utf8mb3
+ COLLATE = utf8mb3_general_ci COMMENT = '交易跟踪记录表'
+ ROW_FORMAT = DYNAMIC;
+
+create index t_tran_remark_ibfk_1
+    on t_tran_remark (tran_id);
+
+create index t_tran_remark_ibfk_2
+    on t_tran_remark (note_way);
+
+create index t_tran_remark_ibfk_3
+    on t_tran_remark (create_by);
+
+create index t_tran_remark_ibfk_4
+    on t_tran_remark (edit_by);
+
+
