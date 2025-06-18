@@ -26,8 +26,8 @@
         </el-table-column>
         <el-table-column label="操作" show-overflow-tooltip>
           <template #default="scope">
-            <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
         </el-table>
@@ -48,7 +48,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogType === 'add' ? '新增分类' : '编辑分类'"
-      width="50%"
+      width="30%"
     >
       <el-form :model="categoryForm" label-width="100px">
         <el-form-item label="分类名称">

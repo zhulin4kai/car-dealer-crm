@@ -68,7 +68,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogType === 'add' ? '新增促销' : '编辑促销'"
-      width="50%"
+      width="30%"
     >
       <el-form :model="promotionForm" label-width="100px">
         <el-form-item label="促销名称">
