@@ -88,4 +88,13 @@ public class ActivityServiceImpl implements ActivityService {
         }
         return tActivityMapper.batchDeleteByIds(ids);
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteActivity(Integer id) {
+        if (id == null) {
+            return 0;
+        }
+        return tActivityMapper.deleteByPrimaryKey(id);
+    }
 }

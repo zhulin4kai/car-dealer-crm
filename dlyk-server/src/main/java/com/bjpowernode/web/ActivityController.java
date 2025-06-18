@@ -62,4 +62,10 @@ public class ActivityController {
         int result = activityService.batchDeleteActivities(ids);
         return result > 0 ? R.OK() : R.FAIL("批量删除失败");
     }
+
+    @DeleteMapping(value = "/api/activity/{id}")
+    public R deleteActivity(@PathVariable(value = "id") Integer id) {
+        int result = activityService.deleteActivity(id);
+        return result > 0 ? R.OK() : R.FAIL("删除失败");
+    }
 }

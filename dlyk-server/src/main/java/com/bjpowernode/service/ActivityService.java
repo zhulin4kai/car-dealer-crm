@@ -21,4 +21,6 @@ public interface ActivityService {
     List<TActivity> getOngoingActivity();
 
     int batchDeleteActivities(List<Integer> ids);
+
+    int deleteActivity(Integer id);
 }
