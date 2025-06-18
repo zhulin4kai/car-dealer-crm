@@ -56,24 +56,11 @@ let router = createRouter({
                     path: 'activity/:id',
                     //路由路径所对应的页面
                     component : () => import('../view/ActivityDetailView.vue'),
-                },
-                {
+                },                {
                     //路由路径，子路由路径不能以斜杠开头
                     path: 'clue',
                     //路由路径所对应的页面
                     component : () => import('../view/ClueView.vue'),
-                },
-                {
-                    //路由路径，子路由路径不能以斜杠开头
-                    path: 'clue/add',
-                    //路由路径所对应的页面
-                    component : () => import('../view/ClueRecordView.vue'),
-                },
-                {
-                    //路由路径，子路由路径不能以斜杠开头，id是动态变量，这个叫动态路由
-                    path: 'clue/edit/:id',
-                    //路由路径所对应的页面
-                    component : () => import('../view/ClueRecordView.vue'),
                 },
                 {
                     //路由路径，子路由路径不能以斜杠开头，id是动态变量，这个叫动态路由

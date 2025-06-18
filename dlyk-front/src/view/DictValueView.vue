@@ -225,14 +225,6 @@ const handleSearch = async () => {
   }
 }
 
-// // 重置表单
-// const resetForm = async () => {
-//   searchForm.typeCode = ''
-//   searchForm.typeValue = ''
-//   await clearCache()
-//   await handleSearch()
-// }
-
 // 新增
 const handleAdd = () => {
   isEdit.value = false

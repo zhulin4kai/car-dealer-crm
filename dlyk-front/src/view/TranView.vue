@@ -136,6 +136,7 @@ const fetchData = async () => {
     params.status = parseInt(params.status)
     console.log(params)
     const res = await getTranList(params)
+    console.log('获取交易列表:', res.data.data.list)
     if (res.data.code === 200) {
       tableData.value = res.data.data.list.map(item => ({
         id: item.id,
