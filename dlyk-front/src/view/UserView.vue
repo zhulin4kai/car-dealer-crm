@@ -91,10 +91,8 @@
           <el-button type="primary" @click="userSubmit">提 交</el-button>
         </span>
       </template>
-    </el-dialog>
-
-    <!--用户详情的弹窗(对话框)-->
-    <el-dialog v-model="userDetailDialogVisible" title="用户详情" width="40%" center draggable>
+    </el-dialog>    <!--用户详情的弹窗(对话框)-->
+    <el-dialog v-model="userDetailDialogVisible" title="用户详情" width="20%" center draggable>
       <el-form :model="userDetail" label-width="120px">
         <el-form-item label="ID">
           <div class="detail">&nbsp;{{userDetail.id}}</div>
