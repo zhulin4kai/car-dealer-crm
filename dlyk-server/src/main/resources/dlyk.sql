@@ -70,13 +70,33 @@ CREATE TABLE `t_activity_remark`
 -- ----------------------------
 -- Records of t_activity_remark
 -- ----------------------------
-INSERT INTO `t_activity_remark`
-VALUES (1, 46, '1111111111111', '2023-05-17 14:07:48', 1, NULL, NULL, NULL),
-       (2, 1, '2312323123123', '2023-05-17 14:25:30', 1, '2023-11-08 14:21:42', 1, NULL),
-       (3, 2, '1231231', '2023-06-07 23:08:32', 1, NULL, NULL, NULL),
-       (4, 2, '23123', '2023-06-07 23:08:57', 1, NULL, NULL, NULL),
-       (5, 10, '恶趣味群二无群二群无', '2023-06-07 23:10:20', 1, NULL, NULL, NULL),
-       (6, 1, '12而且我撒', '2023-08-04 22:30:47', 1, NULL, NULL, NULL);
+INSERT INTO `t_activity_remark` (id, activity_id, note_content, create_time, create_by, edit_time, edit_by, deleted)
+VALUES 
+(1, 1, '活动场地已确认，位于市中心展览馆A区，面积5000平方米', '2025-03-02 10:30:00', 1, NULL, NULL, 0),
+(2, 1, '已联系15家汽车品牌参展，预计展示车辆超过80台', '2025-03-05 14:15:00', 1, '2025-03-08 09:20:00', 1, 0),
+(3, 1, '媒体宣传方案已制定，包括电视、网络、户外广告投放', '2025-03-08 16:45:00', 2, NULL, NULL, 0),
+(4, 2, '试驾路线规划完成，包含城市道路和高速公路体验段', '2025-03-22 11:20:00', 2, NULL, NULL, 0),
+(5, 2, '已培训专业试驾教练10名，确保客户安全体验', '2025-03-25 09:45:00', 3, '2025-03-28 15:30:00', 2, 0),
+(6, 3, '夏季优惠政策已获总部批准，最高优惠可达8万元', '2025-05-18 10:15:00', 1, NULL, NULL, 0),
+(7, 3, '金融方案已与银行谈妥，提供0息贷款和低首付方案', '2025-05-20 14:30:00', 3, NULL, NULL, 0),
+(8, 3, '活动期间增设临时展厅，扩大展示面积至8000平方米', '2025-05-22 16:20:00', 1, '2025-05-26 11:10:00', 1, 0),
+(9, 4, '新能源车型补贴政策解读材料已准备完毕', '2025-05-01 09:30:00', 3, NULL, NULL, 0),
+(10, 4, '充电桩体验区设置完成，可同时为20台车辆充电演示', '2025-05-05 13:45:00', 2, NULL, NULL, 0),
+(11, 4, '环保主题宣传册已印制10000份，准备现场发放', '2025-05-08 11:25:00', 3, '2025-05-12 14:50:00', 3, 0),
+(12, 5, '秋季购车节logo设计已完成，开始制作宣传物料', '2025-08-18 10:00:00', 2, NULL, NULL, 0),
+(13, 5, '合作商家优惠券已印制，包含餐饮、娱乐等配套服务', '2025-08-20 15:20:00', 1, NULL, NULL, 0),
+(14, 6, '库存车辆清单已整理完成，共计158台各类车型', '2025-11-03 09:15:00', 1, '2025-11-05 16:40:00', 1, 0),
+(15, 6, '大礼包内容确定：行车记录仪、车载香薰、保养券等', '2025-11-08 14:25:00', 2, NULL, NULL, 0),
+(16, 7, '跨年活动现场布置方案已设计，突出新年喜庆氛围', '2025-12-12 11:30:00', 3, NULL, NULL, 0),
+(17, 8, 'VIP客户名单已确认，共邀请50位高端客户参与', '2025-07-12 10:45:00', 2, '2025-07-16 13:20:00', 2, 0),
+(18, 8, '红酒品鉴环节已安排，提升活动档次和客户体验', '2025-07-15 16:10:00', 1, NULL, NULL, 0),
+(19, 9, '周年庆典节目单已确定，包含歌舞表演和抽奖环节', '2025-07-28 09:20:00', 1, NULL, NULL, 0),
+(20, 9, '豪礼清单：iPhone、平板电脑、品牌手表等，总价值20万', '2025-07-30 14:35:00', 3, '2025-08-02 10:15:00', 1, 0),
+(21, 10, '学生证验证流程已制定，确保优惠政策准确执行', '2025-06-03 11:40:00', 3, NULL, NULL, 0),
+(22, 10, '校园推广计划启动，已联系5所大学进行宣传', '2025-06-05 15:50:00', 2, NULL, NULL, 0),
+(23, 1, '活动首日参观人数达5000人次，超出预期', '2025-03-15 20:30:00', 1, NULL, NULL, 0),
+(24, 2, '试驾活动客户满意度达95%，获得良好口碑', '2025-04-15 17:20:00', 2, NULL, NULL, 0),
+(25, 3, '活动期间共成交车辆126台，销售额突破3000万', '2025-06-30 18:45:00', 1, NULL, NULL, 0);
 -- ----------------------------
 -- Table structure for t_clue
 -- ----------------------------
@@ -139,183 +159,6 @@ VALUES
 (8, 2, 19, '郑丽', 41, '13800000007', 'wx_zhengli', '258369147', 'zhengli@hotmail.com', 29, '市场经理', 380000.00, '杭州市西湖区文三路', 50, 47, 11, 6, 2, '想换一辆更大空间的SUV', '2025-06-22 13:20:00', '2025-06-13 16:30:00', 3, NULL, NULL),
 (9, 3, 22, '孙宇', 11, '13900000008', 'wx_sunyu', '369147258', 'sunyu@163.com', 45, '公司CEO', 800000.00, '重庆市渝中区解放碑', 49, 48, 10, 24, 33, '对高端豪华车感兴趣', '2025-06-20 11:00:00', '2025-06-10 10:45:00', 1, '2025-06-15 09:30:00', 3),
 (10, 1, 23, '吴佳', 20, '13700000009', 'wx_wujia', '159357246', 'wujia@qq.com', 32, '设计师', 290000.00, '西安市雁塔区高新路', 50, 46, 7, 10, 3, '想找一辆适合城市通勤的车', '2025-06-25 09:40:00', '2025-06-11 13:50:00', 2, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (7, 1, 46, '王杰', 18, '13700000000', '13700000000', '13700000000', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', 49, 46, 5, 24, 3, '近期在看车', '2023-04-27 10:33:47', '2023-04-12 15:17:52', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (8, 1, 47, '张峰', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', 49, 47, 8, 24, 33,
-        '通过打电话获取的线索', '2023-04-30 10:33:51', '2023-06-10 01:01:25', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (9, 2, 7, '张翔', 18, '13876903226', '13876903226', NULL, NULL, 26, NULL, 9.00, '天津和平', 49, 48, 10, 30, 44,
-        '有购车意向，需要跟踪', '2023-04-28 13:24:10', '2023-06-10 01:01:28', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (10, 1, 46, '王杰89890890', 18, '13700000000', '13700000000', '13700000000', 'wangjie@163.com', 32, '', 10.00,
-        '北京亦庄', 49, 46, 5, -1, 3, '近期在看车', '2023-04-27 10:33:47', '2023-04-12 15:17:52', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (11, 1, 47, '张峰', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', 49, 47, 8, 24, 33,
-        '通过打电话获取的线索', '2023-04-30 10:33:51', '2023-06-10 01:01:30', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (12, 2, 7, '张翔', 18, '13876903226', '13876903226', NULL, NULL, 26, NULL, 9.00, '天津和平', 49, 48, 10, 30, 44,
-        '有购车意向，需要跟踪', '2023-04-15 00:00:00', '2023-06-10 01:01:33', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (13, 1, 46, '王杰', 18, '13700000000', '13700000000', '13700000000', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', 49, 46, 5, -1, 3, '近期在看车', '2023-04-27 10:33:47', '2023-04-12 15:17:52', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (14, 1, 47, '张峰', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', 49, 47, 8, -1, 33,
-        '通过打电话获取的线索', '2023-04-30 10:33:51', '2023-06-10 01:01:36', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (15, 2, 7, '张翔', 18, '13876903226', '13876903226', NULL, NULL, 26, NULL, 9.00, '天津和平', 49, 48, 10, 30, 44,
-        '有购车意向，需要跟踪', '2023-04-15 00:00:00', '2023-06-10 01:01:38', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (16, 1, 46, '王杰', 18, '13700000000', '13700000000', '13700000000', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', 49, 46, 5, 24, 3, '近期在看车', '2023-04-27 10:33:47', '2023-04-12 15:17:52', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (17, 1, 47, '张峰', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', 49, 47, 8, -1, 33,
-        '通过打电话获取的线索', '2023-04-30 10:33:51', '2023-06-10 01:01:41', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (18, 2, 7, '张翔', 18, '13876903226', '13876903226', NULL, NULL, 26, NULL, 9.00, '天津和平', 49, 48, 10, 30, 44,
-        '有购车意向，需要跟踪', '2023-04-15 00:00:00', '2023-06-10 01:01:44', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (19, 1, 46, '王杰', 18, '13700000000', '13700000000', '13700000000', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', 49, 46, 5, -1, 3, '近期在看车', '2023-04-27 10:33:47', '2023-06-12 15:17:52', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (20, 1, 47, '张峰', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', 49, 47, 8, 24, 33,
-        '通过打电话获取的线索', '2023-04-30 10:33:51', '2023-06-10 01:01:46', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (21, 2, 7, '张翔', 18, '13876903226', '13876903226', NULL, NULL, 26, NULL, 9.00, '天津和平', 49, 48, 10, 30, 44,
-        '有购车意向，需要跟踪', '2023-04-15 00:00:00', '2023-06-10 01:01:46', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (22, 1, 46, '王杰', 18, '13700000000', '13700000000', '13700000000', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', 49, 46, 5, 24, 3, '近期在看车', '2023-04-27 10:33:47', '2023-04-12 15:17:52', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (23, 1, 47, '张峰', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', 49, 47, 8, -1, 33,
-        '通过打电话获取的线索', '2023-04-30 10:33:51', '2023-06-10 01:01:46', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (24, 2, 7, '张翔', 18, '13876903226', '13876903226', NULL, NULL, 26, NULL, 9.00, '天津和平', 49, 48, 10, 30, 44,
-        '有购车意向，需要跟踪', '2023-04-15 00:00:00', '2023-06-10 01:01:46', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (25, 1, 46, '王杰', 18, '13700000000', '13700000000', '13700000000', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', 49, 46, 5, 24, 3, '近期在看车', '2023-04-27 10:33:47', '2023-04-12 15:17:52', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (26, 1, 47, '张峰', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', 49, 47, 8, 24, 33,
-        '通过打电话获取的线索', '2023-04-30 10:33:51', '2023-06-10 01:01:46', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (27, 2, 7, '张翔', 18, '13876903226', '13876903226', NULL, NULL, 26, NULL, 9.00, '天津和平', 49, 48, 10, 30, 44,
-        '有购车意向，需要跟踪', '2023-04-15 00:00:00', '2023-06-10 01:01:46', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (28, 1, 46, '王杰', 18, '13700000000', '13700000000', '13700000000', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', 49, 46, 5, 24, 3, '近期在看车', '2023-04-27 10:33:47', '2023-06-12 15:17:52', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (29, 1, 47, '张峰', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', 49, 47, 8, 24, 33,
-        '通过打电话获取的线索', '2023-04-30 10:33:51', '2023-06-10 01:01:46', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (31, 3, 2, '213213', 20, '12312312', '12312312', '2312312', '12312312', 12, '341231', 2131231.00, '12312312', 50,
-        46, 7, 24, 44, 'asfeefsdewrewr', '2023-04-27 16:48:30', '2023-06-10 01:01:46', NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1109, 1, 46, '王杰', 18, '13700000000', '13700000000', '230989432', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-11-27 20:33:25', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1110, 1, 47, '张怡然', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 10:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1111, 2, 7, '张翔宇', 18, '13876903226', '13876903226', '1298094321', NULL, 26, NULL, 9.00, '天津和平', NULL,
-        NULL, NULL, NULL, NULL, '有购车意向，需要跟踪', '2023-11-15 10:30:00', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1112, 1, 46, '王世坤', 18, '13700000000', '13700000000', '209836613', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-12-27 09:20:21', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1113, 1, 47, '张珊珊', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 13:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1114, 1, 46, '王杰', 18, '13700000000', '13700000000', '230989432', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-11-27 20:33:25', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1115, 1, 47, '张怡然', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 10:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1116, 2, 7, '张翔宇', 18, '13876903226', '13876903226', '1298094321', NULL, 26, NULL, 9.00, '天津和平', NULL,
-        NULL, NULL, NULL, NULL, '有购车意向，需要跟踪', '2023-11-15 10:30:00', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1117, 1, 46, '王世坤', 18, '13700000000', '13700000000', '209836613', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-12-27 09:20:21', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1118, 1, 47, '张珊珊', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 13:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1119, 1, 46, '王杰', 18, '13700000000', '13700000000', '230989432', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-11-27 20:33:25', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1120, 1, 47, '张怡然', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 10:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1121, 2, 7, '张翔宇', 18, '13876903226', '13876903226', '1298094321', NULL, 26, NULL, 9.00, '天津和平', NULL,
-        NULL, NULL, NULL, NULL, '有购车意向，需要跟踪', '2023-11-15 10:30:00', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1122, 1, 46, '王世坤', 18, '13700000000', '13700000000', '209836613', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-12-27 09:20:21', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1123, 1, 47, '张珊珊', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 13:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1124, 1, 46, '王杰', 18, '13700000000', '13700000000', '230989432', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-11-27 20:33:25', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1125, 1, 47, '张怡然', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 10:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1126, 2, 7, '张翔宇', 18, '13876903226', '13876903226', '1298094321', NULL, 26, NULL, 9.00, '天津和平', NULL,
-        NULL, NULL, NULL, NULL, '有购车意向，需要跟踪', '2023-11-15 10:30:00', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1127, 1, 46, '王世坤', 18, '13700000000', '13700000000', '209836613', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-12-27 09:20:21', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1128, 1, 47, '张珊珊', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 13:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1129, 1, 46, '王杰', 18, '13700000000', '13700000000', '230989432', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-11-27 20:33:25', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1130, 1, 47, '张怡然', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 10:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1131, 2, 7, '张翔宇', 18, '13876903226', '13876903226', '1298094321', NULL, 26, NULL, 9.00, '天津和平', NULL,
-        NULL, NULL, NULL, NULL, '有购车意向，需要跟踪', '2023-11-15 10:30:00', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1132, 1, 46, '王世坤', 18, '13700000000', '13700000000', '209836613', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-12-27 09:20:21', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1133, 1, 47, '张珊珊', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 13:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1134, 1, 46, '王杰', 18, '13700000000', '13700000000', '230989432', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-11-27 20:33:25', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1135, 1, 47, '张怡然', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 10:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1136, 2, 7, '张翔宇', 18, '13876903226', '13876903226', '1298094321', NULL, 26, NULL, 9.00, '天津和平', NULL,
-        NULL, NULL, NULL, NULL, '有购车意向，需要跟踪', '2023-11-15 10:30:00', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1137, 1, 46, '王世坤', 18, '13700000000', '13700000000', '209836613', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-12-27 09:20:21', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1138, 1, 47, '张珊珊', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 13:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1139, 1, 46, '王杰', 18, '13700000000', '13700000000', '230989432', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-11-27 20:33:25', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1140, 1, 47, '张怡然', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 10:33:51', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1141, 2, 7, '张翔宇', 18, '13876903226', '13876903226', '1298094321', NULL, 26, NULL, 9.00, '天津和平', NULL,
-        NULL, NULL, NULL, NULL, '有购车意向，需要跟踪', '2023-11-15 10:30:00', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1142, 1, 46, '王世坤', 18, '13700000000', '13700000000', '209836613', 'wangjie@163.com', 32, '工程师', 10.00,
-        '北京亦庄', NULL, NULL, NULL, NULL, NULL, '近期在看车', '2023-12-27 09:20:21', NULL, NULL, NULL, NULL);
-INSERT INTO `t_clue`
-VALUES (1143, 1, 47, '张珊珊', 41, '13700000001', '13700000001', NULL, NULL, 28, NULL, 8.00, '河北廊坊', NULL, NULL,
-        NULL, NULL, NULL, '通过打电话获取的线索', '2023-11-30 13:33:51', NULL, NULL, NULL, NULL);
 
 -- ----------------------------
 -- Table structure for t_clue_remark
@@ -342,34 +185,41 @@ CREATE TABLE `t_clue_remark`
   CHARACTER SET = utf8mb3
   COLLATE = utf8mb3_general_ci COMMENT = '线索跟踪记录表'
   ROW_FORMAT = DYNAMIC;
-
 -- ----------------------------
 -- Records of t_clue_remark
 -- ----------------------------
-INSERT INTO `t_clue_remark`
-VALUES (5, 8, 65, '2143242354', '2023-04-28 14:24:27', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (6, 10, 64, '123412312312', '2023-04-28 14:29:41', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (7, 10, 63, '二位绕弯儿翁人', '2023-04-28 14:30:16', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (8, 21, 61, '12213123123', '2023-05-21 23:43:48', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (9, 21, 62, '3ewrwerewr', '2023-05-21 23:43:52', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (10, 21, 65, 'ewrwerewrewr', '2023-05-21 23:43:55', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (11, 16, 64, '123213123', '2023-05-21 23:54:57', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (12, 16, 63, '23123123', '2023-05-21 23:54:59', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (13, 16, 61, '2312313', '2023-05-21 23:55:02', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (14, 1, 62, NULL, '2023-06-27 22:47:49', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (15, 1, 65, '111111111111111', '2023-06-27 22:47:56', 1, NULL, NULL, NULL);
-INSERT INTO `t_clue_remark`
-VALUES (16, 1, 64, '1111111111111111111111222222222222222222222222', '2023-06-27 22:48:01', 1, NULL, NULL, NULL);
+INSERT INTO `t_clue_remark` (id, clue_id, note_way, note_content, create_time, create_by, edit_time, edit_by, deleted)
+VALUES 
+(1, 1, 61, '首次电话联系，客户表示对宝马X5很感兴趣，询问了详细配置信息', '2025-06-17 10:30:00', 1, NULL, NULL, 0),
+(2, 1, 62, '通过微信发送了宝马X5的产品资料和价格表', '2025-06-17 15:20:00', 1, NULL, NULL, 0),
+(3, 1, 61, '二次电话跟进，客户考虑中，计划本周末到店看车', '2025-06-18 09:15:00', 1, NULL, NULL, 0),
+(4, 2, 61, '电话联系，客户工作繁忙，约定下周三面谈', '2025-06-16 14:30:00', 2, NULL, NULL, 0),
+(5, 2, 64, '客户到店咨询，试驾了几款豪华轿车，表现出强烈购买意向', '2025-06-19 16:45:00', 2, NULL, NULL, 0),
+(6, 3, 62, '微信沟通，客户需要商务用车，对奔驰E级比较满意', '2025-06-15 17:20:00', 1, NULL, NULL, 0),
+(7, 3, 61, '电话确认客户需求，准备个性化方案', '2025-06-17 11:30:00', 1, NULL, NULL, 0),
+(8, 3, 64, '面谈详细介绍奔驰E级商务版配置，客户很满意', '2025-06-18 14:00:00', 1, '2025-06-18 16:30:00', 1, 0),
+(9, 4, 61, '电话联系，客户是医生，工作时间较忙，建议微信沟通', '2025-06-14 10:20:00', 2, NULL, NULL, 0),
+(10, 4, 62, '微信发送雷克萨斯NX详细资料，客户表示周末有时间看车', '2025-06-14 19:30:00', 2, NULL, NULL, 0),
+(11, 4, 61, '电话预约周六看车时间，客户确认下午2点到店', '2025-06-20 09:45:00', 2, NULL, NULL, 0),
+(12, 5, 61, '电话沟通，客户已决定购买奥迪Q5，讨论具体配置', '2025-06-01 10:15:00', 3, NULL, NULL, 0),
+(13, 5, 64, '客户到店签约，成功转化为正式客户', '2025-06-10 14:20:00', 3, NULL, NULL, 0),
+(14, 6, 62, '微信联系，发送奥迪A6L配置对比表', '2025-06-18 11:10:00', 1, NULL, NULL, 0),
+(15, 6, 61, '电话详细介绍A6L各版本差异，客户需要考虑', '2025-06-19 15:40:00', 1, NULL, NULL, 0),
+(16, 7, 61, '电话联系，客户是律师，对宝马5系家用版感兴趣', '2025-06-12 16:30:00', 2, NULL, NULL, 0),
+(17, 7, 62, '微信发送宝马5系家庭版详细介绍和优惠信息', '2025-06-13 09:20:00', 2, NULL, NULL, 0),
+(18, 7, 64, '客户到店试驾宝马5系，对驾驶体验很满意', '2025-06-16 13:45:00', 2, '2025-06-16 17:10:00', 2, 0),
+(19, 8, 61, '电话沟通，客户是市场经理，需要大空间SUV', '2025-06-13 17:50:00', 3, NULL, NULL, 0),
+(20, 8, 62, '微信推荐几款热门SUV车型，客户比较关注油耗', '2025-06-14 10:30:00', 3, NULL, NULL, 0),
+(21, 9, 64, '面谈交流，客户是CEO，对高端豪华车要求很高', '2025-06-10 11:30:00', 1, NULL, NULL, 0),
+(22, 9, 61, '电话跟进，介绍了几款顶配豪华车型', '2025-06-15 14:15:00', 1, NULL, NULL, 0),
+(23, 9, 62, '微信发送豪华车专属服务介绍', '2025-06-16 16:20:00', 1, NULL, NULL, 0),
+(24, 10, 61, '电话联系，客户是设计师，注重车辆外观和内饰', '2025-06-11 15:30:00', 2, NULL, NULL, 0),
+(25, 10, 62, '微信分享了几款时尚车型的图片和视频', '2025-06-12 09:40:00', 2, NULL, NULL, 0),
+(26, 1, 64, '客户到店看车，对宝马X5现车很满意，正在考虑贷款方案', '2025-06-22 14:30:00', 1, NULL, NULL, 0),
+(27, 2, 61, '电话确认客户购车预算和具体需求', '2025-06-24 10:15:00', 2, NULL, NULL, 0),
+(28, 6, 64, '客户再次到店，详细了解A6L金融方案和保险', '2025-06-20 16:00:00', 1, NULL, NULL, 0),
+(29, 7, 61, '电话跟进，客户准备下周签约购买宝马5系', '2025-06-23 11:20:00', 2, NULL, NULL, 0),
+(30, 10, 64, '客户到店试驾，对几款车型都比较满意，需要家人商量', '2025-06-21 15:45:00', 2, NULL, NULL, 0);
 
 -- ----------------------------
 -- Table structure for t_customer
@@ -400,28 +250,13 @@ CREATE TABLE `t_customer`
 -- ----------------------------
 -- Records of t_customer
 -- ----------------------------
-INSERT INTO `t_customer`
-VALUES (1, 10, 3, '2131231', '2023-05-06 15:36:59', NULL, NULL, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (2, 8, 6, '124气味儿群', '2023-05-05 00:00:00', NULL, NULL, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (3, 6, 6, '1232强21312', '2023-05-06 00:00:00', '2023-04-28 15:42:15', 1, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (4, 2, 3, '阿萨的人', '2023-05-05 00:00:00', '2023-04-28 15:54:04', 1, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (5, 10, 1, '234234', '2023-05-05 00:00:00', '2023-04-28 15:56:44', 1, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (6, 17, 2, '是的啊所大', '2023-05-05 00:00:00', '2023-04-28 15:59:33', 1, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (7, 5, 2, '12312312', '2023-05-12 00:00:00', '2023-05-04 10:03:05', 1, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (8, 19, 2, '气味儿群翁', '2023-05-04 10:03:18', '2023-05-04 10:03:20', 1, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (9, 14, 4, '沃尔沃二', '2023-06-09 00:00:00', '2023-05-04 10:03:39', 1, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (10, 23, 4, '沃尔沃二翁', '2023-05-23 00:00:00', '2023-05-04 10:03:53', 1, NULL, NULL);
-INSERT INTO `t_customer`
-VALUES (11, 13, 2, '沃尔沃二', '2023-05-13 00:00:00', '2023-05-04 10:04:03', 1, NULL, NULL);
+INSERT INTO `t_customer` (id, clue_id, product, description, next_contact_time, create_time, create_by, edit_time, edit_by)
+VALUES 
+(1, 5, 8, '大学教授，购买奥迪Q5，已签约成功，需要跟进交付和后续服务', '2025-06-25 10:00:00', '2025-06-10 14:30:00', 3, '2025-06-15 16:45:00', 1),
+(2, 1, 3, '软件工程师，购买宝马X5，已签约，选择贷款方案，等待提车', '2025-06-30 14:00:00', '2025-06-25 16:15:00', 1, NULL, NULL),
+(3, 7, 4, '律师，购买宝马5系，已付定金，等待银行贷款审批', '2025-07-02 09:30:00', '2025-06-28 10:20:00', 2, '2025-06-29 11:40:00', 2),
+(4, 3, 9, '企业高管，购买奔驰E级商务版，已签约，选择全款购车', '2025-07-01 15:00:00', '2025-06-26 11:45:00', 1, NULL, NULL),
+(5, 2, 5, '金融分析师，购买奥迪A6L，已交定金，讨论配置升级', '2025-07-05 16:30:00', '2025-06-30 09:50:00', 2, '2025-07-01 14:20:00', 2);
 
 -- ----------------------------
 -- Table structure for t_customer_remark
@@ -452,50 +287,33 @@ CREATE TABLE `t_customer_remark`
 -- ----------------------------
 -- Records of t_customer_remark
 -- ----------------------------
-INSERT INTO `t_customer_remark`
-VALUES (1, 10, 65, '1111111111111111', 1, '2023-05-04 15:25:51', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (2, 10, 64, '2222222222222', 1, '2023-05-04 15:28:13', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (3, 10, 63, 'EREWREWRWRWR', 1, '2023-05-04 16:21:03', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (4, 7, 61, '13213123', 1, '2023-05-17 17:36:16', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (5, 10, 62, '2342423423423', 1, '2023-05-17 17:36:33', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (6, 1, 65, '3212321321', 1, '2023-05-21 23:50:42', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (7, 1, 64, 'eqwewqeqwe', 1, '2023-05-21 23:50:46', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (8, 1, 63, 'wqeqwewqeqw', 1, '2023-05-21 23:50:48', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (9, 8, 61, 'ewqeqweq', 1, '2023-05-21 23:50:59', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (10, 5, 62, 'weqweqweqweq', 1, '2023-05-21 23:51:05', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (11, 5, 65, 'weqwewqeqw', 1, '2023-05-21 23:51:08', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (12, 5, 64, '23213213123', 1, '2023-05-21 23:51:13', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (13, 5, 65, '23123213213', 1, '2023-05-21 23:51:16', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (14, 5, 64, '23123213213', 1, '2023-05-21 23:51:19', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (15, 5, 63, '3232323123', 1, '2023-05-21 23:51:23', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (16, 1, 61, '12312321321', 1, '2023-05-21 23:56:55', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (17, 2, 62, '1232131231', 1, '2023-05-21 23:57:03', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (18, 10, 65, NULL, 1, '2023-05-22 22:12:52', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (19, 10, 64, '123213214124', 1, '2023-05-22 22:12:58', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (20, 10, 63, '13241242432432', 1, '2023-05-22 22:13:03', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (21, 10, 61, '3423423423', 1, '2023-05-22 22:13:06', NULL, NULL, NULL);
-INSERT INTO `t_customer_remark`
-VALUES (22, 2, 62, '1242412141', 1, '2023-05-31 20:14:08', NULL, NULL, NULL);
+INSERT INTO `t_customer_remark` (id, customer_id, note_way, note_content, create_by, create_time, edit_time, edit_by, deleted)
+VALUES 
+(1, 1, 61, '客户签约成功，选择奥迪Q5 2.0T豪华版，全款购车', 3, '2025-06-10 14:30:00', NULL, NULL, 0),
+(2, 1, 64, '办理车辆登记手续，客户对服务很满意', 3, '2025-06-12 10:15:00', NULL, NULL, 0),
+(3, 1, 61, '车辆已交付，安排首保时间，客户反馈驾驶体验良好', 1, '2025-06-15 16:45:00', NULL, NULL, 0),
+(4, 1, 62, '微信发送保养提醒和用车小贴士，维护客户关系', 1, '2025-06-20 09:30:00', NULL, NULL, 0),
+(5, 2, 61, '客户决定购买宝马X5，讨论贷款方案和配置选择', 1, '2025-06-25 16:15:00', NULL, NULL, 0),
+(6, 2, 64, '客户到店签约，选择宝马X5 xDrive30i豪华套装，贷款50万', 1, '2025-06-26 14:30:00', NULL, NULL, 0),
+(7, 2, 61, '银行贷款已审批通过，预计下周提车', 1, '2025-06-28 11:20:00', NULL, NULL, 0),
+(8, 2, 62, '微信确认提车时间和相关手续，客户很期待', 1, '2025-06-29 15:40:00', NULL, NULL, 0),
+(9, 3, 61, '客户确认购买宝马5系，讨论具体配置和颜色选择', 2, '2025-06-28 10:20:00', NULL, NULL, 0),
+(10, 3, 64, '客户到店签约并付定金5万元，选择珠光白外观', 2, '2025-06-28 16:45:00', NULL, NULL, 0),
+(11, 3, 61, '协助客户办理银行贷款手续，提交相关材料', 2, '2025-06-29 11:40:00', '2025-06-29 14:20:00', 2, 0),
+(12, 3, 62, '微信通知银行审批进度，预计本周完成审批', 2, '2025-07-01 09:15:00', NULL, NULL, 0),
+(13, 4, 62, '微信确认客户购车意向，介绍奔驰E级最新优惠政策', 1, '2025-06-26 11:45:00', NULL, NULL, 0),
+(14, 4, 64, '客户到店签约，选择奔驰E级商务版，全款购车', 1, '2025-06-26 15:30:00', NULL, NULL, 0),
+(15, 4, 61, '车辆调配中，预计10天内到店，客户表示满意', 1, '2025-06-27 10:00:00', NULL, NULL, 0),
+(16, 4, 62, '微信发送车辆到店通知，安排交付时间', 1, '2025-06-30 14:30:00', NULL, NULL, 0),
+(17, 5, 61, '客户决定购买奥迪A6L，讨论配置和价格', 2, '2025-06-30 09:50:00', NULL, NULL, 0),
+(18, 5, 64, '客户到店试驾并交付定金，考虑配置升级', 2, '2025-06-30 16:20:00', NULL, NULL, 0),
+(19, 5, 61, '电话沟通配置升级方案，客户同意增加运动套装', 2, '2025-07-01 14:20:00', NULL, NULL, 0),
+(20, 5, 62, '微信发送升级后的配置清单和总价，等待客户确认', 2, '2025-07-02 10:45:00', NULL, NULL, 0),
+(21, 1, 61, '客户推荐朋友来看车，已安排专人接待', 1, '2025-06-25 11:30:00', NULL, NULL, 0),
+(22, 2, 61, '提车当天，客户对车辆和服务都很满意，给予好评', 1, '2025-07-03 16:00:00', NULL, NULL, 0),
+(23, 3, 64, '银行审批通过，客户到店完成贷款手续', 2, '2025-07-05 14:15:00', NULL, NULL, 0),
+(24, 4, 64, '车辆交付完成，客户对奔驰E级的性能表现很满意', 1, '2025-07-05 10:30:00', NULL, NULL, 0),
+(25, 5, 61, '最终确认配置，客户签署补充协议，预计下周提车', 2, '2025-07-08 09:20:00', NULL, NULL, 0);
 
 -- ----------------------------
 -- Table structure for t_dic_type
@@ -1154,345 +972,6 @@ VALUES (1, 5, 12, 120000.00, '2023-11-14 00:00:00', '2023-11-12 19:32:02', 1),
        (6, 6, 37, 93000.00, '2023-11-12 00:00:00', '2023-11-13 11:20:00', 1);
 
 -- ----------------------------
--- Table structure for t_tran_remark
--- ----------------------------
-DROP TABLE IF EXISTS `t_tran_remark`;
-CREATE TABLE `t_tran_remark`
-(
-    `id`           int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，交易备注ID',
-    `tran_id`      int                                                           NULL DEFAULT NULL COMMENT '交易ID',
-    `note_way`     int                                                           NULL DEFAULT NULL COMMENT '跟踪方式',
-    `note_content` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '跟踪内容',
-    `create_time`  datetime                                                      NULL DEFAULT NULL COMMENT '跟踪时间',
-    `create_by`    int                                                           NULL DEFAULT NULL COMMENT '跟踪人',
-    `edit_time`    datetime                                                      NULL DEFAULT NULL COMMENT '编辑时间',
-    `edit_by`      int                                                           NULL DEFAULT NULL COMMENT '编辑人',
-    `deleted`      int                                                           NULL DEFAULT NULL COMMENT '删除状态（0正常，1删除）',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_tran_remark_ibfk_1` (`tran_id` ASC) USING BTREE,
-    INDEX `t_tran_remark_ibfk_2` (`note_way` ASC) USING BTREE,
-    INDEX `t_tran_remark_ibfk_3` (`create_by` ASC) USING BTREE,
-    INDEX `t_tran_remark_ibfk_4` (`edit_by` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 14
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '交易跟踪记录表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of t_tran_remark
--- ----------------------------
-INSERT INTO `t_tran_remark`
-VALUES (1, 5, 65, '客户对价格很满意', '2023-11-12 19:35:00', 1, NULL, NULL, 0);
-INSERT INTO `t_tran_remark`
-VALUES (2, 5, 64, '已完成首付款支付', '2023-11-13 10:15:00', 1, NULL, NULL, 0);
-INSERT INTO `t_tran_remark`
-VALUES (3, 5, 63, '合同已签署', '2023-11-14 15:00:00', 1, NULL, NULL, 0);
-INSERT INTO `t_tran_remark`
-VALUES (4, 6, 61, '客户需要分期付款', '2023-11-12 19:40:00', 1, NULL, NULL, 0);
-INSERT INTO `t_tran_remark`
-VALUES (5, 6, 62, '已确认付款计划', '2023-11-13 11:30:00', 1, NULL, NULL, 0);
-
--- ----------------------------
--- Table structure for t_user
--- ----------------------------
-DROP TABLE IF EXISTS `t_user`;
-CREATE TABLE `t_user`
-(
-    `id`                     int                                                          NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，用户ID',
-    `login_act`              varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '登录账号',
-    `login_pwd`              varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '登录密码',
-    `name`                   varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '用户姓名',
-    `phone`                  varchar(18) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '用户手机',
-    `email`                  varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '用户邮箱',
-    `account_no_expired`     int                                                          NULL DEFAULT NULL COMMENT '账户是否没有过期，0已过期 1正常',
-    `credentials_no_expired` int                                                          NULL DEFAULT NULL COMMENT '密码是否没有过期，0已过期 1正常',
-    `account_no_locked`      int                                                          NULL DEFAULT NULL COMMENT '账号是否没有锁定，0已锁定 1正常',
-    `account_enabled`        int                                                          NULL DEFAULT NULL COMMENT '账号是否启用，0禁用 1启用',
-    `create_time`            datetime                                                     NULL DEFAULT NULL COMMENT '创建时间',
-    `create_by`              int                                                          NULL DEFAULT NULL COMMENT '创建人',
-    `edit_time`              datetime                                                     NULL DEFAULT NULL COMMENT '编辑时间',
-    `edit_by`                int                                                          NULL DEFAULT NULL COMMENT '编辑人',
-    `last_login_time`        datetime                                                     NULL DEFAULT NULL COMMENT '最近登录时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `login_act` (`login_act` ASC) USING BTREE,
-    UNIQUE INDEX `phone` (`phone` ASC) USING BTREE,
-    UNIQUE INDEX `email` (`email` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 34
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '用户表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of t_user
--- ----------------------------
-INSERT INTO `t_user`
-VALUES (1, 'admin', '$2a$10$Nlhwhtd0BSCBK95CAifv7eWpCjHloPBMZ3Gaehcc56hRAV3DZALJO', '管理员', '13700000000',
-        'admin@qq.com', 1, 1, 1, 1, '2023-02-22 09:37:12', NULL, '2023-05-23 00:21:06', NULL, '2023-12-10 21:18:59');
-INSERT INTO `t_user`
-VALUES (2, 'yuyan', '$2a$10$ZzzAd0nDuUGfGSjJDnZIyOaW7mUZkFzsYgOqiF/b07po/BGxBFjJ.', '于嫣', 'null', 'yuyan@163.com', 1,
-        1, 1, 1, '2023-02-28 12:11:40', NULL, '2023-05-23 00:21:14', NULL, '2023-11-29 20:14:31');
-INSERT INTO `t_user`
-VALUES (3, 'zhangqi', '$2a$10$Q0qTW6QqkabTzFyoilViw..YdrVzZkSKe5RvLmjgPgW/IrcPkBoF.', '张琪', '1362362323',
-        'zhangqi@qq.com', 1, 1, 1, 1, '2023-03-02 11:37:34', NULL, '2023-05-23 00:21:02', NULL, NULL);
-INSERT INTO `t_user`
-VALUES (4, 'suwanting', '$2a$10$3bambNLTCAKtQn2OXPiHb.f0SzH.MucTiLi6GPT6nQrYpsxsdxaFi', '苏婉婷', NULL,
-        'suwanting@qq.com', 1, 1, 1, 1, '2023-04-03 15:04:54', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (5, 'wuxiaoxiao', '$2a$10$Lmk5wXYkZzQMFJEcXVZAZegIQhnAm6ONHpz09X/.gbOh5ze5fU6MW', '吴潇潇', NULL,
-        'wuxiaoxiao@qq.com', 1, 1, 1, 1, '2023-01-27 12:15:26', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (6, 'mengyan', '$2a$10$6zGT7CfeuJ/6jZPk1pAqcuiMYDnCJstrceThGD5DVVOA5XvOP/sQq', '孟岩', NULL, 'mengyan@163.com',
-        1, 1, 1, 1, '2023-03-19 10:17:28', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (7, 'yuanhuimin', '$2a$10$mbsloGtPV7cDwfAVYxuvLemQRWumZKrDxVZxg4fnbfaocnfZFlYuu', '袁慧敏', NULL,
-        'yuanhuimin@11.com', 1, 1, 1, 1, '2023-04-11 20:18:50', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (8, 'qinxuwen', '$2a$10$ir8uLlBrPMHRtGiu5Ajkv.UKcRacXWRen7zxelp9iUaco3WhGkJ36', '秦旭文', '13820000000',
-        'qinxuwen@163.com', 1, 1, 1, 1, '2023-03-19 21:11:37', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (9, 'chengjie', '$2a$10$jQR8yyF/ailGP/zW6G4JOOffzWOXhe02Rgw7MZLfxL.IGFdM3cjM2', '程杰', '13500000000',
-        'chengjie@qq.com', 1, 1, 1, 1, '2023-04-16 07:16:19', NULL, '2023-04-20 21:42:21', NULL, NULL);
-INSERT INTO `t_user`
-VALUES (10, 'zhouliang', '$2a$10$0yOGdkAcG8JLEcoEmmCnfO8Vp6rcqBnn30k6pGor5Z0.eLMyLEd7.', '周亮', '13800000008',
-        'zhouliang@163.com', 1, 1, 1, 1, '2023-03-18 13:13:45', NULL, '2023-06-06 00:06:31', NULL, NULL);
-INSERT INTO `t_user`
-VALUES (11, 'zhangwei', '$2a$10$BfOgsdSAZ9VYBOzv692BM.oWGPLktcqhhjU3AaWESkGNRcW484N7O', '张伟', NULL, 'zhangwei@qq.com',
-        1, 1, 1, 1, '2023-03-06 09:18:23', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (12, 'dengping', '$2a$10$hpN8orfqUFXb.WWbIoZBkOZrr6D8rdSbl/SWXsMQ0zEuqkldlkpW2', '邓萍', NULL, 'dengping@qq.com',
-        1, 1, 1, 1, '2023-02-19 20:10:58', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (13, 'zhangxing', '$2a$10$uBVDcCCJQvTfoFCjbjwrf.MhyczNNJfCn76jD61CsAgsUlXjXhxzG', '张欣', NULL,
-        'zhangxing@qq.com', 1, 1, 1, 1, '2023-03-17 12:12:11', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (14, 'zhangmeng', '$2a$10$MMHG2cQh4H4YFbdf48SnyO9IZ78F110x3.7IWGNExrgk2rFmhrd/u', '张萌', NULL,
-        'zhangmeng@qq.com', 1, 1, 1, 1, '2023-01-13 08:16:02', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (15, 'shixixiang', '$2a$10$zYwq/QfevFPAZxw4b2DkCeQvjVQ52AUU9c4aC0uS0wTJaRr75G74y', '石喜祥', NULL,
-        'shixixiang@qq.com', 1, 1, 1, 1, '2023-03-10 15:19:49', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (16, 'chengjiuming', '$2a$10$yNN5TcFkM4OqRsKGNM8CNeqAJhRYKQgXVFqbre5lQPicnIXT7THTu', '陈久明', NULL,
-        'chengjiuming@163.com', 1, 1, 1, 1, '2023-04-09 23:17:37', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (17, 'genghao', '$2a$10$rWHo.vUpJCbqWLGMkPj95O5FlhaQLzro.LY7pVQ/UnVVAdvjEAy0K', '耿浩', NULL, 'genghao@qq.com',
-        1, 1, 1, 1, '2023-03-19 12:10:22', NULL, '2023-04-10 21:42:21', NULL, NULL);
-INSERT INTO `t_user`
-VALUES (18, 'hanmingyang', '$2a$10$PRMdG7a8nFIN1A3TD584Xe2BZI7Y0mktDL7Wp5lF88E1D1iPijFc6', '韩明洋', NULL,
-        'hanmingyang@163.com', 1, 1, 1, 1, '2023-02-12 18:13:01', NULL, '2023-04-13 23:43:25', NULL, NULL);
-INSERT INTO `t_user`
-VALUES (19, 'xuyan', '$2a$10$S7MF2dOqFcoOJPqpEH2nu.Muhn2XC0BlBTZ5gAoL3axrQxdJEJNnK', '徐燕', NULL, 'xuyan@qq.com', 1, 1,
-        1, 1, '2023-03-29 13:16:15', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (20, 'chengjuan', '$2a$10$m1g5cxikApV05pR7Cx4cy.d4sT3efOl6UvDLvH27WzMjtpymQ5ANi', '程娟', NULL,
-        'chengjuan@qq.com', 1, 1, 1, 1, '2023-02-19 15:12:22', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (21, 'huangxiao', '$2a$10$R/RwQd5.3OxYpSZBLIn8DeeYYNF0vgWCrCR4tcyL.c/HtnuIfBRIK', '黄潇', NULL,
-        'huangxiao@qq.com', 1, 1, 1, 1, '2023-03-26 22:11:37', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (22, 'yangyuxin', '$2a$10$ucE/By6NLBb4tN5H3CUimOQ2eAtbjXFf2v77SJUPbHXRI9lTF97Ka', '杨雨欣', NULL,
-        'yangyuxin@163.com', 1, 1, 1, 1, '2023-04-13 18:14:59', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (23, 'xiaojie', '$2a$10$A215.iFSp7/d99X5M6KE.eu5YvA7nJ5vNEJraxmpA8EUYJN6lx9rW', '肖捷', NULL, 'xiaojie@163.com',
-        1, 1, 1, 1, '2023-02-18 09:19:02', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (32, '111', '$2a$10$A215.iFSp7/d99X5M6KE.eu5YvA7nJ5vNEJraxmpA8EUYJN6lx9rW', '1111', '1111', '111', 1, 1, 1, 1,
-        '2023-04-25 17:42:36', NULL, NULL, NULL, NULL);
-INSERT INTO `t_user`
-VALUES (33, '222', '$2a$10$bBskT77XGhKDt1Oqg4aWseHOR2Yngv/Pozh76FprgM1JWDr6WWuFe', '22', '222', '222', 1, 1, 1, 1,
-        '2023-04-25 17:46:07', NULL, '2023-06-20 22:23:48', NULL, NULL);
-
--- ----------------------------
--- Table structure for t_user_role
--- ----------------------------
-DROP TABLE IF EXISTS `t_user_role`;
-CREATE TABLE `t_user_role`
-(
-    `id`      int NOT NULL AUTO_INCREMENT,
-    `user_id` int NULL DEFAULT NULL,
-    `role_id` int NULL DEFAULT NULL,
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_user_role_ibfk_1` (`user_id` ASC) USING BTREE,
-    INDEX `t_user_role_ibfk_2` (`role_id` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 7
-  CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_general_ci COMMENT = '用户角色关系表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of t_user_role
--- ----------------------------
-INSERT INTO `t_user_role`
-VALUES (1, 1, 1);
-INSERT INTO `t_user_role`
-VALUES (2, 2, 2);
-INSERT INTO `t_user_role`
-VALUES (3, 3, 2);
-INSERT INTO `t_user_role`
-VALUES (4, 4, 3);
-INSERT INTO `t_user_role`
-VALUES (5, 5, 4);
-INSERT INTO `t_user_role`
-VALUES (6, 6, 5);
-
--- ----------------------------
--- Table structure for t_tran_product
--- ----------------------------
-DROP TABLE IF EXISTS `t_tran_product`;
-CREATE TABLE `t_tran_product`
-(
-    `id`          int            NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `tran_id`     int            NOT NULL COMMENT '交易ID',
-    `product_id`  int            NOT NULL COMMENT '产品ID',
-    `quantity`    int            NOT NULL COMMENT '数量',
-    `price`       decimal(10, 2) NOT NULL COMMENT '单价',
-    `create_time` datetime       NULL DEFAULT NULL COMMENT '创建时间',
-    `create_by`   int            NULL DEFAULT NULL COMMENT '创建人',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_tran_product_ibfk_1` (`tran_id` ASC) USING BTREE,
-    INDEX `t_tran_product_ibfk_2` (`product_id` ASC) USING BTREE,
-    INDEX `t_tran_product_ibfk_3` (`create_by` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 1
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '交易产品关联表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Table structure for t_tran_production
--- ----------------------------
-DROP TABLE IF EXISTS `t_tran_production`;
-CREATE TABLE `t_tran_production`
-(
-    `id`              int          NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `tran_product_id` int          NOT NULL COMMENT '交易产品ID',
-    `status`          varchar(20)  NOT NULL COMMENT '生产状态：PENDING-待生产, IN_PROGRESS-生产中, COMPLETED-已完成',
-    `description`     varchar(255) NULL DEFAULT NULL COMMENT '生产状态描述',
-    `create_time`     datetime     NULL DEFAULT NULL COMMENT '创建时间',
-    `create_by`       int          NULL DEFAULT NULL COMMENT '创建人',
-    `update_time`     datetime     NULL DEFAULT NULL COMMENT '更新时间',
-    `update_by`       int          NULL DEFAULT NULL COMMENT '更新人',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_tran_production_ibfk_1` (`tran_product_id` ASC) USING BTREE,
-    INDEX `t_tran_production_ibfk_2` (`create_by` ASC) USING BTREE,
-    INDEX `t_tran_production_ibfk_3` (`update_by` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 1
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '交易生产状态表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Table structure for t_tran_invoice
--- ----------------------------
-DROP TABLE IF EXISTS `t_tran_invoice`;
-CREATE TABLE `t_tran_invoice`
-(
-    `id`           int            NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `tran_id`      int            NOT NULL COMMENT '交易ID',
-    `invoice_no`   varchar(32)    NOT NULL COMMENT '发票号码',
-    `type`         varchar(20)    NOT NULL COMMENT '发票类型：VAT_NORMAL-增值税普通发票, VAT_SPECIAL-增值税专用发票',
-    `title`        varchar(128)   NOT NULL COMMENT '发票抬头',
-    `tax_number`   varchar(32)    NOT NULL COMMENT '纳税人识别号',
-    `bank_name`    varchar(128)   NULL DEFAULT NULL COMMENT '开户行',
-    `bank_account` varchar(32)    NULL DEFAULT NULL COMMENT '银行账号',
-    `address`      varchar(255)   NULL DEFAULT NULL COMMENT '注册地址',
-    `phone`        varchar(20)    NULL DEFAULT NULL COMMENT '注册电话',
-    `amount`       decimal(10, 2) NOT NULL COMMENT '发票金额',
-    `status`       varchar(20)    NOT NULL COMMENT '发票状态：PENDING-待开具, ISSUED-已开具, VOID-已作废',
-    `remark`       varchar(255)   NULL DEFAULT NULL COMMENT '备注信息',
-    `issue_time`   datetime       NULL DEFAULT NULL COMMENT '开具时间',
-    `create_time`  datetime       NULL DEFAULT NULL COMMENT '创建时间',
-    `create_by`    int            NULL DEFAULT NULL COMMENT '创建人',
-    `update_time`  datetime       NULL DEFAULT NULL COMMENT '更新时间',
-    `update_by`    int            NULL DEFAULT NULL COMMENT '更新人',
-    PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE KEY `uk_invoice_no` (`invoice_no`),
-    INDEX `t_tran_invoice_ibfk_1` (`tran_id` ASC) USING BTREE,
-    INDEX `t_tran_invoice_ibfk_2` (`create_by` ASC) USING BTREE,
-    INDEX `t_tran_invoice_ibfk_3` (`update_by` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 1
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '交易发票表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Table structure for t_tran
--- ----------------------------
-DROP TABLE IF EXISTS `t_tran`;
-CREATE TABLE `t_tran`
-(
-    `id`                int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，交易ID',
-    `tran_no`           varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '交易流水号',
-    `customer_id`       int                                                           NULL DEFAULT NULL COMMENT '客户ID',
-    `money`             decimal(10, 2)                                                NULL DEFAULT NULL COMMENT '交易金额',
-    `expected_date`     datetime                                                      NULL DEFAULT NULL COMMENT '预计成交日期',
-    `stage`             int                                                           NULL DEFAULT NULL COMMENT '交易所处阶段',
-    `description`       varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '交易描述',
-    `next_contact_time` datetime                                                      NULL DEFAULT NULL COMMENT '下次联系时间',
-    `create_time`       datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
-    `create_by`         int                                                           NULL DEFAULT NULL COMMENT '创建人',
-    `edit_time`         datetime                                                      NULL DEFAULT NULL COMMENT '编辑时间',
-    `edit_by`           int                                                           NULL DEFAULT NULL COMMENT '编辑人',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_tran_ibfk_1` (`customer_id` ASC) USING BTREE,
-    INDEX `t_tran_ibfk_2` (`stage` ASC) USING BTREE,
-    INDEX `t_tran_ibfk_3` (`create_by` ASC) USING BTREE,
-    INDEX `t_tran_ibfk_4` (`edit_by` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 7
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '交易表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of t_tran
--- ----------------------------
-INSERT INTO `t_tran`
-VALUES (5, '202311121932019431', 1, 120000.00, '2023-11-14 00:00:00', 42, '123131', '2023-11-29 00:00:00',
-        '2023-11-12 19:32:02', 1, NULL, NULL);
-INSERT INTO `t_tran`
-VALUES (6, '202311121932019432', 1, 93000.00, '2023-11-12 00:00:00', 12, '123131', '2023-11-29 00:00:00',
-        '2023-11-12 19:32:02', 1, NULL, NULL);
-
--- ----------------------------
--- Table structure for t_tran_history
--- ----------------------------
-DROP TABLE IF EXISTS `t_tran_history`;
-CREATE TABLE `t_tran_history`
-(
-    `id`            int            NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，交易记录ID',
-    `tran_id`       int            NULL DEFAULT NULL COMMENT '交易ID',
-    `stage`         int            NULL DEFAULT NULL COMMENT '交易阶段',
-    `money`         decimal(10, 2) NULL DEFAULT NULL COMMENT '交易金额',
-    `expected_date` datetime       NULL DEFAULT NULL COMMENT '交易预计成交时间',
-    `create_time`   datetime       NULL DEFAULT NULL COMMENT '创建时间',
-    `create_by`     int            NULL DEFAULT NULL COMMENT '创建人',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_tran_history_ibfk_1` (`tran_id` ASC) USING BTREE,
-    INDEX `t_tran_history_ibfk_2` (`stage` ASC) USING BTREE,
-    INDEX `t_tran_history_ibfk_3` (`create_by` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 7
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '交易历史记录表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of t_tran_history
--- ----------------------------
-INSERT INTO `t_tran_history` (`id`, `tran_id`, `stage`, `money`, `expected_date`, `create_time`, `create_by`)
-VALUES (1, 5, 12, 120000.00, '2023-11-14 00:00:00', '2023-11-12 19:32:02', 1),
-       (2, 5, 37, 120000.00, '2023-11-14 00:00:00', '2023-11-13 10:00:00', 1),
-       (3, 5, 40, 120000.00, '2023-11-14 00:00:00', '2023-11-14 14:30:00', 1),
-       (4, 5, 42, 120000.00, '2023-11-14 00:00:00', '2023-11-15 16:45:00', 1),
-       (5, 6, 12, 93000.00, '2023-11-12 00:00:00', '2023-11-12 19:32:02', 1),
-       (6, 6, 37, 93000.00, '2023-11-12 00:00:00', '2023-11-13 11:20:00', 1);
-
--- ----------------------------
 -- Table structure for t_tran_product
 -- ----------------------------
 DROP TABLE IF EXISTS `t_tran_product`;
@@ -1582,7 +1061,6 @@ CREATE TABLE `t_tran_invoice`
   COLLATE = utf8mb3_general_ci COMMENT = '交易发票表'
   ROW_FORMAT = DYNAMIC;
 
-
 -- ----------------------------
 -- Table structure for t_product
 -- ----------------------------
@@ -1609,6 +1087,8 @@ VALUES ('BMW-X5-2023', '宝马 X5', 'SUV', '2023款 xDrive40i 尊享型', 569800
 
 INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
 VALUES ('BMW-X3-2023', '宝马 X3', 'SUV', '2023款 xDrive30i M运动套装', 399900.00, 20, 8, '上架', '2023-05-01 10:15:00', '2023-05-01 10:15:00');
+
+
 
 INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
 VALUES ('BMW-3-2023', '宝马 3系', '轿车', '2023款 330i M运动套装', 329800.00, 25, 10, '上架', '2023-05-02 09:30:00', '2023-05-02 09:30:00');
