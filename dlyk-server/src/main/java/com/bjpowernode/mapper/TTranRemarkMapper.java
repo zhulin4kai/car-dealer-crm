@@ -22,4 +22,9 @@ public interface TTranRemarkMapper {
      * 根据交易ID查询跟踪记录
      */
     List<TTranRemark> selectByTranId(Integer tranId);
+    
+    /**
+     * 根据交易ID删除跟踪记录
+     */
+    int deleteByTranId(Integer tranId);
 }

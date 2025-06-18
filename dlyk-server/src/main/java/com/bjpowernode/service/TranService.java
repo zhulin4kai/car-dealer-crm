@@ -68,20 +68,7 @@ public interface TranService {
      * @return 交易产品详情列表
      */
     List<TTranProduct> getTransactionProductDetails(Integer tranId);
-    
-    /**
-     * 获取交易产品的生产状态
-     * @param tranProductId 交易产品ID
-     * @return 生产状态
-     */
-    TTranProduction getProductionStatus(Integer tranProductId);
-    
-    /**
-     * 更新生产状态
-     * @param production 生产状态信息
-     * @return 是否更新成功
-     */
-    boolean updateProductionStatus(TTranProduction production);
+
     
     /**
      * 创建发票
@@ -104,13 +91,6 @@ public interface TranService {
      * @return 是否更新成功
      */
     boolean updateInvoiceStatus(Integer id, String status);
-    
-    /**
-     * 获取交易的历史记录
-     * @param tranId 交易ID
-     * @return 历史记录列表
-     */
-    List<TTranHistory> getTransactionHistory(Integer tranId);
     
     /**
      * 获取交易的跟踪记录
@@ -164,8 +144,7 @@ public interface TranService {
      * @return 发票列表
      */
     List<TTranInvoice> getTranInvoices(Integer tranId);
-    
-    /**
+      /**
      * 更新发票状态
      * @param invoiceId 发票ID
      * @param status 新状态
@@ -173,4 +152,18 @@ public interface TranService {
      * @return 是否更新成功
      */
     boolean updateTranInvoiceStatus(Integer invoiceId, String status, Integer updateBy);
-} 
+    
+    /**
+     * 删除交易
+     * @param id 交易ID
+     * @return 是否删除成功
+     */
+    boolean deleteTransaction(Integer id);
+    
+    /**
+     * 批量删除交易
+     * @param ids 交易ID列表
+     * @return 是否删除成功
+     */
+    boolean batchDeleteTransactions(List<Integer> ids);
+}

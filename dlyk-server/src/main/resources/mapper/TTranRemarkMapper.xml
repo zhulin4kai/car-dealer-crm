@@ -131,4 +131,19 @@
       deleted = #{deleted,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
+  
+  <!-- 根据交易ID查询跟踪记录 -->
+  <select id="selectByTranId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from t_tran_remark
+    where tran_id = #{tranId,jdbcType=INTEGER}
+    order by create_time desc
+  </select>
+  
+  <!-- 根据交易ID删除跟踪记录 -->
+  <delete id="deleteByTranId" parameterType="java.lang.Integer">
+    delete from t_tran_remark
+    where tran_id = #{tranId,jdbcType=INTEGER}
+  </delete>
 </mapper>

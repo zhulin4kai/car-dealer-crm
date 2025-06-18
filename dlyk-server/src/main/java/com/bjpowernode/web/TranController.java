@@ -252,36 +252,6 @@ public class TranController {
     }
 
     /**
-     * 获取生产状态
-     */
-    @GetMapping("/production/{tranId}")
-    public R<List<TTranProduction>> productionStatus(@PathVariable Integer tranId) {
-        List<TTranProduct> products = tranService.getTransactionProducts(tranId);
-        List<TTranProduction> productionList = products.stream()
-                .map(product -> tranService.getProductionStatus(product.getId()))
-                .toList();
-        return R.OK(productionList);
-    }
-
-    /**
-     * 更新生产状态
-     */
-    @PutMapping("/production")
-    public R<Boolean> updateProduction(@RequestBody TTranProduction production) {
-        return R.OK(tranService.updateProductionStatus(production));
-    }
-
-
-
-    /**
-     * 获取交易历史记录
-     */
-    @GetMapping("/history/{tranId}")
-    public R<List<TTranHistory>> history(@PathVariable Integer tranId) {
-        return R.OK(tranService.getTransactionHistory(tranId));
-    }
-
-    /**
      * 获取交易备注
      */
     @GetMapping("/remarks/{tranId}")
@@ -295,5 +265,32 @@ public class TranController {
     @GetMapping("/products/{id}")
     public R<List<TTranProduct>> getTransactionProducts(@PathVariable Integer id) {
         return R.OK(tranService.getTransactionProductDetails(id));
+    }    /**
+     * 删除交易
+     */
+    @DeleteMapping("/{id}")
+    public R<String> delete(@PathVariable Integer id) {
+        boolean result = tranService.deleteTransaction(id);
+        if (result) {
+            return R.OK("删除成功");
+        } else {
+            return R.FAIL("删除失败");
+        }
+    }/**
+     * 批量删除交易
+     */
+    @PostMapping("/batch-delete")
+    public R<String> batchDelete(@RequestBody Map<String, List<Integer>> request) {
+        List<Integer> ids = request.get("ids");
+        if (ids == null || ids.isEmpty()) {
+            return R.FAIL("请选择要删除的交易");
+        }
+        
+        boolean result = tranService.batchDeleteTransactions(ids);
+        if (result) {
+            return R.OK("批量删除成功");
+        } else {
+            return R.FAIL("批量删除失败");
+        }
     }
-} 
+}

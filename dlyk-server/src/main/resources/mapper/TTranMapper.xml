@@ -286,7 +286,6 @@
     WHERE tp.tran_id = #{tranId,jdbcType=INTEGER}
     ORDER BY tp.id
   </select>
-
   <!-- 联合查询：获取交易详情和审批信息 -->
   <select id="selectTranWithApproveByTranId" parameterType="java.lang.Integer" resultType="java.util.Map">
     SELECT 
@@ -316,5 +315,19 @@
     WHERE t.id = #{tranId,jdbcType=INTEGER}
   </select>
 
+  <!-- 删除交易 -->
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from t_tran
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+
+  <!-- 批量删除交易 -->
+  <delete id="deleteByIds" parameterType="java.util.List">
+    delete from t_tran
+    where id in
+    <foreach collection="list" item="id" open="(" close=")" separator=",">
+      #{id}
+    </foreach>
+  </delete>
 
 </mapper>

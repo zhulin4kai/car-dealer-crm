@@ -32,9 +32,18 @@ public interface TTranMapper {
      * 根据查询条件查询交易列表
      */
     List<TTran> selectByQuery(TranQuery query);
-    
-    /**
+      /**
      * 根据交易ID查询交易产品列表（包含产品名称）
      */
     List<TTranProduct> selectTranProductsByTranId(Integer tranId);
+    
+    /**
+     * 根据ID删除交易
+     */
+    int deleteByPrimaryKey(Integer id);
+    
+    /**
+     * 批量删除交易
+     */
+    int deleteByIds(List<Integer> ids);
 }

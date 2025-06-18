@@ -1,4 +1,4 @@
-import { doGet, doPost, doPut } from '../http/httpRequest'
+import { doGet, doPost, doPut, doDelete } from '../http/httpRequest'
 
 // 获取交易列表
 export function getTranList(params) {
@@ -58,4 +58,14 @@ export function getTranInvoiceList(tranId) {
 // 更新发票状态
 export function updateInvoiceStatus(invoiceId, status) {
     return doPut(`/api/tran/invoice/${invoiceId}/status`, { status })
+}
+
+// 删除单个交易
+export function deleteTran(id) {
+    return doDelete(`/api/tran/${id}`)
+}
+
+// 批量删除交易
+export function batchDeleteTran(ids) {
+    return doPost('/api/tran/batch-delete', { ids })
 }

@@ -26,16 +26,10 @@ public class TranServiceImpl implements TranService {
     private TTranMapper tranMapper;
 
     @Resource
-    private TTranHistoryMapper tranHistoryMapper;
-
-    @Resource
     private TTranRemarkMapper tranRemarkMapper;
 
     @Resource
     private TTranProductMapper tranProductMapper;
-
-    @Resource
-    private TTranProductionMapper tranProductionMapper;
 
     @Resource
     private TTranInvoiceMapper tranInvoiceMapper;
@@ -122,18 +116,6 @@ public class TranServiceImpl implements TranService {
         
         int result = tranMapper.updateByPrimaryKeySelective(tTran);
         if (result > 0) {
-            // 创建历史记录
-            TTran current = tranMapper.selectByPrimaryKey(id);
-            TTranHistory history = new TTranHistory();
-            history.setTranId(id);
-            history.setStage(stage);
-            history.setMoney(current.getMoney());
-            history.setExpectedDate(current.getExpectedDate());
-            history.setCreateTime(new Date());
-            history.setCreateBy(current.getEditBy());
-            tranHistoryMapper.insert(history);
-            
-            // 清除相关缓存
             clearTransactionCache(id);
             return true;
         }
@@ -164,33 +146,6 @@ public class TranServiceImpl implements TranService {
             redisManager.set(cacheKey, products, Constants.CACHE_EXPIRE_TIME);
         }
         return products;
-    }
-
-    @Override
-    public TTranProduction getProductionStatus(Integer tranProductId) {
-        String cacheKey = Constants.CACHE_KEY_TRAN_PRODUCTION + tranProductId;
-        TTranProduction production = redisManager.get(cacheKey);
-        if (production != null) {
-            return production;
-        }
-        
-        production = tranProductionMapper.selectByTranProductId(tranProductId);
-        if (production != null) {
-            redisManager.set(cacheKey, production, Constants.CACHE_EXPIRE_TIME);
-        }
-        return production;
-    }
-
-    @Override
-    public boolean updateProductionStatus(TTranProduction production) {
-        production.setUpdateTime(new Date());
-        int rows = tranProductionMapper.updateByPrimaryKeySelective(production);
-        
-        if (rows > 0) {
-            redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTION + production.getTranProductId());
-            return true;
-        }
-        return false;
     }
 
     @Override
@@ -237,10 +192,6 @@ public class TranServiceImpl implements TranService {
         return false;
     }
 
-    @Override
-    public List<TTranHistory> getTransactionHistory(Integer tranId) {
-        return tranHistoryMapper.selectByTranId(tranId);
-    }
 
     @Override
     public List<TTranRemark> getTransactionRemarks(Integer tranId) {
@@ -328,17 +279,6 @@ public class TranServiceImpl implements TranService {
                 int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
                 
                 if (tranResult > 0) {
-                    // 3. 创建历史记录
-                    TTran current = tranMapper.selectByPrimaryKey(tranId);
-                    TTranHistory history = new TTranHistory();
-                    history.setTranId(tranId);
-                    history.setStage(tran.getStage());
-                    history.setMoney(current.getMoney());
-                    history.setExpectedDate(current.getExpectedDate());
-                    history.setCreateTime(now);
-                    history.setCreateBy(approveBy);
-                    tranHistoryMapper.insert(history);
-                    
                     // 清除缓存
                     clearTransactionCache(tranId);
                     return true;
@@ -380,17 +320,6 @@ public class TranServiceImpl implements TranService {
                 int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
                 
                 if (tranResult > 0) {
-                    // 创建历史记录
-                    TTran current = tranMapper.selectByPrimaryKey(invoice.getTranId());
-                    TTranHistory history = new TTranHistory();
-                    history.setTranId(invoice.getTranId());
-                    history.setStage(45);
-                    history.setMoney(current.getMoney());
-                    history.setExpectedDate(current.getExpectedDate());
-                    history.setCreateTime(now);
-                    history.setCreateBy(invoice.getCreateBy());
-                    tranHistoryMapper.insert(history);
-                    
                     // 清除缓存
                     clearTransactionCache(invoice.getTranId());
                     return true;
@@ -439,17 +368,6 @@ public class TranServiceImpl implements TranService {
                         int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
                         
                         if (tranResult > 0) {
-                            // 创建历史记录
-                            TTran current = tranMapper.selectByPrimaryKey(currentInvoice.getTranId());
-                            TTranHistory history = new TTranHistory();
-                            history.setTranId(currentInvoice.getTranId());
-                            history.setStage(46);
-                            history.setMoney(current.getMoney());
-                            history.setExpectedDate(current.getExpectedDate());
-                            history.setCreateTime(now);
-                            history.setCreateBy(updateBy);
-                            tranHistoryMapper.insert(history);
-                            
                             // 清除缓存
                             clearTransactionCache(currentInvoice.getTranId());
                         }
@@ -493,4 +411,76 @@ public class TranServiceImpl implements TranService {
         redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTION + tranId);
         redisManager.delete(Constants.CACHE_KEY_TRAN_INVOICES + tranId);
     }
-} 
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteTransaction(Integer id) {
+        try {
+            // 检查交易是否存在
+            TTran transaction = tranMapper.selectByPrimaryKey(id);
+            if (transaction == null) {
+                return false;
+            }            // 删除交易产品关联（恢复库存）
+            List<TTranProduct> tranProducts = tranProductMapper.selectByTranId(id);
+            if (tranProducts != null && !tranProducts.isEmpty()) {
+                for (TTranProduct product : tranProducts) {
+                    // 恢复产品库存
+                    productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                }
+                // 删除交易产品关联
+                tranProductMapper.deleteByTranId(id);
+            }
+
+            // 删除交易备注
+            tranRemarkMapper.deleteByTranId(id);
+
+            // 删除交易主记录
+            int result = tranMapper.deleteByPrimaryKey(id);
+
+            if (result > 0) {
+                // 清除缓存
+                clearTransactionCache(id);
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean batchDeleteTransactions(List<Integer> ids) {
+        try {
+            if (ids == null || ids.isEmpty()) {
+                return false;
+            }
+
+            // 逐个删除交易（保证事务一致性）
+            for (Integer id : ids) {                // 删除交易产品关联（恢复库存）
+                List<TTranProduct> tranProducts = tranProductMapper.selectByTranId(id);
+                if (tranProducts != null && !tranProducts.isEmpty()) {
+                    for (TTranProduct product : tranProducts) {
+                        // 恢复产品库存
+                        productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                    }
+                    // 删除交易产品关联
+                    tranProductMapper.deleteByTranId(id);
+                }
+
+                // 删除交易备注
+                tranRemarkMapper.deleteByTranId(id);
+
+                // 清除缓存
+                clearTransactionCache(id);
+            }
+
+            // 批量删除交易主记录
+            int result = tranMapper.deleteByIds(ids);
+
+            return result > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}

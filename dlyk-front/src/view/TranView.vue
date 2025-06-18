@@ -17,17 +17,21 @@
             <el-option label="待收款" value="45" />
             <el-option label="已完成" value="46" />
           </el-select>
-        </el-form-item>
-        <el-form-item>
+        </el-form-item>        <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button type="success" @click="handleAdd">新增交易</el-button>
+          <el-button type="danger" @click="handleBatchDelete" :disabled="selectedIds.length === 0">批量删除</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 数据表格 -->
-    <el-card class="table-card">
-      <el-table :data="tableData" style="width: 100%" v-loading="loading">
+    <el-card class="table-card">      
+      <el-table :data="tableData" style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table-column 
+          type="selection" 
+          width="55"
+        />
         <el-table-column 
           type="index" 
           label="序号" 
@@ -49,32 +53,38 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" show-overflow-tooltip />
-        <el-table-column label="操作" show-overflow-tooltip>
+        <el-table-column prop="createTime" label="创建时间" show-overflow-tooltip />        <el-table-column label="操作" show-overflow-tooltip>
           <template #default="scope">
-            <el-button @click="handleView(scope.row)">查看</el-button>
-            <el-button 
-              type="primary" 
-              @click="handleEdit(scope.row)"
-              v-if="scope.row.stage === 'QUOTATION'"
-            >编辑</el-button>
-            <el-button 
-              type="success" 
-              @click="handleApprove(scope.row)"
-              v-if="scope.row.stage === 'PENDING'"
-            >审批</el-button>
-            <el-button 
-              type="warning" 
-              @click="handleInvoice(scope.row)"
-              v-if="scope.row.stage === 'APPROVED'"
-            >开票</el-button>
-            <el-button
-            type="danger"
-            @click="handlePay(scope.row)"
-            v-if="scope.row.stage === 'PAYMENT'"
-            >收款</el-button>
+            <div class="operation-buttons">
+              <el-button @click="handleView(scope.row)">查看</el-button>
+              <el-button 
+                type="primary" 
+                @click="handleEdit(scope.row)"
+                v-if="scope.row.stage === 'QUOTATION'"
+              >编辑</el-button>
+              <el-button 
+                type="success" 
+                @click="handleApprove(scope.row)"
+                v-if="scope.row.stage === 'PENDING'"
+              >审批</el-button>
+              <el-button 
+                type="warning" 
+                @click="handleInvoice(scope.row)"
+                v-if="scope.row.stage === 'APPROVED'"
+              >开票</el-button>
+              <el-button
+                type="danger"
+                @click="handlePay(scope.row)"
+                v-if="scope.row.stage === 'PAYMENT'"
+              >收款</el-button>
+              <el-button 
+                type="danger" 
+                @click="handleDelete(scope.row.id)"
+                v-if="scope.row.stage === 'QUOTATION'"
+              >删除</el-button>
+            </div>
           </template>
-        </el-table-column>      </el-table>
+        </el-table-column></el-table>
     </el-card>
     
     <!-- 分页 -->
@@ -205,10 +215,10 @@
 
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
-import { getTranList, updateTran, createTran, getTranDetail, getTranProducts } from '../api/tran'
+import { getTranList, updateTran, createTran, getTranDetail, getTranProducts, deleteTran, batchDeleteTran } from '../api/tran'
 import { getProductList } from '../api/product'
 import { getCustomerOptions } from '../api/customer'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -217,6 +227,7 @@ const tableData = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const selectedIds = ref([])
 
 // Dialog相关
 const dialogVisible = ref(false)
@@ -349,6 +360,73 @@ const handlePay = async (row) => {
     fetchData()
   } else {
     ElMessage.error(res.data.msg || '收款失败')
+  }
+}
+
+// 表格选择变化
+const handleSelectionChange = (selection) => {
+  selectedIds.value = selection.map(item => item.id)
+}
+
+// 单个删除
+const handleDelete = async (id) => {
+  try {
+    await ElMessageBox.confirm(
+      '您确定要删除该交易吗？',
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    const res = await deleteTran(id)
+    if (res.data.code === 200) {
+      ElMessage.success('删除成功')
+      fetchData()
+    } else {
+      ElMessage.error(res.data.msg || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
+// 批量删除
+const handleBatchDelete = async () => {
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请选择要删除的交易')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `您确定要删除选中的 ${selectedIds.value.length} 条交易吗？`,
+      '确认批量删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    const res = await batchDeleteTran(selectedIds.value)
+    if (res.data.code === 200) {
+      ElMessage.success(`成功删除 ${selectedIds.value.length} 条交易`)
+      selectedIds.value = []
+      fetchData()
+    } else {
+      ElMessage.error(res.data.msg || '批量删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除失败:', error)
+      ElMessage.error('批量删除失败')
+    }
   }
 }
 
@@ -636,6 +714,18 @@ onMounted(() => {
 
 .dialog-footer {
   text-align: right;
+}
+
+.operation-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.operation-buttons .el-button {
+  margin: 0;
+  min-width: 52px;
 }
 
 :deep(.el-table) {
