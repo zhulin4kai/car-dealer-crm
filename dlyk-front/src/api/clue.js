@@ -41,3 +41,28 @@ export function addClue(formData) {
 export function updateClue(formData) {
     return doPut("/api/clue", formData);
 }
+
+// ClueDetailView 相关的 API 函数
+export function addClueRemark(clueId, noteContent, noteWay) {
+    return doPost("/api/clue/remark", {
+        clueId: clueId,
+        noteContent: noteContent,
+        noteWay: noteWay
+    });
+}
+
+export function getClueRemarkList(current, clueId) {
+    return doGet("/api/clue/remark", {
+        current: current,
+        clueId: clueId
+    });
+}
+
+export function convertClueToCustomer(clueId, product, description, nextContactTime) {
+    return doPost("/api/clue/customer", {
+        clueId: clueId,
+        product: product,
+        description: description,
+        nextContactTime: nextContactTime
+    });
+}

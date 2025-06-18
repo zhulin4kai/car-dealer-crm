@@ -570,8 +570,8 @@ const loadActivityAndProduct = async () => {
     productOptions.value = productRes.data.data.list;
   }
 
-  console.log(activityOptions.value);
-  console.log(productOptions.value);
+  // console.log(activityOptions.value);
+  // console.log(productOptions.value);
 }
 
 const loadDicValue = async (typeCode) => {
@@ -596,13 +596,13 @@ const loadDicValue = async (typeCode) => {
       }
     }
   });
-  console.log(appellationOptions.value);
-  console.log(needLoanOptions.value);
-  console.log(intentionStateOptions.value);
-  console.log(clueStateOptions.value);
-  console.log(sourceOptions.value);
-  console.log(activityOptions.value);
-  console.log(productOptions.value);
+  // console.log(appellationOptions.value);
+  // console.log(needLoanOptions.value);
+  // console.log(intentionStateOptions.value);
+  // console.log(clueStateOptions.value);
+  // console.log(sourceOptions.value);
+  // console.log(activityOptions.value);
+  // console.log(productOptions.value);
 };
 
 // 加载负责人
