@@ -33,4 +33,41 @@ export function batchDeleteSystems(ids) {
 // 切换系统开启状态
 export function toggleSystemStatus(id, isOpen) {
     return doPut(`/api/system/${id}/status`, { isOpen })
-} 
+}
+
+// ================ 系统监控相关API ================
+
+// 获取系统基本信息
+export function getSystemMonitorInfo() {
+    return doGet('/api/monitor/system-info')
+}
+
+// 获取内存信息
+export function getMemoryInfo() {
+    return doGet('/api/monitor/memory-info')
+}
+
+// 获取CPU信息
+export function getCpuInfo() {
+    return doGet('/api/monitor/cpu-info')
+}
+
+// 获取磁盘信息
+export function getDiskInfo() {
+    return doGet('/api/monitor/disk-info')
+}
+
+// 获取JVM信息
+export function getJvmInfo() {
+    return doGet('/api/monitor/jvm-info')
+}
+
+// 获取网络信息
+export function getNetworkInfo() {
+    return doGet('/api/monitor/network-info')
+}
+
+// 获取所有监控数据
+export function getAllMonitorData() {
+    return doGet('/api/monitor/all')
+}

@@ -20,25 +20,14 @@ public class SystemServiceImpl implements SystemService {
     private TSystemMapper systemMapper;
 
     @Resource
-    private RedisManager redisManager;
-
-    @Override
+    private RedisManager redisManager;    @Override
     public List<TSystem> getAllList() {
-        return CacheUtils.getCacheData(
-            () -> redisManager.get(Constants.REDIS_SYSTEM_LIST_KEY),
-            () -> systemMapper.selectAll(),
-            data -> redisManager.set(Constants.REDIS_SYSTEM_LIST_KEY, data, Constants.SYSTEM_CACHE_EXPIRE_TIME)
-        );
-    }
-
-    @Override
+        // 暂时禁用Redis缓存，直接从数据库获取，避免LocalDateTime序列化问题
+        return systemMapper.selectAll();
+    }    @Override
     public TSystem getById(Integer id) {
-        String cacheKey = Constants.REDIS_SYSTEM_DETAIL_KEY + id;
-        return CacheUtils.getCacheData(
-            () -> redisManager.get(cacheKey),
-            () -> systemMapper.selectById(id),
-            data -> redisManager.set(cacheKey, data, Constants.SYSTEM_CACHE_EXPIRE_TIME)
-        );
+        // 暂时禁用Redis缓存，直接从数据库获取，避免LocalDateTime序列化问题
+        return systemMapper.selectById(id);
     }
 
     @Override
@@ -77,10 +66,9 @@ public class SystemServiceImpl implements SystemService {
     public void toggleStatus(Integer id, String isOpen) {
         systemMapper.updateStatus(id, isOpen);
         clearCache();
-    }
-
-    private void clearCache() {
-        redisManager.delete(Constants.REDIS_SYSTEM_LIST_KEY);
-        redisManager.deletePattern(Constants.REDIS_SYSTEM_DETAIL_KEY + "*");
+    }    private void clearCache() {
+        // 暂时禁用缓存清理，因为我们没有使用Redis缓存
+        // redisManager.delete(Constants.REDIS_SYSTEM_LIST_KEY);
+        // redisManager.deletePattern(Constants.REDIS_SYSTEM_DETAIL_KEY + "*");
     }
 }
