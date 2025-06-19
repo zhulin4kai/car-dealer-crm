@@ -9,7 +9,7 @@ spring:
     url: jdbc:mysql://localhost:3306/dlyk?useUnicode=true&characterEncoding=utf8&useSSL=false
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: yuzhoukai4dsb
+    password: 
     hikari:
       #最大连接数，默认是10
       maximum-pool-size: 30
