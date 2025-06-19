@@ -139,12 +139,17 @@
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" @click="submitForm(formRef)">开具发票</el-button>
-          <el-button @click="goBack">返回</el-button>
+          <el-button 
+            type="primary" 
+            @click="submitForm(formRef)"
+            :disabled="hasInvoiceIssued"
+          >
+            {{ hasInvoiceIssued ? '已开具发票' : '开具发票' }}
+          </el-button>
         </el-form-item>
       </el-form>
 
-      <!-- 已有发票列表 -->
+      <!-- 已有发票列表
       <div v-if="invoiceList.length > 0" class="invoice-list">
         <div class="section-title">发票记录</div>
         <el-table :data="invoiceList" style="width: 100%">
@@ -181,7 +186,7 @@
             </template>
           </el-table-column>
         </el-table>
-      </div>
+      </div> -->
     </el-card>
   </div>
 </template>
@@ -287,6 +292,11 @@ const getDynamicRules = computed(() => {
   return dynamicRules
 })
 
+// 检查是否已开具发票（一个交易只能开一次发票）
+const hasInvoiceIssued = computed(() => {
+  return invoiceList.value.some(invoice => invoice.status === 'ISSUED')
+})
+
 // 根据阶段获取状态
 const getStageStatus = (stage) => {
   const stageMap = {
@@ -380,17 +390,43 @@ const fetchInvoiceList = async () => {
 // 提交发票表单
 const submitForm = async (formEl) => {
   if (!formEl) return
+  
+  // 检查是否已开具发票
+  if (hasInvoiceIssued.value) {
+    ElMessage.warning('该交易已开具发票，不能重复开票')
+    return
+  }
+  
   await formEl.validate(async (valid) => {
     if (valid) {
       try {
+        // 创建发票记录
         const res = await createInvoice(invoiceForm)
         if (res.data.code === 200) {
-          ElMessage.success('发票创建成功')
-          // 重新获取发票列表
-          await fetchInvoiceList()
-          // 重置表单
-          formEl.resetFields()
-          invoiceForm.amount = tranDetail.value.amount
+          const newInvoiceId = res.data.data.id // 假设后端返回新创建发票的ID
+          
+          // 立即标记发票为已开具
+          const invoiceRes = await updateInvoiceStatus(newInvoiceId, 'ISSUED')
+          if (invoiceRes.data.code === 200) {
+            // 同时更新交易状态为已完成（stage: 46）
+            const tranRes = await updateTran({
+              id: parseInt(route.params.id),
+              stage: 46 // 已完成
+            })
+            
+            if (tranRes.data.code === 200) {
+              ElMessage.success('发票开具成功，交易已完成')
+              // 重新获取发票列表和交易详情
+              await fetchInvoiceList()
+              await fetchTranDetail()
+            } else {
+              ElMessage.warning('发票开具成功，但交易状态更新失败')
+              await fetchInvoiceList()
+            }
+          } else {
+            ElMessage.warning('发票创建成功，但状态更新失败')
+            await fetchInvoiceList()
+          }
         } else {
           ElMessage.error(res.data.msg || '发票创建失败')
         }
@@ -402,7 +438,7 @@ const submitForm = async (formEl) => {
   })
 }
 
-// 标记发票为已开具
+// 标记发票为已开具（保留此方法以防其他地方调用）
 const markAsIssued = async (invoice) => {
   try {
     // 更新发票状态为已开具
@@ -416,10 +452,9 @@ const markAsIssued = async (invoice) => {
       
       if (tranRes.data.code === 200) {
         ElMessage.success('开票完成，交易状态已更新为已完成')
-        // 重新获取发票列表
+        // 重新获取发票列表和交易详情
         await fetchInvoiceList()
-        // 返回交易列表
-        goBack()
+        await fetchTranDetail()
       } else {
         ElMessage.warning('发票状态更新成功，但交易状态更新失败')
         await fetchInvoiceList()
@@ -431,11 +466,6 @@ const markAsIssued = async (invoice) => {
     console.error('发票状态更新失败:', error)
     ElMessage.error('发票状态更新失败')
   }
-}
-
-// 返回列表页
-const goBack = () => {
-  router.push('/dashboard/tran')
 }
 
 onMounted(async () => {
