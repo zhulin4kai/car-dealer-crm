@@ -6,10 +6,10 @@
         <div class="card-header">
           <span class="header-title">线索详情</span>
           <div class="header-actions">
-            <el-button type="success" @click="convertCustomer" v-if="clueDetail.state !== -1" size="small">
+            <el-button type="success" @click="convertCustomer" v-if="clueDetail.state !== -1" >
               转换客户
             </el-button>
-            <el-button type="info" plain @click="handleGoBack" size="small">
+            <el-button type="info" plain @click="handleGoBack">
               返 回
             </el-button>
           </div>
@@ -273,13 +273,11 @@
     draggable
     :append-to-body="true"
     :destroy-on-close="true">
-    <el-form ref="convertCustomerRefForm" :model="customerQuery" label-width="120px" :rules="convertCustomerRules">
-      <el-form-item label="意向产品" prop="product">
+    <el-form ref="convertCustomerRefForm" :model="customerQuery" label-width="120px" :rules="convertCustomerRules">      <el-form-item label="意向产品" prop="product">
         <el-select 
           v-model="customerQuery.product" 
           placeholder="请选择意向产品" 
           style="width: 100%;" 
-          @click="ProductList()"
           clearable>
           <el-option
               v-for="item in productOptions"
@@ -483,10 +481,13 @@ const toPage = (current) => {
 }
 
 // 转换客户
-const convertCustomer = () => {
+const convertCustomer = async () => {
+  // 先加载产品列表
+  await ProductList()
+  
   // 设置意向产品的默认值为当前线索的意向产品
   customerQuery.value = {
-    product: clueDetail.value.intentionProduct || null,
+    product: clueDetail.value.intentionProductDO?.id || null,
     description: '',
     nextContactTime: ''
   }
@@ -560,6 +561,7 @@ const handleGoBack = () => {
 onMounted(() => {
   loadClueDetail()
   loadClueRemarkList(1)
+  ProductList() // 预先加载产品列表
 })
 </script>
 

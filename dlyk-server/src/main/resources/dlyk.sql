@@ -1140,8 +1140,6 @@ VALUES ('BMW-X5-2023', '宝马 X5', 'SUV', '2023款 xDrive40i 尊享型', 569800
 INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
 VALUES ('BMW-X3-2023', '宝马 X3', 'SUV', '2023款 xDrive30i M运动套装', 399900.00, 20, 8, '上架', '2023-05-01 10:15:00', '2023-05-01 10:15:00');
 
-
-
 INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
 VALUES ('BMW-3-2023', '宝马 3系', '轿车', '2023款 330i M运动套装', 329800.00, 25, 10, '上架', '2023-05-02 09:30:00', '2023-05-02 09:30:00');
 
@@ -1308,7 +1306,6 @@ CREATE TABLE `t_product_stock_record`
     `create_time` DATETIME    DEFAULT NULL COMMENT '记录创建时间',
     PRIMARY KEY (`id`),
     KEY `idx_product_id` (`product_id`) COMMENT '产品ID索引'
-    -- CONSTRAINT `fk_product_stock_record_product` FOREIGN KEY (`product_id`) REFERENCES `t_product` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='产品库存记录表';
 

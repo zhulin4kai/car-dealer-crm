@@ -26,8 +26,14 @@ export function updateTran(data) {
 }
 
 // 结算交易
-export function settleTran(id) {
-    return doPut(`/api/tran/settle/${id}`)
+export function settleTran(id, amount = null) {
+    if (amount !== null) {
+        // 传递结算金额
+        return doPut(`/api/tran/settle/${id}`, { amount })
+    } else {
+        // 原始结算方式
+        return doPut(`/api/tran/settle/${id}`)
+    }
 }
 
 // 审批交易

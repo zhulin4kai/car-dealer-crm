@@ -42,10 +42,44 @@
         </el-table-column>
         <el-table-column prop="total" label="小计" width="140">
           <template #default="scope">
-            ¥{{ scope.row.price * scope.row.quantity }}
+            ¥{{ (scope.row.price * scope.row.quantity).toFixed(2) }}
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 促销选择 - 仅在待报价状态显示 -->
+      <div v-if="tranDetail.stage === 'QUOTATION'" class="promotion-section">
+        <div class="section-title">促销选择</div>
+        <el-form :model="promotionForm" label-width="120px">
+          <el-form-item label="促销活动">
+            <el-select 
+              v-model="promotionForm.selectedPromotion" 
+              placeholder="请选择促销活动（可选）"
+              clearable
+              style="width: 100%"
+              @change="onPromotionChange"
+            >
+              <el-option
+                v-for="promotion in availablePromotions"
+                :key="promotion.id"
+                :label="`${promotion.name} (${getPromotionText(promotion)})`"
+                :value="promotion.id"
+              />
+            </el-select>
+          </el-form-item>
+          
+          <!-- 促销效果预览 -->
+          <el-form-item v-if="selectedPromotionInfo" label="促销效果">
+            <div class="promotion-preview">
+              <div class="price-calculation">
+                <span class="original-price">原价：¥{{ originalTotalAmount.toFixed(2) }}</span>
+                <span class="discount-info">{{ getDiscountDescription() }}</span>
+                <span class="final-price">结算价：¥{{ finalAmount.toFixed(2) }}</span>
+              </div>
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
     </el-card>
 
     <!-- 发票信息 -->
@@ -88,11 +122,11 @@
     <!-- 操作按钮 -->
     <div class="action-buttons">
       <el-button @click="goBack">返回</el-button>
-      <el-button 
+      <!-- <el-button 
         type="primary" 
         @click="handleEdit" 
         v-if="tranDetail.stage === 'QUOTATION'"
-      >编辑</el-button>
+      >编辑</el-button> -->
       <el-button 
         type="success" 
         @click="handleSettle" 
@@ -113,10 +147,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran } from '../api/tran'
+import { getPromotionList } from '../api/product'
 
 const route = useRoute()
 const router = useRouter()
@@ -134,6 +169,58 @@ const tranDetail = ref({
 })
 
 const invoiceList = ref([])
+
+// 促销相关数据
+const promotionList = ref([])
+const promotionForm = ref({
+  selectedPromotion: null
+})
+
+// 计算属性
+const availablePromotions = computed(() => {
+  // 只显示进行中的促销活动
+  return promotionList.value.filter(promotion => promotion.status === '进行中')
+})
+
+const selectedPromotionInfo = computed(() => {
+  if (!promotionForm.value.selectedPromotion) return null
+  return promotionList.value.find(p => p.id === promotionForm.value.selectedPromotion)
+})
+
+const originalTotalAmount = computed(() => {
+  if (!tranDetail.value.products) return 0
+  const total = tranDetail.value.products.reduce((total, product) => {
+    return total + (product.price * product.quantity)
+  }, 0)
+  console.log('计算原价总额：', total)
+  return Number(total.toFixed(2))
+})
+
+const finalAmount = computed(() => {
+  const original = originalTotalAmount.value
+  if (!selectedPromotionInfo.value) return original
+  
+  const promotion = selectedPromotionInfo.value
+  let discountedAmount = original
+  const promotionType = promotion.type?.toLowerCase() || ''
+  
+  if (promotionType === 'percentage' || promotionType === '折扣') {
+    let discountRate = promotion.discount
+    if (discountRate > 1) {
+      discountRate = discountRate / 100  // 92 -> 0.92
+    }
+    discountedAmount = original * discountRate
+  } else if (promotionType === 'amount' || promotionType === '满减' || promotionType === '直降') {
+    discountedAmount = original - promotion.discount
+  } else {
+    console.log('未知促销类型：', promotion.type)
+    discountedAmount = original
+  }
+  // 确保最低为0，不能出现负数
+  const result = Math.max(0, Number(discountedAmount.toFixed(2)))
+  console.log('最终结算价：', result)
+  return result
+})
 
 // 状态映射
 const statusMap = {
@@ -165,11 +252,77 @@ const getInvoiceTypeText = (type) => {
   return typeMap[type] || type
 }
 
-const getTimelineItemType = (status) => {
-  switch (status) {
-    case 'COMPLETED': return 'success'
-    case 'PENDING': return 'warning'
-    default: return ''
+// 促销相关方法
+const getPromotionText = (promotion) => {
+  const promotionType = promotion.type?.toLowerCase() || ''
+  
+  if (promotionType === 'percentage' || promotionType === '折扣') {
+    // 处理折扣显示
+    let discountRate = promotion.discount
+    if (discountRate > 1) {
+      // 大于1表示百分比，如92表示92折
+      return `${discountRate}折`
+    } else {
+      // 小数表示保留比例，如0.92表示保留92%，即92折
+      return `${(discountRate * 100)}折`
+    }
+  } else if (promotionType === 'amount' || promotionType === '满减') {
+    return `满减¥${promotion.discount}`
+  } else if (promotionType === '直降') {
+    return `直降¥${promotion.discount}`
+  } else {
+    return promotion.type || '优惠'
+  }
+}
+
+const getDiscountDescription = () => {
+  if (!selectedPromotionInfo.value) return ''
+  
+  const promotion = selectedPromotionInfo.value
+  const original = originalTotalAmount.value
+  const final = finalAmount.value
+  const discount = original - final
+  
+  const promotionType = promotion.type?.toLowerCase() || ''
+  
+  if (promotionType === 'percentage' || promotionType === '折扣') {
+    let discountRate = promotion.discount
+    if (discountRate > 1) {
+      return `${discountRate}折优惠，优惠¥${discount.toFixed(2)}`
+    } else {
+      return `${(discountRate * 100)}折优惠，优惠¥${discount.toFixed(2)}`
+    }
+  } else if (promotionType === 'amount' || promotionType === '满减') {
+    return `满减优惠，减免¥${discount.toFixed(2)}`
+  } else if (promotionType === '直降') {
+    return `直降优惠，减免¥${discount.toFixed(2)}`
+  } else {
+    return `优惠减免¥${discount.toFixed(2)}`
+  }
+}
+
+const onPromotionChange = () => {
+  // 促销选择变化时的处理逻辑
+  console.log('选择的促销：', selectedPromotionInfo.value)
+  console.log('原价：', originalTotalAmount.value)
+  console.log('折扣后价格：', finalAmount.value)
+  console.log('优惠金额：', originalTotalAmount.value - finalAmount.value)
+}
+
+// 获取促销列表
+const fetchPromotionList = async () => {
+  try {
+    const res = await getPromotionList({
+      page: 1,
+      size: 1000 // 获取所有促销活动
+    })
+    console.log('促销列表响应:', res)
+    if (res.data.code === 200) {
+      promotionList.value = res.data.data.list || []
+      console.log('促销列表:', promotionList.value)
+    }
+  } catch (error) {
+    console.error('获取促销列表失败:', error)
   }
 }
 
@@ -259,14 +412,21 @@ const handleSettle = async () => {
       return
     }
     
-    // 计算所有产品的总价格用于显示确认信息
-    const totalAmount = tranDetail.value.products.reduce((total, product) => {
-      return total + (product.price * product.quantity)
-    }, 0)
+    // 使用折扣后的金额
+    const settlementAmount = finalAmount.value
+    const originalAmount = originalTotalAmount.value
+    
+    let confirmMessage = `确认结算该交易吗？`
+    
+    if (selectedPromotionInfo.value) {
+      confirmMessage += `\n原价：¥${originalAmount.toFixed(2)}\n${getDiscountDescription()}\n最终结算金额：¥${settlementAmount.toFixed(2)}`
+    } else {
+      confirmMessage += `\n结算金额：¥${settlementAmount.toFixed(2)}`
+    }
     
     // 显示确认对话框
     const confirmResult = await ElMessageBox.confirm(
-      `确认结算该交易吗？计算出的总金额为：¥${totalAmount}`,
+      confirmMessage,
       '确认结算',
       {
         confirmButtonText: '确认',
@@ -279,15 +439,19 @@ const handleSettle = async () => {
       return
     }
     
-    // 调用结算API
-    const res = await settleTran(route.params.id)
-    if (res.data.code === 200) {
-      ElMessage.success('结算成功，交易状态已更新为待审批')
-      // 重新获取交易详情以更新页面显示
-      await fetchTranDetail()
-      goBack()
-    } else {
-      ElMessage.error(res.data.msg || '结算失败')
+    try {
+      const res = await settleTran(route.params.id, settlementAmount)
+      if (res.data.code === 200) {
+        ElMessage.success('结算成功，交易状态已更新为待审批')
+        await fetchTranDetail()
+        goBack()
+      } else {
+        console.error('结算失败响应：', res.data)
+        ElMessage.error(res.data.msg || '结算失败')
+      }
+    } catch (error) {
+      console.error('结算API调用失败：', error)
+      ElMessage.error('结算失败：' + (error.message || '网络错误'))
     }
   } catch (error) {
     console.error('结算失败:', error)
@@ -318,6 +482,7 @@ onMounted(async () => {
   await fetchTranDetail()
   await fetchProducts()
   await fetchInvoiceInfo()
+  await fetchPromotionList() // 加载促销列表
 })
 </script>
 
@@ -341,6 +506,50 @@ onMounted(async () => {
   justify-content: center;
   gap: 20px;
   margin-top: 20px;
+}
+
+.promotion-section {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #303133;
+}
+
+.promotion-preview {
+  padding: 15px;
+  background-color: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+}
+
+.price-calculation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.original-price {
+  color: #909399;
+  text-decoration: line-through;
+}
+
+.discount-info {
+  color: #67c23a;
+  font-weight: bold;
+}
+
+.final-price {
+  color: #e6a23c;
+  font-size: 18px;
+  font-weight: bold;
 }
 
 :deep(.el-descriptions) {

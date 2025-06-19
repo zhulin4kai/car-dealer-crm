@@ -146,9 +146,10 @@ public class TranController {
 
     /**
      * 结算交易 - 计算总金额并更新状态为待审批
+     * 支持前端传递促销后的结算金额
      */
     @PutMapping("/settle/{id}")
-    public R<Boolean> settle(@PathVariable Integer id) {
+    public R<Boolean> settle(@PathVariable Integer id, @RequestBody(required = false) Map<String, Object> body) {
         // 获取当前登录用户
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         TUser currentUser = (TUser) authentication.getPrincipal();
@@ -159,10 +160,37 @@ public class TranController {
             return R.FAIL("该交易没有产品信息，无法结算");
         }
         
-        // 计算总金额
-        BigDecimal totalAmount = products.stream()
-            .map(product -> product.getPrice().multiply(new BigDecimal(product.getQuantity())))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalAmount;
+        
+        // 检查是否有前端传递的促销后金额
+        if (body != null && body.containsKey("amount")) {
+            try {
+                Object amountObj = body.get("amount");
+                if (amountObj instanceof Number) {
+                    totalAmount = new BigDecimal(amountObj.toString());
+                } else if (amountObj instanceof String) {
+                    totalAmount = new BigDecimal((String) amountObj);
+                } else {
+                    return R.FAIL("传递的金额格式不正确");
+                }
+                
+                // 验证金额不能为负数
+                if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
+                    return R.FAIL("结算金额不能为负数");
+                }
+                
+                System.out.println("使用前端传递的促销后金额进行结算: " + totalAmount);
+            } catch (NumberFormatException e) {
+                return R.FAIL("传递的金额格式不正确");
+            }
+        } else {
+            // 使用原有逻辑计算总金额（产品原价合计）
+            totalAmount = products.stream()
+                .map(product -> product.getPrice().multiply(new BigDecimal(product.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            
+            System.out.println("使用产品原价合计进行结算: " + totalAmount);
+        }
         
         // 更新交易金额和状态
         TTran tran = new TTran();
