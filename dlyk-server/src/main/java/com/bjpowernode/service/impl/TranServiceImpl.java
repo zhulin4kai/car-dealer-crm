@@ -38,7 +38,7 @@ public class TranServiceImpl implements TranService {
     private TTranApproveMapper tranApproveMapper;
 
     @Resource
-    private TProductMapper TProductMapper;
+    private ProductMapper productMapper;
 
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
@@ -80,7 +80,7 @@ public class TranServiceImpl implements TranService {
                 tranProductMapper.insertSelective(product);
                 
                 // 减少产品库存
-                TProductMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
+                productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
             }
         }
         
@@ -212,7 +212,7 @@ public class TranServiceImpl implements TranService {
             if (products != null && !products.isEmpty()) {
                 for (TTranProduct product : products) {
                     // 恢复产品库存
-                    TProductMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                    productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
                 }
             }
             
@@ -235,7 +235,7 @@ public class TranServiceImpl implements TranService {
                     tranProductMapper.insertSelective(product);
                     
                     // 减少产品库存
-                    TProductMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
+                    productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
                 }
             }
             // 清除缓存
@@ -425,7 +425,7 @@ public class TranServiceImpl implements TranService {
             if (tranProducts != null && !tranProducts.isEmpty()) {
                 for (TTranProduct product : tranProducts) {
                     // 恢复产品库存
-                    TProductMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                    productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
                 }
                 // 删除交易产品关联
                 tranProductMapper.deleteByTranId(id);
@@ -462,7 +462,7 @@ public class TranServiceImpl implements TranService {
                 if (tranProducts != null && !tranProducts.isEmpty()) {
                     for (TTranProduct product : tranProducts) {
                         // 恢复产品库存
-                        TProductMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                        productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
                     }
                     // 删除交易产品关联
                     tranProductMapper.deleteByTranId(id);

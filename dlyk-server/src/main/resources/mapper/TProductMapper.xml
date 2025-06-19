@@ -101,8 +101,7 @@
     
     <update id="updateStock">
         UPDATE t_product
-        SET stock = stock + #{quantity},
-            update_time = NOW()
+        SET stock = stock + #{quantity}
         WHERE id = #{id}
     </update>
     
