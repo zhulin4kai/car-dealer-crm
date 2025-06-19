@@ -38,7 +38,7 @@ public class TranServiceImpl implements TranService {
     private TTranApproveMapper tranApproveMapper;
 
     @Resource
-    private ProductMapper productMapper;
+    private TProductMapper TProductMapper;
 
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
@@ -80,7 +80,7 @@ public class TranServiceImpl implements TranService {
                 tranProductMapper.insertSelective(product);
                 
                 // 减少产品库存
-                productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
+                TProductMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
             }
         }
         
@@ -212,7 +212,7 @@ public class TranServiceImpl implements TranService {
             if (products != null && !products.isEmpty()) {
                 for (TTranProduct product : products) {
                     // 恢复产品库存
-                    productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                    TProductMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
                 }
             }
             
@@ -235,7 +235,7 @@ public class TranServiceImpl implements TranService {
                     tranProductMapper.insertSelective(product);
                     
                     // 减少产品库存
-                    productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
+                    TProductMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
                 }
             }
             // 清除缓存
@@ -388,7 +388,7 @@ public class TranServiceImpl implements TranService {
     private String generateTranNo() {
         String dateStr = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
         String randomStr = String.format("%06d", new java.util.Random().nextInt(1000000));
-        return dateStr + randomStr;
+        return "TN" + dateStr + randomStr;
     }
 
     /**
@@ -425,7 +425,7 @@ public class TranServiceImpl implements TranService {
             if (tranProducts != null && !tranProducts.isEmpty()) {
                 for (TTranProduct product : tranProducts) {
                     // 恢复产品库存
-                    productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                    TProductMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
                 }
                 // 删除交易产品关联
                 tranProductMapper.deleteByTranId(id);
@@ -462,7 +462,7 @@ public class TranServiceImpl implements TranService {
                 if (tranProducts != null && !tranProducts.isEmpty()) {
                     for (TTranProduct product : tranProducts) {
                         // 恢复产品库存
-                        productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                        TProductMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
                     }
                     // 删除交易产品关联
                     tranProductMapper.deleteByTranId(id);
