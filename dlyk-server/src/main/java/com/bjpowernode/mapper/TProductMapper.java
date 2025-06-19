@@ -19,4 +19,6 @@ public interface TProductMapper {
     int updateByPrimaryKey(TProduct record);
 
     List<TProduct> selectAllOnSaleProduct();
+
+    void updateStock(long l, int i);
 }

@@ -484,6 +484,12 @@ const toPage = (current) => {
 
 // 转换客户
 const convertCustomer = () => {
+  // 设置意向产品的默认值为当前线索的意向产品
+  customerQuery.value = {
+    product: clueDetail.value.intentionProduct || null,
+    description: '',
+    nextContactTime: ''
+  }
   convertCustomerDialogVisible.value = true
 }
 
@@ -501,6 +507,7 @@ const convertCustomerSubmit = async () => {
         customerQuery.value.description,
         customerQuery.value.nextContactTime
       )
+      console.log(resp)
       if (resp.data.code === 200) {
         messageTip("转换成功", "success")
         convertCustomerDialogVisible.value = false
