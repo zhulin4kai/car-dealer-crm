@@ -1,7 +1,61 @@
-# Vue 3 + Vite
+# 电子商务管理系统
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+## 介绍
+这是一个完整的电子商务管理系统，前后端分离架构，包含两个主要模块：
+- `dlyk-front`：前端模块，基于 Vue 3 + Vite 开发
+- `dlyk-server`：后端模块，基于 Spring Boot 开发
 
-## Recommended IDE Setup
+系统实现了客户关系管理、产品管理、交易管理、数据统计等电商核心功能，并提供了完善的权限控制和系统监控能力。
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+## 系统核心功能
+
+### 客户关系管理
+- 线索管理：支持线索导入、线索转换为客户、线索跟进记录
+- 客户管理：完整客户信息管理，支持客户状态跟踪
+- 联系记录：支持多种方式的沟通记录管理
+
+### 产品管理
+- 产品分类：支持多级产品分类管理
+- 产品信息：完整的产品属性管理
+- 库存管理：实时库存监控与预警
+- 促销管理：支持多种促销活动配置
+
+### 交易管理
+- 交易流程：从商机到成交的全流程管理
+- 发票管理：完善的发票开具与状态跟踪
+- 审批流程：支持交易审批流程
+- 交易分析：交易数据统计分析
+
+### 数据统计
+- 销售漏斗分析
+- 来源渠道分析
+- 核心业务数据概览
+
+### 系统管理
+- 用户权限管理
+- 数据字典管理
+- 系统参数配置
+- 系统监控：包括服务器信息、内存、CPU、磁盘、网络、JVM等监控指标
+
+## 技术架构
+
+### 前端技术栈
+- Vue 3：最新版本的 Vue 框架
+- Vite：快速的前端构建工具
+- Vue Router：路由管理
+- Axios：HTTP 请求库
+
+### 后端技术栈
+- Spring Boot：快速开发框架
+- MyBatis Plus：ORM 框架
+- Spring Security：权限控制
+- JWT：用户认证
+- Redis：缓存服务
+- MySQL：数据库存储
+- PageHelper：分页插件
+
+## 答辩成员
+（具体成员信息请参考原始 README.md 文件）
+
+## 系统问题
+（具体问题描述请参考原始 README.md 文件）
