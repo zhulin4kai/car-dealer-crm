@@ -886,16 +886,17 @@ CREATE TABLE `t_system_info`
 -- ----------------------------
 -- Records of t_system_info
 -- ----------------------------
-INSERT INTO `t_system_info`
-VALUES (1, 'crm', '动力云客系统', 'http://www.bjpowernode.com', 'http://localhost:8080/image/logo.png', '动力云客系统',
-        '动力CRM 企业客户智慧云管理', 'crm, 客户, 客户关系, 客户关系管理', 'http://www.bjpowernode.com/favicon.ico',
-        '010-84846003', '123456789', '123456789@qq.com', '北京市大兴区大族企业湾10栋3层', '系统版本:1.1.0.bate',
-        '网站维护中 动力云客系统 http://www.bjpowernode.com', 'true', '2023-11-08 13:28:18', 1, NULL, NULL);
-INSERT INTO `t_system_info`
-VALUES (2, 'call', '动力呼叫系统', 'http://www.bjpowernode.com', 'http://localhost:8080/image/logo.png', '动力呼叫系统',
-        '动力CRM 企业客户智慧云管理', 'crm, 客户, 客户关系, 客户关系管理', 'http://www.bjpowernode.com/favicon.ico',
-        '010-84846003', '123456789', '123456789@qq.com', '北京市大兴区大族企业湾10栋3层', '系统版本:1.1.0.bate',
-        '网站维护中 动力呼叫系统 http://www.bjpowernode.com', 'true', '2023-11-08 13:28:21', 1, NULL, NULL);
+INSERT INTO `t_system_info` (`system_code`, `name`, `site`, `logo`, `title`, `description`, `keywords`, `shortcuticon`, `tel`, `weixin`, `email`, `address`, `version`, `closeMsg`, `isopen`, `create_time`, `create_by`, `edit_time`, `edit_by`) VALUES
+('CarSales_001', '豪华汽车销售系统', 'http://www.luxcars.com', '/logos/luxcars_logo.png', '豪华车销售', '提供高端豪华汽车销售服务', '豪华车,销售,宝马,奔驰,奥迪', '/icons/favicon.ico', '400-123-4567', 'luxcars_official', 'contact@luxcars.com', '中国北京市朝阳区', '1.0.0', '系统维护中，请稍后访问。', 'y', '2024-01-01 10:00:00', 1, NULL, NULL),
+('EcoCar_002', '新能源汽车平台', 'http://www.ecocar.com', '/logos/ecocar_logo.png', '新能源汽车', '专注于新能源汽车的销售与服务', '新能源,电动车,特斯拉,蔚来', '/icons/ecocar_favicon.ico', '400-987-6543', 'ecocar_service', 'service@ecocar.com', '中国上海市浦东新区', '2.1.0', '系统升级，预计2小时后恢复。', 'y', '2024-02-15 09:00:00', 1, '2024-05-20 14:00:00', 1),
+('UsedCar_003', '认证二手车交易市场', 'http://www.usedcars.com', '/logos/usedcar_logo.png', '二手车交易', '提供经过官方认证的二手车交易服务', '二手车,认证,保值', '/icons/usedcar_favicon.ico', '400-222-3333', 'usedcar_trade', 'trade@usedcars.com', '中国广东省深圳市', '3.0.5', NULL, 'y', '2024-03-10 11:30:00', 2, NULL, NULL),
+('TruckSales_004', '商用卡车销售网', 'http://www.trucks.com', '/logos/truck_logo.png', '卡车销售', '重型、轻型卡车销售', '卡车,商用车,货运', '/icons/truck_favicon.ico', '400-444-5555', 'trucksales_info', 'info@trucks.com', '中国山东省济南市', '1.2.0', NULL, 'n', '2024-04-01 08:00:00', 3, '2024-05-01 10:00:00', 3),
+('MotoWorld_005', '摩托车世界', 'http://www.motoworld.com', '/logos/moto_logo.png', '摩托车销售', '各类品牌摩托车销售', '摩托车,哈雷,杜卡迪', '/icons/moto_favicon.ico', '400-666-7777', 'motoworld_club', 'club@motoworld.com', '中国重庆市', '1.5.0', NULL, 'y', '2024-05-20 16:00:00', 1, NULL, NULL),
+('RVLife_006', '房车生活家', 'http://www.rvlife.com', '/logos/rv_logo.png', '房车销售与租赁', '开启您的房车之旅', '房车,旅行,租赁', '/icons/rv_favicon.ico', '400-888-9999', 'rvlife_journey', 'journey@rvlife.com', '中国四川省成都市', '2.0.0', NULL, 'y', '2024-06-01 12:00:00', 2, NULL, NULL),
+('ClassicCar_007', '经典老爷车收藏', 'http://www.classiccars.com', '/logos/classic_logo.png', '老爷车收藏', '珍稀经典老爷车交易平台', '老爷车,经典,收藏', '/icons/classic_favicon.ico', '400-111-0000', 'classiccar_collect', 'collect@classiccars.com', '中国香港', '1.0.1', NULL, 'y', '2024-07-04 18:00:00', 3, '2024-07-10 11:00:00', 1),
+('SportCar_008', '超跑俱乐部', 'http://www.supercars.com', '/logos/supercar_logo.png', '超级跑车', '法拉利、兰博基尼等超跑销售', '超跑,法拉利,兰博基尼', '/icons/supercar_favicon.ico', '400-999-8888', 'supercar_club', 'club@supercars.com', '中国澳门', '3.3.0', '网站维护中', 'y', '2024-08-08 08:08:08', 1, NULL, NULL),
+('FamilyVan_009', '家庭MPV优选', 'http://www.familyvan.com', '/logos/van_logo.png', '家用MPV', '为家庭出行提供最佳MPV选择', 'MPV,家用,七座车', '/icons/van_favicon.ico', '400-321-7654', 'familyvan_select', 'select@familyvan.com', '中国江苏省苏州市', '1.8.0', NULL, 'y', '2024-09-10 10:30:00', 2, NULL, NULL),
+('AutoParts_010', '汽车配件商城', 'http://www.autoparts.com', '/logos/parts_logo.png', '汽车配件', '原厂及品牌汽车配件在线销售', '汽车配件,维修,保养', '/icons/parts_favicon.ico', '400-567-1234', 'autoparts_mall', 'mall@autoparts.com', '中国浙江省杭州市', '4.0.0', NULL, 'y', '2024-10-01 00:00:00', 3, '2024-10-10 10:10:10', 1);
 
 -- ----------------------------
 -- Table structure for t_tran
