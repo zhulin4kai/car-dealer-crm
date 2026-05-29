@@ -5,7 +5,7 @@ export function batchDeleteCluesByIds(ids) {
 }
 
 export function getCurrentClues(current) {
-    return doGet('api/clues', {
+    return doGet('/api/clues', {
         current: current
     })
 }
@@ -20,10 +20,6 @@ export function delClueById(id) {
 
 export function checkPhoneIsExist(phone) {
     return doGet("/api/clue/" + phone, {});
-}
-
-export function getOwnerList() {
-    return doGet("/api/owner", {});
 }
 
 export function getLoginInfo() {

@@ -140,6 +140,7 @@ export default defineComponent({
     const currentPage = ref(1)
     const pageSize = ref(10)
     const total = ref(0)
+    const loading = ref(false)
     const dialogVisible = ref(false)
     const dialogType = ref('add')
     const promotionForm = ref({
@@ -269,6 +270,7 @@ export default defineComponent({
       currentPage,
       pageSize,
       total,
+      loading,
       dialogVisible,
       dialogType,
       promotionForm,
