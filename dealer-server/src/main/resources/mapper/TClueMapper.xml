@@ -101,7 +101,7 @@
     `source`, description, next_contact_time, create_time, create_by, edit_time, edit_by
   </sql>
 
-  <select id="selectClueByPage" parameterType="java.lang.Integer" resultMap="ClueResultMap">
+  <select id="selectClueByPage" parameterType="com.bjpowernode.query.BaseQuery" resultMap="ClueResultMap">
     select
         tc.*,
         tu1.id ownerId, tu1.name ownerName,
