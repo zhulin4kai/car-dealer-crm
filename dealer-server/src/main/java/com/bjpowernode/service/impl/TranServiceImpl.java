@@ -206,88 +206,76 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteTransactionProducts(Integer tranId) {
-        try {
-            // 在删除前先恢复库存
-            List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
-            if (products != null && !products.isEmpty()) {
-                for (TTranProduct product : products) {
-                    // 恢复产品库存
-                    productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
-                }
+        // 在删除前先恢复库存
+        List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
+        if (products != null && !products.isEmpty()) {
+            for (TTranProduct product : products) {
+                // 恢复产品库存
+                productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
             }
-            
-            tranProductMapper.deleteByTranId(tranId);
-            // 清除缓存
-            redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
-            return true;
-        } catch (Exception e) {
-            return false;
         }
+
+        tranProductMapper.deleteByTranId(tranId);
+        // 清除缓存
+        redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
+        return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean addTransactionProducts(Integer tranId, List<TTranProduct> products) {
-        try {
-            if (products != null && !products.isEmpty()) {
-                for (TTranProduct product : products) {
-                    product.setTranId(tranId);
-                    tranProductMapper.insertSelective(product);
-                    
-                    // 减少产品库存
-                    productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
-                }
+        if (products != null && !products.isEmpty()) {
+            for (TTranProduct product : products) {
+                product.setTranId(tranId);
+                tranProductMapper.insertSelective(product);
+
+                // 减少产品库存
+                productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
             }
-            // 清除缓存
-            redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
-            return true;
-        } catch (Exception e) {
-            return false;
         }
+        // 清除缓存
+        redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
+        return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean approveTran(Integer tranId, Boolean approved, String comment, Integer approveBy) {
-        try {
-            Date now = new Date();
-            
-            // 1. 创建审批记录
-            TTranApprove approve = new TTranApprove();
-            approve.setTranId(tranId);
-            approve.setApproveResult(approved);
-            approve.setApproveComment(comment);
-            approve.setApproveTime(now);
-            approve.setApproveBy(approveBy);
-            approve.setCreateTime(now);
-            approve.setCreateBy(approveBy);
-            
-            int approveResult = tranApproveMapper.insertSelective(approve);
-            
-            if (approveResult > 0) {
-                // 2. 更新交易状态
-                TTran tran = new TTran();
-                tran.setId(tranId);
-                if (approved) {
-                    tran.setStage(43); // 已审批
-                } else {
-                    tran.setStage(21); // 丢失关闭
-                }
-                tran.setEditTime(now);
-                tran.setEditBy(approveBy);
-                
-                int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
-                
-                if (tranResult > 0) {
-                    // 清除缓存
-                    clearTransactionCache(tranId);
-                    return true;
-                }
+        Date now = new Date();
+
+        // 1. 创建审批记录
+        TTranApprove approve = new TTranApprove();
+        approve.setTranId(tranId);
+        approve.setApproveResult(approved);
+        approve.setApproveComment(comment);
+        approve.setApproveTime(now);
+        approve.setApproveBy(approveBy);
+        approve.setCreateTime(now);
+        approve.setCreateBy(approveBy);
+
+        int approveResult = tranApproveMapper.insertSelective(approve);
+
+        if (approveResult > 0) {
+            // 2. 更新交易状态
+            TTran tran = new TTran();
+            tran.setId(tranId);
+            if (approved) {
+                tran.setStage(43); // 已审批
+            } else {
+                tran.setStage(21); // 丢失关闭
             }
-            return false;
-        } catch (Exception e) {
-            return false;
+            tran.setEditTime(now);
+            tran.setEditBy(approveBy);
+
+            int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
+
+            if (tranResult > 0) {
+                // 清除缓存
+                clearTransactionCache(tranId);
+                return true;
+            }
         }
+        return false;
     }
 
     @Override
@@ -298,37 +286,33 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean createTranInvoice(TTranInvoice invoice) {
-        try {
-            Date now = new Date();
-            
-            // 生成发票号码
-            invoice.setInvoiceNo(generateInvoiceNo());
-            invoice.setStatus("PENDING"); // 待开具
-            invoice.setCreateTime(now);
-            invoice.setUpdateTime(now);
-            
-            int result = tranInvoiceMapper.insertSelective(invoice);
-            
-            if (result > 0) {
-                // 更新交易状态为待收款
-                TTran tran = new TTran();
-                tran.setId(invoice.getTranId());
-                tran.setStage(45); // 待收款
-                tran.setEditTime(now);
-                tran.setEditBy(invoice.getCreateBy());
-                
-                int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
-                
-                if (tranResult > 0) {
-                    // 清除缓存
-                    clearTransactionCache(invoice.getTranId());
-                    return true;
-                }
+        Date now = new Date();
+
+        // 生成发票号码
+        invoice.setInvoiceNo(generateInvoiceNo());
+        invoice.setStatus("PENDING"); // 待开具
+        invoice.setCreateTime(now);
+        invoice.setUpdateTime(now);
+
+        int result = tranInvoiceMapper.insertSelective(invoice);
+
+        if (result > 0) {
+            // 更新交易状态为待收款
+            TTran tran = new TTran();
+            tran.setId(invoice.getTranId());
+            tran.setStage(45); // 待收款
+            tran.setEditTime(now);
+            tran.setEditBy(invoice.getCreateBy());
+
+            int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
+
+            if (tranResult > 0) {
+                // 清除缓存
+                clearTransactionCache(invoice.getTranId());
+                return true;
             }
-            return false;
-        } catch (Exception e) {
-            return false;
         }
+        return false;
     }
 
     @Override
@@ -339,46 +323,42 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateTranInvoiceStatus(Integer invoiceId, String status, Integer updateBy) {
-        try {
-            Date now = new Date();
-            
-            TTranInvoice invoice = new TTranInvoice();
-            invoice.setId(invoiceId);
-            invoice.setStatus(status);
-            invoice.setUpdateTime(now);
-            invoice.setUpdateBy(updateBy);
-            
+        Date now = new Date();
+
+        TTranInvoice invoice = new TTranInvoice();
+        invoice.setId(invoiceId);
+        invoice.setStatus(status);
+        invoice.setUpdateTime(now);
+        invoice.setUpdateBy(updateBy);
+
+        if ("ISSUED".equals(status)) {
+            invoice.setIssueTime(now);
+        }
+
+        int result = tranInvoiceMapper.updateByPrimaryKeySelective(invoice);
+
+        if (result > 0) {
+            // 如果发票已开具，更新交易状态为已完成
             if ("ISSUED".equals(status)) {
-                invoice.setIssueTime(now);
-            }
-            
-            int result = tranInvoiceMapper.updateByPrimaryKeySelective(invoice);
-            
-            if (result > 0) {
-                // 如果发票已开具，更新交易状态为已完成
-                if ("ISSUED".equals(status)) {
-                    TTranInvoice currentInvoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
-                    if (currentInvoice != null) {
-                        TTran tran = new TTran();
-                        tran.setId(currentInvoice.getTranId());
-                        tran.setStage(46); // 已完成
-                        tran.setEditTime(now);
-                        tran.setEditBy(updateBy);
-                        
-                        int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
-                        
-                        if (tranResult > 0) {
-                            // 清除缓存
-                            clearTransactionCache(currentInvoice.getTranId());
-                        }
+                TTranInvoice currentInvoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
+                if (currentInvoice != null) {
+                    TTran tran = new TTran();
+                    tran.setId(currentInvoice.getTranId());
+                    tran.setStage(46); // 已完成
+                    tran.setEditTime(now);
+                    tran.setEditBy(updateBy);
+
+                    int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
+
+                    if (tranResult > 0) {
+                        // 清除缓存
+                        clearTransactionCache(currentInvoice.getTranId());
                     }
                 }
-                return true;
             }
-            return false;
-        } catch (Exception e) {
-            return false;
+            return true;
         }
+        return false;
     }
 
     /**
@@ -415,12 +395,47 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteTransaction(Integer id) {
-        try {
-            // 检查交易是否存在
-            TTran transaction = tranMapper.selectByPrimaryKey(id);
-            if (transaction == null) {
-                return false;
-            }            // 删除交易产品关联（恢复库存）
+        // 检查交易是否存在
+        TTran transaction = tranMapper.selectByPrimaryKey(id);
+        if (transaction == null) {
+            return false;
+        }
+
+        // 删除交易产品关联（恢复库存）
+        List<TTranProduct> tranProducts = tranProductMapper.selectByTranId(id);
+        if (tranProducts != null && !tranProducts.isEmpty()) {
+            for (TTranProduct product : tranProducts) {
+                // 恢复产品库存
+                productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+            }
+            // 删除交易产品关联
+            tranProductMapper.deleteByTranId(id);
+        }
+
+        // 删除交易备注
+        tranRemarkMapper.deleteByTranId(id);
+
+        // 删除交易主记录
+        int result = tranMapper.deleteByPrimaryKey(id);
+
+        if (result > 0) {
+            // 清除缓存
+            clearTransactionCache(id);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean batchDeleteTransactions(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return false;
+        }
+
+        // 逐个删除交易（保证事务一致性）
+        for (Integer id : ids) {
+            // 删除交易产品关联（恢复库存）
             List<TTranProduct> tranProducts = tranProductMapper.selectByTranId(id);
             if (tranProducts != null && !tranProducts.isEmpty()) {
                 for (TTranProduct product : tranProducts) {
@@ -434,53 +449,13 @@ public class TranServiceImpl implements TranService {
             // 删除交易备注
             tranRemarkMapper.deleteByTranId(id);
 
-            // 删除交易主记录
-            int result = tranMapper.deleteByPrimaryKey(id);
-
-            if (result > 0) {
-                // 清除缓存
-                clearTransactionCache(id);
-                return true;
-            }
-            return false;
-        } catch (Exception e) {
-            return false;
+            // 清除缓存
+            clearTransactionCache(id);
         }
-    }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean batchDeleteTransactions(List<Integer> ids) {
-        try {
-            if (ids == null || ids.isEmpty()) {
-                return false;
-            }
+        // 批量删除交易主记录
+        int result = tranMapper.deleteByIds(ids);
 
-            // 逐个删除交易（保证事务一致性）
-            for (Integer id : ids) {                // 删除交易产品关联（恢复库存）
-                List<TTranProduct> tranProducts = tranProductMapper.selectByTranId(id);
-                if (tranProducts != null && !tranProducts.isEmpty()) {
-                    for (TTranProduct product : tranProducts) {
-                        // 恢复产品库存
-                        productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
-                    }
-                    // 删除交易产品关联
-                    tranProductMapper.deleteByTranId(id);
-                }
-
-                // 删除交易备注
-                tranRemarkMapper.deleteByTranId(id);
-
-                // 清除缓存
-                clearTransactionCache(id);
-            }
-
-            // 批量删除交易主记录
-            int result = tranMapper.deleteByIds(ids);
-
-            return result > 0;
-        } catch (Exception e) {
-            return false;
-        }
+        return result > 0;
     }
 }
