@@ -3,13 +3,12 @@ package com.bjpowernode.config.handler;
 import com.bjpowernode.result.CodeEnum;
 import com.bjpowernode.result.R;
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
 
 /**
  * 统一异常处理类，controller发生了异常，统一用该类进行处理
@@ -52,5 +51,27 @@ public class GlobalExceptionHandler {
     public R handException(AccessDeniedException e) {
         e.printStackTrace(); //在控制台打印异常信息
         return R.FAIL(CodeEnum.ACCESS_DENIED);
+    }
+
+    @ExceptionHandler(value = HttpRequestMethodNotSupportedException.class)
+    public R handException(HttpRequestMethodNotSupportedException e) {
+        e.printStackTrace();
+        return R.FAIL("不支持的请求方法: " + e.getMethod());
+    }
+
+    @ExceptionHandler(value = MethodArgumentNotValidException.class)
+    public R handException(MethodArgumentNotValidException e) {
+        e.printStackTrace();
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .findFirst()
+                .orElse("参数校验失败");
+        return R.FAIL(message);
+    }
+
+    @ExceptionHandler(value = HttpMessageNotReadableException.class)
+    public R handException(HttpMessageNotReadableException e) {
+        e.printStackTrace();
+        return R.FAIL("请求体格式错误或无法读取");
     }
 }

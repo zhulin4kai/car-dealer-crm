@@ -31,6 +31,9 @@ public class IntentionStateConverter implements Converter<Integer> {
         String cellIntentionStateName = cellData.getStringValue();
 
         List<TDicValue> tDicValueList = (List<TDicValue>) DlykServerApplication.cacheMap.get(DicEnum.INTENTIONSTATE.getCode());
+        if (tDicValueList == null) {
+            return -1;
+        }
         for (TDicValue tDicValue : tDicValueList) {
             Integer id  = tDicValue.getId();
             String name = tDicValue.getTypeValue();

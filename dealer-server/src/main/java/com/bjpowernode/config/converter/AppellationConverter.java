@@ -34,6 +34,9 @@ public class AppellationConverter implements Converter<Integer> {
         String cellAppellationName = cellData.getStringValue();
 
         List<TDicValue> tDicValueList = (List<TDicValue>)DlykServerApplication.cacheMap.get(DicEnum.APPELLATION.getCode());
+        if (tDicValueList == null) {
+            return -1;
+        }
         for (TDicValue tDicValue : tDicValueList) {
             Integer id  = tDicValue.getId();
             String name = tDicValue.getTypeValue();
