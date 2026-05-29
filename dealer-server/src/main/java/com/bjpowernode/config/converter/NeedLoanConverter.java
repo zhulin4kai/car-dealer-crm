@@ -32,6 +32,9 @@ public class NeedLoanConverter implements Converter<Integer> {
         String cellNeedLoanName = cellData.getStringValue();
 
         List<TDicValue> tDicValueList = (List<TDicValue>) DlykServerApplication.cacheMap.get(DicEnum.NEEDLOAN.getCode());
+        if (tDicValueList == null) {
+            return -1;
+        }
         for (TDicValue tDicValue : tDicValueList) {
             Integer id  = tDicValue.getId();
             String name = tDicValue.getTypeValue();

@@ -34,6 +34,9 @@ public class SourceConverter implements Converter<Integer> {
         String cellSourceName = cellData.getStringValue();
 
         List<TDicValue> tDicValueList = (List<TDicValue>) DlykServerApplication.cacheMap.get(DicEnum.SOURCE.getCode());
+        if (tDicValueList == null) {
+            return -1;
+        }
         for (TDicValue tDicValue : tDicValueList) {
             Integer id  = tDicValue.getId();
             String name = tDicValue.getTypeValue();

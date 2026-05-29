@@ -1,6 +1,5 @@
 package com.bjpowernode;
 
-import com.bjpowernode.model.TUser;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,37 +8,24 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ConcurrentHashMap;
 
 @MapperScan(basePackages = {"com.bjpowernode.mapper"})
 @SpringBootApplication
 public class DlykServerApplication implements CommandLineRunner {
 
-    public static final Map<String, Object> cacheMap = new HashMap<>();
+    public static final Map<String, Object> cacheMap = new ConcurrentHashMap<>();
 
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
     public static void main(String[] args) {
-        ConfigurableApplicationContext context = SpringApplication.run(DlykServerApplication.class, args);
-
-        String[] beanNamesForType = context.getBeanNamesForType(Executor.class);
-        for (String s : beanNamesForType) {
-            System.out.println(s);
-        }
-
-        Object obj = context.getBean("applicationTaskExecutor");
-        System.out.println(obj);
+        SpringApplication.run(DlykServerApplication.class, args);
     }
 
     @Override

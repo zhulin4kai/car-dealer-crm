@@ -178,8 +178,6 @@ public class TranController {
                 if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
                     return R.FAIL("结算金额不能为负数");
                 }
-                
-                System.out.println("使用前端传递的促销后金额进行结算: " + totalAmount);
             } catch (NumberFormatException e) {
                 return R.FAIL("传递的金额格式不正确");
             }
@@ -188,8 +186,6 @@ public class TranController {
             totalAmount = products.stream()
                 .map(product -> product.getPrice().multiply(new BigDecimal(product.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-            
-            System.out.println("使用产品原价合计进行结算: " + totalAmount);
         }
         
         // 更新交易金额和状态

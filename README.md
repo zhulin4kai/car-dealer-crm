@@ -1,9 +1,9 @@
 # 电子商务管理系统
 
-![GitHub stars](https://img.shields.io/github/stars/yzk99/xzit_iot_system?style=flat-square)
-![GitHub forks](https://img.shields.io/github/forks/yzk99/xzit_iot_system?style=flat-square)
-![GitHub issues](https://img.shields.io/github/issues/yzk99/xzit_iot_system?style=flat-square)
-![GitHub last commit](https://img.shields.io/github/last-commit/yzk99/xzit_iot_system?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/zhulin4kai/car-dealer-crm?style=flat-square)
+![GitHub forks](https://img.shields.io/github/forks/zhulin4kai/car-dealer-crm?style=flat-square)
+![GitHub issues](https://img.shields.io/github/issues/zhulin4kai/car-dealer-crm?style=flat-square)
+![GitHub last commit](https://img.shields.io/github/last-commit/zhulin4kai/car-dealer-crm?style=flat-square)
 
 ## 📖 介绍
 本项目是为徐州工程学院 2024-2025 第二学期《物联网专业技能综合训练》课程精心打造的一款现代化、功能完备的电子商务客户关系管理（CRM）系统。系统采用业界前沿的**前后端分离**架构，前端基于 **Vue 3** 和 **Vite** 构建，响应迅速、用户体验流畅；后端则采用稳健的 **Java** 技术栈，确保了业务逻辑的稳定与高效。
