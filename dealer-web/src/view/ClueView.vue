@@ -309,12 +309,12 @@ import {
   importExcelAPI, 
   delClueById,
   checkPhoneIsExist,
-  getOwnerList,
   getLoginInfo,
   getClueDetail,
   addClue as addClueAPI,
   updateClue
 } from '../api/clue.js';
+import { getOwnerList } from '../api/activity.js';
 import { getDictValueList } from "../api/dict.js";
 import { ElMessage, ElMessageBox } from 'element-plus';
 import router from '../router/router.js';

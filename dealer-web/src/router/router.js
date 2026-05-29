@@ -1,5 +1,6 @@
 //从vue-router这个依赖库中导入createRouter()函数, createWebHistory()函数
 import { createRouter, createWebHistory } from "vue-router";
+import {getTokenName} from "../util/util.js";
 
 //定义一个变量
 let router = createRouter({
@@ -91,7 +92,7 @@ let router = createRouter({
                     component : () => import('../view/TranView.vue'),
                 },
                 {
-                    //路由路径，子路由路径不能以斜杠开头
+                    //路由路径，子路由路径不能以斜杠开头，id是动态变量，这个叫动态路由
                     path: 'tran/:id',
                     //路由路径所对应的页面
                     component : () => import('../view/TranDetailView.vue'),
@@ -130,11 +131,25 @@ let router = createRouter({
         },
         {
             //路由路径
-            path: '/hello',
-            //路由路径所对应的页面
-            component : () => import('../components/HelloWorld.vue'),
+            path: '/:pathMatch(.*)*',
+            redirect: '/dashboard',
         }
     ]
 })
+
+//路由守卫 - 检查token
+router.beforeEach((to, from, next) => {
+    let token = window.sessionStorage.getItem(getTokenName());
+    if (!token) {
+        token = window.localStorage.getItem(getTokenName());
+    }
+    // 如果访问的是受保护的路由（以/dashboard开头）且没有token，跳转到登录页
+    if (to.path.startsWith('/dashboard') && !token) {
+        next('/');
+    } else {
+        next();
+    }
+})
+
 //导出创建的路由对象
 export default router;

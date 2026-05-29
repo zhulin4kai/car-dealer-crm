@@ -31,7 +31,7 @@ export function getDictValueList(params) {
 }
 
 export function getDictValueDetail(id) {
-    return doGet(`/api/dict/value/${id}`)
+    return doGet(`/api/dict/value/get/${id}`)
 }
 
 export function createDictValue(data) {
