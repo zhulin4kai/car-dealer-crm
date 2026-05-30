@@ -485,4 +485,11 @@
       #{id}
     </foreach>
   </delete>
+
+  <!--原子性更新线索状态为已转客户，防止并发重复转换-->
+  <update id="updateStateToConverted">
+    UPDATE t_clue
+    SET `state` = -1, edit_time = NOW(), edit_by = #{editBy}
+    WHERE id = #{id} AND `state` != -1
+  </update>
 </mapper>

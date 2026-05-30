@@ -51,26 +51,21 @@ class CustomerManagerTest {
         query.setDescription("测试客户");
         query.setNextContactTime(new Date());
 
-        TClue clue = new TClue();
-        clue.setId(1);
-        clue.setState(1);
-
         Product product = new Product();
         product.setId(5L);
         product.setName("比亚迪e2");
         product.setPrice(new BigDecimal("100000"));
 
-        when(tClueMapper.selectByPrimaryKey(1)).thenReturn(clue);
+        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(1); // 原子性更新成功
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
-        when(tClueMapper.updateByPrimaryKeySelective(any(TClue.class))).thenReturn(1);
         when(productMapper.selectById(5L)).thenReturn(product);
         when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
         Boolean result = customerManager.convertCustomer(query);
 
         assertTrue(result);
+        verify(tClueMapper).updateStateToConverted(1, 10);
         verify(tCustomerMapper).insertSelective(any(TCustomer.class));
-        verify(tClueMapper).updateByPrimaryKeySelective(any(TClue.class));
         verify(tranService).createTransaction(any(TTran.class), anyList());
     }
 
@@ -78,18 +73,17 @@ class CustomerManagerTest {
     void testConvertCustomerAlreadyConverted() {
         CustomerQuery query = new CustomerQuery();
         query.setClueId(1);
+        query.setCreateBy(10);
 
-        TClue clue = new TClue();
-        clue.setId(1);
-        clue.setState(-1);
-
-        when(tClueMapper.selectByPrimaryKey(1)).thenReturn(clue);
+        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(0); // 已经转过客户，返回0
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             customerManager.convertCustomer(query);
         });
 
         assertTrue(exception.getMessage().contains("已经转过客户"));
+        verify(tClueMapper).updateStateToConverted(1, 10);
+        verify(tCustomerMapper, never()).insertSelective(any());
     }
 
     @Test
@@ -98,20 +92,36 @@ class CustomerManagerTest {
         query.setClueId(1);
         query.setCreateBy(10);
         query.setProduct(null);
+        query.setDescription("测试客户");
 
-        TClue clue = new TClue();
-        clue.setId(1);
-        clue.setState(1);
-
-        when(tClueMapper.selectByPrimaryKey(1)).thenReturn(clue);
+        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
-        when(tClueMapper.updateByPrimaryKeySelective(any(TClue.class))).thenReturn(1);
         when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
         Boolean result = customerManager.convertCustomer(query);
 
         assertTrue(result);
-        verify(productMapper, never()).selectById(any());
+        verify(tCustomerMapper).insertSelective(any(TCustomer.class));
+        verify(tranService).createTransaction(any(TTran.class), argThat(products -> products.isEmpty()));
+    }
+
+    @Test
+    void testConvertCustomerWithProductNotFound() {
+        CustomerQuery query = new CustomerQuery();
+        query.setClueId(1);
+        query.setCreateBy(10);
+        query.setProduct(999);
+        query.setDescription("测试客户");
+
+        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(1);
+        when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
+        when(productMapper.selectById(999L)).thenReturn(null);
+        when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
+
+        Boolean result = customerManager.convertCustomer(query);
+
+        assertTrue(result);
+        verify(tranService).createTransaction(any(TTran.class), argThat(products -> products.isEmpty()));
     }
 
     @Test
@@ -120,15 +130,12 @@ class CustomerManagerTest {
         query.setClueId(1);
         query.setCreateBy(10);
 
-        TClue clue = new TClue();
-        clue.setId(1);
-        clue.setState(1);
-
-        when(tClueMapper.selectByPrimaryKey(1)).thenReturn(clue);
+        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(0);
 
         Boolean result = customerManager.convertCustomer(query);
 
         assertFalse(result);
+        verify(tranService, never()).createTransaction(any(), anyList());
     }
 }

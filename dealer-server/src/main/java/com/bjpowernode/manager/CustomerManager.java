@@ -37,9 +37,9 @@ public class CustomerManager {
 
     @Transactional(rollbackFor = Exception.class)
     public Boolean convertCustomer(CustomerQuery customerQuery) {
-        //1、验证该线索是否已经转过客户，转过了就不能再转了
-        TClue tClue = tClueMapper.selectByPrimaryKey(customerQuery.getClueId());
-        if (tClue.getState() == -1) {
+        //1、原子性更新线索状态为已转客户，防止并发重复转换
+        int updateCount = tClueMapper.updateStateToConverted(customerQuery.getClueId(), customerQuery.getCreateBy());
+        if (updateCount == 0) {
             throw new RuntimeException("该线索已经转过客户，不能再转了.");
         }
 
@@ -50,14 +50,10 @@ public class CustomerManager {
         tCustomer.setCreateTime(new Date()); //创建时间
         //登录人的id
         tCustomer.setCreateBy(customerQuery.getCreateBy()); //创建人
-        int insert = tCustomerMapper.insertSelective(tCustomer);        //3、把线索表的数据状态改为-1（已转客户）
-        TClue clue = new TClue();
-        clue.setId(customerQuery.getClueId());
-        clue.setState(-1);
-        int update = tClueMapper.updateByPrimaryKeySelective(clue);
+        int insert = tCustomerMapper.insertSelective(tCustomer);
 
-        //4、客户转换成功后，创建交易记录
-        if (insert >= 1 && update >= 1) {
+        //3、客户转换成功后，创建交易记录
+        if (insert >= 1) {
             // 构造TTran对象
             TTran tTran = new TTran();
             tTran.setCustomerId(tCustomer.getId());
@@ -86,6 +82,6 @@ public class CustomerManager {
             tranService.createTransaction(tTran, products);
         }
 
-        return insert >= 1 && update >= 1;
+        return insert >= 1;
     }
 }

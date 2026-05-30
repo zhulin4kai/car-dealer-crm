@@ -79,8 +79,11 @@ public class TranServiceImpl implements TranService {
                 product.setCreateTime(now);
                 tranProductMapper.insertSelective(product);
                 
-                // 减少产品库存
-                productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
+                // 减少产品库存，检查库存是否充足
+                int updateCount = productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
+                if (updateCount == 0) {
+                    throw new RuntimeException("产品 [" + product.getProductId() + "] 库存不足，无法完成交易");
+                }
             }
         }
         
@@ -229,8 +232,11 @@ public class TranServiceImpl implements TranService {
                 product.setTranId(tranId);
                 tranProductMapper.insertSelective(product);
 
-                // 减少产品库存
-                productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
+                // 减少产品库存，检查库存是否充足
+                int updateCount = productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
+                if (updateCount == 0) {
+                    throw new RuntimeException("产品 [" + product.getProductId() + "] 库存不足，无法完成交易");
+                }
             }
         }
         // 清除缓存
@@ -241,6 +247,9 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean approveTran(Integer tranId, Boolean approved, String comment, Integer approveBy) {
+        // 校验当前状态必须为42（待审批）
+        validateStageTransition(tranId, 42);
+
         Date now = new Date();
 
         // 1. 创建审批记录
@@ -286,6 +295,9 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean createTranInvoice(TTranInvoice invoice) {
+        // 校验当前状态必须为43（已审批）
+        validateStageTransition(invoice.getTranId(), 43);
+
         Date now = new Date();
 
         // 生成发票号码
@@ -342,6 +354,9 @@ public class TranServiceImpl implements TranService {
             if ("ISSUED".equals(status)) {
                 TTranInvoice currentInvoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
                 if (currentInvoice != null) {
+                    // 校验当前状态必须为45（待收款）
+                    validateStageTransition(currentInvoice.getTranId(), 45);
+
                     TTran tran = new TTran();
                     tran.setId(currentInvoice.getTranId());
                     tran.setStage(46); // 已完成
@@ -390,6 +405,21 @@ public class TranServiceImpl implements TranService {
         redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
         redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTION + tranId);
         redisManager.delete(Constants.CACHE_KEY_TRAN_INVOICES + tranId);
+    }
+
+    /**
+     * 校验交易状态流转是否合法
+     * @param tranId 交易ID
+     * @param requiredStage 需要的状态
+     */
+    private void validateStageTransition(Integer tranId, Integer requiredStage) {
+        TTran tran = tranMapper.selectByPrimaryKey(tranId);
+        if (tran == null) {
+            throw new RuntimeException("交易记录不存在");
+        }
+        if (!requiredStage.equals(tran.getStage())) {
+            throw new RuntimeException("当前交易状态不允许执行此操作，需要状态: " + requiredStage);
+        }
     }
 
     @Override

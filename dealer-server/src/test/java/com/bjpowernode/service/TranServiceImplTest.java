@@ -530,6 +530,11 @@ class TranServiceImplTest {
     @Test
     void approveTran_approved_shouldSetStageTo43() {
         Integer tranId = 1;
+        TTran tran = new TTran();
+        tran.setId(tranId);
+        tran.setStage(42); // 当前状态为42（待审批）
+
+        when(tranMapper.selectByPrimaryKey(tranId)).thenReturn(tran);
         when(tranApproveMapper.insertSelective(any(TTranApprove.class))).thenReturn(1);
         when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(1);
 
@@ -543,8 +548,8 @@ class TranServiceImplTest {
                     && "Approved".equals(approve.getApproveComment());
         }));
         verify(tranMapper).updateByPrimaryKeySelective(argThat(t -> {
-            TTran tran = (TTran) t;
-            return tran.getId().equals(tranId) && tran.getStage().equals(43);
+            TTran tt = (TTran) t;
+            return tt.getId().equals(tranId) && tt.getStage().equals(43);
         }));
         verify(redisManager).deletePattern(Constants.CACHE_KEY_TRAN_LIST + "*");
     }
@@ -552,6 +557,11 @@ class TranServiceImplTest {
     @Test
     void approveTran_rejected_shouldSetStageTo21() {
         Integer tranId = 1;
+        TTran tran = new TTran();
+        tran.setId(tranId);
+        tran.setStage(42); // 当前状态为42（待审批）
+
+        when(tranMapper.selectByPrimaryKey(tranId)).thenReturn(tran);
         when(tranApproveMapper.insertSelective(any(TTranApprove.class))).thenReturn(1);
         when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(1);
 
@@ -559,13 +569,18 @@ class TranServiceImplTest {
 
         assertTrue(result);
         verify(tranMapper).updateByPrimaryKeySelective(argThat(t -> {
-            TTran tran = (TTran) t;
-            return tran.getId().equals(tranId) && tran.getStage().equals(21);
+            TTran tt = (TTran) t;
+            return tt.getId().equals(tranId) && tt.getStage().equals(21);
         }));
     }
 
     @Test
     void approveTran_approveInsertFails_shouldReturnFalse() {
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(42);
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranApproveMapper.insertSelective(any(TTranApprove.class))).thenReturn(0);
 
         boolean result = tranService.approveTran(1, true, "Approved", 1);
@@ -576,6 +591,11 @@ class TranServiceImplTest {
 
     @Test
     void approveTran_tranUpdateFails_shouldReturnFalse() {
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(42);
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranApproveMapper.insertSelective(any(TTranApprove.class))).thenReturn(1);
         when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(0);
 
@@ -586,10 +606,269 @@ class TranServiceImplTest {
 
     @Test
     void approveTran_exceptionDuringApprove_shouldPropagate() {
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(42);
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranApproveMapper.insertSelective(any(TTranApprove.class)))
                 .thenThrow(new RuntimeException("DB error"));
 
         assertThrows(RuntimeException.class, () -> tranService.approveTran(1, true, "Approved", 1));
+    }
+
+    // ==================== ISSUE-002: 状态流转校验测试 ====================
+
+    @Test
+    void approveTran_invalidCurrentStage_shouldThrowException() {
+        // 测试：审批时当前状态必须为42（待审批）
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(41); // 当前状态为41（待报价），不是42
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> tranService.approveTran(1, true, "Approved", 1));
+
+        assertEquals("当前交易状态不允许执行此操作，需要状态: 42", exception.getMessage());
+        verify(tranApproveMapper, never()).insertSelective(any());
+    }
+
+    // ==================== ISSUE-006: 库存扣减下限校验测试 ====================
+
+    @Test
+    void createTransaction_insufficientStock_shouldThrowException() {
+        // 测试：库存不足时应该抛出异常
+        TTran tran = new TTran();
+        tran.setCustomerId(1);
+        tran.setMoney(BigDecimal.valueOf(50000));
+
+        TTranProduct product = new TTranProduct();
+        product.setProductId(10);
+        product.setQuantity(5);
+        product.setPrice(BigDecimal.valueOf(10000));
+
+        when(tranMapper.insertSelective(any(TTran.class))).thenReturn(1);
+        when(productMapper.updateStock(10L, -5)).thenReturn(0); // 库存不足，返回0
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> tranService.createTransaction(tran, Collections.singletonList(product)));
+
+        assertEquals("产品 [10] 库存不足，无法完成交易", exception.getMessage());
+        verify(tranProductMapper).insertSelective(any(TTranProduct.class));
+        verify(productMapper).updateStock(10L, -5);
+    }
+
+    @Test
+    void createTransaction_sufficientStock_shouldSucceed() {
+        // 测试：库存充足时应该成功
+        TTran tran = new TTran();
+        tran.setCustomerId(1);
+        tran.setMoney(BigDecimal.valueOf(50000));
+
+        TTranProduct product = new TTranProduct();
+        product.setProductId(10);
+        product.setQuantity(5);
+        product.setPrice(BigDecimal.valueOf(10000));
+
+        when(tranMapper.insertSelective(any(TTran.class))).thenAnswer(invocation -> {
+            TTran t = invocation.getArgument(0);
+            t.setId(1); // 模拟MyBatis设置生成的ID
+            return 1;
+        });
+        when(productMapper.updateStock(10L, -5)).thenReturn(1); // 库存充足，返回1
+
+        Integer tranId = tranService.createTransaction(tran, Collections.singletonList(product));
+
+        assertNotNull(tranId);
+        assertEquals(1, tranId);
+        verify(tranProductMapper).insertSelective(any(TTranProduct.class));
+        verify(productMapper).updateStock(10L, -5);
+    }
+
+    @Test
+    void addTransactionProducts_insufficientStock_shouldThrowException() {
+        // 测试：添加产品时库存不足应该抛出异常
+        Integer tranId = 1;
+        TTranProduct product = new TTranProduct();
+        product.setProductId(10);
+        product.setQuantity(2);
+
+        when(tranProductMapper.insertSelective(any(TTranProduct.class))).thenReturn(1);
+        when(productMapper.updateStock(10L, -2)).thenReturn(0); // 库存不足，返回0
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> tranService.addTransactionProducts(tranId, Collections.singletonList(product)));
+
+        assertEquals("产品 [10] 库存不足，无法完成交易", exception.getMessage());
+        verify(tranProductMapper).insertSelective(any(TTranProduct.class));
+        verify(productMapper).updateStock(10L, -2);
+    }
+
+    // ==================== ISSUE-008: 编号唯一性测试 ====================
+
+    @Test
+    void generateTranNo_shouldGenerateUniqueNumbers() {
+        // 测试：生成的交易编号应该是唯一的
+        // 由于是随机数，我们测试格式正确性
+        TTran tran = new TTran();
+        tran.setCustomerId(1);
+        tran.setMoney(BigDecimal.valueOf(50000));
+
+        when(tranMapper.insertSelective(any(TTran.class))).thenAnswer(invocation -> {
+            TTran t = invocation.getArgument(0);
+            t.setId(1); // 模拟MyBatis设置生成的ID
+            return 1;
+        });
+
+        Integer tranId1 = tranService.createTransaction(tran, Collections.emptyList());
+        Integer tranId2 = tranService.createTransaction(tran, Collections.emptyList());
+
+        assertNotNull(tranId1);
+        assertNotNull(tranId2);
+
+        // 验证交易编号格式：TN + 日期 + 6位随机数
+        verify(tranMapper, times(2)).insertSelective(argThat(t -> {
+            TTran tt = (TTran) t;
+            String tranNo = tt.getTranNo();
+            return tranNo != null && tranNo.matches("TN\\d{8}\\d{6}");
+        }));
+    }
+
+    @Test
+    void generateInvoiceNo_shouldGenerateUniqueNumbers() {
+        // 测试：生成的发票号码应该是唯一的
+        TTranInvoice invoice = new TTranInvoice();
+        invoice.setTranId(1);
+        invoice.setCreateBy(1);
+
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(43);
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranInvoiceMapper.insertSelective(any(TTranInvoice.class))).thenReturn(1);
+        when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(1);
+
+        boolean result = tranService.createTranInvoice(invoice);
+
+        assertTrue(result);
+
+        // 验证发票号码格式：INV + 日期 + 6位随机数
+        verify(tranInvoiceMapper).insertSelective(argThat(i -> {
+            TTranInvoice inv = (TTranInvoice) i;
+            String invoiceNo = inv.getInvoiceNo();
+            return invoiceNo != null && invoiceNo.matches("INV\\d{8}\\d{6}");
+        }));
+    }
+
+    @Test
+    void approveTran_validCurrentStage_shouldSucceed() {
+        // 测试：审批时当前状态为42（待审批），应该成功
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(42); // 当前状态为42
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranApproveMapper.insertSelective(any(TTranApprove.class))).thenReturn(1);
+        when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(1);
+
+        boolean result = tranService.approveTran(1, true, "Approved", 1);
+
+        assertTrue(result);
+        verify(tranApproveMapper).insertSelective(any());
+    }
+
+    @Test
+    void createTranInvoice_invalidCurrentStage_shouldThrowException() {
+        // 测试：创建发票时当前状态必须为43（已审批）
+        TTranInvoice invoice = new TTranInvoice();
+        invoice.setTranId(1);
+        invoice.setCreateBy(1);
+
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(42); // 当前状态为42（待审批），不是43
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> tranService.createTranInvoice(invoice));
+
+        assertEquals("当前交易状态不允许执行此操作，需要状态: 43", exception.getMessage());
+        verify(tranInvoiceMapper, never()).insertSelective(any());
+    }
+
+    @Test
+    void createTranInvoice_validCurrentStage_shouldSucceed() {
+        // 测试：创建发票时当前状态为43（已审批），应该成功
+        TTranInvoice invoice = new TTranInvoice();
+        invoice.setTranId(1);
+        invoice.setCreateBy(1);
+
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(43); // 当前状态为43
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranInvoiceMapper.insertSelective(any(TTranInvoice.class))).thenReturn(1);
+        when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(1);
+
+        boolean result = tranService.createTranInvoice(invoice);
+
+        assertTrue(result);
+        verify(tranInvoiceMapper).insertSelective(any());
+    }
+
+    @Test
+    void updateTranInvoiceStatus_invalidCurrentStage_shouldThrowException() {
+        // 测试：更新发票状态为ISSUED时，当前交易状态必须为45（待收款）
+        TTranInvoice currentInvoice = new TTranInvoice();
+        currentInvoice.setId(1);
+        currentInvoice.setTranId(10);
+
+        TTran tran = new TTran();
+        tran.setId(10);
+        tran.setStage(43); // 当前状态为43（已审批），不是45
+
+        when(tranInvoiceMapper.updateByPrimaryKeySelective(any(TTranInvoice.class))).thenReturn(1);
+        when(tranInvoiceMapper.selectByPrimaryKey(1)).thenReturn(currentInvoice);
+        when(tranMapper.selectByPrimaryKey(10)).thenReturn(tran);
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> tranService.updateTranInvoiceStatus(1, "ISSUED", 1));
+
+        assertEquals("当前交易状态不允许执行此操作，需要状态: 45", exception.getMessage());
+        verify(tranMapper, never()).updateByPrimaryKeySelective(argThat(t -> {
+            TTran tt = (TTran) t;
+            return tt.getStage() != null && tt.getStage().equals(46);
+        }));
+    }
+
+    @Test
+    void updateTranInvoiceStatus_validCurrentStage_shouldSucceed() {
+        // 测试：更新发票状态为ISSUED时，当前交易状态为45（待收款），应该成功
+        TTranInvoice currentInvoice = new TTranInvoice();
+        currentInvoice.setId(1);
+        currentInvoice.setTranId(10);
+
+        TTran tran = new TTran();
+        tran.setId(10);
+        tran.setStage(45); // 当前状态为45
+
+        when(tranInvoiceMapper.updateByPrimaryKeySelective(any(TTranInvoice.class))).thenReturn(1);
+        when(tranInvoiceMapper.selectByPrimaryKey(1)).thenReturn(currentInvoice);
+        when(tranMapper.selectByPrimaryKey(10)).thenReturn(tran);
+        when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(1);
+
+        boolean result = tranService.updateTranInvoiceStatus(1, "ISSUED", 1);
+
+        assertTrue(result);
+        verify(tranMapper).updateByPrimaryKeySelective(argThat(t -> {
+            TTran tt = (TTran) t;
+            return tt.getStage().equals(46);
+        }));
     }
 
     // ==================== getTranApprove ====================
@@ -627,6 +906,11 @@ class TranServiceImplTest {
         invoice.setTranId(1);
         invoice.setCreateBy(1);
 
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(43); // 当前状态为43（已审批）
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranInvoiceMapper.insertSelective(any(TTranInvoice.class))).thenReturn(1);
         when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(1);
 
@@ -638,8 +922,8 @@ class TranServiceImplTest {
         assertNotNull(invoice.getCreateTime());
         assertNotNull(invoice.getUpdateTime());
         verify(tranMapper).updateByPrimaryKeySelective(argThat(t -> {
-            TTran tran = (TTran) t;
-            return tran.getId().equals(1) && tran.getStage().equals(45);
+            TTran tt = (TTran) t;
+            return tt.getId().equals(1) && tt.getStage().equals(45);
         }));
         verify(redisManager).deletePattern(Constants.CACHE_KEY_TRAN_LIST + "*");
     }
@@ -649,6 +933,11 @@ class TranServiceImplTest {
         TTranInvoice invoice = new TTranInvoice();
         invoice.setTranId(1);
 
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(43);
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranInvoiceMapper.insertSelective(any(TTranInvoice.class))).thenReturn(0);
 
         boolean result = tranService.createTranInvoice(invoice);
@@ -663,6 +952,11 @@ class TranServiceImplTest {
         invoice.setTranId(1);
         invoice.setCreateBy(1);
 
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(43);
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranInvoiceMapper.insertSelective(any(TTranInvoice.class))).thenReturn(1);
         when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(0);
 
@@ -695,8 +989,13 @@ class TranServiceImplTest {
         currentInvoice.setId(1);
         currentInvoice.setTranId(10);
 
+        TTran tran = new TTran();
+        tran.setId(10);
+        tran.setStage(45); // 当前状态为45（待收款）
+
         when(tranInvoiceMapper.updateByPrimaryKeySelective(any(TTranInvoice.class))).thenReturn(1);
         when(tranInvoiceMapper.selectByPrimaryKey(1)).thenReturn(currentInvoice);
+        when(tranMapper.selectByPrimaryKey(10)).thenReturn(tran);
         when(tranMapper.updateByPrimaryKeySelective(any(TTran.class))).thenReturn(1);
 
         boolean result = tranService.updateTranInvoiceStatus(1, "ISSUED", 1);
@@ -707,8 +1006,8 @@ class TranServiceImplTest {
             return "ISSUED".equals(i.getStatus()) && i.getIssueTime() != null;
         }));
         verify(tranMapper).updateByPrimaryKeySelective(argThat(t -> {
-            TTran tran = (TTran) t;
-            return tran.getId().equals(10) && tran.getStage().equals(46);
+            TTran tt = (TTran) t;
+            return tt.getId().equals(10) && tt.getStage().equals(46);
         }));
         verify(redisManager).deletePattern(Constants.CACHE_KEY_TRAN_LIST + "*");
     }
