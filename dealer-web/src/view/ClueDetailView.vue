@@ -463,7 +463,6 @@ const loadDicValue = async (typeCode) => {
 const loadClueRemarkList = async (current) => {
   try {
     const resp = await getClueRemarkList(current, route.params.id)
-    console.log(resp)
     if (resp.data.code === 200) {
       clueRemarkList.value = resp.data.data.list || []
       pageSize.value = resp.data.data.pageSize || 10
@@ -508,7 +507,6 @@ const convertCustomerSubmit = async () => {
         customerQuery.value.description,
         customerQuery.value.nextContactTime
       )
-      console.log(resp)
       if (resp.data.code === 200) {
         messageTip("转换成功", "success")
         convertCustomerDialogVisible.value = false
@@ -541,14 +539,12 @@ const ProductList = async () => {
 // 编辑跟踪记录 (待实现)
 const edit = (id) => {
   // TODO: 实现编辑功能
-  console.log('编辑跟踪记录:', id)
   messageTip("编辑功能待实现", "info")
 }
 
 // 删除跟踪记录 (待实现)
 const del = (id) => {
   // TODO: 实现删除功能
-  console.log('删除跟踪记录:', id)
   messageTip("删除功能待实现", "info")
 }
 

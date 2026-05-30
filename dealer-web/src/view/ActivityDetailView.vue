@@ -293,7 +293,6 @@ const loadActivityRemarkList = async (current) => {
       current: current,
       activityId: route.params.id
     })
-    console.log(resp)
     if (resp.data.code === 200) {
       activityRemarkList.value = resp.data.data.list || []
       pageSize.value = resp.data.data.pageSize || 10
@@ -313,7 +312,6 @@ const toPage = (current) => {
 // 编辑备注记录 (待实现)
 const edit = (id) => {
   // TODO: 实现编辑功能
-  console.log('编辑备注记录:', id)
   ElMessage.info("编辑功能待实现")
 }
 
@@ -327,7 +325,6 @@ const del = async (id) => {
     })
     
     const resp = await doDelete("/api/activity/remark/" + id, {})
-    console.log(resp)
     if (resp.data.code === 200) {
       ElMessage.success("删除成功")
       // 重新加载数据

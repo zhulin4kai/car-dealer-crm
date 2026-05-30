@@ -192,7 +192,6 @@ const originalTotalAmount = computed(() => {
   const total = tranDetail.value.products.reduce((total, product) => {
     return total + (product.price * product.quantity)
   }, 0)
-  console.log('计算原价总额：', total)
   return Number(total.toFixed(2))
 })
 
@@ -213,12 +212,10 @@ const finalAmount = computed(() => {
   } else if (promotionType === 'amount' || promotionType === '满减' || promotionType === '直降') {
     discountedAmount = original - promotion.discount
   } else {
-    console.log('未知促销类型：', promotion.type)
     discountedAmount = original
   }
   // 确保最低为0，不能出现负数
   const result = Math.max(0, Number(discountedAmount.toFixed(2)))
-  console.log('最终结算价：', result)
   return result
 })
 
@@ -303,10 +300,6 @@ const getDiscountDescription = () => {
 
 const onPromotionChange = () => {
   // 促销选择变化时的处理逻辑
-  console.log('选择的促销：', selectedPromotionInfo.value)
-  console.log('原价：', originalTotalAmount.value)
-  console.log('折扣后价格：', finalAmount.value)
-  console.log('优惠金额：', originalTotalAmount.value - finalAmount.value)
 }
 
 // 获取促销列表
@@ -316,10 +309,8 @@ const fetchPromotionList = async () => {
       page: 1,
       size: 1000 // 获取所有促销活动
     })
-    console.log('促销列表响应:', res)
     if (res.data.code === 200) {
       promotionList.value = res.data.data.list || []
-      console.log('促销列表:', promotionList.value)
     }
   } catch (error) {
     console.error('获取促销列表失败:', error)
@@ -329,9 +320,7 @@ const fetchPromotionList = async () => {
 // 获取交易详情
 const fetchTranDetail = async () => {
   try {
-    console.log('获取交易详情，ID:', route.params.id) // 添加调试日志
     const res = await getTranDetail(route.params.id)
-    console.log('交易详情响应:', res) // 添加调试日志
     if (res.data.code === 200) {
       const data = res.data.data
       // 根据后端返回的数据结构进行映射
@@ -372,7 +361,6 @@ const getStageStatus = (stage) => {
 const fetchProducts = async () => {
   try {
     const res = await getTranProducts(route.params.id)
-    console.log('交易产品详情:', res)
     if (res.data.code === 200) {
       tranDetail.value.products = res.data.data
     }
@@ -480,10 +468,6 @@ watch(() => route.params.id, async (newId) => {
 })
 
 onMounted(async () => {
-  console.log('TranDetailView mounted')
-  console.log('route.params:', route.params)
-  console.log('route.params.id:', route.params.id)
-  
   if (!route.params.id) {
     ElMessage.error('缺少交易ID参数')
     return
