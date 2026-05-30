@@ -74,8 +74,12 @@ axios.interceptors.response.use( (response) => {
             removeToken();
             //跳到登录页
             window.location.href = "/";
-        }).catch(() => { //用户点击"取消"按钮就会触发catch函数
-            messageTip("取消去登录", "warning");
+        }).catch(() => { //用户点击"取消"按钮也会清除token并跳转到登录页
+            messageTip("登录已过期，即将跳转到登录页", "warning");
+            setTimeout(() => {
+                removeToken();
+                window.location.href = "/";
+            }, 1500);
         })
         return Promise.reject(new Error(response.data.msg));
     }

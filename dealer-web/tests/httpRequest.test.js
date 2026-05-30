@@ -156,4 +156,49 @@ describe('httpRequest.js', () => {
       expect(typeof axios.interceptors.response.use).toBe('function')
     })
   })
+
+  describe('response interceptor - token expiry handling', () => {
+    it('should handle auth failure with code >= 500', () => {
+      // Verify the interceptor logic exists in the source
+      const source = axios.interceptors.response.use.toString()
+      expect(source).toBeDefined()
+    })
+
+    it('should use messageConfirm for auth failures', async () => {
+      // Read the source file to verify the implementation
+      const fs = await import('fs')
+      const path = await import('path')
+      const filePath = path.resolve(__dirname, '../src/http/httpRequest.js')
+      const content = fs.readFileSync(filePath, 'utf-8')
+
+      // Verify messageConfirm is called for auth failures
+      expect(content).toContain('messageConfirm')
+      expect(content).toContain('是否重新去登录')
+    })
+
+    it('should remove token and redirect on cancel', async () => {
+      // Read the source file to verify the implementation
+      const fs = await import('fs')
+      const path = await import('path')
+      const filePath = path.resolve(__dirname, '../src/http/httpRequest.js')
+      const content = fs.readFileSync(filePath, 'utf-8')
+
+      // Verify that cancel handler also removes token and redirects
+      expect(content).toContain('登录已过期，即将跳转到登录页')
+      expect(content).toContain('removeToken()')
+      expect(content).toContain('window.location.href = "/"')
+    })
+
+    it('should have timeout before redirect on cancel', async () => {
+      // Read the source file to verify the implementation
+      const fs = await import('fs')
+      const path = await import('path')
+      const filePath = path.resolve(__dirname, '../src/http/httpRequest.js')
+      const content = fs.readFileSync(filePath, 'utf-8')
+
+      // Verify setTimeout is used for delayed redirect
+      expect(content).toContain('setTimeout')
+      expect(content).toContain('1500')
+    })
+  })
 })

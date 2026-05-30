@@ -46,11 +46,6 @@ export function getTranApprove(tranId) {
     return doGet(`/api/tran/approve/info/${tranId}`)
 }
 
-// 获取交易状态
-export function getTranStatus(id) {
-    return doGet(`/api/tran/status/${id}`)
-}
-
 // 创建发票
 export function createInvoice(data) {
     return doPost('/api/tran/invoice', data)

@@ -742,13 +742,9 @@ describe('API module consistency', () => {
       expect(config.url).toBe('/api/tran/approve/info/1')
     })
 
-    it('getTranStatus should call doGet', async () => {
+    it('getTranStatus should not exist (backend not implemented)', async () => {
       const tranModule = await import('../src/api/tran.js')
-      tranModule.getTranStatus(1)
-      expect(axios).toHaveBeenCalled()
-      const config = axios.mock.calls[0][0]
-      expect(config.method).toBe('get')
-      expect(config.url).toBe('/api/tran/status/1')
+      expect(tranModule.getTranStatus).toBeUndefined()
     })
 
     it('createInvoice should call doPost', async () => {

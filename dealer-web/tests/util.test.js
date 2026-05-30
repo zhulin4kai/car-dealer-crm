@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { goBack, getToken, removeToken, messageTip, getTokenName, messageConfirm } from '../src/util/util.js'
+import { goBack, getToken, removeToken, messageTip, getTokenName, messageConfirm, getUserPermission, setUserPermission, clearUserPermission } from '../src/util/util.js'
 
 describe('util.js', () => {
   beforeEach(() => {
@@ -112,6 +112,54 @@ describe('util.js', () => {
 
     it('should not throw', () => {
       expect(() => messageConfirm('test message')).not.toThrow()
+    })
+  })
+
+  describe('getUserPermission()', () => {
+    it('should return null when no cached permissions', () => {
+      const result = getUserPermission()
+      expect(result).toBeNull()
+    })
+
+    it('should return cached permissions from sessionStorage', () => {
+      const permissions = ['user:list', 'user:add', 'clue:list']
+      sessionStorage.setItem('user_permissions', JSON.stringify(permissions))
+      const result = getUserPermission()
+      expect(result).toEqual(permissions)
+    })
+
+    it('should return null for invalid JSON', () => {
+      sessionStorage.setItem('user_permissions', 'invalid-json')
+      const result = getUserPermission()
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('setUserPermission()', () => {
+    it('should store permissions in sessionStorage', () => {
+      const permissions = ['user:list', 'user:add']
+      setUserPermission(permissions)
+      const stored = sessionStorage.getItem('user_permissions')
+      expect(JSON.parse(stored)).toEqual(permissions)
+    })
+
+    it('should overwrite existing permissions', () => {
+      setUserPermission(['old:permission'])
+      setUserPermission(['new:permission'])
+      const stored = sessionStorage.getItem('user_permissions')
+      expect(JSON.parse(stored)).toEqual(['new:permission'])
+    })
+  })
+
+  describe('clearUserPermission()', () => {
+    it('should remove permissions from sessionStorage', () => {
+      sessionStorage.setItem('user_permissions', JSON.stringify(['test']))
+      clearUserPermission()
+      expect(sessionStorage.getItem('user_permissions')).toBeNull()
+    })
+
+    it('should not throw when no permissions exist', () => {
+      expect(() => clearUserPermission()).not.toThrow()
     })
   })
 })

@@ -73,13 +73,47 @@ export function getToken() {
     if (token) { //表示token存在，token不是空的，token有值，这个意思
         return token;
     } else {
-        messageConfirm("请求token为空，是否重新去登录？").then(() => { //用户点击“确定”按钮就会触发then函数
+        messageConfirm("请求token为空，是否重新去登录？").then(() => { //用户点击"确定"按钮就会触发then函数
             //既然后端验证token未通过，那么前端的token肯定是有问题的，那没必要存储在浏览器中，直接删除一下
             removeToken();
             //跳到登录页
             window.location.href = "/";
-        }).catch(() => { //用户点击“取消”按钮就会触发catch函数
+        }).catch(() => { //用户点击"取消"按钮就会触发catch函数
             messageTip("取消去登录", "warning");
         })
     }
+}
+
+/**
+ * 获取缓存的用户权限列表
+ *
+ * @returns {Array|null}
+ */
+export function getUserPermission() {
+    const cached = window.sessionStorage.getItem('user_permissions');
+    if (cached) {
+        try {
+            return JSON.parse(cached);
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+}
+
+/**
+ * 设置用户权限列表到缓存
+ *
+ * @param {Array} permissions
+ */
+export function setUserPermission(permissions) {
+    window.sessionStorage.setItem('user_permissions', JSON.stringify(permissions));
+}
+
+/**
+ * 清除用户权限缓存
+ *
+ */
+export function clearUserPermission() {
+    window.sessionStorage.removeItem('user_permissions');
 }
