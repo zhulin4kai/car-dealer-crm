@@ -53,4 +53,7 @@ public interface DicMapper {
     List<Integer> selectDicValueIdsByTypeCode(@Param("typeCode") String typeCode);
     String selectTypeCodeById(@Param("id") Integer id);
     List<String> selectTypeCodesByIds(@Param("ids") List<Integer> ids);
+    
+    // 检查字典值是否被业务数据引用
+    int selectRemarkCountByDicValueIds(@Param("ids") List<Integer> ids);
 } 

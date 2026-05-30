@@ -94,6 +94,7 @@ public class TranServiceImpl implements TranService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateTransaction(TTran tTran) {
         // 设置更新时间
         tTran.setEditTime(new Date());
@@ -298,6 +299,23 @@ public class TranServiceImpl implements TranService {
         // 校验当前状态必须为43（已审批）
         validateStageTransition(invoice.getTranId(), 43);
 
+        // 检查该交易是否已有发票
+        List<TTranInvoice> existingInvoices = tranInvoiceMapper.selectByTranId(invoice.getTranId());
+        if (existingInvoices != null && !existingInvoices.isEmpty()) {
+            throw new RuntimeException("该交易已开具发票，不可重复开票");
+        }
+
+        // 校验发票金额是否等于交易金额
+        TTran tran = tranMapper.selectByPrimaryKey(invoice.getTranId());
+        if (tran == null) {
+            throw new RuntimeException("交易记录不存在");
+        }
+        if (invoice.getAmount() != null && tran.getMoney() != null) {
+            if (invoice.getAmount().compareTo(tran.getMoney()) != 0) {
+                throw new RuntimeException("发票金额必须等于交易结算金额");
+            }
+        }
+
         Date now = new Date();
 
         // 生成发票号码
@@ -310,13 +328,13 @@ public class TranServiceImpl implements TranService {
 
         if (result > 0) {
             // 更新交易状态为待收款
-            TTran tran = new TTran();
-            tran.setId(invoice.getTranId());
-            tran.setStage(45); // 待收款
-            tran.setEditTime(now);
-            tran.setEditBy(invoice.getCreateBy());
+            TTran updateTran = new TTran();
+            updateTran.setId(invoice.getTranId());
+            updateTran.setStage(45); // 待收款
+            updateTran.setEditTime(now);
+            updateTran.setEditBy(invoice.getCreateBy());
 
-            int tranResult = tranMapper.updateByPrimaryKeySelective(tran);
+            int tranResult = tranMapper.updateByPrimaryKeySelective(updateTran);
 
             if (tranResult > 0) {
                 // 清除缓存
@@ -431,6 +449,11 @@ public class TranServiceImpl implements TranService {
             return false;
         }
 
+        // 校验只有待报价状态允许删除
+        if (transaction.getStage() != 41) {
+            throw new RuntimeException("只有待报价状态的交易才能删除");
+        }
+
         // 删除交易产品关联（恢复库存）
         List<TTranProduct> tranProducts = tranProductMapper.selectByTranId(id);
         if (tranProducts != null && !tranProducts.isEmpty()) {
@@ -487,5 +510,52 @@ public class TranServiceImpl implements TranService {
         int result = tranMapper.deleteByIds(ids);
 
         return result > 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean resubmitTransaction(Integer tranId, Integer userId) {
+        // 校验当前状态必须为21（丢失关闭）
+        validateStageTransition(tranId, 21);
+
+        Date now = new Date();
+
+        // 将状态改回41（待报价）
+        TTran tran = new TTran();
+        tran.setId(tranId);
+        tran.setStage(41); // 待报价
+        tran.setEditTime(now);
+        tran.setEditBy(userId);
+
+        int result = tranMapper.updateByPrimaryKeySelective(tran);
+
+        if (result > 0) {
+            // 清除缓存
+            clearTransactionCache(tranId);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateTransactionWithProducts(TTran tran, List<TTranProduct> products) {
+        // 1. 更新交易基本信息
+        tran.setEditTime(new Date());
+        int rows = tranMapper.updateByPrimaryKeySelective(tran);
+        if (rows == 0) {
+            return false;
+        }
+
+        // 2. 恢复旧产品库存
+        deleteTransactionProducts(tran.getId());
+
+        // 3. 扣减新产品库存
+        if (products != null && !products.isEmpty()) {
+            addTransactionProducts(tran.getId(), products);
+        }
+
+        clearTransactionCache(tran.getId());
+        return true;
     }
 }

@@ -330,4 +330,11 @@
     </foreach>
   </delete>
 
+  <!-- 根据客户ID查询交易数量 -->
+  <select id="selectCountByCustomerId" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+    SELECT COUNT(*)
+    FROM t_tran
+    WHERE customer_id = #{customerId,jdbcType=INTEGER}
+  </select>
+
 </mapper>

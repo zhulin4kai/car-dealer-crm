@@ -1,6 +1,7 @@
 package com.bjpowernode.web;
 
 import com.alibaba.excel.EasyExcel;
+import com.bjpowernode.constant.Constants;
 import com.bjpowernode.model.TClue;
 import com.bjpowernode.model.TUser;
 import com.bjpowernode.query.ClueQuery;
@@ -78,6 +79,9 @@ public class ClueController {
     @PreAuthorize(value = "hasAuthority('clue:delete')")
     @PostMapping(value = "/api/clue/batch")
     public R batchDelClue(@RequestBody List<Integer> ids) {
+        if (ids.size() > Constants.MAX_BATCH_SIZE) {
+            return R.FAIL("单次批量删除最多支持 " + Constants.MAX_BATCH_SIZE + " 条记录");
+        }
         int del = clueService.batchDelClueByIds(ids);
         return del >= 1 ? R.OK() : R.FAIL();
     }

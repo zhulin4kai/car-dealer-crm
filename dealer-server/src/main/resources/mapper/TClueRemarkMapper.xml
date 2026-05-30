@@ -181,4 +181,10 @@
       deleted = #{deleted,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
+
+  <!-- 根据线索ID删除关联备注 -->
+  <delete id="deleteByClueId" parameterType="java.lang.Integer">
+    delete from t_clue_remark
+    where clue_id = #{clueId,jdbcType=INTEGER}
+  </delete>
 </mapper>

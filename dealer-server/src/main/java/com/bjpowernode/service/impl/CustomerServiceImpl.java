@@ -4,6 +4,7 @@ import com.bjpowernode.constant.Constants;
 import com.bjpowernode.manager.CustomerManager;
 import com.bjpowernode.mapper.TClueMapper;
 import com.bjpowernode.mapper.TCustomerMapper;
+import com.bjpowernode.mapper.TTranMapper;
 import com.bjpowernode.model.TCustomer;
 import com.bjpowernode.model.CustomerOption;
 import com.bjpowernode.query.CustomerQuery;
@@ -13,6 +14,7 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
 import java.util.ArrayList;
@@ -26,6 +28,9 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Resource
     private TCustomerMapper tCustomerMapper;
+
+    @Resource
+    private TTranMapper tTranMapper;
 
     @Override
     public Boolean convertCustomer(CustomerQuery customerQuery) {
@@ -93,5 +98,25 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public TCustomer getCustomerById(Integer id) {
         return tCustomerMapper.selectByPrimaryKey(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteCustomer(Integer id) {
+        // 检查客户是否存在
+        TCustomer customer = tCustomerMapper.selectByPrimaryKey(id);
+        if (customer == null) {
+            return false;
+        }
+
+        // 检查是否有未完成的交易
+        int tranCount = tTranMapper.selectCountByCustomerId(id);
+        if (tranCount > 0) {
+            throw new RuntimeException("该客户有未完成的交易，无法删除");
+        }
+
+        // 删除客户
+        int result = tCustomerMapper.deleteByPrimaryKey(id);
+        return result > 0;
     }
 }

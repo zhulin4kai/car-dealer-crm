@@ -40,4 +40,11 @@ public interface CustomerService {
     PageInfo<TCustomer> getCustomerByPage(Integer current);
 
     List<CustomerExcel> getCustomerByExcel(List<String> idList);
+
+    /**
+     * 删除客户
+     * @param id 客户ID
+     * @return 是否删除成功
+     */
+    boolean deleteCustomer(Integer id);
 }

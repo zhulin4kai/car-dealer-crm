@@ -1,6 +1,7 @@
 package com.bjpowernode.service;
 
 import com.bjpowernode.mapper.TClueMapper;
+import com.bjpowernode.mapper.TClueRemarkMapper;
 import com.bjpowernode.model.TClue;
 import com.bjpowernode.model.TUser;
 import com.bjpowernode.query.ClueQuery;
@@ -30,6 +31,9 @@ class ClueServiceImplTest {
 
     @Mock
     private TClueMapper tClueMapper;
+
+    @Mock
+    private TClueRemarkMapper tClueRemarkMapper;
 
     // ==================== getClueById ====================
 
@@ -159,11 +163,13 @@ class ClueServiceImplTest {
 
     @Test
     void delClueById_success_shouldReturnOne() {
+        when(tClueRemarkMapper.deleteByClueId(1)).thenReturn(1);
         when(tClueMapper.deleteByPrimaryKey(1)).thenReturn(1);
 
         int result = clueService.delClueById(1);
 
         assertEquals(1, result);
+        verify(tClueRemarkMapper).deleteByClueId(1);
         verify(tClueMapper).deleteByPrimaryKey(1);
     }
 
@@ -172,16 +178,20 @@ class ClueServiceImplTest {
         int result = clueService.delClueById(null);
 
         assertEquals(0, result);
+        verify(tClueRemarkMapper, never()).deleteByClueId(anyInt());
         verify(tClueMapper, never()).deleteByPrimaryKey(any());
     }
 
     @Test
     void delClueById_notFound_shouldReturnZero() {
+        when(tClueRemarkMapper.deleteByClueId(999)).thenReturn(0);
         when(tClueMapper.deleteByPrimaryKey(999)).thenReturn(0);
 
         int result = clueService.delClueById(999);
 
         assertEquals(0, result);
+        verify(tClueRemarkMapper).deleteByClueId(999);
+        verify(tClueMapper).deleteByPrimaryKey(999);
     }
 
     // ==================== batchDelClueByIds ====================
@@ -190,6 +200,7 @@ class ClueServiceImplTest {
     void batchDelClueByIds_success_shouldReturnDeletedCount() {
         List<Integer> ids = Arrays.asList(1, 2, 3);
 
+        when(tClueRemarkMapper.deleteByClueId(anyInt())).thenReturn(1);
         when(tClueMapper.batchDeleteByIds(ids)).thenReturn(3);
 
         int result = clueService.batchDelClueByIds(ids);

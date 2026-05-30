@@ -11,6 +11,7 @@ import com.bjpowernode.service.CustomerService;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -59,6 +60,7 @@ public class CustomerController {
     }
 
     @PostMapping(value = "/api/clue/customer")
+    @PreAuthorize("hasAuthority('customer:transfer')")
     public R convertCustomer(@RequestBody CustomerQuery customerQuery) {
         Boolean convert = customerService.convertCustomer(customerQuery);
         return convert ? R.OK() : R.FAIL();
@@ -83,6 +85,7 @@ public class CustomerController {
      * @throws IOException
      */
     @GetMapping(value = "/api/exportExcel")
+    @PreAuthorize("hasAuthority('customer:export')")
     public void exportExcel(HttpServletResponse response, @RequestParam(value = "ids", required = false) String ids) throws IOException {
 
         //要想让浏览器弹出下载框，你后端要设置一下响应头信息

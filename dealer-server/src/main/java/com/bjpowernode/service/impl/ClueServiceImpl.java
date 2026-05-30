@@ -5,6 +5,7 @@ import com.bjpowernode.config.converter.ClueExcelConverter;
 import com.bjpowernode.config.listener.UploadDataListener;
 import com.bjpowernode.constant.Constants;
 import com.bjpowernode.mapper.TClueMapper;
+import com.bjpowernode.mapper.TClueRemarkMapper;
 import com.bjpowernode.model.TClue;
 import com.bjpowernode.model.TUser;
 import com.bjpowernode.query.BaseQuery;
@@ -28,6 +29,9 @@ public class ClueServiceImpl implements ClueService {
 
     @Resource
     private TClueMapper tClueMapper;
+
+    @Resource
+    private TClueRemarkMapper tClueRemarkMapper;
 
     @Resource
     private ClueExcelConverter clueExcelConverter;
@@ -88,11 +92,22 @@ public class ClueServiceImpl implements ClueService {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public int updateClue(ClueQuery clueQuery) {
+        // 先查询原记录，获取原手机号
+        TClue originalClue = tClueMapper.selectByPrimaryKey(clueQuery.getId());
+        if (originalClue == null) {
+            throw new RuntimeException("线索记录不存在");
+        }
+
         TClue tClue = new TClue();
 
         //把前端提交过来的参数数据对象ClueQuery复制到TClue对象中
         //Spring框架有个工具类BeanUtils可以进行对象的复制,复制的条件要求是：两个对象的字段名要相同，字段的类型也相同，这样才可以复制
         BeanUtils.copyProperties(clueQuery, tClue);
+
+        // 如果传入的手机号与原记录不同，忽略手机号字段
+        if (clueQuery.getPhone() != null && !clueQuery.getPhone().equals(originalClue.getPhone())) {
+            tClue.setPhone(null); // 设置为null，让MyBatis的updateByPrimaryKeySelective跳过该字段
+        }
 
         //解析jwt得到userId
         Integer loginUserId = JWTUtils.parseUserFromJWT(clueQuery.getToken()).getId();
@@ -109,6 +124,9 @@ public class ClueServiceImpl implements ClueService {
         if (id == null) {
             return 0;
         }
+        // 先删除关联的线索备注
+        tClueRemarkMapper.deleteByClueId(id);
+        // 再删除线索
         return tClueMapper.deleteByPrimaryKey(id);
     }
 
@@ -118,6 +136,11 @@ public class ClueServiceImpl implements ClueService {
         if (ids == null || ids.size() == 0) {
             return 0;
         }
+        // 先删除关联的线索备注
+        for (Integer id : ids) {
+            tClueRemarkMapper.deleteByClueId(id);
+        }
+        // 再删除线索
         return tClueMapper.batchDeleteByIds(ids);
     }
 }

@@ -18,11 +18,15 @@ import java.util.Map;
  */
 public class JWTUtils {
 
-    // Read secret from environment variable; falls back to a default for backward compatibility.
-    // IMPORTANT: Set the JWT_SECRET env variable in production!
-    private static final String SECRET = System.getenv("JWT_SECRET") != null
-            ? System.getenv("JWT_SECRET")
-            : "dY8300olWQ3345;1d<3w48";
+    // 从环境变量读取JWT密钥，如果没有配置则抛出异常
+    private static final String SECRET;
+    static {
+        String secret = System.getenv("JWT_SECRET");
+        if (secret == null || secret.isEmpty()) {
+            throw new IllegalStateException("JWT_SECRET 环境变量未配置，应用无法启动");
+        }
+        SECRET = secret;
+    }
 
     private static final long EXPIRATION_MS = 24 * 60 * 60 * 1000L; // 24 hours
 

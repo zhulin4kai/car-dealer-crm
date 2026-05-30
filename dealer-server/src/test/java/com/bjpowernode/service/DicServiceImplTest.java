@@ -290,7 +290,7 @@ class DicServiceImplTest {
     void testDeleteDicType() {
         when(dicMapper.selectTypeCodeById(1)).thenReturn("industry");
         when(dicMapper.selectDicValueIdsByTypeCode("industry")).thenReturn(Arrays.asList(10, 20));
-        when(dicMapper.deleteRemarksByDicValueIds(Arrays.asList(10, 20))).thenReturn(2);
+        when(dicMapper.selectRemarkCountByDicValueIds(Arrays.asList(10, 20))).thenReturn(0); // 没有业务引用
         when(dicMapper.deleteDicValuesByIds(Arrays.asList(10, 20))).thenReturn(2);
         when(dicMapper.deleteDicType(1)).thenReturn(1);
 
@@ -298,12 +298,30 @@ class DicServiceImplTest {
 
         assertTrue(result);
         verify(dicMapper).selectTypeCodeById(1);
-        verify(dicMapper).deleteRemarksByDicValueIds(Arrays.asList(10, 20));
+        verify(dicMapper).selectDicValueIdsByTypeCode("industry");
+        verify(dicMapper).selectRemarkCountByDicValueIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicValuesByIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicType(1);
         verify(redisManager).deletePattern("dic:type:*");
         verify(redisManager).deletePattern("dic:value:*");
         verify(redisManager).deletePattern("dic:list:*");
+    }
+
+    @Test
+    void testDeleteDicType_hasBusinessReferences_shouldThrowException() {
+        when(dicMapper.selectTypeCodeById(1)).thenReturn("industry");
+        when(dicMapper.selectDicValueIdsByTypeCode("industry")).thenReturn(Arrays.asList(10, 20));
+        when(dicMapper.selectRemarkCountByDicValueIds(Arrays.asList(10, 20))).thenReturn(5); // 有5条业务引用
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> dicService.deleteDicType(1));
+
+        assertEquals("该字典类型下有业务数据引用，无法删除", exception.getMessage());
+        verify(dicMapper).selectTypeCodeById(1);
+        verify(dicMapper).selectDicValueIdsByTypeCode("industry");
+        verify(dicMapper).selectRemarkCountByDicValueIds(Arrays.asList(10, 20));
+        verify(dicMapper, never()).deleteDicValuesByIds(anyList());
+        verify(dicMapper, never()).deleteDicType(anyInt());
     }
 
     @Test

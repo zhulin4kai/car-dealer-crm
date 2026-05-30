@@ -166,4 +166,20 @@ public interface TranService {
      * @return 是否删除成功
      */
     boolean batchDeleteTransactions(List<Integer> ids);
+
+    /**
+     * 重新提交交易（审批拒绝后）
+     * @param tranId 交易ID
+     * @param userId 操作人ID
+     * @return 是否重新提交成功
+     */
+    boolean resubmitTransaction(Integer tranId, Integer userId);
+
+    /**
+     * 更新交易及产品信息（在同一事务中）
+     * @param tran 交易信息
+     * @param products 产品列表
+     * @return 是否更新成功
+     */
+    boolean updateTransactionWithProducts(TTran tran, List<TTranProduct> products);
 }

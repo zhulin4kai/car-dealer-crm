@@ -3,6 +3,7 @@ package com.bjpowernode.service;
 import com.bjpowernode.constant.Constants;
 import com.bjpowernode.manager.CustomerManager;
 import com.bjpowernode.mapper.TCustomerMapper;
+import com.bjpowernode.mapper.TTranMapper;
 import com.bjpowernode.model.*;
 import com.bjpowernode.query.CustomerQuery;
 import com.bjpowernode.result.CustomerExcel;
@@ -34,6 +35,9 @@ class CustomerServiceImplTest {
 
     @Mock
     private TCustomerMapper tCustomerMapper;
+
+    @Mock
+    private TTranMapper tTranMapper;
 
     // ==================== getCustomerList ====================
 
@@ -290,5 +294,67 @@ class CustomerServiceImplTest {
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
+    }
+
+    // ==================== deleteCustomer ====================
+
+    @Test
+    void deleteCustomer_success_shouldReturnTrue() {
+        TCustomer customer = new TCustomer();
+        customer.setId(1);
+
+        when(tCustomerMapper.selectByPrimaryKey(1)).thenReturn(customer);
+        when(tTranMapper.selectCountByCustomerId(1)).thenReturn(0);
+        when(tCustomerMapper.deleteByPrimaryKey(1)).thenReturn(1);
+
+        boolean result = customerService.deleteCustomer(1);
+
+        assertTrue(result);
+        verify(tCustomerMapper).selectByPrimaryKey(1);
+        verify(tTranMapper).selectCountByCustomerId(1);
+        verify(tCustomerMapper).deleteByPrimaryKey(1);
+    }
+
+    @Test
+    void deleteCustomer_notFound_shouldReturnFalse() {
+        when(tCustomerMapper.selectByPrimaryKey(999)).thenReturn(null);
+
+        boolean result = customerService.deleteCustomer(999);
+
+        assertFalse(result);
+        verify(tCustomerMapper).selectByPrimaryKey(999);
+        verify(tTranMapper, never()).selectCountByCustomerId(anyInt());
+        verify(tCustomerMapper, never()).deleteByPrimaryKey(anyInt());
+    }
+
+    @Test
+    void deleteCustomer_hasTransactions_shouldThrowException() {
+        TCustomer customer = new TCustomer();
+        customer.setId(1);
+
+        when(tCustomerMapper.selectByPrimaryKey(1)).thenReturn(customer);
+        when(tTranMapper.selectCountByCustomerId(1)).thenReturn(3); // 有3个交易
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> customerService.deleteCustomer(1));
+
+        assertEquals("该客户有未完成的交易，无法删除", exception.getMessage());
+        verify(tCustomerMapper).selectByPrimaryKey(1);
+        verify(tTranMapper).selectCountByCustomerId(1);
+        verify(tCustomerMapper, never()).deleteByPrimaryKey(anyInt());
+    }
+
+    @Test
+    void deleteCustomer_deleteFails_shouldReturnFalse() {
+        TCustomer customer = new TCustomer();
+        customer.setId(1);
+
+        when(tCustomerMapper.selectByPrimaryKey(1)).thenReturn(customer);
+        when(tTranMapper.selectCountByCustomerId(1)).thenReturn(0);
+        when(tCustomerMapper.deleteByPrimaryKey(1)).thenReturn(0);
+
+        boolean result = customerService.deleteCustomer(1);
+
+        assertFalse(result);
     }
 }
