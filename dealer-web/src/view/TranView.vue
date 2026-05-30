@@ -288,9 +288,7 @@ const fetchData = async () => {
     if (params.stage) {
       params.stage = parseInt(params.stage)
     }
-    console.log('请求参数:', params)
     const res = await getTranList(params)
-    console.log('获取交易列表:', res.data.data.list)
     if (res.data.code === 200) {
       tableData.value = res.data.data.list.map(item => ({
         id: item.id,
@@ -398,11 +396,9 @@ const handleBatchDelete = async () => {
 
 // 新增交易
 const handleAdd = () => {
-  console.log('点击新增交易按钮')
   isEdit.value = false
   resetForm()
   dialogVisible.value = true
-  console.log('dialogVisible设置为:', dialogVisible.value)
   loadCustomers()
   loadProducts()
 }
@@ -480,7 +476,6 @@ const loadCustomers = async () => {
     const res = await getCustomerOptions()
     if (res.data.code === 200) {
       customerOptions.value = res.data.data
-      console.log("获取客户选项：", customerOptions.value)
     }
   } catch (error) {
     ElMessage.error('加载客户列表失败')
@@ -496,7 +491,6 @@ const loadProducts = async () => {
     })
     if (res.data.code === 200) {
       productOptions.list = res.data.data.list
-      console.log("获取产品列表：", productOptions.list)
     }
   } catch (error) {
     ElMessage.error('加载产品列表失败')
@@ -563,8 +557,6 @@ const submitForm = async () => {
           expectedDeliveryDate: form.expectedDeliveryDate ? 
             new Date(form.expectedDeliveryDate).toISOString().split('T')[0] + ' 00:00:00' : null
         }
-          console.log('提交数据:', formData)
-        
         let res
         if (isEdit.value) {
           res = await updateTran(formData)
@@ -589,8 +581,6 @@ const submitForm = async () => {
 
 // 查看详情
 const handleView = (row) => {
-  console.log('查看详情，row数据:', row)
-  console.log('跳转到详情页面，ID:', row.id)
   router.push(`/dashboard/tran/${row.id}`)
 }
 

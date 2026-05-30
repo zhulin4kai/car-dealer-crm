@@ -359,9 +359,6 @@ const sourceOptions = ref([{}]);
 
 // 验证手机号有没有录入过，录入过的手机号，是不能再录入的
 const checkPhone = (rule, value, callback) => {
-  console.log(rule);
-  console.log(value); // value 就是我们input框里面输入的手机号
-  console.log(callback);
   //验证该手机号是否已经录入过，如果录入过了，就不能再录入了
   let phone = value; // value 就是我们input框里面输入的手机号
   if (phone) {
@@ -419,7 +416,6 @@ const startIndex = (index) => {
 // 原有的方法
 const getData = (current) => {
   getCurrentClues(current).then(resp => {
-    console.log(resp);
     if (resp.data.code === 200) {
       clueList.value = resp.data.data.list;
       pageSize.value = resp.data.data.pageSize;
@@ -576,7 +572,6 @@ const loadActivityAndProduct = async () => {
 }
 
 const loadDicValue = async (typeCode) => {
-  console.log("加载字典数据：" + typeCode);
   //调用字典值的接口，获取字典值列表
   await getDictValueList({typeCode}).then(resp => {
     if (resp.data.code === 200) {
@@ -664,7 +659,6 @@ const addClueSubmit = () => {
         });
       } else {
         addClueAPI(formData).then((resp) => {
-          console.log(formData) //获取ajax异步请求后的结果
           if (resp.data.code === 200) {
             //录入成功，提示一下
             messageTip("录入成功", "success");
