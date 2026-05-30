@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface ClueService {
 
-    PageInfo<TClue> getClueByPage(Integer current);
+    PageInfo<TClue> getClueByPage(Integer current, Integer pageSize);
 
     void importExcel(InputStream inputStreamm, String token);
 

@@ -157,7 +157,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<TUser> getOwnerList() {
         //1、从redis查询
-        //2、redis查不到，就从数据库查询，并且把数据放入redis（5分钟过期）
+        //2、redis查不到，就从数据库查询，并且把数据放入redis（1小时过期）
         return CacheUtils.getCacheData(() -> {
             //生产，从缓存redis查询数据
             return (List<TUser>)redisManager.getValue(Constants.REDIS_OWNER_KEY);

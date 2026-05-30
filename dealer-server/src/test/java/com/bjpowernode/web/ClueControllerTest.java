@@ -49,7 +49,7 @@ class ClueControllerTest {
         clue.setPhone("13800138000");
         PageInfo<TClue> pageInfo = new PageInfo<>(Collections.singletonList(clue));
 
-        when(clueService.getClueByPage(1)).thenReturn(pageInfo);
+        when(clueService.getClueByPage(1, null)).thenReturn(pageInfo);
 
         mockMvc.perform(get("/api/clues")
                         .param("current", "1"))
@@ -62,7 +62,7 @@ class ClueControllerTest {
     @WithMockUser(authorities = {"clue:list"})
     void cluePage_withoutCurrentParam_shouldDefaultToOne() throws Exception {
         PageInfo<TClue> pageInfo = new PageInfo<>(Collections.emptyList());
-        when(clueService.getClueByPage(1)).thenReturn(pageInfo);
+        when(clueService.getClueByPage(1, null)).thenReturn(pageInfo);
 
         mockMvc.perform(get("/api/clues"))
                 .andExpect(status().isOk())

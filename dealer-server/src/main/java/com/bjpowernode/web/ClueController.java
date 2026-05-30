@@ -23,11 +23,13 @@ public class ClueController {
 
     @PreAuthorize(value = "hasAuthority('clue:list')")
     @GetMapping(value = "/api/clues")
-    public R cluePage(@RequestParam(value = "current", required = false) Integer current) {
+    public R cluePage(
+            @RequestParam(value = "current", required = false) Integer current,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
         if (current == null) {
             current = 1;
         }
-        PageInfo<TClue> pageInfo = clueService.getClueByPage(current);
+        PageInfo<TClue> pageInfo = clueService.getClueByPage(current, pageSize);
         return R.OK(pageInfo);
     }
 

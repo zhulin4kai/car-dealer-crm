@@ -1,5 +1,6 @@
 package com.bjpowernode.service.impl;
 
+import com.bjpowernode.DlykServerApplication;
 import com.bjpowernode.manager.RedisManager;
 import com.bjpowernode.mapper.DicMapper;
 import com.bjpowernode.model.TDicType;
@@ -247,6 +248,9 @@ public class DicServiceImpl implements DicService {
             redisManager.deletePattern(cachePattern);
         }
         
+        // 同时清除内存缓存
+        DlykServerApplication.cacheMap.clear();
+        
         // 记录缓存清除日志
         log.info("Dictionary cache cleared with patterns: {}", Arrays.toString(cachePatterns));
     }
@@ -265,19 +269,17 @@ public class DicServiceImpl implements DicService {
                 return false;
             }
             
-            // 2. 针对每个类型代码获取关联的字典值ID
-            for (String typeCode : typeCodes) {
-                List<Integer> dicValueIds = dicMapper.selectDicValueIdsByTypeCode(typeCode);
-                
-                // 3. 先删除关联的备注记录
-                if (dicValueIds != null && !dicValueIds.isEmpty()) {
-                    dicMapper.deleteRemarksByDicValueIds(dicValueIds);
-                }
-                
-                // 4. 再删除字典值
-                if (dicValueIds != null && !dicValueIds.isEmpty()) {
-                    dicMapper.deleteDicValuesByIds(dicValueIds);
-                }
+            // 2. 批量获取关联的字典值ID（优化：使用批量查询替代循环单条查询）
+            List<Integer> dicValueIds = dicMapper.selectDicValueIdsByTypeCodes(typeCodes);
+            
+            // 3. 先删除关联的备注记录
+            if (dicValueIds != null && !dicValueIds.isEmpty()) {
+                dicMapper.deleteRemarksByDicValueIds(dicValueIds);
+            }
+            
+            // 4. 再删除字典值
+            if (dicValueIds != null && !dicValueIds.isEmpty()) {
+                dicMapper.deleteDicValuesByIds(dicValueIds);
             }
             
             // 5. 最后删除字典类型

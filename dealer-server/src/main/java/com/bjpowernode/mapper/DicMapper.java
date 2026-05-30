@@ -56,4 +56,7 @@ public interface DicMapper {
     
     // 检查字典值是否被业务数据引用
     int selectRemarkCountByDicValueIds(@Param("ids") List<Integer> ids);
+    
+    // 批量查询字典值ID（通过多个类型代码）
+    List<Integer> selectDicValueIdsByTypeCodes(@Param("typeCodes") List<String> typeCodes);
 } 
