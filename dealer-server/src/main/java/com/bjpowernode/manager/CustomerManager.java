@@ -71,7 +71,10 @@ public class CustomerManager {
                 if (product != null) {
                     TTranProduct tranProduct = new TTranProduct();
                     tranProduct.setProductId(customerQuery.getProduct());
-                    tranProduct.setQuantity(1); // 默认数量为1
+                    // 使用用户指定的数量，默认为1
+                    int quantity = customerQuery.getQuantity() != null && customerQuery.getQuantity() > 0 
+                        ? customerQuery.getQuantity() : 1;
+                    tranProduct.setQuantity(quantity);
                     tranProduct.setPrice(product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO);
                     tranProduct.setCreateBy(customerQuery.getCreateBy());
                     products.add(tranProduct);

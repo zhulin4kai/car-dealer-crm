@@ -5,6 +5,7 @@ import com.bjpowernode.result.R;
 import com.bjpowernode.result.SummaryData;
 import com.bjpowernode.service.StatisticService;
 import jakarta.annotation.Resource;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,12 +20,14 @@ public class StatisticController {
     @Resource
     private StatisticService statisticService;
 
+    @PreAuthorize("hasAuthority('statistic:view')")
     @GetMapping(value = "/api/summary/data")
     public R<SummaryData> summaryData() {
         SummaryData summaryData = statisticService.loadSummaryData();
         return R.OK(summaryData);
     }
 
+    @PreAuthorize("hasAuthority('statistic:view')")
     @GetMapping(value = "/api/saleFunnel/data")
     public R<List<NameValue>> saleFunnelData() {
         /**
@@ -40,6 +43,7 @@ public class StatisticController {
         return R.OK(nameValueList);
     }
 
+    @PreAuthorize("hasAuthority('statistic:view')")
     @GetMapping(value = "/api/sourcePie/data")
     public R<List<NameValue>> sourcePieData() {
         /**

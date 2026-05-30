@@ -96,6 +96,15 @@ public class CustomerController {
         //2、后端查询数据库的数据，把数据写入Excel，然后把Excel以IO流的方式输出到前端浏览器（我们来实现）
 
         List<String> idList = StringUtils.hasText(ids) ? Arrays.asList(ids.split(",")) : new ArrayList<>();
+        
+        // 限制单次导出的最大数量
+        if (idList.isEmpty()) {
+            // 如果没有指定ID，限制最多导出10000条
+            idList = null; // 传null给Service层，让它处理
+        } else if (idList.size() > 10000) {
+            throw new RuntimeException("单次导出最多支持10000条记录");
+        }
+        
         List<CustomerExcel> dataList = customerService.getCustomerByExcel(idList);
 
         EasyExcel.write(response.getOutputStream(), CustomerExcel.class)

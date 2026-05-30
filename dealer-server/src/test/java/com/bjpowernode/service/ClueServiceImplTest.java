@@ -115,12 +115,17 @@ class ClueServiceImplTest {
         ClueQuery query = new ClueQuery();
         query.setId(1);
         query.setFullName("Updated Name");
-        query.setPhone("13900139000");
+        query.setPhone("13800138000");
         query.setToken("valid-token");
 
         TUser user = new TUser();
         user.setId(2);
 
+        TClue existingClue = new TClue();
+        existingClue.setId(1);
+        existingClue.setPhone("13800138000");
+
+        when(tClueMapper.selectByPrimaryKey(1)).thenReturn(existingClue);
         when(tClueMapper.updateByPrimaryKeySelective(any(TClue.class))).thenReturn(1);
 
         try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
@@ -148,14 +153,12 @@ class ClueServiceImplTest {
         TUser user = new TUser();
         user.setId(1);
 
-        when(tClueMapper.updateByPrimaryKeySelective(any(TClue.class))).thenReturn(0);
+        when(tClueMapper.selectByPrimaryKey(999)).thenReturn(null);
 
         try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
             jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token")).thenReturn(user);
 
-            int result = clueService.updateClue(query);
-
-            assertEquals(0, result);
+            assertThrows(RuntimeException.class, () -> clueService.updateClue(query));
         }
     }
 

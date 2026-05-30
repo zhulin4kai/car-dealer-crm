@@ -2,10 +2,10 @@ package com.bjpowernode.config.filter;
 
 
 import com.bjpowernode.constant.Constants;
+import com.bjpowernode.manager.RedisManager;
 import com.bjpowernode.model.TUser;
 import com.bjpowernode.result.CodeEnum;
 import com.bjpowernode.result.R;
-import com.bjpowernode.service.RedisService;
 import com.bjpowernode.util.JSONUtils;
 import com.bjpowernode.util.JWTUtils;
 import com.bjpowernode.util.ResponseUtils;
@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class TokenVerifyFilter extends OncePerRequestFilter {
 
     @Resource
-    private RedisService redisService;
+    private RedisManager redisManager;
 
     //spring boot框架的ioc容器中已经创建好了该线程池，可以注入直接使用
     @Resource
@@ -76,7 +76,7 @@ public class TokenVerifyFilter extends OncePerRequestFilter {
             }
 
             TUser tUser = JWTUtils.parseUserFromJWT(token);
-            String redisToken = (String) redisService.getValue(Constants.REDIS_JWT_KEY + tUser.getId());
+            String redisToken = (String) redisManager.get(Constants.REDIS_JWT_KEY + tUser.getId());
 
             if (!StringUtils.hasText(redisToken)) {
                 //token验证未通过统一结果
@@ -120,12 +120,21 @@ public class TokenVerifyFilter extends OncePerRequestFilter {
 
             //异步处理（更好的方式，使用线程池去执行）
             threadPoolTaskExecutor.execute(() -> {
-                //刷新token
-                String rememberMe = request.getHeader("rememberMe");
-                if (Boolean.parseBoolean(rememberMe)) {
-                    redisService.expire(Constants.REDIS_JWT_KEY + tUser.getId(), Constants.EXPIRE_TIME, TimeUnit.SECONDS);
-                } else {
-                    redisService.expire(Constants.REDIS_JWT_KEY + tUser.getId(), Constants.DEFAULT_EXPIRE_TIME, TimeUnit.SECONDS);
+                // 检查是否需要刷新（5分钟内不重复刷新）
+                String refreshKey = Constants.REDIS_JWT_KEY + "refresh:" + tUser.getId();
+                Object needRefresh = redisManager.get(refreshKey);
+                
+                if (needRefresh == null) {
+                    //刷新token
+                    String rememberMe = request.getHeader("rememberMe");
+                    if (Boolean.parseBoolean(rememberMe)) {
+                        redisManager.set(Constants.REDIS_JWT_KEY + tUser.getId(), redisToken, Constants.EXPIRE_TIME);
+                    } else {
+                        redisManager.set(Constants.REDIS_JWT_KEY + tUser.getId(), redisToken, Constants.DEFAULT_EXPIRE_TIME);
+                    }
+                    
+                    // 设置刷新标记，5分钟内不重复刷新
+                    redisManager.set(refreshKey, "true", 300); // 5分钟 = 300秒
                 }
             });
 

@@ -456,8 +456,7 @@ class DicServiceImplTest {
     void testDeleteDicTypesByIds() {
         List<Integer> ids = Arrays.asList(1, 2);
         when(dicMapper.selectTypeCodesByIds(ids)).thenReturn(Arrays.asList("type_a", "type_b"));
-        when(dicMapper.selectDicValueIdsByTypeCode("type_a")).thenReturn(Arrays.asList(10));
-        when(dicMapper.selectDicValueIdsByTypeCode("type_b")).thenReturn(Arrays.asList(20));
+        when(dicMapper.selectDicValueIdsByTypeCodes(Arrays.asList("type_a", "type_b"))).thenReturn(Arrays.asList(10, 20));
         when(dicMapper.deleteRemarksByDicValueIds(anyList())).thenReturn(1);
         when(dicMapper.deleteDicValuesByIds(anyList())).thenReturn(1);
         when(dicMapper.deleteDicTypesByIds(ids)).thenReturn(2);
@@ -465,6 +464,10 @@ class DicServiceImplTest {
         boolean result = dicService.deleteDicTypesByIds(ids);
 
         assertTrue(result);
+        verify(dicMapper).selectTypeCodesByIds(ids);
+        verify(dicMapper).selectDicValueIdsByTypeCodes(Arrays.asList("type_a", "type_b"));
+        verify(dicMapper).deleteRemarksByDicValueIds(Arrays.asList(10, 20));
+        verify(dicMapper).deleteDicValuesByIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicTypesByIds(ids);
         verify(redisManager).deletePattern("dic:type:*");
         verify(redisManager).deletePattern("dic:value:*");

@@ -26,4 +26,7 @@ public class CustomerQuery {
     private String description;
 
     private Date nextContactTime;
+
+    /** 购买数量，默认为1 */
+    private Integer quantity = 1;
 }

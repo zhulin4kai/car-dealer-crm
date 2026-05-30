@@ -291,4 +291,14 @@
             #{id}
         </foreach>
     </select>
+
+    <!-- 批量查询字典值ID（通过多个类型代码） -->
+    <select id="selectDicValueIdsByTypeCodes" resultType="java.lang.Integer">
+        SELECT id
+        FROM t_dic_value
+        WHERE type_code IN
+        <foreach collection="typeCodes" item="typeCode" open="(" separator="," close=")">
+            #{typeCode}
+        </foreach>
+    </select>
 </mapper> 

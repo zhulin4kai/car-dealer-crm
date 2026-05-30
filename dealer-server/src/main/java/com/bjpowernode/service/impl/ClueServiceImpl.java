@@ -37,9 +37,21 @@ public class ClueServiceImpl implements ClueService {
     private ClueExcelConverter clueExcelConverter;
 
     @Override
-    public PageInfo<TClue> getClueByPage(Integer current) {
+    public PageInfo<TClue> getClueByPage(Integer current, Integer pageSize) {
+        // 参数校验
+        if (current == null || current < 1) {
+            current = 1;
+        }
+        if (pageSize == null || pageSize < 1) {
+            pageSize = Constants.PAGE_SIZE;
+        }
+        // 限制pageSize范围
+        if (pageSize > 100) {
+            pageSize = 100;
+        }
+        
         // 1.设置PageHelper
-        PageHelper.startPage(current, Constants.PAGE_SIZE);
+        PageHelper.startPage(current, pageSize);
         // 2.查询
         List<TClue> list = tClueMapper.selectClueByPage(BaseQuery.builder().build());
         // 3.封装分页数据到PageInfo
