@@ -830,7 +830,7 @@ export default defineConfig({
 
 ---
 
-### ISSUE-F001：多处 console.log 残留
+### ISSUE-F001：多处 console.log 残留 ✅
 
 | 属性 | 内容 |
 |------|------|
