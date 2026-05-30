@@ -54,7 +54,7 @@ public class CustomerExcel {
     private String address;
 
     @ExcelProperty(value = "是否贷款")
-    private String needLoadName;
+    private String needLoanName;
 
     @ExcelProperty(value = "客户产品")
     private String productName;

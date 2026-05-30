@@ -51,14 +51,6 @@ export default defineComponent({
     return {
       //对象变量定义，是{}
       user : {},
-      //字符串变量定义，是''
-      name : '',
-      //数字变量定义，是0
-      age : 0,
-      //数组变量定义，是[]
-      arr : [],
-      //list集合对象(对象数组)，是[{}]
-      userList : [{}],
       //定义登录表单的验证规则
       loginRules : {
         //定义账号的验证规则，规则可以有多个，所以是数组
@@ -94,7 +86,6 @@ export default defineComponent({
           formData.append("rememberMe", this.user.rememberMe);
 
           doPost("/api/login", formData).then( (resp) => {
-            console.log(resp);
             if (resp.data.code === 200) {
               //登录成功，提示一下
               messageTip("登录成功", "success");

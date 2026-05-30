@@ -9,10 +9,10 @@ public class Constants {
     public static final String LOGIN_URI = "/api/login";
 
     //redis的key的命名规范： 项目名:模块名:功能名:唯一业务参数(比如用户id)
-    public static final String REDIS_JWT_KEY = "dlyk:user:login:";
+    public static final String REDIS_JWT_KEY = "cdrm:user:login:";
 
     //redis中负责人的key
-    public static final String REDIS_OWNER_KEY = "dlyk:user:owner";
+    public static final String REDIS_OWNER_KEY = "cdrm:user:owner";
 
     //jwt过期时间7天
     public static final Long EXPIRE_TIME = 7 * 24 * 60 * 60L;
@@ -37,14 +37,14 @@ public class Constants {
     public static final long CACHE_EXPIRE_TIME = 24 * 60 * 60L;
 
     /** 交易缓存相关常量 */
-    public static final String CACHE_KEY_TRAN = "dlyk:tran:detail:";
-    public static final String CACHE_KEY_TRAN_LIST = "dlyk:tran:list:";
-    public static final String CACHE_KEY_TRAN_PRODUCTS = "dlyk:tran:products:";
-    public static final String CACHE_KEY_TRAN_PRODUCTION = "dlyk:tran:production:";
-    public static final String CACHE_KEY_TRAN_INVOICES = "dlyk:tran:invoices:";
+    public static final String CACHE_KEY_TRAN = "cdrm:tran:detail:";
+    public static final String CACHE_KEY_TRAN_LIST = "cdrm:tran:list:";
+    public static final String CACHE_KEY_TRAN_PRODUCTS = "cdrm:tran:products:";
+    public static final String CACHE_KEY_TRAN_PRODUCTION = "cdrm:tran:production:";
+    public static final String CACHE_KEY_TRAN_INVOICES = "cdrm:tran:invoices:";
 
     /** 系统信息缓存相关常量 */
-    public static final String REDIS_SYSTEM_KEY = "dlyk:system:";
+    public static final String REDIS_SYSTEM_KEY = "cdrm:system:";
     public static final String REDIS_SYSTEM_LIST_KEY = REDIS_SYSTEM_KEY + "list";
     public static final String REDIS_SYSTEM_DETAIL_KEY = REDIS_SYSTEM_KEY + "detail:";
 

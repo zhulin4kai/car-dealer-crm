@@ -28,5 +28,5 @@ export function deleteUser(id) {
 
 // 批量删除用户
 export function batchDeleteUsers(ids) {
-    return doDelete('/api/user', { ids })
+    return doDelete('/api/user', ids)
 } 

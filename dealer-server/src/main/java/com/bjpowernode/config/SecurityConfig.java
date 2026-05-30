@@ -9,7 +9,6 @@ import com.bjpowernode.constant.Constants;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -18,11 +17,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.Arrays;
 
 @EnableMethodSecurity // 开启方法级别的权限检查
 @Configuration
@@ -49,8 +43,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity,
-            CorsConfigurationSource configurationSource) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         // 禁用跨站请求伪造
         return httpSecurity
                 .formLogin((formLogin) -> {
@@ -69,10 +62,7 @@ public class SecurityConfig {
 
                 .csrf(AbstractHttpConfigurer::disable) // 方法引用，禁用跨站请求伪造
 
-                // 支持跨域请求
-                .cors((cors) -> {
-                    cors.configurationSource(configurationSource);
-                })
+                // CORS is handled by CorsConfig.java
 
                 .sessionManagement((session) -> {
                     // session创建策略
@@ -85,6 +75,7 @@ public class SecurityConfig {
                 // 退出登录
                 .logout((logout) -> {
                     logout.logoutUrl("/api/logout") // 退出提交到该地址，该地址不需要我们写controller的，是框架处理
+                            .logoutRequestMatcher(new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/api/logout", "GET"))
                             .logoutSuccessHandler(myLogoutSuccessHandler);
                 })
 
@@ -96,16 +87,5 @@ public class SecurityConfig {
                 .build();
     }
 
-    @Bean
-    @Primary
-    public CorsConfigurationSource configurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*")); // 允许任何来源，http://localhost:8081
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 明确允许的方法
-        configuration.setAllowedHeaders(Arrays.asList("*")); // 允许任何的请求头
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+    // CORS configuration is handled by CorsConfig.java to avoid duplication
 }

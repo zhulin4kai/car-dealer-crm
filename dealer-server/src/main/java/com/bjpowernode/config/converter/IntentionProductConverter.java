@@ -35,6 +35,9 @@ public class IntentionProductConverter implements Converter<Integer> {
         String cellIntentionProductName = cellData.getStringValue();
 
         List<TProduct> tDicValueList = (List<TProduct>) DlykServerApplication.cacheMap.get(DicEnum.PRODUCT.getCode());
+        if (tDicValueList == null) {
+            return -1;
+        }
         for (TProduct tProduct : tDicValueList) {
             Integer id  = tProduct.getId();
             String name = tProduct.getName();

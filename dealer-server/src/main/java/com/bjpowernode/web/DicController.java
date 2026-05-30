@@ -5,11 +5,8 @@ import com.bjpowernode.model.TDicValue;
 import com.bjpowernode.query.DicQuery;
 import com.bjpowernode.result.R;
 import com.bjpowernode.service.DicService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +14,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/dict")
 public class DicController {
-    private static final Logger logger = LoggerFactory.getLogger(DicController.class);
 
     @Autowired
     private DicService dicService;
@@ -25,17 +21,6 @@ public class DicController {
     /**
      * 字典类型
      */
-    @GetMapping("/debug/authorities")
-    public R getCurrentAuthorities() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null) {
-            logger.info("Current user: {}", authentication.getName());
-            logger.info("Authorities: {}", authentication.getAuthorities());
-            return R.OK(authentication.getAuthorities());
-        }
-        return R.FAIL("No authentication found");
-    }
-
     @GetMapping("/types")
     public R getDicTypes(DicQuery query) {
         if (query.getPage() == null) {
@@ -111,17 +96,7 @@ public class DicController {
         return dicService.deleteDicValuesByIds(ids) ? R.OK() : R.FAIL("批量删除字典值失败");
     }
 
-    @PostMapping("/value/debug")
-    public R debugAddDicValue(@RequestBody TDicValue dicValue) {
-        logger.info("Received dictionary value: {}", dicValue);
-        // 检查类型是否存在
-        TDicType existingType = dicService.getDicTypeByCode(dicValue.getTypeCode());
-        if (existingType == null) {
-            return R.FAIL("字典类型不存在: " + dicValue.getTypeCode());
-        }
-        return dicService.addDicValue(dicValue) ? R.OK() : R.FAIL("添加字典值失败");
-    }
-    
+    @PreAuthorize("hasAuthority('admin')")
     @GetMapping("/clear")
     public R clearCache(@RequestParam(required = false) Boolean forceRefresh) {
         dicService.clearCache("*");

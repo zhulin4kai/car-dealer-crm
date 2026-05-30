@@ -78,9 +78,6 @@ public class DicServiceImpl implements DicService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean addDicValue(TDicValue dicValue) {
-        // 记录接收到的参数
-        System.out.println("Adding dictionary value: " + dicValue);
-        
         // 验证字典类型是否存在
         TDicType existingType = dicMapper.selectDicTypeByCode(dicValue.getTypeCode());
         if (existingType == null) {

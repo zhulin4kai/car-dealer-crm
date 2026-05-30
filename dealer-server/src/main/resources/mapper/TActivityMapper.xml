@@ -30,17 +30,17 @@
     <!--一对一关联查询-->
     <association property="ownerDO" javaType="com.bjpowernode.model.TUser">
       <id column="ownerId" jdbcType="INTEGER" property="id" />
-      <result column="ownerName" jdbcType="INTEGER" property="name" />
+      <result column="ownerName" jdbcType="VARCHAR" property="name" />
     </association>
     <!--一对一关联查询-->
     <association property="createByDO" javaType="com.bjpowernode.model.TUser">
       <id column="createById" jdbcType="INTEGER" property="id" />
-      <result column="createByName" jdbcType="INTEGER" property="name" />
+      <result column="createByName" jdbcType="VARCHAR" property="name" />
     </association>
     <!--一对一关联查询-->
     <association property="editByDO" javaType="com.bjpowernode.model.TUser">
       <id column="editById" jdbcType="INTEGER" property="id" />
-      <result column="editByName" jdbcType="INTEGER" property="name" />
+      <result column="editByName" jdbcType="VARCHAR" property="name" />
     </association>
   </resultMap>
 

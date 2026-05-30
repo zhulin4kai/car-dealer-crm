@@ -1,34 +1,184 @@
-# 电子商务管理系统
+# Car Dealer CRM
 
-![GitHub stars](https://img.shields.io/github/stars/yzk99/xzit_iot_system?style=flat-square)
-![GitHub forks](https://img.shields.io/github/forks/yzk99/xzit_iot_system?style=flat-square)
-![GitHub issues](https://img.shields.io/github/issues/yzk99/xzit_iot_system?style=flat-square)
-![GitHub last commit](https://img.shields.io/github/last-commit/yzk99/xzit_iot_system?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/zhulin4kai/car-dealer-crm?style=flat-square)
+![GitHub forks](https://img.shields.io/github/forks/zhulin4kai/car-dealer-crm?style=flat-square)
+![GitHub issues](https://img.shields.io/github/issues/zhulin4kai/car-dealer-crm?style=flat-square)
+![GitHub last commit](https://img.shields.io/github/last-commit/zhulin4kai/car-dealer-crm?style=flat-square)
+![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-green?style=flat-square)
+![Vue.js](https://img.shields.io/badge/Vue.js-3-brightgreen?style=flat-square)
+![License](https://img.shields.io/badge/License-BSD%203--Clause-blue?style=flat-square)
 
-## 📖 介绍
-本项目是为徐州工程学院 2024-2025 第二学期《物联网专业技能综合训练》课程精心打造的一款现代化、功能完备的电子商务客户关系管理（CRM）系统。系统采用业界前沿的**前后端分离**架构，前端基于 **Vue 3** 和 **Vite** 构建，响应迅速、用户体验流畅；后端则采用稳健的 **Java** 技术栈，确保了业务逻辑的稳定与高效。
+汽车经销商客户关系管理系统 —— 覆盖从线索获取到交易完成的全流程业务。
 
-该项目不仅完美地完成了课程设计的任务要求，更是一个贴近真实商业场景的准生产级应用。
+## 功能特性
 
-本项目基于尚硅谷动力云客系统二次开发，**项目仅用作课设答辩，无商业用途。**
+| 模块 | 功能 |
+|------|------|
+| **数据驾驶舱** | 实时销售数据、市场活动 ROI、关键指标可视化 |
+| **线索管理** | 线索录入、导入、跟进、转化，全流程状态追踪 |
+| **客户管理** | 360° 客户视图，跟进记录，交易历史，Excel 导出 |
+| **市场活动** | 活动创建、效果评估、线索关联，支持批量操作 |
+| **商品管理** | 商品分类、库存预警、促销管理、价格策略 |
+| **交易管理** | 订单创建、审批流程、结算开票、状态流转 |
+| **统计报表** | 销售漏斗、来源分析、多维度数据统计 |
+| **系统管理** | 用户、角色、权限（RBAC）、数据字典、系统监控 |
 
-## ✨ 系统核心功能
+## 技术栈
 
-本系统深度融合了电子商务与客户关系管理的核心业务流程，实现了以下强大功能：
+**后端**
 
-- **📊 数据驾驶舱**：实时汇总系统核心数据，销售动态、市场活动、关键指标一目了然，助力管理者精准决策。
-- **👤 客户管理**：精细化管理客户信息，360度客户视图，完整记录跟进过程与交易历史。
-- **💡 线索管理**：全流程跟进销售线索，从发现到转化为商机，有效提升销售转化率。
-- **📈 市场活动**：灵活创建和管理市场推广活动，量化评估活动效果（ROI），让市场投入回报最大化。
-- **📦 商品管理**：支持商品分类、信息录入、库存预警与促销管理，电商运营的核心利器。
-- **📑 交易管理**：覆盖从订单创建、审批到开票的全过程，交易流程清晰、规范。
-- **📈 统计报表**：多维度数据统计与分析，为业务优化和市场策略提供坚实的数据支撑。
-- **⚙️ 系统管理**：包含用户、角色、权限及数据字典等系统级配置，实现灵活的权限控制和系统自定义。
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Spring Boot | 3.2.0 | 应用框架 |
+| Spring Security | - | 认证授权（JWT + RBAC） |
+| MyBatis | 3.0.3 | ORM 框架 |
+| PageHelper | 1.4.7 | 分页插件 |
+| EasyExcel | 3.3.3 | Excel 导入导出 |
+| JWT (JJWT) | 0.12.3 | Token 签发与验证 |
+| Redis | - | Token 缓存、数据字典缓存 |
+| MySQL | 8.x | 关系型数据库 |
+| HikariCP | - | 数据库连接池 |
+| OSHI | 6.4.8 | 系统监控信息采集 |
 
-## 👨 答辩成员
-俞周凯、陈光雨、毛杰、邹济远
+**前端**
 
-## 系统问题：
-- 1.使用本数据包的SQL脚本建立数据库的话可能会出现，交易模块中客户意向产品为空的BUG；
-- 2.开票系统数据类型异常，导致开票失败。
-- 系统仍在持续完善，程序员正在努力修复。
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Vue | 3.3.x | 渐进式 JavaScript 框架 |
+| Vite | 6.x | 构建工具 |
+| Element Plus | 2.4.x | UI 组件库 |
+| ECharts | 5.4.x | 数据可视化 |
+| Vue Router | 4.2.x | 前端路由 |
+| Axios | 1.6.x | HTTP 客户端 |
+
+## 项目结构
+
+```
+car-dealer-crm/
+├── dealer-web/                 # 前端 Vue 3 SPA
+│   ├── src/
+│   │   ├── api/                # API 接口模块
+│   │   ├── view/               # 页面组件
+│   │   ├── components/         # 公共组件
+│   │   ├── router/             # 路由配置
+│   │   ├── http/               # Axios 封装
+│   │   ├── util/               # 工具函数
+│   │   └── assets/             # 静态资源
+│   ├── tests/                  # 前端测试 (Vitest)
+│   └── package.json
+├── dealer-server/              # 后端 Spring Boot
+│   ├── src/main/java/com/bjpowernode/
+│   │   ├── web/                # Controller 层
+│   │   ├── service/            # Service 层
+│   │   ├── mapper/             # MyBatis Mapper
+│   │   ├── model/              # 数据实体
+│   │   ├── config/             # 配置（安全、CORS、转换器）
+│   │   ├── manager/            # 业务管理器
+│   │   ├── util/               # 工具类
+│   │   └── result/             # 统一响应封装
+│   ├── src/main/resources/
+│   │   ├── mapper/             # MyBatis XML
+│   │   ├── application.yml     # 应用配置
+│   │   └── CarManager.sql      # 数据库脚本
+│   ├── src/test/               # 后端测试 (JUnit 5, 804 tests)
+│   └── pom.xml
+└── README.md
+```
+
+## 快速开始
+
+**环境要求**
+
+- JDK 17+
+- Node.js 18+
+- MySQL 8.x
+- Redis
+
+**后端启动**
+
+```bash
+cd dealer-server
+
+# 创建数据库
+mysql -u root -p < src/main/resources/CarManager.sql
+
+# 配置数据库连接 (src/main/resources/application.yml)
+# 设置环境变量或修改配置文件中的 DB_PASSWORD
+
+# 启动
+mvn spring-boot:run
+```
+
+**前端启动**
+
+```bash
+cd dealer-web
+
+# 安装依赖
+npm install
+
+# 启动开发服务器 (http://localhost:8081)
+npm run dev
+```
+
+**测试**
+
+```bash
+# 后端测试 (804 tests)
+cd dealer-server && mvn test
+
+# 前端测试 (45 tests)
+cd dealer-web && npm test
+
+# 覆盖率报告
+cd dealer-server && mvn jacoco:report
+# 报告位于 target/site/jacoco/index.html
+```
+
+## 架构说明
+
+**认证流程**
+
+```
+前端登录 → POST /api/login → Spring Security 验证
+  → 签发 JWT → 存入 Redis (TTL)
+  → 后续请求携带 Authorization: Bearer <token>
+  → TokenVerifyFilter 拦截 → JWT 解析 → Redis 校验
+```
+
+**数据权限**
+
+系统基于 RBAC 模型实现细粒度权限控制：
+- 用户 → 角色 → 权限（菜单 + 按钮）
+- 数据范围过滤（DataScope AOP 切面）
+- 前端 `v-hasPermission` 指令控制按钮可见性
+
+**响应格式**
+
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {}
+}
+```
+
+## 测试覆盖
+
+| 指标 | 覆盖率 |
+|------|--------|
+| 行覆盖率 | 95.9% |
+| 方法覆盖率 | 85.4% |
+| 类覆盖率 | 99.2% |
+| 测试总数 | 849 (后端 804 + 前端 45) |
+
+## 开源协议
+
+本项目基于 [BSD 3-Clause License](LICENSE) 开源。
+
+## 致谢
+
+- [尚硅谷](https://www.atguigu.com/) - 原始动力云客系统
+- [Element Plus](https://element-plus.org/) - UI 组件库
+- [Spring Boot](https://spring.io/projects/spring-boot) - 后端框架

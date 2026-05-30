@@ -34,6 +34,7 @@ public class TUser implements UserDetails, Serializable {
     /**
      * 登录密码
      */
+    @JsonIgnore
     private String loginPwd;
 
     /**

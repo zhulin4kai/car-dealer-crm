@@ -103,6 +103,9 @@
         UPDATE t_product
         SET stock = stock + #{quantity}
         WHERE id = #{id}
+        <if test="quantity &lt; 0">
+            AND stock <![CDATA[ >= ]]> ABS(#{quantity})
+        </if>
     </update>
     
     <select id="selectAllOnSale" resultMap="BaseResultMap">

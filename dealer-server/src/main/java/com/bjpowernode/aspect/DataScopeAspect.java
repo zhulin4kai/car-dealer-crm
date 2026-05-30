@@ -55,14 +55,17 @@ public class DataScopeAspect {
             if (params instanceof BaseQuery) {
                 BaseQuery query = (BaseQuery)params;
 
+                Integer userId = tUser.getId();
+                if (userId == null || !String.valueOf(userId).matches("\\d+")) {
+                    throw new IllegalArgumentException("Invalid user ID");
+                }
+
                 //select * from t_user tu where tu.id = 2 （普通用户：于嫣）
-                query.setFilterSQL(" and " + tableAlias + "." + tableField + " = " + tUser.getId());
+                query.setFilterSQL(" and " + tableAlias + "." + tableField + " = " + userId);
             }
         }
 
-        System.out.println("目标方法执行之前....");
         Object result = joinPoint.proceed();
-        System.out.println("目标方法执行之后....");
         return result;
     }
 }

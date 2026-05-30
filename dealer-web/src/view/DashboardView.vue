@@ -67,9 +67,8 @@
 
 <script>
 import {defineComponent} from 'vue'
-import {doGet} from "../http/httpRequest.js";
+import {doGet, doPost} from "../http/httpRequest.js";
 import {messageConfirm, messageTip, removeToken} from "../util/util.js";
-import { backtopEmits } from 'element-plus';
 
 export default defineComponent({
   //定义组件名
@@ -111,7 +110,7 @@ export default defineComponent({
 
     //退出登录
     logout() {
-      doGet("/api/logout", {}).then(resp => {
+      doPost("/api/logout", {}).then(resp => {
         if (resp.data.code === 200) {
           removeToken();
           messageTip("退出成功", "success");
