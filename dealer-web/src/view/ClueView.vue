@@ -408,7 +408,7 @@ const clueRules = reactive({
   ],
 });
 
-// Computed
+// 计算属性
 const startIndex = (index) => {
   return (currentPage.value - 1) * pageSize.value + index + 1;
 };
@@ -440,9 +440,9 @@ const uploadFile = (param) => {
   importExcelAPI(formData).then(resp => {
     if (resp.data.code === 200) {
       messageTip("导入成功", "success");
-      // Clear uploaded files
+      // 清除已上传的文件
       uploadRef.value.clearFiles();
-      // Reload page
+      // 重新加载页面
       getData(currentPage.value);
       importExcelDialogVisible.value = false;
     } else {

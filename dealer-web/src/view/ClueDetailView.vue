@@ -319,11 +319,11 @@ import { messageTip } from "../util/util.js"
 import { getClueDetail, addClueRemark, getClueRemarkList, convertClueToCustomer } from "../api/clue.js"
 import { getDictValueList } from '../api/dict.js'
 import { getProductList } from '../api/product.js'
-// Router and route
+// 路由
 const route = useRoute()
 const router = useRouter()
 
-// Template refs
+// 模板引用
 const clueRemarkRefForm = ref()
 const convertCustomerRefForm = ref()
 
@@ -538,13 +538,13 @@ const ProductList = async () => {
 
 // 编辑跟踪记录 (待实现)
 const edit = (id) => {
-  // TODO: 实现编辑功能
+  // 实现编辑功能
   messageTip("编辑功能待实现", "info")
 }
 
 // 删除跟踪记录 (待实现)
 const del = (id) => {
-  // TODO: 实现删除功能
+  // 实现删除功能
   messageTip("删除功能待实现", "info")
 }
 

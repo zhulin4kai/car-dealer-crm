@@ -38,7 +38,7 @@ export function updateClue(formData) {
     return doPut("/api/clue", formData);
 }
 
-// ClueDetailView 相关的 API 函数
+// 线索详情页相关的 API 函数
 export function addClueRemark(clueId, noteContent, noteWay) {
     return doPost("/api/clue/remark", {
         clueId: clueId,

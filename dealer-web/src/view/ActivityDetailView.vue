@@ -183,11 +183,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { doDelete, doGet, doPost, doPut } from "../http/httpRequest.js"
 
-// Router and route
+// 路由
 const route = useRoute()
 const router = useRouter()
 
-// Template refs
+// 模板引用
 const activityRemarkRefForm = ref()
 
 // 活动详情对象
@@ -311,7 +311,7 @@ const toPage = (current) => {
 
 // 编辑备注记录 (待实现)
 const edit = (id) => {
-  // TODO: 实现编辑功能
+  // 实现编辑功能
   ElMessage.info("编辑功能待实现")
 }
 
