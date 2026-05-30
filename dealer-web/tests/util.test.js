@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { goBack, getToken, removeToken, messageTip, getTokenName } from '../src/util/util.js'
+import { goBack, getToken, removeToken, messageTip, getTokenName, messageConfirm } from '../src/util/util.js'
 
 describe('util.js', () => {
   beforeEach(() => {
@@ -9,13 +9,11 @@ describe('util.js', () => {
   })
 
   describe('goBack()', () => {
-    it('should use router, not this context', () => {
-      // BUG: goBack() uses `this.$router.go(-1)` which won't work
-      // in a standalone function context. `this` will be undefined or
-      // the module, not a Vue component instance with $router.
-      const source = goBack.toString()
-      expect(source).not.toContain('this.$router')
-      // The correct implementation should use window.history or vue-router's useRouter()
+    it('should call window.history.back', () => {
+      const spy = vi.spyOn(window.history, 'back')
+      goBack()
+      expect(spy).toHaveBeenCalled()
+      spy.mockRestore()
     })
   })
 
@@ -35,19 +33,25 @@ describe('util.js', () => {
     })
 
     it('should handle missing token gracefully', () => {
-      // BUG: getToken() returns undefined when no token exists because
-      // the else branch calls messageConfirm() which is async but doesn't
-      // return the promise, so the function implicitly returns undefined.
       const result = getToken()
-      // After fixing, this should return null/undefined or redirect,
-      // but currently it returns undefined without any meaningful handling.
       expect(result).toBeUndefined()
+    })
+
+    it('should prefer sessionStorage over localStorage', () => {
+      sessionStorage.setItem('dlyk_token', 'session-token')
+      localStorage.setItem('dlyk_token', 'local-token')
+      const result = getToken()
+      expect(result).toBe('session-token')
     })
   })
 
   describe('getTokenName()', () => {
     it('should return dlyk_token', () => {
       expect(getTokenName()).toBe('dlyk_token')
+    })
+
+    it('should return a string', () => {
+      expect(typeof getTokenName()).toBe('string')
     })
   })
 
@@ -71,12 +75,14 @@ describe('util.js', () => {
       expect(sessionStorage.getItem('dlyk_token')).toBeNull()
       expect(localStorage.getItem('dlyk_token')).toBeNull()
     })
+
+    it('should not throw when no token exists', () => {
+      expect(() => removeToken()).not.toThrow()
+    })
   })
 
   describe('messageTip()', () => {
     it('should show correct message type - success', () => {
-      // messageTip calls ElMessage with the given type
-      // We just verify it doesn't throw and accepts valid types
       expect(() => messageTip('test', 'success')).not.toThrow()
     })
 
@@ -86,6 +92,26 @@ describe('util.js', () => {
 
     it('should show correct message type - warning', () => {
       expect(() => messageTip('test', 'warning')).not.toThrow()
+    })
+
+    it('should show correct message type - info', () => {
+      expect(() => messageTip('test', 'info')).not.toThrow()
+    })
+
+    it('should accept any message string', () => {
+      expect(() => messageTip('', 'success')).not.toThrow()
+      expect(() => messageTip('Long message text', 'info')).not.toThrow()
+    })
+  })
+
+  describe('messageConfirm()', () => {
+    it('should return a promise', () => {
+      const result = messageConfirm('test message')
+      expect(result).toBeInstanceOf(Promise)
+    })
+
+    it('should not throw', () => {
+      expect(() => messageConfirm('test message')).not.toThrow()
     })
   })
 })
