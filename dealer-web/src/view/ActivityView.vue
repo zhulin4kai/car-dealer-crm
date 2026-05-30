@@ -161,7 +161,7 @@ import {
   getActivityById
 } from '../api/activity';
 
-// Reactive state
+// 响应式状态
 const router = useRouter();
 const activityQuery = reactive({});
 const activityList = ref([{ ownerDO: {} }]);
@@ -171,21 +171,21 @@ const ownerOptions = ref([{}]);
 const currentPage = ref(1);
 const selectedActivityIds = ref([]);
 
-// Dialog state
+// 对话框状态
 const activityDialogVisible = ref(false);
 const dialogTitle = ref('录入市场活动');
 const activityForm = reactive({});
 const activityFormRef = ref(null);
 const isEditing = ref(false);
 
-// Validation rules
+// 校验规则
 const activityRules = {
   cost: [
     { pattern: /^[0-9]+(\.[0-9]{1,2})?$/, message: '活动预算必须是整数或最多两位小数', trigger: 'blur' }
   ]
 };
 
-// Activity form validation rules
+// 活动表单校验规则
 const activityFormRules = {
   ownerId: [
     { required: true, message: '请选择负责人', trigger: 'blur' }
@@ -209,12 +209,12 @@ const activityFormRules = {
   ]
 };
 
-// Computed property for startIndex
+// 计算序号起始值的属性
 const startIndex = (index) => {
   return (currentPage.value - 1) * pageSize.value + index + 1;
 };
 
-// Fetch data
+// 获取数据
 const getData = async (current) => {
   let startTime = '';
   let endTime = '';
@@ -246,12 +246,12 @@ const getData = async (current) => {
   currentPage.value = current;
 };
 
-// Pagination
+// 分页
 const toPage = (current) => {
   getData(current);
 };
 
-// Load owner
+// 加载负责人
 const loadOwner = async () => {
   try {
     const res = await getOwnerList();
@@ -263,18 +263,18 @@ const loadOwner = async () => {
   }
 };
 
-// Search
+// 搜索
 const onSearch = () => {
   getData(1);
 };
 
-// Reset search
+// 重置搜索
 const onReset = () => {
   Object.keys(activityQuery).forEach(key => delete activityQuery[key]);
   getData(1);
 };
 
-// Navigation
+// 导航
 const add = async () => {
   dialogTitle.value = '录入市场活动';
   isEditing.value = false;
@@ -295,12 +295,12 @@ const view = (id) => {
   router.push("/dashboard/activity/" + id);
 };
 
-// Handle selection change
+// 处理选择变化
 const handleSelectionChange = (selection) => {
   selectedActivityIds.value = selection.map(item => item.id);
 };
 
-// Batch delete
+// 批量删除
 const batchDel = async () => {
   if (selectedActivityIds.value.length === 0) {
     ElMessage.warning('请至少选择一条记录');
@@ -328,7 +328,7 @@ const batchDel = async () => {
   }
 };
 
-// Single delete
+// 单个删除
 const del = async (id) => {
   try {
     await ElMessageBox.confirm('确定要删除该活动吗?', '提示', {
@@ -351,7 +351,7 @@ const del = async (id) => {
   }
 };
 
-// Dialog form methods
+// 对话框表单方法
 const resetActivityForm = () => {
   Object.keys(activityForm).forEach(key => delete activityForm[key]);
   if (activityFormRef.value) {
@@ -412,7 +412,7 @@ const submitActivityForm = async () => {
   }
 };
 
-// Lifecycle hook
+// 生命周期钩子
 onMounted(() => {
   getData(1);
 });

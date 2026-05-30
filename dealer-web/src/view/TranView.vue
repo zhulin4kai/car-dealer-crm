@@ -221,7 +221,7 @@ const pageSize = ref(10)
 const total = ref(0)
 const selectedIds = ref([])
 
-// Dialog相关
+// 对话框相关
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
