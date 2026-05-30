@@ -333,7 +333,7 @@ const clueList = ref([{
   sourceDO: {}
 }]);
 
-const pageSize = ref(0);
+const pageSize = ref(10);
 const total = ref(0);
 const importExcelDialogVisible = ref(false);
 const currentPage = ref(1);
@@ -640,6 +640,10 @@ const addClueSubmit = () => {
     if (isValid) {
       let formData = new FormData();
       for (let field in clueQuery) {
+        // 编辑模式下排除手机号字段
+        if (clueQuery.id > 0 && field === 'phone') {
+          continue;
+        }
         if (clueQuery[field]) { //clueQuery[field]有值，clueQuery[field]存在，clueQuery[field]不为空
           formData.append(field, clueQuery[field]);
         }

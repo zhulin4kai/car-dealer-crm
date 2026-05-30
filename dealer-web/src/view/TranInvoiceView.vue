@@ -192,7 +192,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTranDetail, getTranProducts, createInvoice, getTranInvoiceList, updateInvoiceStatus, updateTran } from '../api/tran'
@@ -467,6 +467,15 @@ const markAsIssued = async (invoice) => {
     ElMessage.error('发票状态更新失败')
   }
 }
+
+// 监听路由参数变化
+watch(() => route.params.id, async (newId) => {
+  if (newId) {
+    await fetchTranDetail()
+    await fetchProducts()
+    await fetchInvoiceList()
+  }
+})
 
 onMounted(async () => {
   console.log('TranInvoiceView mounted')

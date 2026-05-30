@@ -180,7 +180,7 @@ import { useRouter } from 'vue-router'
 
 // 响应式数据
 const userList = ref([{}])
-const pageSize = ref(0)
+const pageSize = ref(10)
 const total = ref(0)
 const userDialogVisible = ref(false)
 const userQuery = ref({})
@@ -268,6 +268,8 @@ const userSubmit = () => {
       request("/api/user", formData).then(resp => {
         if (resp.data.code === 200) {
           messageTip(userQuery.value.id > 0 ? "编辑成功" : "提交成功", "success")
+          userDialogVisible.value = false
+          userQuery.value = {}
           getData(currentPage.value) 
         } else {
           messageTip(userQuery.value.id > 0 ? "编辑失败" : "提交失败", "error")

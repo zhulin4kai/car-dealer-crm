@@ -43,9 +43,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { doGet } from "../http/httpRequest.js"
 import axios from "axios"
 import { getToken, messageTip } from "../util/util.js"
+import { getCustomerList } from "../api/customer.js"
 
 // 响应式数据
 const customerList = ref([{
@@ -59,7 +59,7 @@ const customerList = ref([{
   sourceDO: {},
   intentionProductDO: {},
 }])
-const pageSize = ref(0)
+const pageSize = ref(10)
 const total = ref(0)
 const customerIdArray = ref([])
 const currentPage = ref(1)
@@ -70,14 +70,17 @@ const startIndex = (index) => {
 }
 
 // 获取客户分页列表数据
-const getData = (current) => {
-  doGet("/api/customers", { current }).then(resp => {
+const getData = async (current) => {
+  try {
+    const resp = await getCustomerList({ current })
     if (resp.data.code === 200) {
       customerList.value = resp.data.data.list
       pageSize.value = resp.data.data.pageSize
       total.value = resp.data.data.total
     }
-  })
+  } catch (error) {
+    messageTip('获取客户列表失败', 'error')
+  }
 }
 
 // 处理勾选或取消勾选

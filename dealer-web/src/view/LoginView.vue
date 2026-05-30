@@ -102,8 +102,8 @@ export default defineComponent({
               //跳转到系统的主页面
               window.location.href = "/dashboard";
             } else {
-              //登录失败，也提示一下
-              messageTip("登录失败", "error");
+              //登录失败，显示后端返回的错误信息
+              messageTip(resp.data.msg || "登录失败", "error");
             }
           });
         }

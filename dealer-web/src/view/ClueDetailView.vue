@@ -313,7 +313,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { messageTip } from "../util/util.js"
 import { getClueDetail, addClueRemark, getClueRemarkList, convertClueToCustomer } from "../api/clue.js"
@@ -349,7 +349,7 @@ const noteWayOptions = ref([])
 const clueRemarkList = ref([])
 
 // 分页时每页显示多少条数据
-const pageSize = ref(0)
+const pageSize = ref(10)
 
 // 分页总共查询出多少条数据
 const total = ref(0)
@@ -556,6 +556,15 @@ const del = (id) => {
 const handleGoBack = () => {
   router.go(-1)
 }
+
+// 监听路由参数变化
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    loadClueDetail()
+    loadClueRemarkList(1)
+    ProductList()
+  }
+})
 
 // 组件挂载时执行
 onMounted(() => {
