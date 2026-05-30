@@ -3,9 +3,11 @@ package com.bjpowernode.config.listener;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.read.listener.ReadListener;
 import com.alibaba.excel.util.ListUtils;
+import com.bjpowernode.config.converter.ClueExcelConverter;
 import com.bjpowernode.mapper.TClueMapper;
 import com.bjpowernode.model.TClue;
 import com.bjpowernode.model.TUser;
+import com.bjpowernode.result.ClueExcel;
 import com.bjpowernode.util.JSONUtils;
 import com.bjpowernode.util.JWTUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +19,7 @@ import java.util.List;
  * 每读一行Excel的数据，就会触发该监听器中的invoke()方法，Excel读完之后会触发该监听器中的doAfterAllAnalysed()方法
  */
 @Slf4j
-public class UploadDataListener implements ReadListener<TClue> {
+public class UploadDataListener implements ReadListener<ClueExcel> {
 
     /**
      * 每隔100条存储数据库，实际使用中可以100条，然后清理list ，方便内存回收
@@ -34,25 +36,33 @@ public class UploadDataListener implements ReadListener<TClue> {
 
     private String token;
 
+    private ClueExcelConverter clueExcelConverter;
+
     /**
      * 如果使用了spring,请使用这个构造方法。每次创建Listener的时候需要把spring管理的类传进来
      *
      * @param tClueMapper
+     * @param token
+     * @param clueExcelConverter
      */
-    public UploadDataListener(TClueMapper tClueMapper, String token) {
+    public UploadDataListener(TClueMapper tClueMapper, String token, ClueExcelConverter clueExcelConverter) {
         this.tClueMapper = tClueMapper;
         this.token = token;
+        this.clueExcelConverter = clueExcelConverter;
     }
 
     /**
      * 这个每一条数据解析都会来调用
      *
-     * @param tClue    one row value. It is same as {@link AnalysisContext#readRowHolder()}
+     * @param clueExcel    one row value. It is same as {@link AnalysisContext#readRowHolder()}
      * @param context
      */
     @Override
-    public void invoke(TClue tClue, AnalysisContext context) {
-        log.info("读取到的每一条数据:{}", JSONUtils.toJSON(tClue));
+    public void invoke(ClueExcel clueExcel, AnalysisContext context) {
+        log.info("读取到的每一条数据:{}", JSONUtils.toJSON(clueExcel));
+
+        // 将ClueExcel转换为TClue
+        TClue tClue = clueExcelConverter.convertToTClue(clueExcel);
 
         //给读到的clue对象设置创建时间(导入时间)和创建人（导入人）
         tClue.setCreateTime(new Date());

@@ -1,6 +1,7 @@
 package com.bjpowernode.service.impl;
 
 import com.alibaba.excel.EasyExcel;
+import com.bjpowernode.config.converter.ClueExcelConverter;
 import com.bjpowernode.config.listener.UploadDataListener;
 import com.bjpowernode.constant.Constants;
 import com.bjpowernode.mapper.TClueMapper;
@@ -8,6 +9,7 @@ import com.bjpowernode.model.TClue;
 import com.bjpowernode.model.TUser;
 import com.bjpowernode.query.BaseQuery;
 import com.bjpowernode.query.ClueQuery;
+import com.bjpowernode.result.ClueExcel;
 import com.bjpowernode.service.ClueService;
 import com.bjpowernode.util.JWTUtils;
 import com.github.pagehelper.PageHelper;
@@ -27,6 +29,9 @@ public class ClueServiceImpl implements ClueService {
     @Resource
     private TClueMapper tClueMapper;
 
+    @Resource
+    private ClueExcelConverter clueExcelConverter;
+
     @Override
     public PageInfo<TClue> getClueByPage(Integer current) {
         // 1.设置PageHelper
@@ -41,7 +46,7 @@ public class ClueServiceImpl implements ClueService {
     @Override
     public void importExcel(InputStream inputStream, String token) {
         //链式编程，3个参数, 第一个参数是要读取的Excel文件，第二个参数是Excel模板类，第三个参数是文件读取的监听器
-        EasyExcel.read(inputStream, TClue.class, new UploadDataListener(tClueMapper, token))
+        EasyExcel.read(inputStream, ClueExcel.class, new UploadDataListener(tClueMapper, token, clueExcelConverter))
                 .sheet()
                 .doRead();
     }
