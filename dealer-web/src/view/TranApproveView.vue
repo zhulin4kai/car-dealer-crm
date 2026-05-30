@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTranDetail, getTranProducts, approveTran } from '../api/tran'
@@ -189,6 +189,14 @@ const submitForm = async (formEl) => {
 const goBack = () => {
   router.push('/dashboard/tran')
 }
+
+// 监听路由参数变化
+watch(() => route.params.id, async (newId) => {
+  if (newId) {
+    await fetchTranDetail()
+    await fetchProducts()
+  }
+})
 
 onMounted(async () => {
   console.log('TranApproveView mounted')

@@ -178,7 +178,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { doDelete, doGet, doPost, doPut } from "../http/httpRequest.js"
@@ -204,7 +204,7 @@ const activityRemarkQuery = reactive({})
 const activityRemarkList = ref([])
 
 // 分页时每页显示多少条数据
-const pageSize = ref(0)
+const pageSize = ref(10)
 
 // 分页总共查询出多少条数据
 const total = ref(0)
@@ -344,6 +344,14 @@ const del = async (id) => {
     }
   }
 }
+
+// 监听路由参数变化
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    loadActivityDetail()
+    loadActivityRemarkList(1)
+  }
+})
 
 // 组件挂载时执行
 onMounted(() => {

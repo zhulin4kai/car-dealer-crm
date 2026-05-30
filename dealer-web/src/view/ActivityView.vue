@@ -165,7 +165,7 @@ import {
 const router = useRouter();
 const activityQuery = reactive({});
 const activityList = ref([{ ownerDO: {} }]);
-const pageSize = ref(0);
+const pageSize = ref(10);
 const total = ref(0);
 const ownerOptions = ref([{}]);
 const currentPage = ref(1);
@@ -181,7 +181,7 @@ const isEditing = ref(false);
 // Validation rules
 const activityRules = {
   cost: [
-    { pattern: /^[0-9]+(\.[0-9]{2})?$/, message: '活动预算必须是整数或者两位小数', trigger: 'blur' }
+    { pattern: /^[0-9]+(\.[0-9]{1,2})?$/, message: '活动预算必须是整数或最多两位小数', trigger: 'blur' }
   ]
 };
 
@@ -201,7 +201,7 @@ const activityFormRules = {
   ],
   cost: [
     { required: true, message: '请输入活动预算', trigger: 'blur' },
-    { pattern: /^[0-9]+(\.[0-9]{2})?$/, message: '活动预算必须是整数或者两位小数', trigger: 'blur'}
+    { pattern: /^[0-9]+(\.[0-9]{1,2})?$/, message: '活动预算必须是整数或最多两位小数', trigger: 'blur'}
   ],
   description: [
     { required: true, message: '请输入活动描述', trigger: 'blur' },

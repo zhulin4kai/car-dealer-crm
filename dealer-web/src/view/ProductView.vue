@@ -66,14 +66,14 @@
       :title="dialogType === 'add' ? '新增产品' : '编辑产品'"
       width="30%"
     >
-      <el-form :model="productForm" label-width="100px">
-        <el-form-item label="SKU">
+      <el-form :model="productForm" label-width="100px" :rules="productRules" ref="productFormRef">
+        <el-form-item label="SKU" prop="sku">
           <el-input v-model="productForm.sku" />
         </el-form-item>
-        <el-form-item label="产品名称">
+        <el-form-item label="产品名称" prop="name">
           <el-input v-model="productForm.name" />
         </el-form-item>
-        <el-form-item label="分类">
+        <el-form-item label="分类" prop="category">
           <el-select v-model="productForm.category" placeholder="请选择分类">
             <el-option
               v-for="item in categoryOptions.list"
@@ -86,16 +86,16 @@
         <el-form-item label="规格">
           <el-input v-model="productForm.specification" />
         </el-form-item>
-        <el-form-item label="价格">
-          <el-input-number v-model="productForm.price" :precision="2" :step="0.1" :min="0" />
+        <el-form-item label="价格" prop="price">
+          <el-input-number v-model="productForm.price" :precision="2" :step="0.1" :min="0.01" />
         </el-form-item>
-        <el-form-item label="库存">
+        <el-form-item label="库存" prop="stock">
           <el-input-number v-model="productForm.stock" :min="0" />
         </el-form-item>
         <el-form-item label="最低库存">
           <el-input-number v-model="productForm.minStock" :min="0" />
         </el-form-item>
-        <el-form-item label="状态">
+        <el-form-item label="状态" prop="status">
           <el-select v-model="productForm.status">
             <el-option label="上架" value="上架" />
             <el-option label="下架" value="下架" />
@@ -125,6 +125,7 @@ import {
 } from '../api/product'
 
 const router = useRouter()
+const productFormRef = ref(null)
 const productList = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -144,6 +145,28 @@ const productForm = ref({
 const categoryOptions = reactive({
   list: []
 })
+
+// 表单校验规则
+const productRules = {
+  sku: [
+    { required: true, message: '请输入SKU', trigger: 'blur' }
+  ],
+  name: [
+    { required: true, message: '请输入产品名称', trigger: 'blur' }
+  ],
+  category: [
+    { required: true, message: '请选择分类', trigger: 'change' }
+  ],
+  price: [
+    { required: true, message: '请输入价格', trigger: 'blur' }
+  ],
+  stock: [
+    { required: true, message: '请输入库存', trigger: 'blur' }
+  ],
+  status: [
+    { required: true, message: '请选择状态', trigger: 'change' }
+  ]
+}
 
 const loadCategoryOptions = async () => {
   try {
@@ -209,7 +232,12 @@ const handleDelete = async (row) => {
 
 // 处理提交
 const handleSubmit = async () => {
+  if (!productFormRef.value) return
+  
   try {
+    const valid = await productFormRef.value.validate()
+    if (!valid) return
+    
     if (dialogType.value === 'add') {
       await createProduct(productForm.value)
       messageTip('新增成功', 'success')

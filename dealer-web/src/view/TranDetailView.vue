@@ -147,7 +147,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran } from '../api/tran'
@@ -468,6 +468,16 @@ const handleApprove = () => {
 const handleInvoice = () => {
   router.push(`/dashboard/tran/invoice/${route.params.id}`)
 }
+
+// 监听路由参数变化
+watch(() => route.params.id, async (newId) => {
+  if (newId) {
+    await fetchTranDetail()
+    await fetchProducts()
+    await fetchInvoiceInfo()
+    await fetchPromotionList()
+  }
+})
 
 onMounted(async () => {
   console.log('TranDetailView mounted')
