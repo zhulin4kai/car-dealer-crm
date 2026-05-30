@@ -52,5 +52,8 @@ public class Constants {
     public static final long SYSTEM_CACHE_EXPIRE_TIME = 24 * 60 * 60L;
 
     public static final Integer TRAN_STAGE_01 = 41;
+
+    /** 批量操作最大数量限制 */
+    public static final int MAX_BATCH_SIZE = 100;
 }
 

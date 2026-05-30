@@ -20,7 +20,7 @@
 
 ## 一、业务流程完整性
 
-### ISSUE-001：线索转客户时未校验线索状态的并发问题
+### ISSUE-001：线索转客户时未校验线索状态的并发问题 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -83,7 +83,7 @@ public Boolean convertCustomer(CustomerQuery customerQuery) {
 
 ---
 
-### ISSUE-002：交易状态流转缺少非法状态校验
+### ISSUE-002：交易状态流转缺少非法状态校验 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -136,7 +136,7 @@ private void validateStageTransition(Integer tranId, Integer requiredStage) {
 
 ---
 
-### ISSUE-003：交易删除未校验状态限制
+### ISSUE-003：交易删除未校验状态限制 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -189,7 +189,7 @@ public boolean deleteTransaction(Integer id) {
 
 ---
 
-### ISSUE-004：客户删除未级联处理交易记录
+### ISSUE-004：客户删除未级联处理交易记录 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -221,7 +221,7 @@ public boolean deleteTransaction(Integer id) {
 
 ---
 
-### ISSUE-005：线索删除未级联处理线索备注
+### ISSUE-005：线索删除未级联处理线索备注 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -259,7 +259,7 @@ public int delClueById(Integer id) {
 
 ---
 
-### ISSUE-018：审批拒绝后无法重新提交
+### ISSUE-018：审批拒绝后无法重新提交 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -359,7 +359,7 @@ tranProduct.setQuantity(1); // 默认数量为1
 
 ## 二、数据一致性
 
-### ISSUE-006：库存扣减无下限校验
+### ISSUE-006：库存扣减无下限校验 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -472,7 +472,7 @@ public boolean updateTransactionWithProducts(TTran tran, List<TTranProduct> prod
 
 ---
 
-### ISSUE-008：交易编号和发票号码存在重复风险
+### ISSUE-008：交易编号和发票号码存在重复风险 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -549,7 +549,7 @@ public int delUserById(Integer id) {
 
 ---
 
-### ISSUE-010：删除字典类型时级联删除范围过广
+### ISSUE-010：删除字典类型时级联删除范围过广 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -654,7 +654,7 @@ threadPoolTaskExecutor.execute(() -> {
 
 ## 三、输入校验
 
-### ISSUE-012：后端产品接口缺少 @Valid 参数校验
+### ISSUE-012：后端产品接口缺少 @Valid 参数校验 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -715,7 +715,7 @@ public Result<Void> addProduct(@Valid @RequestBody Product product) {
 
 ---
 
-### ISSUE-015：线索编辑时手机号不可编辑但后端未校验
+### ISSUE-015：线索编辑时手机号不可编辑但后端未校验 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -752,7 +752,7 @@ public int updateClue(ClueQuery clueQuery) {
 
 ---
 
-### ISSUE-016：发票金额未与交易金额校验
+### ISSUE-016：发票金额未与交易金额校验 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -789,7 +789,7 @@ public R<Boolean> createInvoice(@RequestBody TTranInvoice invoice) {
 
 ---
 
-### ISSUE-017：同一交易可开具多张发票
+### ISSUE-017：同一交易可开具多张发票 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -830,7 +830,7 @@ public boolean createTranInvoice(TTranInvoice invoice) {
 
 ## 四、异常处理
 
-### ISSUE-021：全局异常处理返回内部错误信息
+### ISSUE-021：全局异常处理返回内部错误信息 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -881,7 +881,7 @@ public R handException(Exception e) {
 
 ## 五、安全隐患
 
-### ISSUE-029：CORS 配置允许所有源
+### ISSUE-029：CORS 配置允许所有源 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -914,7 +914,7 @@ config.setAllowCredentials(true);     // 允许携带 Cookie
 
 ---
 
-### ISSUE-030：JWT 密钥硬编码在代码中
+### ISSUE-030：JWT 密钥硬编码在代码中 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -961,7 +961,7 @@ static {
 
 ---
 
-### ISSUE-032：导出 Excel 接口缺少权限控制
+### ISSUE-032：导出 Excel 接口缺少权限控制 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -993,7 +993,7 @@ public void exportExcel(HttpServletResponse response, @RequestParam(value = "ids
 
 ---
 
-### ISSUE-033：批量删除无数量限制
+### ISSUE-033：批量删除无数量限制 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -1088,7 +1088,7 @@ public Result<Void> restock(@RequestBody RestockRequest request) { ... }
 
 ## 七、额外排查的后端问题
 
-### ISSUE-044：交易更新缺少事务注解
+### ISSUE-044：交易更新缺少事务注解 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -1127,7 +1127,7 @@ public boolean updateTransaction(TTran tTran) {
 
 ---
 
-### ISSUE-045：TranController.update() 事务不一致
+### ISSUE-045：TranController.update() 事务不一致 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -1162,7 +1162,7 @@ if (result && ...) {
 
 ---
 
-### ISSUE-046：Product 缺少 JSR-303 校验注解
+### ISSUE-046：Product 缺少 JSR-303 校验注解 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -1191,7 +1191,7 @@ Product 模型没有 `@NotBlank`、`@NotNull`、`@DecimalMin` 等注解。
 
 ---
 
-### ISSUE-047：CustomerController.convertCustomer 缺少权限控制
+### ISSUE-047：CustomerController.convertCustomer 缺少权限控制 ✅
 
 | 属性 | 内容 |
 |------|------|

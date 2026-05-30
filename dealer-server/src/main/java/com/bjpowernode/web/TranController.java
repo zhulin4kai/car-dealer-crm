@@ -118,17 +118,12 @@ public class TranController {
         
         tran.setEditBy(currentUser.getId());
         
-        // 更新交易基本信息
-        boolean result = tranService.updateTransaction(tran);
-        
-        if (result && request.getProducts() != null && !request.getProducts().isEmpty()) {
-            // 更新产品信息（简单实现：先删除再插入）
-            tranService.deleteTransactionProducts(request.getId());
-            
-            List<TTranProduct> products = request.getProducts().stream()
+        // 从产品详情列表创建交易产品关联
+        List<TTranProduct> products = null;
+        if (request.getProducts() != null && !request.getProducts().isEmpty()) {
+            products = request.getProducts().stream()
                 .map(productDetail -> {
                     TTranProduct tranProduct = new TTranProduct();
-                    tranProduct.setTranId(request.getId());
                     tranProduct.setProductId(productDetail.getProductId());
                     tranProduct.setQuantity(productDetail.getQuantity());
                     tranProduct.setPrice(productDetail.getPrice());
@@ -137,10 +132,10 @@ public class TranController {
                     return tranProduct;
                 })
                 .toList();
-                
-            tranService.addTransactionProducts(request.getId(), products);
         }
         
+        // 使用统一事务方法更新交易和产品
+        boolean result = tranService.updateTransactionWithProducts(tran, products);
         return R.OK(result);
     }
 
@@ -289,7 +284,9 @@ public class TranController {
     @GetMapping("/products/{id}")
     public R<List<TTranProduct>> getTransactionProducts(@PathVariable Integer id) {
         return R.OK(tranService.getTransactionProductDetails(id));
-    }    /**
+    }
+
+    /**
      * 删除交易
      */
     @DeleteMapping("/{id}")
@@ -300,7 +297,9 @@ public class TranController {
         } else {
             return R.FAIL("删除失败");
         }
-    }/**
+    }
+
+    /**
      * 批量删除交易
      */
     @PostMapping("/batch-delete")
@@ -316,5 +315,18 @@ public class TranController {
         } else {
             return R.FAIL("批量删除失败");
         }
+    }
+
+    /**
+     * 重新提交交易（审批拒绝后）
+     */
+    @PutMapping("/resubmit/{id}")
+    public R<Boolean> resubmit(@PathVariable Integer id) {
+        // 获取当前登录用户
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        TUser currentUser = (TUser) authentication.getPrincipal();
+        
+        boolean result = tranService.resubmitTransaction(id, currentUser.getId());
+        return R.OK(result);
     }
 }

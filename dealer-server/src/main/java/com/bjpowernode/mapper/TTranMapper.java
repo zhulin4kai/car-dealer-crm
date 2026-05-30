@@ -46,4 +46,9 @@ public interface TTranMapper {
      * 批量删除交易
      */
     int deleteByIds(List<Integer> ids);
+
+    /**
+     * 根据客户ID查询交易数量
+     */
+    int selectCountByCustomerId(Integer customerId);
 }

@@ -281,4 +281,14 @@
             #{id}
         </foreach>
     </select>
+
+    <!-- 检查字典值是否被业务数据引用 -->
+    <select id="selectRemarkCountByDicValueIds" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_tran_remark
+        WHERE note_way IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
 </mapper> 

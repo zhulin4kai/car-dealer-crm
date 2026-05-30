@@ -1038,6 +1038,7 @@ class TranServiceImplTest {
     void deleteTransaction_success_shouldDeleteAndRestoreStock() {
         TTran tran = new TTran();
         tran.setId(1);
+        tran.setStage(41); // 待报价状态
 
         TTranProduct product = new TTranProduct();
         product.setProductId(10);
@@ -1061,6 +1062,23 @@ class TranServiceImplTest {
     }
 
     @Test
+    void deleteTransaction_invalidStage_shouldThrowException() {
+        // 测试：非待报价状态的交易不能删除
+        TTran tran = new TTran();
+        tran.setId(1);
+        tran.setStage(42); // 待审批状态，不是41
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> tranService.deleteTransaction(1));
+
+        assertEquals("只有待报价状态的交易才能删除", exception.getMessage());
+        verify(tranProductMapper, never()).selectByTranId(anyInt());
+        verify(tranMapper, never()).deleteByPrimaryKey(anyInt());
+    }
+
+    @Test
     void deleteTransaction_notFound_shouldReturnFalse() {
         when(tranMapper.selectByPrimaryKey(999)).thenReturn(null);
 
@@ -1075,6 +1093,7 @@ class TranServiceImplTest {
     void deleteTransaction_noProducts_shouldDeleteWithoutStockRestore() {
         TTran tran = new TTran();
         tran.setId(1);
+        tran.setStage(41); // 待报价状态
 
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
@@ -1092,6 +1111,7 @@ class TranServiceImplTest {
     void deleteTransaction_mainDeleteFails_shouldReturnFalse() {
         TTran tran = new TTran();
         tran.setId(1);
+        tran.setStage(41); // 待报价状态
 
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
@@ -1107,6 +1127,7 @@ class TranServiceImplTest {
     void deleteTransaction_stockRestoreFails_shouldPropagateException() {
         TTran tran = new TTran();
         tran.setId(1);
+        tran.setStage(41); // 待报价状态
         TTranProduct product = new TTranProduct();
         product.setProductId(10);
         product.setQuantity(3);

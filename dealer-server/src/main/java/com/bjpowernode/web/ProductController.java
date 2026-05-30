@@ -4,6 +4,7 @@ import com.bjpowernode.model.Product;
 import com.bjpowernode.result.Result;
 import com.bjpowernode.service.ProductService;
 import com.github.pagehelper.PageInfo;
+import jakarta.validation.Valid;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -28,13 +29,13 @@ public class ProductController {
     }
     
     @PostMapping
-    public Result<Void> addProduct(@RequestBody Product product) {
+    public Result<Void> addProduct(@Valid @RequestBody Product product) {
         productService.addProduct(product);
         return Result.success();
     }
     
     @PutMapping("/{id}")
-    public Result<Void> updateProduct(@PathVariable Long id, @RequestBody Product product) {
+    public Result<Void> updateProduct(@PathVariable Long id, @Valid @RequestBody Product product) {
         product.setId(id);
         productService.updateProduct(product);
         return Result.success();
