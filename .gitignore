@@ -69,3 +69,6 @@ build/
 .cursor/
 .cursorignore
 # *.md
+
+# Test coverage
+coverage/
