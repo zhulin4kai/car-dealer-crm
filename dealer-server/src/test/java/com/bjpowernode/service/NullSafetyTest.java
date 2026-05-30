@@ -17,11 +17,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class NullSafetyTest {
 
     @Test
-    void testConvertersHandleNullCache() {
-        // Bug: All converters cast DlykServerApplication.cacheMap.get(...) directly to List
-        // without null check. When the cache map doesn't contain the key, .get() returns null,
-        // and the for-each loop throws NPE.
-        // After fix: converters should check for null before iterating.
+    void testConvertersHandleNullCache() throws Exception {
+        // After fix: converters check for null before iterating and return -1
+        // when cacheMap returns null for the key.
 
         // Ensure cacheMap has no relevant keys
         DlykServerApplication.cacheMap.clear();
@@ -31,64 +29,33 @@ class NullSafetyTest {
 
         // Test StateConverter
         StateConverter stateConverter = new StateConverter();
-        assertThrows(NullPointerException.class, () -> {
-            try {
-                stateConverter.convertToJavaData(cellData, null, null);
-            } catch (NullPointerException e) {
-                // Bug: NPE because cacheMap.get returns null and then null is iterated
-                throw e;
-            }
-        }, "StateConverter should NPE when cacheMap returns null for the key");
+        assertEquals(-1, stateConverter.convertToJavaData(cellData, null, null),
+                "StateConverter should return -1 when cacheMap returns null for the key");
 
         // Test AppellationConverter
         AppellationConverter appellationConverter = new AppellationConverter();
-        assertThrows(NullPointerException.class, () -> {
-            try {
-                appellationConverter.convertToJavaData(cellData, null, null);
-            } catch (NullPointerException e) {
-                throw e;
-            }
-        }, "AppellationConverter should NPE when cacheMap returns null for the key");
+        assertEquals(-1, appellationConverter.convertToJavaData(cellData, null, null),
+                "AppellationConverter should return -1 when cacheMap returns null for the key");
 
         // Test SourceConverter
         SourceConverter sourceConverter = new SourceConverter();
-        assertThrows(NullPointerException.class, () -> {
-            try {
-                sourceConverter.convertToJavaData(cellData, null, null);
-            } catch (NullPointerException e) {
-                throw e;
-            }
-        }, "SourceConverter should NPE when cacheMap returns null for the key");
+        assertEquals(-1, sourceConverter.convertToJavaData(cellData, null, null),
+                "SourceConverter should return -1 when cacheMap returns null for the key");
 
         // Test NeedLoanConverter
         NeedLoanConverter needLoanConverter = new NeedLoanConverter();
-        assertThrows(NullPointerException.class, () -> {
-            try {
-                needLoanConverter.convertToJavaData(cellData, null, null);
-            } catch (NullPointerException e) {
-                throw e;
-            }
-        }, "NeedLoanConverter should NPE when cacheMap returns null for the key");
+        assertEquals(-1, needLoanConverter.convertToJavaData(cellData, null, null),
+                "NeedLoanConverter should return -1 when cacheMap returns null for the key");
 
         // Test IntentionStateConverter
         IntentionStateConverter intentionStateConverter = new IntentionStateConverter();
-        assertThrows(NullPointerException.class, () -> {
-            try {
-                intentionStateConverter.convertToJavaData(cellData, null, null);
-            } catch (NullPointerException e) {
-                throw e;
-            }
-        }, "IntentionStateConverter should NPE when cacheMap returns null for the key");
+        assertEquals(-1, intentionStateConverter.convertToJavaData(cellData, null, null),
+                "IntentionStateConverter should return -1 when cacheMap returns null for the key");
 
         // Test IntentionProductConverter
         IntentionProductConverter intentionProductConverter = new IntentionProductConverter();
-        assertThrows(NullPointerException.class, () -> {
-            try {
-                intentionProductConverter.convertToJavaData(cellData, null, null);
-            } catch (NullPointerException e) {
-                throw e;
-            }
-        }, "IntentionProductConverter should NPE when cacheMap returns null for the key");
+        assertEquals(-1, intentionProductConverter.convertToJavaData(cellData, null, null),
+                "IntentionProductConverter should return -1 when cacheMap returns null for the key");
     }
 
     @Test

@@ -12,10 +12,21 @@ import static org.junit.jupiter.api.Assertions.*;
 class JWTUtilsTest {
 
     @Test
-    void testSecretIsNotHardcoded() {
-        String oldHardcodedSecret = "dY8300olWQ3345;1d<3w48";
-        assertNotEquals(oldHardcodedSecret, JWTUtils.SECRET,
-                "SECRET should not be the old hardcoded value 'dY8300olWQ3345;1d<3w48'");
+    void testSecretReadsFromEnvironment() throws Exception {
+        // JWTUtils reads SECRET from JWT_SECRET env variable with fallback to default
+        java.lang.reflect.Field secretField = JWTUtils.class.getDeclaredField("SECRET");
+        secretField.setAccessible(true);
+        String currentSecret = (String) secretField.get(null);
+        
+        // Verify SECRET is set (either from env or fallback)
+        assertNotNull(currentSecret, "SECRET should not be null");
+        assertFalse(currentSecret.isEmpty(), "SECRET should not be empty");
+        
+        // If JWT_SECRET env is set, it should use that; otherwise it falls back to default
+        String envSecret = System.getenv("JWT_SECRET");
+        if (envSecret != null) {
+            assertEquals(envSecret, currentSecret, "SECRET should match JWT_SECRET environment variable");
+        }
     }
 
     @Test

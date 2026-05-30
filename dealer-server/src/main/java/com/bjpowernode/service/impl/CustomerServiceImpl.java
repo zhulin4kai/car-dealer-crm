@@ -67,7 +67,7 @@ public class CustomerServiceImpl implements CustomerService {
             customerExcel.setJob(tCustomer.getClueDO().getJob());
             customerExcel.setYearIncome(tCustomer.getClueDO().getYearIncome());
             customerExcel.setAddress(tCustomer.getClueDO().getAddress());
-            customerExcel.setNeedLoadName(ObjectUtils.isEmpty(tCustomer.getNeedLoanDO()) ? Constants.EMPTY : tCustomer.getNeedLoanDO().getTypeValue());
+            customerExcel.setNeedLoanName(ObjectUtils.isEmpty(tCustomer.getNeedLoanDO()) ? Constants.EMPTY : tCustomer.getNeedLoanDO().getTypeValue());
             customerExcel.setProductName(ObjectUtils.isEmpty(tCustomer.getIntentionProductDO()) ? Constants.EMPTY : tCustomer.getIntentionProductDO().getName());
             customerExcel.setSourceName(ObjectUtils.isEmpty(tCustomer.getSourceDO()) ? Constants.EMPTY : tCustomer.getSourceDO().getTypeValue());
             customerExcel.setDescription(tCustomer.getDescription());
