@@ -3,6 +3,7 @@ package com.bjpowernode.mapper;
 import com.bjpowernode.model.TClue;
 import com.bjpowernode.query.BaseQuery;
 import com.bjpowernode.result.NameValue;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -33,4 +34,6 @@ public interface TClueMapper {
     List<NameValue> selectBySource();
 
     int batchDeleteByIds(List<Integer> ids);
+
+    int updateStateToConverted(@Param("id") Integer id, @Param("editBy") Integer editBy);
 }

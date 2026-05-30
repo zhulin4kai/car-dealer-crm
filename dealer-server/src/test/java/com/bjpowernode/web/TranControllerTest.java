@@ -263,6 +263,25 @@ class TranControllerTest {
                 .andExpect(jsonPath("$.msg").value("结算金额不能为负数"));
     }
 
+    // ==================== ISSUE-002: settle状态校验测试 ====================
+
+    @Test
+    void settle_invalidCurrentStage_shouldReturnFail() throws Exception {
+        // 测试：结算时当前状态必须为41（待报价）
+        TTranProduct product = new TTranProduct();
+        product.setProductId(1);
+        product.setQuantity(2);
+        product.setPrice(new BigDecimal("25000"));
+
+        when(tranService.getTransactionProducts(1)).thenReturn(Collections.singletonList(product));
+        when(tranService.updateTransaction(any(TTran.class))).thenThrow(new RuntimeException("当前交易状态不允许执行此操作，需要状态: 41"));
+
+        mockMvc.perform(put("/api/tran/settle/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg").value("当前交易状态不允许执行此操作，需要状态: 41"));
+    }
+
     // ==================== PUT /api/tran/approve/{id} ====================
 
     @Test
