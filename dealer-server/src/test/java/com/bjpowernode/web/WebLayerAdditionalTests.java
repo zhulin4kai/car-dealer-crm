@@ -545,6 +545,7 @@ class WebLayerAdditionalTests {
     }
 
     @Test
+    @WithMockUser(authorities = {"customer:transfer"})
     void convertCustomer_success() throws Exception {
         when(customerService.convertCustomer(any(CustomerQuery.class))).thenReturn(true);
 
@@ -556,6 +557,7 @@ class WebLayerAdditionalTests {
     }
 
     @Test
+    @WithMockUser(authorities = {"customer:transfer"})
     void convertCustomer_failure() throws Exception {
         when(customerService.convertCustomer(any(CustomerQuery.class))).thenReturn(false);
 
@@ -593,6 +595,7 @@ class WebLayerAdditionalTests {
     // ==================== StatisticController ====================
 
     @Test
+    @WithMockUser(authorities = {"statistic:view"})
     void summaryData() throws Exception {
         SummaryData data = new SummaryData();
         data.setTotalClueCount(100);
@@ -607,6 +610,7 @@ class WebLayerAdditionalTests {
     }
 
     @Test
+    @WithMockUser(authorities = {"statistic:view"})
     void saleFunnelData() throws Exception {
         NameValue nv = new NameValue();
         nv.setName("成交");
@@ -621,6 +625,7 @@ class WebLayerAdditionalTests {
     }
 
     @Test
+    @WithMockUser(authorities = {"statistic:view"})
     void sourcePieData() throws Exception {
         NameValue nv = new NameValue();
         nv.setName("网络");
@@ -737,7 +742,7 @@ class WebLayerAdditionalTests {
 
         mockMvc.perform(post("/api/products")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"新车型\",\"price\":100000}"))
+                        .content("{\"name\":\"新车型\",\"sku\":\"SKU001\",\"price\":100000}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
@@ -748,7 +753,7 @@ class WebLayerAdditionalTests {
 
         mockMvc.perform(put("/api/products/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"更新车型\",\"price\":120000}"))
+                        .content("{\"name\":\"更新车型\",\"sku\":\"SKU001\",\"price\":120000}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }

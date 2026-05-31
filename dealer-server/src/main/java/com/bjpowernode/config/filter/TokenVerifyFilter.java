@@ -49,6 +49,10 @@ public class TokenVerifyFilter extends OncePerRequestFilter {
             } else {
                 //其他请求都是从请求头中获取token
                 token = request.getHeader("Authorization");
+                // 移除 Bearer 前缀
+                if (token != null && token.startsWith("Bearer ")) {
+                    token = token.substring(7);
+                }
             }
 
             if (!StringUtils.hasText(token)) {

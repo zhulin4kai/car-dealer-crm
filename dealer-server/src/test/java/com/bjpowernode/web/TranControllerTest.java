@@ -171,7 +171,7 @@ class TranControllerTest {
         request.setAmount(new BigDecimal("60000"));
         request.setDescription("更新交易");
 
-        when(tranService.updateTransaction(any(TTran.class))).thenReturn(true);
+        when(tranService.updateTransactionWithProducts(any(TTran.class), any())).thenReturn(true);
 
         mockMvc.perform(put("/api/tran/update")
                         .contentType(MediaType.APPLICATION_JSON)

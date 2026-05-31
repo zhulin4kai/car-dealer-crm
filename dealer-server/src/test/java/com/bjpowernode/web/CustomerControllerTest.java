@@ -130,7 +130,7 @@ class CustomerControllerTest {
     // ==================== POST /api/clue/customer ====================
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"customer:transfer"})
     void convertCustomer_success_shouldReturnOk() throws Exception {
         CustomerQuery query = new CustomerQuery();
         query.setClueId(1);
@@ -145,7 +145,7 @@ class CustomerControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"customer:transfer"})
     void convertCustomer_failure_shouldReturnFail() throws Exception {
         CustomerQuery query = new CustomerQuery();
         query.setClueId(1);
@@ -191,7 +191,7 @@ class CustomerControllerTest {
     // ==================== GET /api/exportExcel ====================
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"customer:export"})
     void exportExcel_shouldReturnExcelFile() throws Exception {
         CustomerExcel excel = new CustomerExcel();
         excel.setFullName("张三");

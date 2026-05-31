@@ -29,7 +29,7 @@ class GlobalExceptionHandlerTest {
         R result = globalExceptionHandler.handException(exception);
 
         assertNotNull(result);
-        assertEquals("系统异常", result.getMsg());
+        assertEquals("系统繁忙，请稍后重试", result.getMsg());
         assertEquals(500, result.getCode());
     }
 

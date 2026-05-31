@@ -5,6 +5,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.lang.reflect.Field;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -12,8 +13,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class SecurityConfigTest {
 
     @Test
-    void testCorsAllowsCredentials() {
+    void testCorsAllowsCredentials() throws Exception {
         CorsConfig corsConfig = new CorsConfig();
+        Field field = CorsConfig.class.getDeclaredField("allowedOrigins");
+        field.setAccessible(true);
+        field.set(corsConfig, "http://localhost:5173");
+        
         org.springframework.web.filter.CorsFilter corsFilter = corsConfig.corsFilter();
 
         assertNotNull(corsFilter, "CorsFilter should not be null");

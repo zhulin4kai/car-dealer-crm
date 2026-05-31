@@ -92,7 +92,7 @@ class ProductControllerTest {
 
         mockMvc.perform(put("/api/products/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Updated Product\",\"price\":59.99}"))
+                        .content("{\"name\":\"Updated Product\",\"sku\":\"SKU001\",\"price\":59.99}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }

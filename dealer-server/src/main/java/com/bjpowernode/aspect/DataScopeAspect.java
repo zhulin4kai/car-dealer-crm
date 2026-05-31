@@ -44,6 +44,10 @@ public class DataScopeAspect {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
 
         String token = request.getHeader(Constants.TOKEN_NAME);
+        // 移除 Bearer 前缀
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
         //从token中解析出该用户是管理员还是普通用户
         TUser tUser = JWTUtils.parseUserFromJWT(token);
 

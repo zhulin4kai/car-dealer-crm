@@ -1,8 +1,8 @@
 package com.bjpowernode.config.filter;
 
 import com.bjpowernode.constant.Constants;
+import com.bjpowernode.manager.RedisManager;
 import com.bjpowernode.model.TUser;
-import com.bjpowernode.service.RedisService;
 import com.bjpowernode.util.JWTUtils;
 import com.bjpowernode.util.JSONUtils;
 import jakarta.servlet.FilterChain;
@@ -20,7 +20,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -33,7 +32,7 @@ class TokenVerifyFilterTest {
     private TokenVerifyFilter tokenVerifyFilter;
 
     @Mock
-    private RedisService redisService;
+    private RedisManager redisManager;
 
     @Mock
     private ThreadPoolTaskExecutor threadPoolTaskExecutor;
@@ -95,7 +94,7 @@ class TokenVerifyFilterTest {
             jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
             jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
 
-            when(redisService.getValue(Constants.REDIS_JWT_KEY + 1)).thenReturn(null);
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn(null);
 
             tokenVerifyFilter.doFilterInternal(request, response, filterChain);
 
@@ -117,7 +116,7 @@ class TokenVerifyFilterTest {
             jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
             jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
 
-            when(redisService.getValue(Constants.REDIS_JWT_KEY + 1)).thenReturn("different.token");
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("different.token");
 
             tokenVerifyFilter.doFilterInternal(request, response, filterChain);
 
@@ -141,7 +140,7 @@ class TokenVerifyFilterTest {
             jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
             jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
 
-            when(redisService.getValue(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
 
             tokenVerifyFilter.doFilterInternal(request, response, filterChain);
 
@@ -164,7 +163,7 @@ class TokenVerifyFilterTest {
             jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
             jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
 
-            when(redisService.getValue(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
 
             doAnswer(invocation -> {
                 Runnable runnable = invocation.getArgument(0);
@@ -175,7 +174,7 @@ class TokenVerifyFilterTest {
             tokenVerifyFilter.doFilterInternal(request, response, filterChain);
 
             verify(threadPoolTaskExecutor).execute(any(Runnable.class));
-            verify(redisService).expire(Constants.REDIS_JWT_KEY + 1, Constants.EXPIRE_TIME, TimeUnit.SECONDS);
+            verify(redisManager).set(eq(Constants.REDIS_JWT_KEY + 1), eq("valid.jwt.token"), eq(Constants.EXPIRE_TIME));
         }
     }
 
@@ -192,7 +191,7 @@ class TokenVerifyFilterTest {
             jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
             jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
 
-            when(redisService.getValue(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
 
             doAnswer(invocation -> {
                 Runnable runnable = invocation.getArgument(0);
@@ -203,7 +202,7 @@ class TokenVerifyFilterTest {
             tokenVerifyFilter.doFilterInternal(request, response, filterChain);
 
             verify(threadPoolTaskExecutor).execute(any(Runnable.class));
-            verify(redisService).expire(Constants.REDIS_JWT_KEY + 1, Constants.DEFAULT_EXPIRE_TIME, TimeUnit.SECONDS);
+            verify(redisManager).set(eq(Constants.REDIS_JWT_KEY + 1), eq("valid.jwt.token"), eq(Constants.DEFAULT_EXPIRE_TIME));
         }
     }
 
