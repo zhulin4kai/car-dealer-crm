@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TUserMapper">
-  <resultMap id="BaseResultMap" type="com.bjpowernode.model.TUser">
+<mapper namespace="com.autodealer.crm.mapper.TUserMapper">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TUser">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="login_act" jdbcType="VARCHAR" property="loginAct" />
     <result column="login_pwd" jdbcType="VARCHAR" property="loginPwd" />
@@ -19,7 +19,7 @@
     <result column="last_login_time" jdbcType="TIMESTAMP" property="lastLoginTime" />
   </resultMap>
 
-  <resultMap id="UserResultMap" type="com.bjpowernode.model.TUser">
+  <resultMap id="UserResultMap" type="com.autodealer.crm.model.TUser">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="login_act" jdbcType="VARCHAR" property="loginAct" />
     <result column="login_pwd" jdbcType="VARCHAR" property="loginPwd" />
@@ -36,13 +36,13 @@
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
     <result column="last_login_time" jdbcType="TIMESTAMP" property="lastLoginTime" />
     <!--一对一关联-->
-    <association property="createByDO" javaType="com.bjpowernode.model.TUser">
+    <association property="createByDO" javaType="com.autodealer.crm.model.TUser">
       <id column="createById" jdbcType="INTEGER" property="id" />
       <result column="createByName" jdbcType="VARCHAR" property="name" />
     </association>
 
     <!--一对一关联-->
-    <association property="editByDO" javaType="com.bjpowernode.model.TUser">
+    <association property="editByDO" javaType="com.autodealer.crm.model.TUser">
       <id column="editById" jdbcType="INTEGER" property="id" />
       <result column="editByName" jdbcType="VARCHAR" property="name" />
     </association>
@@ -105,7 +105,7 @@
     </foreach>
   </delete>
 
-  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TUser" useGeneratedKeys="true">
+  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TUser" useGeneratedKeys="true">
     insert into t_user (login_act, login_pwd, `name`, 
       phone, email, account_no_expired, 
       credentials_no_expired, account_no_locked, 
@@ -120,7 +120,7 @@
       )
   </insert>
 
-  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TUser" useGeneratedKeys="true">
+  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TUser" useGeneratedKeys="true">
     insert into t_user
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="loginAct != null">
@@ -212,7 +212,7 @@
     </trim>
   </insert>
 
-  <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TUser">
+  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TUser">
     update t_user
     <set>
       <if test="loginAct != null">
@@ -261,7 +261,7 @@
     where id = #{id,jdbcType=INTEGER}
   </update>
 
-  <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TUser">
+  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TUser">
     update t_user
     set login_act = #{loginAct,jdbcType=VARCHAR},
       login_pwd = #{loginPwd,jdbcType=VARCHAR},

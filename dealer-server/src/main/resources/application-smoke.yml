@@ -20,7 +20,7 @@ server:
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.bjpowernode.model
+  type-aliases-package: com.autodealer.crm.model
   configuration:
     map-underscore-to-camel-case: true
 
@@ -31,5 +31,5 @@ pagehelper:
 
 logging:
   level:
-    com.bjpowernode: info
+    com.autodealer.crm: info
     org.springframework: warn

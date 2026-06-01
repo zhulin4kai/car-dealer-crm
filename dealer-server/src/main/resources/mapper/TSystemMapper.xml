@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TSystemMapper">
+<mapper namespace="com.autodealer.crm.mapper.TSystemMapper">
     
-    <resultMap id="BaseResultMap" type="com.bjpowernode.model.TSystem">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TSystem">
         <id column="id" property="id"/>
         <result column="system_code" property="systemCode"/>
         <result column="name" property="name"/>
@@ -44,7 +44,7 @@
         WHERE id = #{id}
     </select>
 
-    <insert id="insert" parameterType="com.bjpowernode.model.TSystem">
+    <insert id="insert" parameterType="com.autodealer.crm.model.TSystem">
         INSERT INTO t_system_info
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="systemCode != null">system_code,</if>
@@ -89,7 +89,7 @@
         </trim>
     </insert>
 
-    <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TSystem" useGeneratedKeys="true">
+    <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TSystem" useGeneratedKeys="true">
         INSERT INTO t_system_info
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="systemCode != null">system_code,</if>
@@ -135,7 +135,7 @@
         </trim>
     </insert>
 
-    <update id="update" parameterType="com.bjpowernode.model.TSystem">
+    <update id="update" parameterType="com.autodealer.crm.model.TSystem">
         UPDATE t_system_info
         <set>
             <if test="systemCode != null">system_code = #{systemCode},</if>
@@ -158,7 +158,7 @@
         WHERE id = #{id}
     </update>
 
-    <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TSystem">
+    <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TSystem">
         UPDATE t_system_info
         <set>
             <if test="systemCode != null">system_code = #{systemCode},</if>
@@ -184,7 +184,7 @@
         WHERE id = #{id}
     </update>
 
-    <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TSystem">
+    <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TSystem">
         UPDATE t_system_info
         SET system_code = #{systemCode},
             name = #{name},

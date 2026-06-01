@@ -25,7 +25,7 @@
 
 1. `dealer-web/src/view/ClueDetailView.vue:497` 的 `convertCustomerSubmit()` 校验表单后调用 `convertClueToCustomer()`。
 2. `dealer-web/src/api/clue.js:57` 向 `POST /api/clue/customer` 发送 `clueId/product/description/nextContactTime`。
-3. `dealer-server/src/main/java/com/bjpowernode/web/CustomerController.java:64` 接收 `CustomerQuery` 并调用 `customerService.convertCustomer()`。
+3. `dealer-server/src/main/java/com/autodealer/crm/web/CustomerController.java:64` 接收 `CustomerQuery` 并调用 `customerService.convertCustomer()`。
 4. `CustomerManager.convertCustomer()` 先将 `t_clue.state` 原子更新为 `-1`，再插入 `t_customer`，最后构造 `TTran` 和 `TTranProduct`。
 5. `TranServiceImpl.createTransaction()` 插入交易、插入交易商品、调用 `ProductMapper.updateStock(..., -quantity)` 扣库存。
 

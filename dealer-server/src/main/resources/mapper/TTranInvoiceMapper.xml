@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TTranInvoiceMapper">
+<mapper namespace="com.autodealer.crm.mapper.TTranInvoiceMapper">
 
-  <resultMap id="BaseResultMap" type="com.bjpowernode.model.TTranInvoice">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TTranInvoice">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="tran_id" jdbcType="INTEGER" property="tranId" />
     <result column="invoice_no" jdbcType="VARCHAR" property="invoiceNo" />
@@ -48,7 +48,7 @@
     where id = #{id,jdbcType=INTEGER}
   </delete>
 
-  <insert id="insert" parameterType="com.bjpowernode.model.TTranInvoice">
+  <insert id="insert" parameterType="com.autodealer.crm.model.TTranInvoice">
     <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Integer">
       SELECT LAST_INSERT_ID()
     </selectKey>
@@ -66,7 +66,7 @@
       #{updateTime,jdbcType=TIMESTAMP}, #{updateBy,jdbcType=INTEGER})
   </insert>
 
-  <insert id="insertSelective" parameterType="com.bjpowernode.model.TTranInvoice">
+  <insert id="insertSelective" parameterType="com.autodealer.crm.model.TTranInvoice">
     <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Integer">
       SELECT LAST_INSERT_ID()
     </selectKey>
@@ -179,7 +179,7 @@
     </trim>
   </insert>
 
-  <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TTranInvoice">
+  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TTranInvoice">
     update t_tran_invoice
     <set>
       <if test="tranId != null">
@@ -237,7 +237,7 @@
     where id = #{id,jdbcType=INTEGER}
   </update>
 
-  <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TTranInvoice">
+  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TTranInvoice">
     update t_tran_invoice
     set tran_id = #{tranId,jdbcType=INTEGER},
       invoice_no = #{invoiceNo,jdbcType=VARCHAR},

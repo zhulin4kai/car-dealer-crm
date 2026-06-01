@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TActivityMapper">
-  <resultMap id="BaseResultMap" type="com.bjpowernode.model.TActivity">
+<mapper namespace="com.autodealer.crm.mapper.TActivityMapper">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TActivity">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
     <result column="name" jdbcType="VARCHAR" property="name" />
@@ -15,7 +15,7 @@
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
   </resultMap>
 
-  <resultMap id="ActivityResultMap" type="com.bjpowernode.model.TActivity">
+  <resultMap id="ActivityResultMap" type="com.autodealer.crm.model.TActivity">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
     <result column="name" jdbcType="VARCHAR" property="name" />
@@ -28,17 +28,17 @@
     <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
     <!--一对一关联查询-->
-    <association property="ownerDO" javaType="com.bjpowernode.model.TUser">
+    <association property="ownerDO" javaType="com.autodealer.crm.model.TUser">
       <id column="ownerId" jdbcType="INTEGER" property="id" />
       <result column="ownerName" jdbcType="VARCHAR" property="name" />
     </association>
     <!--一对一关联查询-->
-    <association property="createByDO" javaType="com.bjpowernode.model.TUser">
+    <association property="createByDO" javaType="com.autodealer.crm.model.TUser">
       <id column="createById" jdbcType="INTEGER" property="id" />
       <result column="createByName" jdbcType="VARCHAR" property="name" />
     </association>
     <!--一对一关联查询-->
-    <association property="editByDO" javaType="com.bjpowernode.model.TUser">
+    <association property="editByDO" javaType="com.autodealer.crm.model.TUser">
       <id column="editById" jdbcType="INTEGER" property="id" />
       <result column="editByName" jdbcType="VARCHAR" property="name" />
     </association>
@@ -115,7 +115,7 @@
     where id = #{id,jdbcType=INTEGER}
   </delete>
 
-  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TActivity" useGeneratedKeys="true">
+  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TActivity" useGeneratedKeys="true">
     insert into t_activity (owner_id, `name`, start_time, 
       end_time, cost, description, 
       create_time, create_by, edit_time, 
@@ -125,7 +125,7 @@
       #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, #{editTime,jdbcType=TIMESTAMP}, 
       #{editBy,jdbcType=INTEGER})
   </insert>
-  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TActivity" useGeneratedKeys="true">
+  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TActivity" useGeneratedKeys="true">
     insert into t_activity
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="ownerId != null">
@@ -192,7 +192,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TActivity">
+  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TActivity">
     update t_activity
     <set>
       <if test="ownerId != null">
@@ -228,7 +228,7 @@
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TActivity">
+  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TActivity">
     update t_activity
     set owner_id = #{ownerId,jdbcType=INTEGER},
       `name` = #{name,jdbcType=VARCHAR},

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TRoleMapper">
-  <resultMap id="BaseResultMap" type="com.bjpowernode.model.TRole">
+<mapper namespace="com.autodealer.crm.mapper.TRoleMapper">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TRole">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="role" jdbcType="VARCHAR" property="role" />
     <result column="role_name" jdbcType="VARCHAR" property="roleName" />
@@ -32,11 +32,11 @@
     delete from t_role
     where id = #{id,jdbcType=INTEGER}
   </delete>
-  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TRole" useGeneratedKeys="true">
+  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TRole" useGeneratedKeys="true">
     insert into t_role (`role`, role_name)
     values (#{role,jdbcType=VARCHAR}, #{roleName,jdbcType=VARCHAR})
   </insert>
-  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TRole" useGeneratedKeys="true">
+  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TRole" useGeneratedKeys="true">
     insert into t_role
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="role != null">
@@ -55,7 +55,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TRole">
+  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TRole">
     update t_role
     <set>
       <if test="role != null">
@@ -67,7 +67,7 @@
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TRole">
+  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TRole">
     update t_role
     set `role` = #{role,jdbcType=VARCHAR},
       role_name = #{roleName,jdbcType=VARCHAR}

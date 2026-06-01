@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TClueMapper">
-  <resultMap id="BaseResultMap" type="com.bjpowernode.model.TClue">
+<mapper namespace="com.autodealer.crm.mapper.TClueMapper">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TClue">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
     <result column="activity_id" jdbcType="INTEGER" property="activityId" />
@@ -28,7 +28,7 @@
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
   </resultMap>
 
-  <resultMap id="ClueResultMap" type="com.bjpowernode.model.TClue">
+  <resultMap id="ClueResultMap" type="com.autodealer.crm.model.TClue">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
     <result column="activity_id" jdbcType="INTEGER" property="activityId" />
@@ -54,42 +54,42 @@
     <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
     <!--一对一关联查询的映射-->
-    <association property="ownerDO" javaType="com.bjpowernode.model.TUser">
+    <association property="ownerDO" javaType="com.autodealer.crm.model.TUser">
       <id column="ownerId" jdbcType="INTEGER" property="id" />
       <result column="ownerName" jdbcType="VARCHAR" property="name" />
     </association>
     <!--一对一关联查询的映射-->
-    <association property="activityDO" javaType="com.bjpowernode.model.TActivity">
+    <association property="activityDO" javaType="com.autodealer.crm.model.TActivity">
       <id column="activityId" jdbcType="INTEGER" property="id" />
       <result column="activityName" jdbcType="VARCHAR" property="name" />
     </association>
     <!--一对一关联查询的映射-->
-    <association property="appellationDO" javaType="com.bjpowernode.model.TDicValue">
+    <association property="appellationDO" javaType="com.autodealer.crm.model.TDicValue">
       <id column="appellationId" jdbcType="INTEGER" property="id" />
       <result column="appellationName" jdbcType="VARCHAR" property="typeValue" />
     </association>
     <!--一对一关联查询的映射-->
-    <association property="needLoanDO" javaType="com.bjpowernode.model.TDicValue">
+    <association property="needLoanDO" javaType="com.autodealer.crm.model.TDicValue">
       <id column="needLoanId" jdbcType="INTEGER" property="id" />
       <result column="needLoanName" jdbcType="VARCHAR" property="typeValue" />
     </association>
     <!--一对一关联查询的映射-->
-    <association property="intentionStateDO" javaType="com.bjpowernode.model.TDicValue">
+    <association property="intentionStateDO" javaType="com.autodealer.crm.model.TDicValue">
       <id column="intentionStateId" jdbcType="INTEGER" property="id" />
       <result column="intentionStateName" jdbcType="VARCHAR" property="typeValue" />
     </association>
     <!--一对一关联查询的映射-->
-    <association property="intentionProductDO" javaType="com.bjpowernode.model.TProduct">
+    <association property="intentionProductDO" javaType="com.autodealer.crm.model.TProduct">
       <id column="intentionProductId" jdbcType="INTEGER" property="id" />
       <result column="intentionProductName" jdbcType="VARCHAR" property="name" />
     </association>
     <!--一对一关联查询的映射-->
-    <association property="stateDO" javaType="com.bjpowernode.model.TDicValue">
+    <association property="stateDO" javaType="com.autodealer.crm.model.TDicValue">
       <id column="stateId" jdbcType="INTEGER" property="id" />
       <result column="stateName" jdbcType="VARCHAR" property="typeValue" />
     </association>
     <!--一对一关联查询的映射-->
-    <association property="sourceDO" javaType="com.bjpowernode.model.TDicValue">
+    <association property="sourceDO" javaType="com.autodealer.crm.model.TDicValue">
       <id column="sourceId" jdbcType="INTEGER" property="id" />
       <result column="sourceName" jdbcType="VARCHAR" property="typeValue" />
     </association>
@@ -101,7 +101,7 @@
     `source`, description, next_contact_time, create_time, create_by, edit_time, edit_by
   </sql>
 
-  <select id="selectClueByPage" parameterType="com.bjpowernode.query.BaseQuery" resultMap="ClueResultMap">
+  <select id="selectClueByPage" parameterType="com.autodealer.crm.query.BaseQuery" resultMap="ClueResultMap">
     select
         tc.*,
         tu1.id ownerId, tu1.name ownerName,
@@ -170,7 +170,7 @@
     where id = #{id,jdbcType=INTEGER}
   </select>
 
-  <select id="selectBySource" resultType="com.bjpowernode.result.NameValue">
+  <select id="selectBySource" resultType="com.autodealer.crm.result.NameValue">
     SELECT
       count( tc.id ) value,
       tdv.type_value name
@@ -189,7 +189,7 @@
   </delete>
 
   <!--批量保存-->
-  <insert id="saveClue" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TClue" useGeneratedKeys="true">
+  <insert id="saveClue" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TClue" useGeneratedKeys="true">
     insert into t_clue (owner_id, activity_id, full_name,
                         appellation, phone, weixin,
                         qq, email, age, job,
@@ -211,7 +211,7 @@
         </foreach>
   </insert>
 
-  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TClue" useGeneratedKeys="true">
+  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TClue" useGeneratedKeys="true">
     insert into t_clue (owner_id, activity_id, full_name, 
       appellation, phone, weixin, 
       qq, email, age, job, 
@@ -230,7 +230,7 @@
       #{editBy,jdbcType=INTEGER})
   </insert>
 
-  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TClue" useGeneratedKeys="true">
+  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TClue" useGeneratedKeys="true">
     insert into t_clue
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="ownerId != null">
@@ -375,7 +375,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TClue">
+  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TClue">
     update t_clue
     <set>
       <if test="ownerId != null">
@@ -450,7 +450,7 @@
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TClue">
+  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TClue">
     update t_clue
     set owner_id = #{ownerId,jdbcType=INTEGER},
       activity_id = #{activityId,jdbcType=INTEGER},

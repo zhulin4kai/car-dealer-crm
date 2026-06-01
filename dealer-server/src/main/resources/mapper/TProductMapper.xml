@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.ProductMapper">
+<mapper namespace="com.autodealer.crm.mapper.ProductMapper">
     
-    <resultMap id="BaseResultMap" type="com.bjpowernode.model.Product">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.Product">
         <id column="id" property="id" />
         <result column="sku" property="sku" />
         <result column="name" property="name" />
@@ -43,7 +43,7 @@
         WHERE sku = #{sku}
     </select>
     
-    <insert id="insert" parameterType="com.bjpowernode.model.Product" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.autodealer.crm.model.Product" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_product (
             sku, name, category, specification, price, stock, min_stock, status, create_time, update_time
         ) VALUES (
@@ -51,7 +51,7 @@
         )
     </insert>
     
-    <update id="update" parameterType="com.bjpowernode.model.Product">
+    <update id="update" parameterType="com.autodealer.crm.model.Product">
         UPDATE t_product
         SET sku = #{sku},
             name = #{name},

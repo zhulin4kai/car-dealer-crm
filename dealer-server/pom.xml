@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
-    <groupId>com.bjpowernode</groupId>
+    <groupId>com.autodealer.crm</groupId>
     <artifactId>dealer-server</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 

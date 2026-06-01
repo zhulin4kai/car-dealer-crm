@@ -30,7 +30,7 @@
 ## 1. 项目架构总览
 
 ```
-dealer-server/src/main/java/com/bjpowernode/
+dealer-server/src/main/java/com/autodealer/crm/
 ├── web/                    # Controller 层（REST API 入口）
 ├── service/                # Service 接口
 │   └── impl/               # Service 实现
@@ -842,7 +842,7 @@ public class SecurityConfig {
 @Aspect
 @Component
 public class DataScopeAspect {
-    @Around("@annotation(com.bjpowernode.commons.DataScope)")
+    @Around("@annotation(commons.com.autodealer.crm.DataScope)")
     public Object process(ProceedingJoinPoint joinPoint) {
         // 1. 获取方法上的 @DataScope 注解
         // 2. 获取 tableAlias 和 tableField

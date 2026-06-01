@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TTranMapper">
+<mapper namespace="com.autodealer.crm.mapper.TTranMapper">
 
-  <resultMap id="BaseResultMap" type="com.bjpowernode.model.TTran">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TTran">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="tran_no" jdbcType="VARCHAR" property="tranNo" />
     <result column="customer_id" jdbcType="INTEGER" property="customerId" />
@@ -18,7 +18,7 @@
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
   </resultMap>
 
-  <resultMap id="TranProductResultMap" type="com.bjpowernode.model.TTranProduct">
+  <resultMap id="TranProductResultMap" type="com.autodealer.crm.model.TTranProduct">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="tran_id" jdbcType="INTEGER" property="tranId" />
     <result column="product_id" jdbcType="INTEGER" property="productId" />
@@ -34,7 +34,7 @@
     t.create_time, t.create_by, t.edit_time, t.edit_by
   </sql>
 
-  <select id="selectByQuery" parameterType="com.bjpowernode.query.TranQuery" resultMap="BaseResultMap">
+  <select id="selectByQuery" parameterType="com.autodealer.crm.query.TranQuery" resultMap="BaseResultMap">
     SELECT DISTINCT 
     <include refid="Base_Column_List" />
     FROM t_tran t
@@ -130,7 +130,7 @@
     where t.id = #{id,jdbcType=INTEGER}
   </select>
 
-  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TTran" useGeneratedKeys="true">
+  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TTran" useGeneratedKeys="true">
     insert into t_tran (tran_no, customer_id, money, 
       expected_date, stage, description, 
       next_contact_time, create_time, create_by, 
@@ -141,7 +141,7 @@
       #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER})
   </insert>
 
-  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TTran" useGeneratedKeys="true">
+  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TTran" useGeneratedKeys="true">
     insert into t_tran
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="tranNo != null">
@@ -215,7 +215,7 @@
     </trim>
   </insert>
 
-  <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TTran">
+  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TTran">
     update t_tran
     <set>
       <if test="tranNo != null">
@@ -255,7 +255,7 @@
     where id = #{id,jdbcType=INTEGER}
   </update>
 
-  <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TTran">
+  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TTran">
     update t_tran
     set tran_no = #{tranNo,jdbcType=VARCHAR},
       customer_id = #{customerId,jdbcType=INTEGER},

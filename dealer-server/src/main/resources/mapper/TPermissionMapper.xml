@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TPermissionMapper">
-  <resultMap id="BaseResultMap" type="com.bjpowernode.model.TPermission">
+<mapper namespace="com.autodealer.crm.mapper.TPermissionMapper">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TPermission">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="name" jdbcType="VARCHAR" property="name" />
     <result column="code" jdbcType="VARCHAR" property="code" />
@@ -12,7 +12,7 @@
     <result column="icon" jdbcType="VARCHAR" property="icon" />
   </resultMap>
   
-  <resultMap id="PermissionResultMap" type="com.bjpowernode.model.TPermission">
+  <resultMap id="PermissionResultMap" type="com.autodealer.crm.model.TPermission">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="name" jdbcType="VARCHAR" property="name" />
     <result column="code" jdbcType="VARCHAR" property="code" />
@@ -22,7 +22,7 @@
     <result column="order_no" jdbcType="INTEGER" property="orderNo" />
     <result column="icon" jdbcType="VARCHAR" property="icon" />
     <!--一对多关联映射，一个父菜单下有多个子菜单-->
-    <collection property="subPermissionList" ofType="com.bjpowernode.model.TPermission">
+    <collection property="subPermissionList" ofType="com.autodealer.crm.model.TPermission">
       <id column="cid" jdbcType="INTEGER" property="id" />
       <result column="cname" jdbcType="VARCHAR" property="name" />
       <result column="curl" jdbcType="VARCHAR" property="url" />
@@ -75,7 +75,7 @@
     delete from t_permission
     where id = #{id,jdbcType=INTEGER}
   </delete>
-  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TPermission" useGeneratedKeys="true">
+  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TPermission" useGeneratedKeys="true">
     insert into t_permission (`name`, code, url, 
       `type`, parent_id, order_no, 
       icon)
@@ -83,7 +83,7 @@
       #{type,jdbcType=VARCHAR}, #{parentId,jdbcType=INTEGER}, #{orderNo,jdbcType=INTEGER}, 
       #{icon,jdbcType=VARCHAR})
   </insert>
-  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.bjpowernode.model.TPermission" useGeneratedKeys="true">
+  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TPermission" useGeneratedKeys="true">
     insert into t_permission
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="name != null">
@@ -132,7 +132,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TPermission">
+  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TPermission">
     update t_permission
     <set>
       <if test="name != null">
@@ -159,7 +159,7 @@
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TPermission">
+  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TPermission">
     update t_permission
     set `name` = #{name,jdbcType=VARCHAR},
       code = #{code,jdbcType=VARCHAR},

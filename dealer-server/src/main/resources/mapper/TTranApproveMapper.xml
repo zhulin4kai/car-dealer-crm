@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.bjpowernode.mapper.TTranApproveMapper">
+<mapper namespace="com.autodealer.crm.mapper.TTranApproveMapper">
 
-  <resultMap id="BaseResultMap" type="com.bjpowernode.model.TTranApprove">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TTranApprove">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="tran_id" jdbcType="INTEGER" property="tranId" />
     <result column="approve_result" jdbcType="TINYINT" property="approveResult" />
@@ -31,7 +31,7 @@
     where tran_id = #{tranId,jdbcType=INTEGER}
   </select>
 
-  <insert id="insert" parameterType="com.bjpowernode.model.TTranApprove">
+  <insert id="insert" parameterType="com.autodealer.crm.model.TTranApprove">
     <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Integer">
       SELECT LAST_INSERT_ID()
     </selectKey>
@@ -43,7 +43,7 @@
       #{createBy,jdbcType=INTEGER})
   </insert>
 
-  <insert id="insertSelective" parameterType="com.bjpowernode.model.TTranApprove">
+  <insert id="insertSelective" parameterType="com.autodealer.crm.model.TTranApprove">
     <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Integer">
       SELECT LAST_INSERT_ID()
     </selectKey>
@@ -96,7 +96,7 @@
     </trim>
   </insert>
 
-  <update id="updateByPrimaryKeySelective" parameterType="com.bjpowernode.model.TTranApprove">
+  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TTranApprove">
     update t_tran_approve
     <set>
       <if test="tranId != null">
@@ -124,7 +124,7 @@
     where id = #{id,jdbcType=INTEGER}
   </update>
 
-  <update id="updateByPrimaryKey" parameterType="com.bjpowernode.model.TTranApprove">
+  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TTranApprove">
     update t_tran_approve
     set tran_id = #{tranId,jdbcType=INTEGER},
       approve_result = #{approveResult,jdbcType=TINYINT},
