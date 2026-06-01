@@ -31,8 +31,8 @@ export function batchDeleteSystems(ids) {
 }
 
 // 切换系统开启状态
-export function toggleSystemStatus(id, isOpen) {
-    return doPut(`/api/system/${id}/status`, { isOpen })
+export function toggleSystemStatus(id, isopen) {
+    return doPut(`/api/system/${id}/status`, { isopen })
 }
 
 // ================ 系统监控相关API ================

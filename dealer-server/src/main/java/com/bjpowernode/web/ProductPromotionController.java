@@ -1,7 +1,7 @@
 package com.bjpowernode.web;
 
 import com.bjpowernode.model.ProductPromotion;
-import com.bjpowernode.result.Result;
+import com.bjpowernode.result.R;
 import com.bjpowernode.service.ProductPromotionService;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,33 +15,33 @@ public class ProductPromotionController {
     private ProductPromotionService promotionService;
     
     @GetMapping
-    public Result<PageInfo<ProductPromotion>> getPromotionList(
+    public R<PageInfo<ProductPromotion>> getPromotionList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        return Result.success(promotionService.getPromotionList(page, size));
+        return R.OK(promotionService.getPromotionList(page, size));
     }
     
     @GetMapping("/{id}")
-    public Result<ProductPromotion> getPromotionById(@PathVariable Long id) {
-        return Result.success(promotionService.getPromotionById(id));
+    public R<ProductPromotion> getPromotionById(@PathVariable Long id) {
+        return R.OK(promotionService.getPromotionById(id));
     }
     
     @PostMapping
-    public Result<Void> addPromotion(@RequestBody ProductPromotion promotion) {
+    public R<Void> addPromotion(@RequestBody ProductPromotion promotion) {
         promotionService.addPromotion(promotion);
-        return Result.success();
+        return R.OK();
     }
     
     @PutMapping("/{id}")
-    public Result<Void> updatePromotion(@PathVariable Long id, @RequestBody ProductPromotion promotion) {
+    public R<Void> updatePromotion(@PathVariable Long id, @RequestBody ProductPromotion promotion) {
         promotion.setId(id);
         promotionService.updatePromotion(promotion);
-        return Result.success();
+        return R.OK();
     }
     
     @DeleteMapping("/{id}")
-    public Result<Void> deletePromotion(@PathVariable Long id) {
+    public R<Void> deletePromotion(@PathVariable Long id) {
         promotionService.deletePromotion(id);
-        return Result.success();
+        return R.OK();
     }
 }

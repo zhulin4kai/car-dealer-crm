@@ -240,7 +240,8 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
     private static boolean isFrameworkEndpoint(String path) {
         return path.equals(Constants.LOGIN_URI)         // form login -> Spring Security
                 || path.equals("/api/login")              // alias
-                || path.startsWith("/api/login/free");    // free login -> UserController freeLogin
+                || path.startsWith("/api/login/free")    // free login -> UserController freeLogin
+                || path.equals("/api/logout");            // Spring Security logout filter (GET)
     }
 
     private Set<ApiRef> collectBackendApis() throws IOException {

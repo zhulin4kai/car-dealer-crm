@@ -1,7 +1,7 @@
 package com.bjpowernode.web;
 
 import com.bjpowernode.model.ProductCategory;
-import com.bjpowernode.result.Result;
+import com.bjpowernode.result.R;
 import com.bjpowernode.service.ProductCategoryService;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,33 +15,33 @@ public class ProductCategoryController {
     private ProductCategoryService categoryService;
     
     @GetMapping
-    public Result<PageInfo<ProductCategory>> getCategoryList(
+    public R<PageInfo<ProductCategory>> getCategoryList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        return Result.success(categoryService.getCategoryList(page, size));
+        return R.OK(categoryService.getCategoryList(page, size));
     }
     
     @GetMapping("/{id}")
-    public Result<ProductCategory> getCategoryById(@PathVariable Long id) {
-        return Result.success(categoryService.getCategoryById(id));
+    public R<ProductCategory> getCategoryById(@PathVariable Long id) {
+        return R.OK(categoryService.getCategoryById(id));
     }
     
     @PostMapping
-    public Result<Void> addCategory(@RequestBody ProductCategory category) {
+    public R<Void> addCategory(@RequestBody ProductCategory category) {
         categoryService.addCategory(category);
-        return Result.success();
+        return R.OK();
     }
     
     @PutMapping("/{id}")
-    public Result<Void> updateCategory(@PathVariable Long id, @RequestBody ProductCategory category) {
+    public R<Void> updateCategory(@PathVariable Long id, @RequestBody ProductCategory category) {
         category.setId(id);
         categoryService.updateCategory(category);
-        return Result.success();
+        return R.OK();
     }
     
     @DeleteMapping("/{id}")
-    public Result<Void> deleteCategory(@PathVariable Long id) {
+    public R<Void> deleteCategory(@PathVariable Long id) {
         categoryService.deleteCategory(id);
-        return Result.success();
+        return R.OK();
     }
 }

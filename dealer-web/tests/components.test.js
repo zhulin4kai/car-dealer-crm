@@ -128,6 +128,55 @@ function mountLoginView(LoginView, validateResult) {
   })
 }
 
+// Comprehensive stub set for DashboardView. DashboardView's template
+// uses many el-* components and the el-icon dynamic component
+// (`<component :is="icon">`) plus the named icons Fold/arrow-down.
+// Stubbing them all keeps Vue from emitting "Failed to resolve
+// component" warnings that would otherwise drown the test output.
+const DASHBOARD_STUBS = {
+  'el-container': makeElPassthrough('ElContainer'),
+  'el-aside': makeElPassthrough('ElAside'),
+  'el-header': makeElPassthrough('ElHeader'),
+  'el-main': makeElPassthrough('ElMain'),
+  'el-footer': makeElPassthrough('ElFooter'),
+  'el-menu': makeElPassthrough('ElMenu'),
+  'el-sub-menu': makeElPassthrough('ElSubMenu'),
+  'el-menu-item': makeElPassthrough('ElMenuItem'),
+  'el-icon': defineComponent({
+    name: 'ElIcon',
+    setup(_props, { slots }) {
+      return () => h('i', slots.default ? slots.default() : null)
+    },
+  }),
+  'el-dropdown': defineComponent({
+    name: 'ElDropdown',
+    setup(_props, { slots }) {
+      return () => h('div', slots.default ? slots.default() : null)
+    },
+  }),
+  'el-dropdown-menu': makeElPassthrough('ElDropdownMenu'),
+  'el-dropdown-item': defineComponent({
+    name: 'ElDropdownItem',
+    emits: ['click'],
+    setup(_props, { emit, slots }) {
+      return () =>
+        h(
+          'div',
+          {
+            onClick: (e) => {
+              e.stopPropagation()
+              emit('click', e)
+            },
+          },
+          slots.default ? slots.default() : null
+        )
+    },
+  }),
+  Fold: defineComponent({ name: 'Fold', setup: () => () => h('span') }),
+  'arrow-down': defineComponent({ name: 'ArrowDown', setup: () => () => h('span') }),
+  ArrowDown: defineComponent({ name: 'ArrowDown', setup: () => () => h('span') }),
+}
+
 describe('LoginView - behavior', () => {
   it('renders the account and password labels and the login button', async () => {
     const LoginView = await importLoginView()
@@ -279,6 +328,7 @@ describe('DashboardView - behavior', () => {
         mocks: {
           $route: { path: routePath },
         },
+        stubs: DASHBOARD_STUBS,
       },
     })
   }
@@ -296,17 +346,16 @@ describe('DashboardView - behavior', () => {
     expect(data).toHaveProperty('currentRouterPath')
   })
 
-  it('DashboardView.logout MUST call GET /api/logout (currently calls POST — known real source bug)', async () => {
+  it('DashboardView.logout calls GET /api/logout (matches SecurityConfig + docs/integration.md)', async () => {
+    // Contract pin: SecurityConfig wires /api/logout as a GET via
+    // AntPathRequestMatcher("/api/logout", "GET"), and docs/integration.md
+    // diagrams the same. DashboardView.logout must therefore send a GET.
+    // CrossLayerConsistencyTest#logoutMethodMustBeConsistentAcrossLayers
+    // pins the same contract across all three layers.
     const DashboardView = await importDashboardView()
     // The dashboard's mounted hook calls loadLoginUser first, which hits
     // /api/login/info. We give a valid response, then call logout() and
     // assert on the logout call.
-    // This test is INTENDED TO FAIL on the current main branch: DashboardView
-    // sends doPost('/api/logout', {}) but SecurityConfig and docs/integration.md
-    // both say GET. Failure here surfaces the contract break; the source fix
-    // is in a separate change set per docs/codex_fix_tests_2026-05-31.md
-    // ("Don't fix source bugs in the test pass; flag them via the new
-    // contract test").
     axios.mockResolvedValueOnce({ data: { code: 200, data: { id: 1, loginAct: 'admin', name: '管理员' } } })
     axios.mockResolvedValueOnce({ data: { code: 200 } })
 

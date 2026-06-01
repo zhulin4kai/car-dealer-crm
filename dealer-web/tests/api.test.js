@@ -191,22 +191,19 @@ describe('api/* wrappers - cross-layer contract (path + method + key bodies)', (
   })
 })
 
-describe('api/* wrappers - documented cross-layer bugs (must stay failing until source is fixed)', () => {
-  it('system.toggleSystemStatus -> backend reads TSystem.isopen (lowercase) but wrapper sends {isOpen} camelCase', async () => {
-    // CrossLayerConsistencyTest#systemOpenFieldNameMustBeConsistent already
-    // asserts the real serialized JSON key. This is the wrapper side: if the
-    // backend contract is "body must include lowercase 'isopen'", then the
-    // wrapper must conform. Currently it sends {isOpen} and the controller
-    // calls system.getIsopen() (lowercase), so isopen is always false/undefined.
-    // We pin the current (broken) contract here so the fix is visible when
-    // someone updates system.js to send {isopen}.
+describe('api/* wrappers - cross-layer contract pins', () => {
+  it('system.toggleSystemStatus sends {isopen} (lowercase) to match SystemController.toggleSystemStatus -> TSystem.isopen', async () => {
+    // Contract pin: SystemController.toggleSystemStatus calls
+    // system.getIsopen(), so the JSON body must use the lowercase
+    // 'isopen' key. The frontend wrapper must conform. The cross-layer
+    // test CrossLayerConsistencyTest#systemOpenFieldNameMustBeConsistent
+    // pins the same contract end-to-end (real JSON serialization must
+    // emit 'isopen' and never 'isOpen'). Frontend + backend must agree.
     const { toggleSystemStatus } = await import('../src/api/system.js')
     const cfg = await callApi(toggleSystemStatus, 1, true)
     expect(cfg.method).toBe('put')
     expect(cfg.url).toBe('/api/system/1/status')
-    // Documenting the actual current state:
-    expect(cfg.data).toEqual({ isOpen: true })
-    // Once source is fixed, change to: expect(cfg.data).toEqual({ isopen: true })
+    expect(cfg.data).toEqual({ isopen: true })
   })
 
   it('user.loginInfo is exposed via clue.js.getLoginInfo (a known cross-file alias) -> GET /api/login/info', async () => {

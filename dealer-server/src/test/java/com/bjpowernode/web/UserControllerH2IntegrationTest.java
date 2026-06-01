@@ -10,8 +10,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,17 +25,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Real H2 + real Service + real Mapper + real Security integration tests
- * for UserController. The previous UserControllerTest used
- * {@code @MockBean UserService} with {@code addFilters = false}, which
- * never actually executed the security chain or the SQL. This class
- * replaces that surface with real ones.
+ * for UserController. The legacy UserControllerTest was removed because it
+ * used {@code @MockBean UserService} with {@code addFilters = false}, which
+ * never actually executed the security chain or the SQL.
  *
- * <p>Setup strategy: most tests insert their own rows via JdbcTemplate
- * (the controller's POST endpoint is missing {@code @RequestBody}, so
- * JSON bodies don't reach UserQuery — see the contract-bug test below
- * for explicit detection). Cleanup runs in {@code @AfterEach} and is
- * also a real batch DELETE call, so the test exercises both the
- * controller path and the SQL.
+ * <p>Setup strategy: tests own the rows they insert. {@code @AfterEach}
+ * issues a real batch DELETE to the controller, so the test exercises both
+ * the controller path and the SQL.
+ *
+ * <p>JSON body contract: UserController.addUser and editUser have
+ * {@code @RequestBody}, so the frontend's axios JSON bodies are accepted.
+ * The tests cover both POST and PUT with JSON bodies end-to-end.
  */
 class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
 
@@ -59,8 +57,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
             return;
         }
         // The batch delete endpoint accepts a raw JSON array; we send it
-        // verbatim and let the real Mapper delete the rows. We add the
-        // ids in one go so the cleanup is one request.
+        // verbatim and let the real Mapper delete the rows.
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < createdTestIds.size(); i++) {
             if (i > 0) sb.append(",");
@@ -120,7 +117,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
                 .andExpect(jsonPath("$.code").value(510));
     }
 
-    // ==================== Single-row CRUD ====================
+    // ==================== Single-row CRUD via JSON body ====================
 
     @Test
     @DisplayName("admin can GET /api/user/{id} for the seeded admin and see the real H2 row")
@@ -144,10 +141,118 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     }
 
     @Test
+    @DisplayName("admin can POST /api/user with a JSON body: real H2 INSERT, then GET shows the new row")
+    void adminCreateUser_withJsonBody_persistsToH2() throws Exception {
+        String loginAct = "test_user_" + System.nanoTime();
+        // JSON body is what the frontend sends via doPost. With @RequestBody
+        // on addUser, the JSON reaches UserQuery, passwordEncoder succeeds,
+        // and the row is inserted into H2. The next GET /api/user/{id} and
+        // the list endpoint both see the new row, proving the round-trip
+        // through the real service and mapper.
+        String body = """
+                {
+                  "loginAct": "%s",
+                  "loginPwd": "test-password",
+                  "name": "测试用户",
+                  "phone": "13800138000",
+                  "email": "test@example.com",
+                  "accountNoExpired": 1,
+                  "accountNoLocked": 1,
+                  "credentialsNoExpired": 1,
+                  "accountEnabled": 1
+                }
+                """.formatted(loginAct);
+
+        MvcResult create = mockMvc.perform(post("/api/user")
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn();
+        assertEquals(200, objectMapper.readTree(create.getResponse().getContentAsString())
+                        .path("code").asInt(-1),
+                "POST /api/user JSON body must return 200; body was: "
+                        + create.getResponse().getContentAsString());
+
+        Integer newId = findUserIdByLoginAct(adminToken, loginAct);
+        assertNotNull(newId, "POST /api/user JSON body must create a row in H2 (loginAct=" + loginAct + ")");
+        createdTestIds.add(newId);
+
+        // The created user must be visible to a direct GET.
+        mockMvc.perform(get("/api/user/" + newId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.loginAct").value(loginAct))
+                .andExpect(jsonPath("$.data.name").value("测试用户"));
+    }
+
+    @Test
+    @DisplayName("admin can PUT /api/user with a JSON body: real H2 UPDATE, then GET reflects the new name")
+    void adminUpdateUser_withJsonBody_persistsToH2() throws Exception {
+        // First create a row to update. The create goes through the real
+        // JSON POST path; the update goes through the real JSON PUT path.
+        String loginAct = "test_user_update_" + System.nanoTime();
+        String createBody = """
+                {
+                  "loginAct": "%s",
+                  "loginPwd": "test-password",
+                  "name": "原始名",
+                  "phone": "13800138000",
+                  "email": "test@example.com",
+                  "accountNoExpired": 1,
+                  "accountNoLocked": 1,
+                  "credentialsNoExpired": 1,
+                  "accountEnabled": 1
+                }
+                """.formatted(loginAct);
+        mockMvc.perform(post("/api/user")
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        Integer newId = findUserIdByLoginAct(adminToken, loginAct);
+        assertNotNull(newId, "Pre-condition: POST /api/user JSON body must create a row");
+        createdTestIds.add(newId);
+
+        // Now update via JSON PUT.
+        String updateBody = """
+                {
+                  "id": %d,
+                  "loginAct": "%s",
+                  "name": "更新后姓名",
+                  "phone": "13800138000",
+                  "email": "test@example.com",
+                  "accountNoExpired": 1,
+                  "accountNoLocked": 1,
+                  "credentialsNoExpired": 1,
+                  "accountEnabled": 1
+                }
+                """.formatted(newId, loginAct);
+
+        mockMvc.perform(put("/api/user")
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(get("/api/user/" + newId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.name").value("更新后姓名"))
+                .andExpect(jsonPath("$.data.loginAct").value(loginAct));
+    }
+
+    @Test
     @DisplayName("admin can DELETE /api/user/{id} -> real H2 DELETE -> GET returns null data")
     void adminDeleteUser_removesFromH2() throws Exception {
         int newId = nextTestId();
-        insertTestUser(newId, "待删除");
+        insertTestUser(newId, "test_user_" + newId, "待删除");
 
         mockMvc.perform(delete("/api/user/" + newId)
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
@@ -168,8 +273,8 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     void adminBatchDelete_persistsToH2() throws Exception {
         int idA = nextTestId();
         int idB = nextTestId();
-        insertTestUser(idA, "批量A");
-        insertTestUser(idB, "批量B");
+        insertTestUser(idA, "test_user_" + idA, "批量A");
+        insertTestUser(idB, "test_user_" + idB, "批量B");
 
         String body = "[" + idA + "," + idB + "]";
         mockMvc.perform(delete("/api/user")
@@ -193,9 +298,8 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     @Test
     @DisplayName("zhangsan (no user:delete permission) is rejected from batch DELETE with 520")
     void zhangsanBatchDelete_isPermissionDenied() throws Exception {
-        // Use a fake id - the auth check fires before the SQL, so no row
-        // is actually deleted. We assert the rejection contract, not the
-        // SQL effect.
+        // The auth check fires before the SQL, so no row is actually deleted.
+        // We assert the rejection contract, not the SQL effect.
         mockMvc.perform(delete("/api/user")
                         .header(HttpHeaders.AUTHORIZATION, zhangsanToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -238,51 +342,6 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
                 .andExpect(jsonPath("$.data").isArray());
     }
 
-    // ==================== Contract bug: UserController.addUser / editUser missing @RequestBody ====================
-
-    @Test
-    @DisplayName("POST /api/user with JSON body MUST save and return $.code=200 (currently 500 — UserController.addUser is missing @RequestBody)")
-    void adminCreateUser_withJsonBody_mustReturn200() throws Exception {
-        String loginAct = "test_user_" + System.nanoTime();
-        // The frontend sends JSON via doPost → axios({ data }).
-        // The current UserController.addUser signature is
-        //     addUser(UserQuery userQuery, @RequestHeader Authorization)
-        // with NO @RequestBody on userQuery, so Spring tries form
-        // binding and gets no fields from the JSON. passwordEncoder
-        // then fails with "rawPassword cannot be null" → $.code=500.
-        // This test pins the contract: when fixed (by adding @RequestBody),
-        // this assertion passes; until then it documents the real bug.
-        String body = """
-                {
-                  "loginAct": "%s",
-                  "loginPwd": "test-password",
-                  "name": "测试用户",
-                  "phone": "13800138000",
-                  "email": "test@example.com",
-                  "accountNoExpired": 1,
-                  "accountNoLocked": 1,
-                  "credentialsNoExpired": 1,
-                  "accountEnabled": 1
-                }
-                """.formatted(loginAct);
-
-        MvcResult create = mockMvc.perform(post("/api/user")
-                        .header(HttpHeaders.AUTHORIZATION, adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk())
-                .andReturn();
-        String responseBody = create.getResponse().getContentAsString();
-        JsonNode resp = objectMapper.readTree(responseBody);
-        assertEquals(200, resp.path("code").asInt(-1),
-                "POST /api/user JSON body must reach UserQuery and return 200; body was: " + responseBody);
-
-        // Once the create succeeds, the user must be visible.
-        Integer newId = findUserIdByLoginAct(adminToken, loginAct);
-        assertNotNull(newId, "Created user must appear in the list");
-        createdTestIds.add(newId);
-    }
-
     // ==================== Helpers ====================
 
     private int nextTestId() {
@@ -292,22 +351,19 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     }
 
     /**
-     * Inserts a test user directly into H2, bypassing the broken
-     * addUser endpoint. We use this to seed rows for tests that
-     * need an existing user to operate on (update, delete, batch).
-     * The addUser endpoint bug is documented separately in
-     * {@link #adminCreateUser_withJsonBody_mustReturn200()}.
+     * Inserts a test-owned user directly into H2 with a BCrypt-hashed
+     * password. Used by tests that need a row to operate on but do not
+     * want to assert on the create path.
      */
-    private void insertTestUser(int id, String name) {
+    private void insertTestUser(int id, String loginAct, String name) {
         jdbcTemplate.update(
                 "INSERT INTO t_user (id, login_act, login_pwd, name, account_no_expired, "
                         + "credentials_no_expired, account_no_locked, account_enabled, create_time, create_by) "
-                        + "VALUES (?, ?, ?, ?, 1, 1, 1, 1, ?, 1)",
+                        + "VALUES (?, ?, ?, ?, 1, 1, 1, 1, CURRENT_TIMESTAMP, 1)",
                 id,
-                "test_user_" + id,
+                loginAct,
                 "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", // BCrypt("password")
-                name,
-                Timestamp.from(Instant.now()));
+                name);
     }
 
     private Integer findUserIdByLoginAct(String token, String loginAct) throws Exception {
@@ -319,7 +375,11 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
                 .path("data").path("list");
         for (JsonNode node : list) {
             if (loginAct.equals(node.path("loginAct").asText())) {
-                return node.path("id").asInt();
+                JsonNode idNode = node.path("id");
+                if (idNode.isInt() || idNode.isLong()) {
+                    return idNode.asInt();
+                }
+                return null;
             }
         }
         return null;
