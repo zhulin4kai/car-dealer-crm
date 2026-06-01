@@ -586,7 +586,7 @@ QUOTATION(待报价/41) → PENDING(待审批/42) → APPROVED(已审批/43) →
 | **编辑系统信息** | 弹窗加载数据编辑 | `PUT /api/system/{id}` |
 | **删除系统信息** | 确认后删除 | `DELETE /api/system/{id}` |
 | **批量删除** | 勾选多个后批量删除 | `DELETE /api/system/batch` (body: ids数组) |
-| **切换系统状态** | Switch 开关切换系统开启/关闭 | `PUT /api/system/{id}/status` (body: { isOpen }) |
+| **切换系统状态** | Switch 开关切换系统开启/关闭 | `PUT /api/system/{id}/status` (body: { isopen }) |
 
 #### 监控数据来源优先级
 
@@ -716,7 +716,7 @@ QUOTATION(待报价/41) → PENDING(待审批/42) → APPROVED(已审批/43) →
 | `updateSystem(id, data)` | PUT | `/api/system/{id}` | 更新系统信息 |
 | `deleteSystem(id)` | DELETE | `/api/system/{id}` | 删除系统信息 |
 | `batchDeleteSystems(ids)` | DELETE | `/api/system/batch` | 批量删除系统信息 |
-| `toggleSystemStatus(id, isOpen)` | PUT | `/api/system/{id}/status` | 切换系统状态 |
+| `toggleSystemStatus(id, isopen)` | PUT | `/api/system/{id}/status` | 切换系统状态 |
 | `getSystemMonitorInfo()` | GET | `/api/monitor/system-info` | 获取系统基本信息 |
 | `getMemoryInfo()` | GET | `/api/monitor/memory-info` | 获取内存信息 |
 | `getCpuInfo()` | GET | `/api/monitor/cpu-info` | 获取 CPU 信息 |

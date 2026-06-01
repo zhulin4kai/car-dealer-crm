@@ -127,7 +127,7 @@
 | updateSystem | PUT | /api/system/{id} | 路径参数: id, data: TSystem对象 (JSON) | R | SystemController.updateSystem | 更新系统信息 |
 | deleteSystem | DELETE | /api/system/{id} | 路径参数: id | R | SystemController.deleteSystem | 删除系统信息 |
 | batchDeleteSystems | DELETE | /api/system/batch | data: List\<Integer\> (JSON数组) | R | SystemController.batchDeleteSystems | 批量删除系统信息 |
-| toggleSystemStatus | PUT | /api/system/{id}/status | 路径参数: id, data: {isOpen} (JSON) | R | SystemController.toggleSystemStatus | 切换系统开启状态 |
+| toggleSystemStatus | PUT | /api/system/{id}/status | 路径参数: id, data: {isopen} (JSON) | R | SystemController.toggleSystemStatus | 切换系统开启状态 |
 | getSystemMonitorInfo | GET | /api/monitor/system-info | 无 | R | SystemMonitorController.getSystemInfo | 获取系统基本信息 |
 | getMemoryInfo | GET | /api/monitor/memory-info | 无 | R | SystemMonitorController.getMemoryInfo | 获取内存信息 |
 | getCpuInfo | GET | /api/monitor/cpu-info | 无 | R | SystemMonitorController.getCpuInfo | 获取CPU信息 |

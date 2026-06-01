@@ -12,7 +12,6 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,15 +31,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * the tests do not use {@code @TestMethodOrder}, do not use {@code @Order},
  * and can be run in any order, alone, or as a group.
  *
- * <h2>Why no shared seed deletion</h2>
+ * <h2>No seed mutation</h2>
  * data.sql seeds {@code admin(1), zhangsan(2), lisi(3)} with role/permission
  * grants. Other integration test classes (CrossLayerConsistencyTest,
  * SecurityConfigTest, UserControllerH2IntegrationTest) share the same
- * in-memory H2 instance across the JVM and depend on the seed. This class
- * never mutates a seed user in a way that breaks other tests: the only
- * mutation is to zhangsan's name in {@link #editThenRestoreUserPersistsToH2},
- * and it is restored in {@code finally}. All deletes operate on test-owned
- * rows inserted via JdbcTemplate.
+ * in-memory H2 instance across the JVM and depend on the seed remaining
+ * intact. This class therefore NEVER mutates a seed user: no PUT, no DELETE
+ * against {@code /api/user/1}, {@code /api/user/2} or {@code /api/user/3}.
+ * All destructive operations run on test-owned rows (id
+ * {@code >= TEST_ID_BASE = 9000}, login_act starting with
+ * {@code TEST_USER_PREFIX = "tfu"}) that the test inserts via JdbcTemplate
+ * and removes in {@code finally}.
  *
  * <h2>JSON body contract</h2>
  * UserController.addUser and editUser now use {@code @RequestBody}, so the
@@ -215,36 +216,50 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("login -> edit -> detail -> restore: PUT /api/user with JSON body updates the row and the detail reflects the new name, then the original is restored")
+    @DisplayName("login -> edit -> detail: PUT /api/user with JSON body updates a test-owned user and the H2 row reflects the new name")
     void editThenRestoreUserPersistsToH2() throws Exception {
         String token = loginAsAdmin();
 
-        // Snapshot the original zhangsan name so we can restore it. Using
-        // zhangsan is safe because we never delete him — we only mutate the
-        // 'name' field and put it back in finally.
-        MvcResult before = mockMvc.perform(get("/api/user/2")
-                        .header(HttpHeaders.AUTHORIZATION, token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andReturn();
-        String originalName = objectMapper.readTree(before.getResponse().getContentAsString())
-                .path("data").path("name").asText();
-        assertNotNull(originalName, "Seeded zhangsan must have a name in H2");
+        // Use a test-owned row, not a seed user. The seed users
+        // (admin=1, zhangsan=2, lisi=3) are shared with other test
+        // classes and must not be mutated. Pick an id that does not
+        // collide with the offsets used by the other tests in this
+        // class (1, 3, 11, 12).
+        int testId = TEST_ID_BASE + 5;
+        String testLoginAct = TEST_USER_PREFIX + "e" + (System.nanoTime() % 1_000_000_000L);
+        String originalName = "流程原始名";
+        String updatedName = "流程改名后";
 
         try {
+            // Insert a test-owned user via JdbcTemplate so we control
+            // the id and the starting name.
+            insertTestUser(testId, testLoginAct, originalName);
+
+            // Sanity: GET must show the original name in H2.
+            mockMvc.perform(get("/api/user/" + testId)
+                            .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(200))
+                    .andExpect(jsonPath("$.data.loginAct").value(testLoginAct))
+                    .andExpect(jsonPath("$.data.name").value(originalName));
+
+            // Real PUT /api/user with a JSON body. Only the id and the
+            // fields we want to change are sent — updateByPrimaryKeySelective
+            // ignores nulls. The Authorization header is forwarded so the
+            // service can stamp editBy from the JWT.
             String updateBody = """
                     {
-                      "id": 2,
-                      "loginAct": "zhangsan",
-                      "name": "改名后的张三",
-                      "phone": "13800000001",
-                      "email": "zhangsan@test.com",
+                      "id": %d,
+                      "loginAct": "%s",
+                      "name": "%s",
+                      "phone": "13800000005",
+                      "email": "edit@test.com",
                       "accountNoExpired": 1,
                       "credentialsNoExpired": 1,
                       "accountNoLocked": 1,
                       "accountEnabled": 1
                     }
-                    """;
+                    """.formatted(testId, testLoginAct, updatedName);
             mockMvc.perform(put("/api/user")
                             .header(HttpHeaders.AUTHORIZATION, token)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -252,32 +267,19 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200));
 
-            mockMvc.perform(get("/api/user/2")
+            // The PUT response code alone would be a "smoke" check; we
+            // also re-fetch the row to prove the change is persisted to
+            // H2, not just echoed back.
+            mockMvc.perform(get("/api/user/" + testId)
                             .header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
-                    .andExpect(jsonPath("$.data.name").value("改名后的张三"));
+                    .andExpect(jsonPath("$.data.name").value(updatedName))
+                    .andExpect(jsonPath("$.data.loginAct").value(testLoginAct))
+                    .andExpect(jsonPath("$.data.phone").value("13800000005"))
+                    .andExpect(jsonPath("$.data.email").value("edit@test.com"));
         } finally {
-            // Restore zhangsan so other tests (and future runs of this one)
-            // see the same seed shape.
-            String restoreBody = """
-                    {
-                      "id": 2,
-                      "loginAct": "zhangsan",
-                      "name": "%s",
-                      "phone": "13800000001",
-                      "email": "zhangsan@test.com",
-                      "accountNoExpired": 1,
-                      "credentialsNoExpired": 1,
-                      "accountNoLocked": 1,
-                      "accountEnabled": 1
-                    }
-                    """.formatted(originalName);
-            mockMvc.perform(put("/api/user")
-                            .header(HttpHeaders.AUTHORIZATION, token)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(restoreBody))
-                    .andExpect(status().isOk());
+            jdbcTemplate.update("DELETE FROM t_user WHERE id = ?", testId);
         }
     }
 

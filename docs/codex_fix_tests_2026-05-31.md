@@ -112,7 +112,7 @@
 | `ProductPromotionControllerTest.java` | 6 | 用 H2 跑促销 CRUD、时间范围。 |
 | `ProductStockControllerTest.java` | 6 | 用 H2 跑库存流水和库存变更。 |
 | `StatisticControllerTest.java` | 6 | 用 H2 固定数据验证统计聚合。 |
-| `SystemControllerTest.java` | 8 | 用 H2 跑系统配置读写，特别是 `isopen/isOpen` 字段契约。 |
+| `SystemControllerTest.java` | 8 | 用 H2 跑系统配置读写，特别是 `isopen` 字段契约（不可写成 `isOpen`）。 |
 | `SystemMonitorControllerTest.java` | 7 | 用真实 service 或受控 fake 验证监控结构。 |
 | `TranControllerTest.java` | 30 | 用 H2 跑交易创建、产品扣库存、审批、发票。 |
 | `UserControllerTest.java` | 16 | 用 H2 + Security 跑登录、权限、用户 CRUD。 |
@@ -191,7 +191,7 @@ Redis 处理方式：
 | `dealer-web/src/view/ClueView.vue` 和 `ClueDetailView.vue` | 线索创建、详情、备注、转客户。 |
 | `dealer-web/src/view/TranView.vue`、`TranDetailView.vue`、`TranApproveView.vue`、`TranInvoiceView.vue` | 交易列表、审批、开票。 |
 | `dealer-web/src/view/ProductView.vue`、`ProductCategoryView.vue`、`ProductPromotionView.vue`、`ProductStockAlertView.vue` | 产品、分类、促销、库存告警。 |
-| `dealer-web/src/view/SystemView.vue` | 系统配置字段，重点校验 `isOpen` 与后端字段契约。 |
+| `dealer-web/src/view/SystemView.vue` | 系统配置字段，重点校验 `isopen` 与后端字段契约（不可写成 `isOpen`）。 |
 
 示例：`httpRequest.js` 的响应拦截器测试不应该这样写：
 
@@ -281,7 +281,7 @@ assertTrue(controllersUsingResult.isEmpty(),
     "Controllers must use R.java consistently, but found: " + controllersUsingResult);
 ```
 
-5. `testFieldNameConsistency` 应验证真实序列化字段，而不是只检查源码含有 `isopen` 和 `isOpen`。建议通过 `SystemController` 的真实 GET/PUT 响应验证字段名。
+5. `testFieldNameConsistency` 应验证真实序列化字段，而不是只检查源码含有 `isopen`（绝不可写成 `isOpen`）。建议通过 `SystemController` 的真实 GET/PUT 响应验证字段名。
 6. `testLogoutHttpMethod` 不要写“Spring Security default POST”。当前实现是 GET，测试应验证 docs、前端、后端三者一致；如果目标契约是 POST，则先改 `SecurityConfig` 和前端。
 7. path 提取不能只读 `dealer-web/src/api`，还要扫描 View 中直接写死的请求或路由跳转；更好是集中禁止 View 直接写 API path。
 
