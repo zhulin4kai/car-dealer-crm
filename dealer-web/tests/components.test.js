@@ -152,6 +152,18 @@ describe('LoginView - behavior', () => {
     expect(data).toHaveProperty('loginRules')
   })
 
+  it('LoginView.loginRules has the documented required rules for loginAct and loginPwd', async () => {
+    const LoginView = await importLoginView()
+    const rules = LoginView.data().loginRules
+    expect(rules.loginAct).toEqual([
+      { required: true, message: '请输入登录账号', trigger: 'blur' },
+    ])
+    expect(rules.loginPwd).toEqual([
+      { required: true, message: '请输入登录密码', trigger: 'blur' },
+      { min: 6, max: 16, message: '登录密码长度为6-16位', trigger: 'blur' },
+    ])
+  })
+
   it('LoginView.login() should call doPost("/api/login") with FormData containing loginAct, loginPwd, rememberMe', async () => {
     const LoginView = await importLoginView()
     axios.mockResolvedValue({ data: { code: 200, data: 'jwt-token' } })
@@ -282,17 +294,6 @@ describe('DashboardView - behavior', () => {
     expect(data).toHaveProperty('user')
     expect(data).toHaveProperty('isRouterAlive')
     expect(data).toHaveProperty('currentRouterPath')
-  })
-
-  it('DashboardView exposes loadLoginUser, logout, and backToHome as methods', async () => {
-    // shape-only: doc-allowed — method presence check is insufficient alone
-    // (logout's HTTP method is wrong, see test below). Kept as a regression
-    // net so accidental method renames break the build immediately, not later
-    // in the behavior tests.
-    const DashboardView = await importDashboardView()
-    expect(typeof DashboardView.methods.loadLoginUser).toBe('function')
-    expect(typeof DashboardView.methods.logout).toBe('function')
-    expect(typeof DashboardView.methods.backToHome).toBe('function')
   })
 
   it('DashboardView.logout MUST call GET /api/logout (currently calls POST — known real source bug)', async () => {

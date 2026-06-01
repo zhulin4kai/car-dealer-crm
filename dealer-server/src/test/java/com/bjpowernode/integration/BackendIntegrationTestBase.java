@@ -53,6 +53,9 @@ public abstract class BackendIntegrationTestBase {
     @Autowired
     protected ObjectMapper objectMapper;
 
+    @Autowired
+    protected org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @MockBean
     protected RedisManager redisManager;
 

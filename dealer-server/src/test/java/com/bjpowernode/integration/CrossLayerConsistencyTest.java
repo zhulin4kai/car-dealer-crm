@@ -149,16 +149,8 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
         String body = result.getResponse().getContentAsString();
         JsonNode tree = objectMapper.readTree(body);
         JsonNode dataNode = tree.path("data");
-        if (!dataNode.isArray() || dataNode.isEmpty()) {
-            // No data in H2; seed has only one t_system_info row (TSystemInfo, not TSystem).
-            // Fall back to reading the source mapper to make a deterministic decision.
-            String mapper = Files.readString(PROJECT_ROOT.resolve("dealer-server/src/main/resources/mapper/TSystemMapper.xml"));
-            assertTrue(mapper.contains("isopen"),
-                    "TSystemMapper must map the isopen column to the TSystem#isopen field");
-            assertFalse(mapper.contains("isOpen"),
-                    "TSystemMapper must not reference the camelCase isOpen — field is lowercase isopen");
-            return;
-        }
+        assertTrue(dataNode.isArray() && !dataNode.isEmpty(),
+                "GET /api/system/list must return a non-empty array; seed t_system_info is required. Body: " + body);
         JsonNode first = dataNode.get(0);
         Set<String> actualKeys = new HashSet<>();
         first.fieldNames().forEachRemaining(actualKeys::add);

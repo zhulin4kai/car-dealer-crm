@@ -1,165 +1,204 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { goBack, getToken, removeToken, messageTip, getTokenName, messageConfirm, getUserPermission, setUserPermission, clearUserPermission } from '../src/util/util.js'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  goBack,
+  getToken,
+  removeToken,
+  messageTip,
+  getTokenName,
+  messageConfirm,
+  getUserPermission,
+  setUserPermission,
+  clearUserPermission,
+} from '../src/util/util.js'
 
-describe('util.js', () => {
-  beforeEach(() => {
-    sessionStorage.clear()
+beforeEach(() => {
+  sessionStorage.clear()
+  localStorage.clear()
+  vi.clearAllMocks()
+})
+
+describe('util.js - goBack()', () => {
+  it('calls window.history.back exactly once', () => {
+    const spy = vi.spyOn(window.history, 'back')
+    goBack()
+    expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockRestore()
+  })
+})
+
+describe('util.js - getTokenName()', () => {
+  it('returns the literal "dlyk_token" (must match util.js getTokenName contract)', () => {
+    // Hardcoded because if someone renames the storage key in source without
+    // updating httpRequest.js's interceptor, the rest of the system breaks.
+    expect(getTokenName()).toBe('dlyk_token')
+  })
+})
+
+describe('util.js - getToken()', () => {
+  it('returns the sessionStorage token when only sessionStorage is set', () => {
+    sessionStorage.setItem('dlyk_token', 'session-jwt')
     localStorage.clear()
-    vi.clearAllMocks()
+    expect(getToken()).toBe('session-jwt')
   })
 
-  describe('goBack()', () => {
-    it('should call window.history.back', () => {
-      const spy = vi.spyOn(window.history, 'back')
-      goBack()
-      expect(spy).toHaveBeenCalled()
-      spy.mockRestore()
-    })
+  it('returns the localStorage token when only localStorage is set', () => {
+    sessionStorage.clear()
+    localStorage.setItem('dlyk_token', 'local-jwt')
+    expect(getToken()).toBe('local-jwt')
   })
 
-  describe('getToken()', () => {
-    it('should return token from sessionStorage', () => {
-      const token = 'test-jwt-token-123'
-      sessionStorage.setItem('dlyk_token', token)
-      const result = getToken()
-      expect(result).toBe(token)
-    })
-
-    it('should fallback to localStorage when sessionStorage has no token', () => {
-      const token = 'localStorage-token-456'
-      localStorage.setItem('dlyk_token', token)
-      const result = getToken()
-      expect(result).toBe(token)
-    })
-
-    it('should handle missing token gracefully', () => {
-      const result = getToken()
-      expect(result).toBeUndefined()
-    })
-
-    it('should prefer sessionStorage over localStorage', () => {
-      sessionStorage.setItem('dlyk_token', 'session-token')
-      localStorage.setItem('dlyk_token', 'local-token')
-      const result = getToken()
-      expect(result).toBe('session-token')
-    })
+  it('prefers sessionStorage over localStorage when both are set', () => {
+    sessionStorage.setItem('dlyk_token', 'session-jwt')
+    localStorage.setItem('dlyk_token', 'local-jwt')
+    expect(getToken()).toBe('session-jwt')
   })
 
-  describe('getTokenName()', () => {
-    it('should return dlyk_token', () => {
-      expect(getTokenName()).toBe('dlyk_token')
-    })
+  it('returns undefined when neither storage has the token', () => {
+    expect(getToken()).toBeUndefined()
+  })
+})
 
-    it('should return a string', () => {
-      expect(typeof getTokenName()).toBe('string')
-    })
+describe('util.js - removeToken()', () => {
+  it('clears sessionStorage.dlyk_token', () => {
+    sessionStorage.setItem('dlyk_token', 'session-jwt')
+    removeToken()
+    expect(sessionStorage.getItem('dlyk_token')).toBeNull()
   })
 
-  describe('removeToken()', () => {
-    it('should clear token from sessionStorage', () => {
-      sessionStorage.setItem('dlyk_token', 'some-token')
-      removeToken()
-      expect(sessionStorage.getItem('dlyk_token')).toBeNull()
-    })
+  it('clears localStorage.dlyk_token', () => {
+    localStorage.setItem('dlyk_token', 'local-jwt')
+    removeToken()
+    expect(localStorage.getItem('dlyk_token')).toBeNull()
+  })
 
-    it('should clear token from localStorage', () => {
-      localStorage.setItem('dlyk_token', 'some-token')
-      removeToken()
-      expect(localStorage.getItem('dlyk_token')).toBeNull()
-    })
+  it('clears BOTH storages in one call (does not stop after the first hit)', () => {
+    sessionStorage.setItem('dlyk_token', 'session-jwt')
+    localStorage.setItem('dlyk_token', 'local-jwt')
+    removeToken()
+    expect(sessionStorage.getItem('dlyk_token')).toBeNull()
+    expect(localStorage.getItem('dlyk_token')).toBeNull()
+  })
 
-    it('should clear token from both storages', () => {
-      sessionStorage.setItem('dlyk_token', 'token-a')
-      localStorage.setItem('dlyk_token', 'token-b')
-      removeToken()
-      expect(sessionStorage.getItem('dlyk_token')).toBeNull()
-      expect(localStorage.getItem('dlyk_token')).toBeNull()
-    })
+  it('is a no-op when no token exists (does not corrupt other keys)', () => {
+    sessionStorage.setItem('unrelated', 'keep-me')
+    localStorage.setItem('unrelated', 'keep-me')
+    removeToken()
+    expect(sessionStorage.getItem('unrelated')).toBe('keep-me')
+    expect(localStorage.getItem('unrelated')).toBe('keep-me')
+  })
+})
 
-    it('should not throw when no token exists', () => {
-      expect(() => removeToken()).not.toThrow()
+describe('util.js - messageTip()', () => {
+  it('forwards (msg, type) to ElMessage with showClose:true, center:true, duration:3000', () => {
+    messageTip('保存成功', 'success')
+    expect(ElMessage).toHaveBeenCalledTimes(1)
+    const cfg = ElMessage.mock.calls[0][0]
+    expect(cfg).toMatchObject({
+      message: '保存成功',
+      type: 'success',
+      showClose: true,
+      center: true,
+      duration: 3000,
     })
   })
 
-  describe('messageTip()', () => {
-    it('should show correct message type - success', () => {
-      expect(() => messageTip('test', 'success')).not.toThrow()
-    })
+  it('passes the type argument through (error)', () => {
+    messageTip('出错了', 'error')
+    expect(ElMessage.mock.calls[0][0].type).toBe('error')
+  })
 
-    it('should show correct message type - error', () => {
-      expect(() => messageTip('test', 'error')).not.toThrow()
-    })
+  it('passes the type argument through (warning)', () => {
+    messageTip('请注意', 'warning')
+    expect(ElMessage.mock.calls[0][0].type).toBe('warning')
+  })
 
-    it('should show correct message type - warning', () => {
-      expect(() => messageTip('test', 'warning')).not.toThrow()
-    })
+  it('passes the type argument through (info)', () => {
+    messageTip('提示信息', 'info')
+    expect(ElMessage.mock.calls[0][0].type).toBe('info')
+  })
 
-    it('should show correct message type - info', () => {
-      expect(() => messageTip('test', 'info')).not.toThrow()
-    })
+  it('forwards an empty string message without crashing', () => {
+    messageTip('', 'success')
+    expect(ElMessage).toHaveBeenCalledTimes(1)
+    expect(ElMessage.mock.calls[0][0].message).toBe('')
+  })
+})
 
-    it('should accept any message string', () => {
-      expect(() => messageTip('', 'success')).not.toThrow()
-      expect(() => messageTip('Long message text', 'info')).not.toThrow()
+describe('util.js - messageConfirm()', () => {
+  it('returns a Promise', () => {
+    ElMessageBox.confirm.mockResolvedValue('ok')
+    const result = messageConfirm('确认操作？')
+    expect(result).toBeInstanceOf(Promise)
+  })
+
+  it('forwards message, title "系统提醒" and warning options to ElMessageBox.confirm', async () => {
+    ElMessageBox.confirm.mockResolvedValue('ok')
+    const p = messageConfirm('是否继续？')
+    await p
+
+    expect(ElMessageBox.confirm).toHaveBeenCalledTimes(1)
+    const [msg, title, opts] = ElMessageBox.confirm.mock.calls[0]
+    expect(msg).toBe('是否继续？')
+    expect(title).toBe('系统提醒')
+    expect(opts).toMatchObject({
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
     })
   })
 
-  describe('messageConfirm()', () => {
-    it('should return a promise', () => {
-      const result = messageConfirm('test message')
-      expect(result).toBeInstanceOf(Promise)
-    })
-
-    it('should not throw', () => {
-      expect(() => messageConfirm('test message')).not.toThrow()
-    })
+  it('resolves with whatever ElMessageBox.confirm resolves to', async () => {
+    ElMessageBox.confirm.mockResolvedValue({ value: 'ok' })
+    await expect(messageConfirm('x')).resolves.toEqual({ value: 'ok' })
   })
 
-  describe('getUserPermission()', () => {
-    it('should return null when no cached permissions', () => {
-      const result = getUserPermission()
-      expect(result).toBeNull()
-    })
+  it('rejects with whatever ElMessageBox.confirm rejects to', async () => {
+    ElMessageBox.confirm.mockRejectedValue(new Error('cancel'))
+    await expect(messageConfirm('x')).rejects.toThrow('cancel')
+  })
+})
 
-    it('should return cached permissions from sessionStorage', () => {
-      const permissions = ['user:list', 'user:add', 'clue:list']
-      sessionStorage.setItem('user_permissions', JSON.stringify(permissions))
-      const result = getUserPermission()
-      expect(result).toEqual(permissions)
-    })
-
-    it('should return null for invalid JSON', () => {
-      sessionStorage.setItem('user_permissions', 'invalid-json')
-      const result = getUserPermission()
-      expect(result).toBeNull()
-    })
+describe('util.js - user permission cache', () => {
+  it('getUserPermission() returns null when nothing is cached', () => {
+    expect(getUserPermission()).toBeNull()
   })
 
-  describe('setUserPermission()', () => {
-    it('should store permissions in sessionStorage', () => {
-      const permissions = ['user:list', 'user:add']
-      setUserPermission(permissions)
-      const stored = sessionStorage.getItem('user_permissions')
-      expect(JSON.parse(stored)).toEqual(permissions)
-    })
-
-    it('should overwrite existing permissions', () => {
-      setUserPermission(['old:permission'])
-      setUserPermission(['new:permission'])
-      const stored = sessionStorage.getItem('user_permissions')
-      expect(JSON.parse(stored)).toEqual(['new:permission'])
-    })
+  it('setUserPermission() writes the permissions array to sessionStorage.user_permissions as JSON', () => {
+    const perms = ['user:list', 'user:add', 'clue:list']
+    setUserPermission(perms)
+    const stored = sessionStorage.getItem('user_permissions')
+    expect(stored).not.toBeNull()
+    expect(JSON.parse(stored)).toEqual(perms)
   })
 
-  describe('clearUserPermission()', () => {
-    it('should remove permissions from sessionStorage', () => {
-      sessionStorage.setItem('user_permissions', JSON.stringify(['test']))
-      clearUserPermission()
-      expect(sessionStorage.getItem('user_permissions')).toBeNull()
-    })
+  it('getUserPermission() round-trips the cached value', () => {
+    const perms = ['user:list', 'user:add']
+    setUserPermission(perms)
+    expect(getUserPermission()).toEqual(perms)
+  })
 
-    it('should not throw when no permissions exist', () => {
-      expect(() => clearUserPermission()).not.toThrow()
-    })
+  it('setUserPermission() overwrites a previous value', () => {
+    setUserPermission(['old:permission'])
+    setUserPermission(['new:permission'])
+    expect(getUserPermission()).toEqual(['new:permission'])
+  })
+
+  it('getUserPermission() returns null and does not throw on invalid JSON', () => {
+    sessionStorage.setItem('user_permissions', 'not-json{{')
+    expect(getUserPermission()).toBeNull()
+  })
+
+  it('clearUserPermission() removes the key from sessionStorage', () => {
+    setUserPermission(['anything'])
+    clearUserPermission()
+    expect(sessionStorage.getItem('user_permissions')).toBeNull()
+  })
+
+  it('clearUserPermission() does not affect other sessionStorage keys', () => {
+    sessionStorage.setItem('dlyk_token', 'jwt')
+    setUserPermission(['x'])
+    clearUserPermission()
+    expect(sessionStorage.getItem('dlyk_token')).toBe('jwt')
   })
 })
