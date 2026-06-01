@@ -1,190 +1,164 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-describe('router.js', () => {
-  let routerModule
-  let router
+async function importRouter() {
+  const mod = await import('../src/router/router.js')
+  return mod.default
+}
 
-  beforeEach(async () => {
-    vi.clearAllMocks()
-    routerModule = await import('../src/router/router.js')
-    router = routerModule.default
+function getChild(router, parentPath, childPath) {
+  const parent = router.options.routes.find((r) => r.path === parentPath)
+  if (!parent || !parent.children) return undefined
+  return parent.children.find((c) => c.path === childPath)
+}
+
+function getChildComponent(router, parentPath, childPath) {
+  const child = getChild(router, parentPath, childPath)
+  if (!child) return undefined
+  return child.component
+}
+
+describe('router - route configuration', () => {
+  it('uses createWebHistory', async () => {
+    const router = await importRouter()
+    expect(router.options.history).toBeDefined()
   })
 
-  describe('route definitions', () => {
-    it('should have routes defined', () => {
-      expect(router).toBeDefined()
-      expect(router.options.routes).toBeDefined()
-      expect(router.options.routes.length).toBeGreaterThan(0)
-    })
-
-    it('should NOT have a /hello route', () => {
-      const helloRoute = router.options.routes.find(r => r.path === '/hello')
-      expect(helloRoute).toBeUndefined()
-    })
-
-    it('should have a / route for login', () => {
-      const loginRoute = router.options.routes.find(r => r.path === '/')
-      expect(loginRoute).toBeDefined()
-    })
-
-    it('should have a /dashboard route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      expect(dashboardRoute).toBeDefined()
-    })
-
-    it('should have child routes under /dashboard', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      expect(dashboardRoute).toBeDefined()
-      expect(dashboardRoute.children).toBeDefined()
-      expect(dashboardRoute.children.length).toBeGreaterThan(0)
-    })
-
-    it('should have a catch-all route', () => {
-      const catchAllRoute = router.options.routes.find(
-        r => r.path === '/:pathMatch(.*)*'
-      )
-      expect(catchAllRoute).toBeDefined()
-    })
+  it('has exactly 3 top-level routes (login, dashboard, catch-all)', async () => {
+    const router = await importRouter()
+    const paths = router.options.routes.map((r) => r.path)
+    expect(paths).toContain('/')
+    expect(paths).toContain('/dashboard')
+    expect(paths).toContain('/:pathMatch(.*)*')
+    expect(router.options.routes.length).toBe(3)
   })
 
-  describe('navigation guards', () => {
-    it('should have navigation guards', () => {
-      expect(router.beforeEach).toBeDefined()
-      expect(typeof router.beforeEach).toBe('function')
-    })
+  it('catch-all route redirects to /dashboard', async () => {
+    const router = await importRouter()
+    const catchAll = router.options.routes.find((r) => r.path === '/:pathMatch(.*)*')
+    expect(catchAll.redirect).toBe('/dashboard')
   })
 
-  describe('route completeness', () => {
-    it('should have user management route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const userRoute = dashboardRoute.children.find(r => r.path === 'user')
-      expect(userRoute).toBeDefined()
-    })
-
-    it('should have activity routes', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const activityRoute = dashboardRoute.children.find(r => r.path === 'activity')
-      expect(activityRoute).toBeDefined()
-    })
-
-    it('should have activity detail route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const activityDetailRoute = dashboardRoute.children.find(r => r.path === 'activity/:id')
-      expect(activityDetailRoute).toBeDefined()
-    })
-
-    it('should have clue routes', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const clueRoute = dashboardRoute.children.find(r => r.path === 'clue')
-      expect(clueRoute).toBeDefined()
-    })
-
-    it('should have clue detail route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const clueDetailRoute = dashboardRoute.children.find(r => r.path === 'clue/detail/:id')
-      expect(clueDetailRoute).toBeDefined()
-    })
-
-    it('should have customer route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const customerRoute = dashboardRoute.children.find(r => r.path === 'customer')
-      expect(customerRoute).toBeDefined()
-    })
-
-    it('should have product route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const productRoute = dashboardRoute.children.find(r => r.path === 'product')
-      expect(productRoute).toBeDefined()
-    })
-
-    it('should have product category route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const productCategoryRoute = dashboardRoute.children.find(r => r.path === 'product/category')
-      expect(productCategoryRoute).toBeDefined()
-    })
-
-    it('should have product promotion route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const productPromotionRoute = dashboardRoute.children.find(r => r.path === 'product/promotion')
-      expect(productPromotionRoute).toBeDefined()
-    })
-
-    it('should have product stock route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const productStockRoute = dashboardRoute.children.find(r => r.path === 'product/stock')
-      expect(productStockRoute).toBeDefined()
-    })
-
-    it('should have tran route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const tranRoute = dashboardRoute.children.find(r => r.path === 'tran')
-      expect(tranRoute).toBeDefined()
-    })
-
-    it('should have tran detail route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const tranDetailRoute = dashboardRoute.children.find(r => r.path === 'tran/:id')
-      expect(tranDetailRoute).toBeDefined()
-    })
-
-    it('should have tran approve route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const tranApproveRoute = dashboardRoute.children.find(r => r.path === 'tran/approve/:id')
-      expect(tranApproveRoute).toBeDefined()
-    })
-
-    it('should have tran invoice route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const tranInvoiceRoute = dashboardRoute.children.find(r => r.path === 'tran/invoice/:id')
-      expect(tranInvoiceRoute).toBeDefined()
-    })
-
-    it('should have dict type route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const dictTypeRoute = dashboardRoute.children.find(r => r.path === 'dict/type')
-      expect(dictTypeRoute).toBeDefined()
-    })
-
-    it('should have dict value route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const dictValueRoute = dashboardRoute.children.find(r => r.path === 'dict/value')
-      expect(dictValueRoute).toBeDefined()
-    })
-
-    it('should have system route', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const systemRoute = dashboardRoute.children.find(r => r.path === 'system')
-      expect(systemRoute).toBeDefined()
-    })
-
-    it('should have statistic route (default)', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      const statisticRoute = dashboardRoute.children.find(r => r.path === '')
-      expect(statisticRoute).toBeDefined()
-    })
+  it('login route resolves to a non-null lazy component', async () => {
+    const router = await importRouter()
+    const login = router.options.routes.find((r) => r.path === '/')
+    expect(login).toBeDefined()
+    const comp = await login.component()
+    expect(comp.default).toBeDefined()
+    expect(typeof comp.default).toBe('object')
   })
 
-  describe('route configuration', () => {
-    it('should use createWebHistory', () => {
-      expect(router.options.history).toBeDefined()
-    })
-
-    it('should have 3 top-level routes', () => {
-      expect(router.options.routes.length).toBe(3)
-    })
-
-    it('should have 18 child routes under dashboard', () => {
-      const dashboardRoute = router.options.routes.find(r => r.path === '/dashboard')
-      expect(dashboardRoute.children.length).toBe(18)
-    })
+  it('dashboard route resolves to a non-null lazy component', async () => {
+    const router = await importRouter()
+    const dashboard = router.options.routes.find((r) => r.path === '/dashboard')
+    expect(dashboard).toBeDefined()
+    const comp = await dashboard.component()
+    expect(comp.default).toBeDefined()
+    expect(typeof comp.default).toBe('object')
   })
 
-  describe('catch-all route', () => {
-    it('should redirect to /dashboard', () => {
-      const catchAllRoute = router.options.routes.find(
-        r => r.path === '/:pathMatch(.*)*'
-      )
-      expect(catchAllRoute.redirect).toBe('/dashboard')
-    })
+  it('all dashboard child routes resolve to non-null lazy components', async () => {
+    const router = await importRouter()
+    const dashboard = router.options.routes.find((r) => r.path === '/dashboard')
+    for (const child of dashboard.children) {
+      const comp = await child.component()
+      expect(comp.default, `child path ${child.path} should have a default export`).toBeDefined()
+    }
+  })
+
+  it('dashboard has 18 child routes (1 default + 17 named)', async () => {
+    const router = await importRouter()
+    const dashboard = router.options.routes.find((r) => r.path === '/dashboard')
+    expect(dashboard.children.length).toBe(18)
+  })
+
+  it('dashboard default child route renders StatisticView', async () => {
+    const router = await importRouter()
+    const comp = await getChildComponent(router, '/dashboard', '')
+    const mod = await comp()
+    expect(mod.default).toBeDefined()
+    expect(mod.default.__file).toContain('StatisticView')
+  })
+
+  it.each([
+    ['user', 'UserView'],
+    ['activity', 'ActivityView'],
+    ['activity/:id', 'ActivityDetailView'],
+    ['clue', 'ClueView'],
+    ['clue/detail/:id', 'ClueDetailView'],
+    ['customer', 'CustomerView'],
+    ['product', 'ProductView'],
+    ['product/category', 'ProductCategoryView'],
+    ['product/promotion', 'ProductPromotionView'],
+    ['product/stock', 'ProductStockAlertView'],
+    ['tran', 'TranView'],
+    ['tran/:id', 'TranDetailView'],
+    ['tran/approve/:id', 'TranApproveView'],
+    ['tran/invoice/:id', 'TranInvoiceView'],
+    ['dict/type', 'DictTypeView'],
+    ['dict/value', 'DictValueView'],
+    ['system', 'SystemView'],
+  ])('dashboard child "%s" renders %s', async (childPath, expectedFile) => {
+    const router = await importRouter()
+    const comp = getChildComponent(router, '/dashboard', childPath)
+    expect(comp, `child path ${childPath} should be defined`).toBeDefined()
+    const mod = await comp()
+    expect(mod.default.__file).toContain(expectedFile)
+  })
+
+  it('no child path starts with a slash (vue-router convention)', async () => {
+    const router = await importRouter()
+    const dashboard = router.options.routes.find((r) => r.path === '/dashboard')
+    for (const child of dashboard.children) {
+      expect(child.path.startsWith('/'), `child path "${child.path}" should not start with /`).toBe(false)
+    }
+  })
+
+  it('no leftover /hello route from scaffolded demo', async () => {
+    const router = await importRouter()
+    const hello = router.options.routes.find((r) => r.path === '/hello')
+    expect(hello).toBeUndefined()
+  })
+})
+
+describe('router - navigation guard behavior', () => {
+  it('registers a beforeEach guard', async () => {
+    // shape-only: doc-allowed — the actual guard behavior is verified by
+    // the next three tests (redirect on missing token, allow with token,
+    // allow /  without token). Kept as a sanity check that the guard
+    // registration didn't get accidentally removed.
+    const router = await importRouter()
+    expect(typeof router.beforeEach).toBe('function')
+  })
+
+  it('redirects to / when navigating to /dashboard without a token', async () => {
+    const router = await importRouter()
+    sessionStorage.clear()
+    localStorage.clear()
+
+    // Use the real router to actually navigate. The guard should redirect.
+    await router.push('/dashboard').catch(() => {})
+    await router.isReady()
+    expect(router.currentRoute.value.path).toBe('/')
+  })
+
+  it('allows navigation to /dashboard when localStorage has a token', async () => {
+    const router = await importRouter()
+    sessionStorage.clear()
+    localStorage.clear()
+    localStorage.setItem('dlyk_token', 'jwt')
+
+    await router.push('/dashboard').catch(() => {})
+    await router.isReady()
+    expect(router.currentRoute.value.path).toBe('/dashboard')
+  })
+
+  it('allows navigation to / (login) even without a token', async () => {
+    const router = await importRouter()
+    sessionStorage.clear()
+    localStorage.clear()
+
+    await router.push('/').catch(() => {})
+    await router.isReady()
+    expect(router.currentRoute.value.path).toBe('/')
   })
 })
