@@ -103,7 +103,6 @@ export default defineComponent({
     //加载当前登录用户
     loadLoginUser() {
       doGet("/api/login/info", {}).then( (resp) => {
-        console.log(resp)
         this.user = resp.data.data;
       })
     },

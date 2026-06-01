@@ -172,6 +172,7 @@ const DASHBOARD_STUBS = {
         )
     },
   }),
+  'router-view': makeElPassthrough('RouterView'),
   Fold: defineComponent({ name: 'Fold', setup: () => () => h('span') }),
   'arrow-down': defineComponent({ name: 'ArrowDown', setup: () => () => h('span') }),
   ArrowDown: defineComponent({ name: 'ArrowDown', setup: () => () => h('span') }),

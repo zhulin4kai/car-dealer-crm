@@ -286,7 +286,6 @@ const edit = (id) => {
 
 const loadUser = (id) => {
   doGet("/api/user/" + id, {}).then(resp => {
-    console.log(resp);
     if (resp.data.code === 200) {
       userQuery.value = resp.data.data
       userQuery.value.loginPwd = ""
