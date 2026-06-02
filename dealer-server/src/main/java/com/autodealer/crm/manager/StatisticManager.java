@@ -1,5 +1,6 @@
 package com.autodealer.crm.manager;
 
+import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
@@ -42,7 +43,7 @@ public class StatisticManager {
         Integer totalCustomerCount = tCustomerMapper.selectByCount();
 
         //成功的交易额
-        BigDecimal successTranAmount = tTranMapper.selectBySuccessTranAmount();
+        BigDecimal successTranAmount = tTranMapper.selectBySuccessTranAmount(TranStage.COMPLETED);
 
         //总的交易额（包含成功和不成功的）
         BigDecimal totalTranAmount = tTranMapper.selectByTotalTranAmount();
@@ -72,7 +73,7 @@ public class StatisticManager {
         int clueCount = tClueMapper.selectClueByCount();
         int customerCount = tCustomerMapper.selectByCount();
         int tranCount = tTranMapper.selectByTotalTranCount();
-        int tranSuccessCount = tTranMapper.selectBySuccessTranCount();
+        int tranSuccessCount = tTranMapper.selectBySuccessTranCount(TranStage.COMPLETED);
 
         NameValue clue = NameValue.builder().name("线索").value(clueCount).build();
         resultList.add(clue);

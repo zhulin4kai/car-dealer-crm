@@ -195,7 +195,8 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getTranDetail, getTranProducts, createInvoice, getTranInvoiceList, updateInvoiceStatus, updateTran } from '../api/tran'
+import { getTranDetail, getTranProducts, createInvoice, getTranInvoiceList, updateInvoiceStatus } from '../api/tran'
+import { normalizeTranStage } from '../constants/tranStage'
 
 const route = useRoute()
 const router = useRouter()
@@ -297,17 +298,6 @@ const hasInvoiceIssued = computed(() => {
   return invoiceList.value.some(invoice => invoice.status === 'ISSUED')
 })
 
-// 根据阶段获取状态
-const getStageStatus = (stage) => {
-  const stageMap = {
-    41: 'QUOTATION', // 待报价
-    42: 'PENDING',   // 待审批
-    43: 'APPROVED',  // 已审批
-    46: 'COMPLETED'  // 已完成
-  }
-  return stageMap[stage] || 'QUOTATION'
-}
-
 // 发票类型映射
 const getInvoiceTypeText = (type) => {
   const typeMap = {
@@ -340,7 +330,7 @@ const fetchTranDetail = async () => {
         tranNo: data.tranNo || '',
         customerName: data.customerName || '',
         amount: data.money || data.amount || 0, // 后端可能返回money字段
-        stage: getStageStatus(data.stage), // 转换stage状态
+        stage: normalizeTranStage(data.stage),
         createTime: data.createTime || '',
         updateTime: data.editTime || data.updateTime || '', // 后端可能返回editTime
         expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
@@ -408,21 +398,9 @@ const submitForm = async (formEl) => {
           // 立即标记发票为已开具
           const invoiceRes = await updateInvoiceStatus(newInvoiceId, 'ISSUED')
           if (invoiceRes.data.code === 200) {
-            // 同时更新交易状态为已完成（stage: 46）
-            const tranRes = await updateTran({
-              id: parseInt(route.params.id),
-              stage: 46 // 已完成
-            })
-            
-            if (tranRes.data.code === 200) {
-              ElMessage.success('发票开具成功，交易已完成')
-              // 重新获取发票列表和交易详情
-              await fetchInvoiceList()
-              await fetchTranDetail()
-            } else {
-              ElMessage.warning('发票开具成功，但交易状态更新失败')
-              await fetchInvoiceList()
-            }
+            ElMessage.success('发票开具成功，交易已完成')
+            await fetchInvoiceList()
+            await fetchTranDetail()
           } else {
             ElMessage.warning('发票创建成功，但状态更新失败')
             await fetchInvoiceList()
@@ -444,21 +422,9 @@ const markAsIssued = async (invoice) => {
     // 更新发票状态为已开具
     const invoiceRes = await updateInvoiceStatus(invoice.id, 'ISSUED')
     if (invoiceRes.data.code === 200) {
-      // 同时更新交易状态为已完成（stage: 46）
-      const tranRes = await updateTran({
-        id: parseInt(route.params.id),
-        stage: 46 // 已完成
-      })
-      
-      if (tranRes.data.code === 200) {
-        ElMessage.success('开票完成，交易状态已更新为已完成')
-        // 重新获取发票列表和交易详情
-        await fetchInvoiceList()
-        await fetchTranDetail()
-      } else {
-        ElMessage.warning('发票状态更新成功，但交易状态更新失败')
-        await fetchInvoiceList()
-      }
+      ElMessage.success('开票完成，交易状态已更新为已完成')
+      await fetchInvoiceList()
+      await fetchTranDetail()
     } else {
       ElMessage.error(invoiceRes.data.msg || '发票状态更新失败')
     }
@@ -545,4 +511,4 @@ onMounted(async () => {
 .form-tip .el-alert {
   margin-bottom: 0;
 }
-</style> 
+</style>

@@ -9,7 +9,7 @@
     <result column="customer_name" jdbcType="VARCHAR" property="customerName" />
     <result column="money" jdbcType="DECIMAL" property="money" />
     <result column="expected_date" jdbcType="TIMESTAMP" property="expectedDate" />
-    <result column="stage" jdbcType="INTEGER" property="stage" />
+    <result column="stage" jdbcType="VARCHAR" property="stage" />
     <result column="description" jdbcType="VARCHAR" property="description" />
     <result column="next_contact_time" jdbcType="TIMESTAMP" property="nextContactTime" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
@@ -54,7 +54,7 @@
         AND cl.full_name LIKE CONCAT('%', #{customerName}, '%')
       </if>
       <if test="stage != null">
-        AND t.stage = #{stage}
+        AND t.stage = #{stage,jdbcType=VARCHAR}
       </if>
       <if test="minMoney != null">
         AND t.money <![CDATA[>=]]> #{minMoney}
@@ -97,7 +97,7 @@
     select
         sum(money)
     from t_tran
-    where stage = 42
+    where stage = #{successStage,jdbcType=VARCHAR}
   </select>
 
   <select id="selectByTotalTranAmount" resultType="java.math.BigDecimal">
@@ -117,7 +117,7 @@
     SELECT
       count( 0 )
     FROM
-        ( SELECT DISTINCT customer_id FROM t_tran where stage = 42 ) t
+        ( SELECT DISTINCT customer_id FROM t_tran where stage = #{successStage,jdbcType=VARCHAR} ) t
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -136,7 +136,7 @@
       next_contact_time, create_time, create_by, 
       edit_time, edit_by)
     values (#{tranNo,jdbcType=VARCHAR}, #{customerId,jdbcType=INTEGER}, #{money,jdbcType=DECIMAL}, 
-      #{expectedDate,jdbcType=TIMESTAMP}, #{stage,jdbcType=INTEGER}, #{description,jdbcType=VARCHAR}, 
+      #{expectedDate,jdbcType=TIMESTAMP}, #{stage,jdbcType=VARCHAR}, #{description,jdbcType=VARCHAR},
       #{nextContactTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, 
       #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER})
   </insert>
@@ -192,7 +192,7 @@
         #{expectedDate,jdbcType=TIMESTAMP},
       </if>
       <if test="stage != null">
-        #{stage,jdbcType=INTEGER},
+        #{stage,jdbcType=VARCHAR},
       </if>
       <if test="description != null">
         #{description,jdbcType=VARCHAR},
@@ -231,7 +231,7 @@
         expected_date = #{expectedDate,jdbcType=TIMESTAMP},
       </if>
       <if test="stage != null">
-        stage = #{stage,jdbcType=INTEGER},
+        stage = #{stage,jdbcType=VARCHAR},
       </if>
       <if test="description != null">
         description = #{description,jdbcType=VARCHAR},
@@ -261,7 +261,7 @@
       customer_id = #{customerId,jdbcType=INTEGER},
       money = #{money,jdbcType=DECIMAL},
       expected_date = #{expectedDate,jdbcType=TIMESTAMP},
-      stage = #{stage,jdbcType=INTEGER},
+      stage = #{stage,jdbcType=VARCHAR},
       description = #{description,jdbcType=VARCHAR},
       next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
       create_time = #{createTime,jdbcType=TIMESTAMP},

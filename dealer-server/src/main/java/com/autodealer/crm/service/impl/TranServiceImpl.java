@@ -1,6 +1,7 @@
 package com.autodealer.crm.service.impl;
 
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.*;
 import com.autodealer.crm.model.*;
@@ -9,7 +10,6 @@ import com.autodealer.crm.service.TranService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,9 +39,6 @@ public class TranServiceImpl implements TranService {
 
     @Resource
     private ProductMapper productMapper;
-
-    @Resource
-    private RedisTemplate<String, Object> redisTemplate;
 
     @Resource
     private RedisManager redisManager;
@@ -112,7 +109,7 @@ public class TranServiceImpl implements TranService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean updateTransactionStage(Integer id, Integer stage) {
+    public boolean updateTransactionStage(Integer id, TranStage stage) {
         TTran tTran = new TTran();
         tTran.setId(id);
         tTran.setStage(stage);
@@ -248,8 +245,7 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean approveTran(Integer tranId, Boolean approved, String comment, Integer approveBy) {
-        // 校验当前状态必须为42（待审批）
-        validateStageTransition(tranId, 42);
+        validateStageTransition(tranId, TranStage.PENDING);
 
         Date now = new Date();
 
@@ -270,9 +266,9 @@ public class TranServiceImpl implements TranService {
             TTran tran = new TTran();
             tran.setId(tranId);
             if (approved) {
-                tran.setStage(43); // 已审批
+                tran.setStage(TranStage.APPROVED);
             } else {
-                tran.setStage(21); // 丢失关闭
+                tran.setStage(TranStage.LOST);
             }
             tran.setEditTime(now);
             tran.setEditBy(approveBy);
@@ -296,8 +292,7 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean createTranInvoice(TTranInvoice invoice) {
-        // 校验当前状态必须为43（已审批）
-        validateStageTransition(invoice.getTranId(), 43);
+        validateStageTransition(invoice.getTranId(), TranStage.APPROVED);
 
         // 检查该交易是否已有发票
         List<TTranInvoice> existingInvoices = tranInvoiceMapper.selectByTranId(invoice.getTranId());
@@ -330,7 +325,7 @@ public class TranServiceImpl implements TranService {
             // 更新交易状态为待收款
             TTran updateTran = new TTran();
             updateTran.setId(invoice.getTranId());
-            updateTran.setStage(45); // 待收款
+            updateTran.setStage(TranStage.PAYMENT);
             updateTran.setEditTime(now);
             updateTran.setEditBy(invoice.getCreateBy());
 
@@ -372,12 +367,11 @@ public class TranServiceImpl implements TranService {
             if ("ISSUED".equals(status)) {
                 TTranInvoice currentInvoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
                 if (currentInvoice != null) {
-                    // 校验当前状态必须为45（待收款）
-                    validateStageTransition(currentInvoice.getTranId(), 45);
+                    validateStageTransition(currentInvoice.getTranId(), TranStage.PAYMENT);
 
                     TTran tran = new TTran();
                     tran.setId(currentInvoice.getTranId());
-                    tran.setStage(46); // 已完成
+                    tran.setStage(TranStage.COMPLETED);
                     tran.setEditTime(now);
                     tran.setEditBy(updateBy);
 
@@ -430,13 +424,13 @@ public class TranServiceImpl implements TranService {
      * @param tranId 交易ID
      * @param requiredStage 需要的状态
      */
-    private void validateStageTransition(Integer tranId, Integer requiredStage) {
+    private void validateStageTransition(Integer tranId, TranStage requiredStage) {
         TTran tran = tranMapper.selectByPrimaryKey(tranId);
         if (tran == null) {
             throw new RuntimeException("交易记录不存在");
         }
         if (!requiredStage.equals(tran.getStage())) {
-            throw new RuntimeException("当前交易状态不允许执行此操作，需要状态: " + requiredStage);
+            throw new RuntimeException("当前交易状态不允许执行此操作，需要状态: " + requiredStage.getLabel());
         }
     }
 
@@ -450,7 +444,7 @@ public class TranServiceImpl implements TranService {
         }
 
         // 校验只有待报价状态允许删除
-        if (transaction.getStage() != 41) {
+        if (transaction.getStage() != TranStage.QUOTATION) {
             throw new RuntimeException("只有待报价状态的交易才能删除");
         }
 
@@ -515,15 +509,13 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean resubmitTransaction(Integer tranId, Integer userId) {
-        // 校验当前状态必须为21（丢失关闭）
-        validateStageTransition(tranId, 21);
+        validateStageTransition(tranId, TranStage.LOST);
 
         Date now = new Date();
 
-        // 将状态改回41（待报价）
         TTran tran = new TTran();
         tran.setId(tranId);
-        tran.setStage(41); // 待报价
+        tran.setStage(TranStage.QUOTATION);
         tran.setEditTime(now);
         tran.setEditBy(userId);
 

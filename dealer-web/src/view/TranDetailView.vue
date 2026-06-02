@@ -13,7 +13,7 @@
         <el-descriptions-item label="交易编号">{{ tranDetail.tranNo }}</el-descriptions-item>
         <el-descriptions-item label="客户名称">{{ tranDetail.customerName }}</el-descriptions-item>
         <el-descriptions-item label="交易金额">
-          <span v-if="tranDetail.stage === 'QUOTATION'">?</span>
+          <span v-if="tranDetail.stage === TRAN_STAGE.QUOTATION">?</span>
           <span v-else>¥{{ tranDetail.amount }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ tranDetail.createTime }}</el-descriptions-item>
@@ -48,7 +48,7 @@
       </el-table>
 
       <!-- 促销选择 - 仅在待报价状态显示 -->
-      <div v-if="tranDetail.stage === 'QUOTATION'" class="promotion-section">
+      <div v-if="tranDetail.stage === TRAN_STAGE.QUOTATION" class="promotion-section">
         <div class="section-title">促销选择</div>
         <el-form :model="promotionForm" label-width="120px">
           <el-form-item label="促销活动">
@@ -125,7 +125,7 @@
       <!-- <el-button 
         type="primary" 
         @click="handleEdit" 
-        v-if="tranDetail.stage === 'QUOTATION'"
+        v-if="tranDetail.stage === TRAN_STAGE.QUOTATION"
       >编辑</el-button> -->
       <el-button 
         type="success" 
@@ -135,12 +135,12 @@
       <el-button 
         type="success" 
         @click="handleApprove" 
-        v-if="tranDetail.stage === 'PENDING'"
+        v-if="tranDetail.stage === TRAN_STAGE.PENDING"
       >审批</el-button>
       <el-button 
         type="warning" 
         @click="handleInvoice" 
-        v-if="tranDetail.stage === 'APPROVED'"
+        v-if="tranDetail.stage === TRAN_STAGE.APPROVED"
       >开票</el-button>
     </div>
   </div>
@@ -152,6 +152,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran } from '../api/tran'
 import { getPromotionList } from '../api/product'
+import { TRAN_STAGE, getTranStageText, getTranStageType, normalizeTranStage } from '../constants/tranStage'
 
 const route = useRoute()
 const router = useRouter()
@@ -219,23 +220,14 @@ const finalAmount = computed(() => {
   return result
 })
 
-// 状态映射
-const statusMap = {
-  'QUOTATION': { type: 'info', text: '待报价' },
-  'PENDING': { type: 'warning', text: '待审批' },
-  'APPROVED': { type: 'success', text: '已审批' },
-  'PAYMENT': { type: 'warning', text: '待收款' },
-  'COMPLETED': { type: 'success', text: '已完成' }
-}
-
 const invoiceStatusMap = {
   'PENDING': { type: 'warning', text: '待开具' },
   'ISSUED': { type: 'success', text: '已开具' },
   'VOID': { type: 'danger', text: '已作废' }
 }
 
-const getStatusType = (status) => statusMap[status]?.type || ''
-const getStatusText = (status) => statusMap[status]?.text || status
+const getStatusType = getTranStageType
+const getStatusText = getTranStageText
 
 const getInvoiceStatusType = (status) => invoiceStatusMap[status]?.type || ''
 const getInvoiceStatusText = (status) => invoiceStatusMap[status]?.text || status
@@ -328,7 +320,7 @@ const fetchTranDetail = async () => {
         tranNo: data.tranNo || '',
         customerName: data.customerName || '',
         amount: data.money || data.amount || 0, // 后端可能返回money字段
-        stage: getStageStatus(data.stage), // 转换stage状态
+        stage: normalizeTranStage(data.stage),
         createTime: data.createTime || '',
         updateTime: data.editTime || data.updateTime || '', // 后端可能返回editTime
         expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
@@ -343,18 +335,6 @@ const fetchTranDetail = async () => {
     console.error('获取交易详情失败:', error)
     ElMessage.error('获取交易详情失败')
   }
-}
-
-// 根据阶段获取状态 - 添加这个方法，因为TranDetailView中缺少了
-const getStageStatus = (stage) => {
-  const stageMap = {
-    41: 'QUOTATION', // 待报价
-    42: 'PENDING',   // 待审批
-    43: 'APPROVED',  // 已审批
-    45: 'PAYMENT',   // 待收款
-    46: 'COMPLETED'  // 已完成
-  }
-  return stageMap[stage] || 'QUOTATION'
 }
 
 // 获取交易产品详情
@@ -557,4 +537,4 @@ onMounted(async () => {
 :deep(.el-table) {
   margin-bottom: 20px;
 }
-</style> 
+</style>

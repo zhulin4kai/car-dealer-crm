@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS t_tran
     customer_id       INTEGER,
     money             DECIMAL(10, 2),
     expected_date     TIMESTAMP,
-    stage             INTEGER,
+    stage             VARCHAR(32),
     description       VARCHAR(255),
     next_contact_time TIMESTAMP,
     create_time       TIMESTAMP,
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS t_tran_history
 (
     id            INTEGER NOT NULL AUTO_INCREMENT,
     tran_id       INTEGER,
-    stage         INTEGER,
+    stage         VARCHAR(32),
     money         DECIMAL(10, 2),
     expected_date TIMESTAMP,
     create_time   TIMESTAMP,

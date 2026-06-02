@@ -13,7 +13,7 @@
         <el-descriptions-item label="交易编号">{{ tranDetail.tranNo }}</el-descriptions-item>
         <el-descriptions-item label="客户名称">{{ tranDetail.customerName }}</el-descriptions-item>
         <el-descriptions-item label="交易金额">
-          <span v-if="tranDetail.stage === 'QUOTATION'">?</span>
+          <span v-if="tranDetail.stage === TRAN_STAGE.QUOTATION">?</span>
           <span v-else>¥{{ tranDetail.amount }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ tranDetail.createTime }}</el-descriptions-item>
@@ -78,6 +78,7 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTranDetail, getTranProducts, approveTran } from '../api/tran'
+import { TRAN_STAGE, normalizeTranStage } from '../constants/tranStage'
 
 const route = useRoute()
 const router = useRouter()
@@ -110,17 +111,6 @@ const rules = reactive({
   ]
 })
 
-// 根据阶段获取状态
-const getStageStatus = (stage) => {
-  const stageMap = {
-    41: 'QUOTATION', // 待报价
-    42: 'PENDING',   // 待审批
-    43: 'APPROVED',  // 已审批
-    46: 'COMPLETED'  // 已完成
-  }
-  return stageMap[stage] || 'QUOTATION'
-}
-
 // 获取交易详情
 const fetchTranDetail = async () => {
   try {
@@ -134,7 +124,7 @@ const fetchTranDetail = async () => {
         tranNo: data.tranNo || '',
         customerName: data.customerName || '',
         amount: data.money || data.amount || 0, // 后端可能返回money字段
-        stage: getStageStatus(data.stage), // 转换stage状态
+        stage: normalizeTranStage(data.stage),
         createTime: data.createTime || '',
         updateTime: data.editTime || data.updateTime || '', // 后端可能返回editTime
         expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
@@ -253,4 +243,4 @@ onMounted(async () => {
 :deep(.el-form-item) {
   margin-bottom: 22px;
 }
-</style> 
+</style>

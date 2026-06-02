@@ -10,10 +10,12 @@
           <el-input v-model="searchForm.customerName" @keyup.enter="handleSearch" placeholder="请输入客户名称" clearable style="width: 200px;" />
         </el-form-item>        <el-form-item label="交易状态">
           <el-select v-model="searchForm.stage" @keyup.enter="handleSearch" placeholder="请选择状态" clearable style="width: 200px;">
-            <el-option label="待报价" value="41" />
-            <el-option label="待审批" value="42" />
-            <el-option label="已审批" value="43" />
-            <el-option label="已完成" value="46" />
+            <el-option
+              v-for="stage in TRAN_STAGE_OPTIONS"
+              :key="stage.value"
+              :label="stage.label"
+              :value="stage.value"
+            />
           </el-select>
         </el-form-item><el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -40,7 +42,7 @@
         <el-table-column prop="customerName" label="客户名称" show-overflow-tooltip />
         <el-table-column prop="amount" label="交易金额" show-overflow-tooltip>
           <template #default="scope">
-            <span v-if="scope.row.stage === 'QUOTATION'">?</span>
+            <span v-if="scope.row.stage === TRAN_STAGE.QUOTATION">?</span>
             <span v-else>¥{{ scope.row.amount }}</span>
           </template>
         </el-table-column>
@@ -58,21 +60,21 @@
               <el-button 
                 type="primary" 
                 @click="handleEdit(scope.row)"
-                v-if="scope.row.stage === 'QUOTATION'"
+                v-if="scope.row.stage === TRAN_STAGE.QUOTATION"
               >编辑</el-button>
               <el-button 
                 type="success" 
                 @click="handleApprove(scope.row)"
-                v-if="scope.row.stage === 'PENDING'"
+                v-if="scope.row.stage === TRAN_STAGE.PENDING"
               >审批</el-button>              <el-button 
                 type="warning" 
                 @click="handleInvoice(scope.row)"
-                v-if="scope.row.stage === 'APPROVED'"
+                v-if="scope.row.stage === TRAN_STAGE.APPROVED"
               >开票</el-button>
               <el-button 
                 type="danger" 
                 @click="handleDelete(scope.row.id)"
-                v-if="scope.row.stage === 'QUOTATION'"
+                v-if="scope.row.stage === TRAN_STAGE.QUOTATION"
               >删除</el-button>
             </div>
           </template>
@@ -212,6 +214,7 @@ import { getProductList } from '../api/product'
 import { getCustomerOptions } from '../api/customer'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { TRAN_STAGE, TRAN_STAGE_OPTIONS, getTranStageText, getTranStageType, normalizeTranStage } from '../constants/tranStage'
 
 const router = useRouter()
 const loading = ref(false)
@@ -264,16 +267,8 @@ const rules = reactive({
   ]
 })
 
-// 状态映射
-const statusMap = {
-  'QUOTATION': { type: 'info', text: '待报价' },
-  'PENDING': { type: 'warning', text: '待审批' },
-  'APPROVED': { type: 'success', text: '已审批' },
-  'COMPLETED': { type: 'success', text: '已完成' }
-}
-
-const getStatusType = (status) => statusMap[status]?.type || ''
-const getStatusText = (status) => statusMap[status]?.text || status
+const getStatusType = getTranStageType
+const getStatusText = getTranStageText
 
 // 获取交易列表
 const fetchData = async () => {
@@ -284,10 +279,6 @@ const fetchData = async () => {
       size: pageSize.value,
       ...searchForm
     }
-    // 只有当searchForm.stage有值时才转换为数字
-    if (params.stage) {
-      params.stage = parseInt(params.stage)
-    }
     const res = await getTranList(params)
     if (res.data.code === 200) {
       tableData.value = res.data.data.list.map(item => ({
@@ -295,7 +286,7 @@ const fetchData = async () => {
         tranNo: item.tranNo,
         customerName: `${item.customerName}`, 
         amount: item.money,
-        stage: getStageStatus(item.stage),
+        stage: normalizeTranStage(item.stage),
         createTime: item.createTime
       }))
       total.value = res.data.data.total
@@ -308,17 +299,6 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
-}
-
-// 根据阶段获取状态
-const getStageStatus = (stage) => {
-  const stageMap = {
-    41: 'QUOTATION', // 待报价
-    42: 'PENDING',   // 待审批
-    43: 'APPROVED',  // 已审批
-    46: 'COMPLETED'  // 已完成
-  }
-  return stageMap[stage] || 'QUOTATION'
 }
 
 // 搜索
@@ -712,4 +692,4 @@ onMounted(() => {
 :deep(.el-date-picker) {
   width: 100%;
 }
-</style> 
+</style>

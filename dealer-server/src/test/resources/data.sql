@@ -217,12 +217,12 @@ INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (20,
 INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (21, 'needLoan', '不需要', 2, NULL);
 
 -- Stage
-INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (22, 'stage', '01创建交易', 1, NULL);
-INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (23, 'stage', '02确认清单', 3, NULL);
-INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (24, 'stage', '03交付定金', 4, NULL);
-INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (25, 'stage', '04产品检验', 5, NULL);
-INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (26, 'stage', '05付款成交', 6, NULL);
-INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (27, 'stage', '06丢失关闭', 7, NULL);
+INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (22, 'stage', 'QUOTATION', 1, '待报价');
+INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (23, 'stage', 'PENDING', 2, '待审批');
+INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (24, 'stage', 'APPROVED', 3, '已审批');
+INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (25, 'stage', 'PAYMENT', 4, '待收款');
+INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (26, 'stage', 'COMPLETED', 5, '已完成');
+INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (27, 'stage', 'LOST', 6, '丢失关闭');
 
 -- Note Way
 INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (28, 'noteWay', '电话', 1, NULL);
@@ -332,23 +332,23 @@ VALUES (2, 2, 31, '客户到店签约，选择奔驰E级', 2, CURRENT_TIMESTAMP,
 
 -- ==================== Transactions ====================
 INSERT INTO t_tran (id, tran_no, customer_id, money, expected_date, stage, description, next_contact_time, create_time, create_by, edit_time, edit_by)
-VALUES (1, 'T2025061800001', 1, 569800.00, '2025-07-15 00:00:00', 22, '宝马X5交易，已创建', '2025-06-25 10:00:00', CURRENT_TIMESTAMP, 1, NULL, NULL);
+VALUES (1, 'T2025061800001', 1, 569800.00, '2025-07-15 00:00:00', 'QUOTATION', '宝马X5交易，待报价', '2025-06-25 10:00:00', CURRENT_TIMESTAMP, 1, NULL, NULL);
 
 INSERT INTO t_tran (id, tran_no, customer_id, money, expected_date, stage, description, next_contact_time, create_time, create_by, edit_time, edit_by)
-VALUES (2, 'T2025061800002', 2, 499800.00, '2025-08-01 00:00:00', 24, '奔驰E级交易，已交付定金', '2025-06-28 14:00:00', CURRENT_TIMESTAMP, 2, NULL, NULL);
+VALUES (2, 'T2025061800002', 2, 499800.00, '2025-08-01 00:00:00', 'PAYMENT', '奔驰E级交易，待收款', '2025-06-28 14:00:00', CURRENT_TIMESTAMP, 2, NULL, NULL);
 
 INSERT INTO t_tran (id, tran_no, customer_id, money, expected_date, stage, description, next_contact_time, create_time, create_by, edit_time, edit_by)
-VALUES (3, 'T2025061800003', 1, 399800.00, '2025-07-10 00:00:00', 26, '奥迪Q5L交易，已成交', NULL, CURRENT_TIMESTAMP, 1, NULL, NULL);
+VALUES (3, 'T2025061800003', 1, 399800.00, '2025-07-10 00:00:00', 'COMPLETED', '奥迪Q5L交易，已完成', NULL, CURRENT_TIMESTAMP, 1, NULL, NULL);
 
 -- ==================== Transaction History ====================
 INSERT INTO t_tran_history (id, tran_id, stage, money, expected_date, create_time, create_by)
-VALUES (1, 1, 22, 569800.00, '2025-07-15 00:00:00', CURRENT_TIMESTAMP, 1);
+VALUES (1, 1, 'QUOTATION', 569800.00, '2025-07-15 00:00:00', CURRENT_TIMESTAMP, 1);
 
 INSERT INTO t_tran_history (id, tran_id, stage, money, expected_date, create_time, create_by)
-VALUES (2, 2, 22, 499800.00, '2025-08-01 00:00:00', CURRENT_TIMESTAMP, 2);
+VALUES (2, 2, 'QUOTATION', 499800.00, '2025-08-01 00:00:00', CURRENT_TIMESTAMP, 2);
 
 INSERT INTO t_tran_history (id, tran_id, stage, money, expected_date, create_time, create_by)
-VALUES (3, 2, 24, 499800.00, '2025-08-01 00:00:00', CURRENT_TIMESTAMP, 2);
+VALUES (3, 2, 'PAYMENT', 499800.00, '2025-08-01 00:00:00', CURRENT_TIMESTAMP, 2);
 
 -- ==================== Transaction Products ====================
 INSERT INTO t_tran_product (id, tran_id, product_id, quantity, price, create_time, create_by)

@@ -1,5 +1,6 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.query.TranQuery;
 import com.autodealer.crm.result.R;
@@ -68,7 +69,7 @@ public class TranController {
             }
         }
         
-        tran.setStage(41); // 初始状态：待报价
+        tran.setStage(TranStage.QUOTATION);
         tran.setCreateBy(currentUser.getId()); // 设置创建人
         
         // 从产品详情列表创建交易产品关联
@@ -187,7 +188,7 @@ public class TranController {
         TTran tran = new TTran();
         tran.setId(id);
         tran.setMoney(totalAmount);
-        tran.setStage(42); // 待审批状态
+        tran.setStage(TranStage.PENDING);
         tran.setEditBy(currentUser.getId());
         
         boolean result = tranService.updateTransaction(tran);

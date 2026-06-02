@@ -1,5 +1,6 @@
 package com.autodealer.crm.manager;
 
+import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
@@ -46,7 +47,7 @@ class StatisticManagerTest {
         when(tActivityMapper.selectByCount()).thenReturn(10);
         when(tClueMapper.selectClueByCount()).thenReturn(100);
         when(tCustomerMapper.selectByCount()).thenReturn(50);
-        when(tTranMapper.selectBySuccessTranAmount()).thenReturn(new BigDecimal("500000"));
+        when(tTranMapper.selectBySuccessTranAmount(TranStage.COMPLETED)).thenReturn(new BigDecimal("500000"));
         when(tTranMapper.selectByTotalTranAmount()).thenReturn(new BigDecimal("1000000"));
 
         SummaryData result = statisticManager.loadSummaryData();
@@ -58,6 +59,7 @@ class StatisticManagerTest {
         assertEquals(50, result.getTotalCustomerCount());
         assertEquals(new BigDecimal("500000"), result.getSuccessTranAmount());
         assertEquals(new BigDecimal("1000000"), result.getTotalTranAmount());
+        verify(tTranMapper).selectBySuccessTranAmount(TranStage.COMPLETED);
     }
 
     @Test
@@ -65,7 +67,7 @@ class StatisticManagerTest {
         when(tClueMapper.selectClueByCount()).thenReturn(100);
         when(tCustomerMapper.selectByCount()).thenReturn(50);
         when(tTranMapper.selectByTotalTranCount()).thenReturn(30);
-        when(tTranMapper.selectBySuccessTranCount()).thenReturn(10);
+        when(tTranMapper.selectBySuccessTranCount(TranStage.COMPLETED)).thenReturn(10);
 
         List<NameValue> result = statisticManager.loadSaleFunnelData();
 
@@ -79,6 +81,7 @@ class StatisticManagerTest {
         assertEquals(30, result.get(2).getValue());
         assertEquals("成交", result.get(3).getName());
         assertEquals(10, result.get(3).getValue());
+        verify(tTranMapper).selectBySuccessTranCount(TranStage.COMPLETED);
     }
 
     @Test

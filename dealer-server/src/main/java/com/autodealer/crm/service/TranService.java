@@ -1,5 +1,6 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.query.TranQuery;
 import com.github.pagehelper.PageInfo;
@@ -46,7 +47,7 @@ public interface TranService {
      * @param stage 新阶段
      * @return 是否更新成功
      */
-    boolean updateTransactionStage(Integer id, Integer stage);
+    boolean updateTransactionStage(Integer id, TranStage stage);
     
     /**
      * 添加交易跟踪记录

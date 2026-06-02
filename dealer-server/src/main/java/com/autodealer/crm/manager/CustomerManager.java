@@ -1,5 +1,6 @@
 package com.autodealer.crm.manager;
 
+import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.ProductMapper;
@@ -56,7 +57,7 @@ public class CustomerManager {
             // 构造TTran对象
             TTran tTran = new TTran();
             tTran.setCustomerId(tCustomer.getId());
-            tTran.setStage(41); // 默认交易阶段为41
+            tTran.setStage(TranStage.QUOTATION);
             tTran.setDescription(customerQuery.getDescription());
             tTran.setNextContactTime(customerQuery.getNextContactTime());
             tTran.setCreateBy(customerQuery.getCreateBy());

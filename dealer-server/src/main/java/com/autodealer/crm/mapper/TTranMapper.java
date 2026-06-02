@@ -1,11 +1,13 @@
 package com.autodealer.crm.mapper;
 
+import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.model.TTranProduct;
 import com.autodealer.crm.query.TranQuery;
 import java.math.BigDecimal;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface TTranMapper {
@@ -20,13 +22,13 @@ public interface TTranMapper {
 
     int updateByPrimaryKey(TTran record);
 
-    BigDecimal selectBySuccessTranAmount();
+    BigDecimal selectBySuccessTranAmount(@Param("successStage") TranStage successStage);
 
     BigDecimal selectByTotalTranAmount();
 
     int selectByTotalTranCount();
 
-    int selectBySuccessTranCount();
+    int selectBySuccessTranCount(@Param("successStage") TranStage successStage);
     
     /**
      * 根据查询条件查询交易列表

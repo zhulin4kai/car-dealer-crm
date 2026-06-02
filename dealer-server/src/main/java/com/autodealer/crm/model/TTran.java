@@ -1,5 +1,6 @@
 package com.autodealer.crm.model;
 
+import com.autodealer.crm.enums.TranStage;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
@@ -44,7 +45,7 @@ public class TTran implements Serializable {
     /**
      * 交易所处阶段
      */
-    private Integer stage;
+    private TranStage stage;
 
     /**
      * 交易描述

@@ -1,5 +1,6 @@
 package com.autodealer.crm.query;
 
+import com.autodealer.crm.enums.TranStage;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,7 +22,7 @@ public class TranQuery extends BaseQuery {
     private String customerName;
     
     /** 交易阶段 */
-    private Integer stage;
+    private TranStage stage;
     
     /** 交易金额范围-最小值 */
     private BigDecimal minMoney;
