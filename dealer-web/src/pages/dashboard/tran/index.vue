@@ -1,220 +1,244 @@
 <template>
-  <div class="tran-container">
-    <!-- 搜索栏 -->
-    <el-card class="search-card">
-      <el-form :inline="true" :model="searchForm" class="demo-form-inline">
-        <el-form-item label="交易编号">
-          <el-input v-model="searchForm.tranNo" @keyup.enter="handleSearch" placeholder="请输入交易编号" clearable style="width: 200px;" />
-        </el-form-item>
-        <el-form-item label="客户名称">
-          <el-input v-model="searchForm.customerName" @keyup.enter="handleSearch" placeholder="请输入客户名称" clearable style="width: 200px;" />
-        </el-form-item>        <el-form-item label="交易状态">
-          <el-select v-model="searchForm.stage" @keyup.enter="handleSearch" placeholder="请选择状态" clearable style="width: 200px;">
-            <el-option
-              v-for="option in TRAN_STAGE_OPTIONS"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            />
-          </el-select>
-        </el-form-item><el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button type="success" @click="handleAdd">新增交易</el-button>
-          <el-button type="danger" @click="handleBatchDelete" :disabled="selectedIds.length === 0">批量删除</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+  <div class="p-5">
+    <!-- Search Bar -->
+    <Card class="mb-5">
+      <CardContent class="pt-6">
+        <div class="flex flex-nowrap items-center gap-4">
+          <div class="flex items-center gap-2 shrink-0">
+            <Label class="whitespace-nowrap">交易编号</Label>
+            <Input v-model="searchForm.tranNo" @keyup.enter="handleSearch" placeholder="请输入交易编号" class="w-[200px]" />
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <Label class="whitespace-nowrap">客户名称</Label>
+            <Input v-model="searchForm.customerName" @keyup.enter="handleSearch" placeholder="请输入客户名称" class="w-[200px]" />
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <Label class="whitespace-nowrap">交易状态</Label>
+            <Select v-model="searchForm.stage">
+              <SelectTrigger class="w-[200px]" @keyup.enter="handleSearch">
+                <SelectValue placeholder="请选择状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="option in TRAN_STAGE_OPTIONS" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <Button @click="handleSearch">查询</Button>
+            <Button variant="secondary" @click="handleAdd">新增交易</Button>
+            <Button variant="destructive" @click="handleBatchDelete" :disabled="selectedIds.length === 0">批量删除</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
-    <!-- 数据表格 -->
-    <el-card class="table-card">      
-      <el-table :data="tableData" style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
-        <el-table-column 
-          type="selection" 
-          width="55"
-        />
-        <el-table-column 
-          type="index" 
-          label="序号" 
-          width="80"
-          :index="startIndex"
-        />
-        <el-table-column prop="tranNo" label="交易编号" show-overflow-tooltip />
-        <el-table-column prop="customerName" label="客户名称" show-overflow-tooltip />
-        <el-table-column prop="amount" label="交易金额" show-overflow-tooltip>
-          <template #default="scope">
-            <span v-if="scope.row.stage === TRAN_STAGE.QUOTATION">?</span>
-            <span v-else>¥{{ scope.row.amount }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" show-overflow-tooltip>
-          <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.stage)">
-              {{ getStatusText(scope.row.stage) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" show-overflow-tooltip />        <el-table-column label="操作" show-overflow-tooltip>
-          <template #default="scope">
-            <div class="operation-buttons">
-              <el-button @click="handleView(scope.row)">查看</el-button>
-              <el-button 
-                type="primary" 
-                @click="handleEdit(scope.row)"
-                v-if="scope.row.stage === TRAN_STAGE.QUOTATION"
-              >编辑</el-button>
-              <el-button 
-                type="success" 
-                @click="handleApprove(scope.row)"
-                v-if="scope.row.stage === TRAN_STAGE.PENDING"
-              >审批</el-button>              <el-button 
-                type="warning" 
-                @click="handleInvoice(scope.row)"
-                v-if="scope.row.stage === TRAN_STAGE.APPROVED"
-              >开票</el-button>
-              <el-button 
-                type="danger" 
-                @click="handleDelete(scope.row.id)"
-                v-if="scope.row.stage === TRAN_STAGE.QUOTATION"
-              >删除</el-button>
-            </div>
-          </template>
-        </el-table-column></el-table>
-    </el-card>
-    
-    <!-- 分页 -->
-    <el-pagination
-        background
-        layout="prev, pager, next"
-        :page-size="pageSize"
-        :total="total"
-        @prev-click="handleCurrentChange"
-        @next-click="handleCurrentChange"
-        @current-change="handleCurrentChange"
-    />
-
-    <!-- 交易编辑Dialog -->
-    <el-dialog 
-      v-model="dialogVisible" 
-      :title="isEdit ? '编辑交易' : '新增交易'"
-      width="800px"
-      :before-close="handleDialogClose"
-    >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="120px"
-        class="tran-form"
-      >
-        <el-form-item label="客户名称" prop="customerId">
-          <el-select
-            v-model="form.customerId"
-            filterable
-            placeholder="请选择客户"
-            style="width: 100%"
-            @change="onCustomerChange"
-          >
-            <el-option
-              v-for="customer in customerOptions"
-              :key="customer.customerId"
-              :label="customer.customerName"
-              :value="customer.customerId"
-            />
-          </el-select>
-        </el-form-item>
-
-        <!-- 产品选择区域 -->
-        <div class="product-section">
-          <div 
-            v-for="(product, index) in form.products" 
-            :key="index" 
-            class="product-item"
-          >
-            <el-form-item 
-              :label="index === 0 ? '产品选择' : ''" 
-              :prop="`products.${index}.productId`"
-              :rules="{ required: true, message: '请选择产品', trigger: 'change' }"
-            >
-              <div class="product-row">
-                <el-select
-                  v-model="product.productId"
-                  filterable
-                  placeholder="请选择产品"
-                  style="width: 60%; margin-right: 10px;"
-                  @change="onProductChange(index, $event)"
-                >
-                  <el-option
-                    v-for="item in productOptions.list"
-                    :key="item.id"
-                    :label="`${item.name} (¥${item.price})`"
-                    :value="item.id"
+    <!-- Data Table -->
+    <Card class="mb-5">
+      <CardContent class="pt-6">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead class="w-[55px]">
+                <Checkbox
+                  :checked="isAllSelected"
+                  @update:checked="toggleSelectAll"
+                />
+              </TableHead>
+              <TableHead class="w-[80px]">序号</TableHead>
+              <TableHead>交易编号</TableHead>
+              <TableHead>客户名称</TableHead>
+              <TableHead>交易金额</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>创建时间</TableHead>
+              <TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <template v-if="loading">
+              <TableRow v-for="i in 5" :key="'skel-' + i">
+                <TableCell v-for="j in 8" :key="'skel-c-' + j"><Skeleton class="h-4 w-full" /></TableCell>
+              </TableRow>
+            </template>
+            <template v-else>
+              <TableRow v-for="(row, idx) in tableData" :key="row.id">
+                <TableCell>
+                  <Checkbox
+                    :checked="selectedIds.includes(row.id)"
+                    @update:checked="(v) => toggleRowSelection(row.id, v)"
                   />
-                </el-select>
-                
-                <el-input-number
+                </TableCell>
+                <TableCell>{{ startIndex(idx) }}</TableCell>
+                <TableCell class="truncate max-w-[200px]">{{ row.tranNo }}</TableCell>
+                <TableCell class="truncate max-w-[200px]">{{ row.customerName }}</TableCell>
+                <TableCell class="truncate max-w-[200px]">
+                  <span v-if="row.stage === TRAN_STAGE.QUOTATION">?</span>
+                  <span v-else>&yen;{{ row.amount }}</span>
+                </TableCell>
+                <TableCell>
+                  <Badge :class="getBadgeClass(row.stage)">
+                    {{ getStatusText(row.stage) }}
+                  </Badge>
+                </TableCell>
+                <TableCell class="truncate max-w-[200px]">{{ row.createTime }}</TableCell>
+                <TableCell>
+                  <div class="flex gap-1.5 justify-center flex-wrap">
+                    <Button variant="outline" size="sm" @click="handleView(row)">查看</Button>
+                    <Button
+                      v-if="row.stage === TRAN_STAGE.QUOTATION"
+                      size="sm"
+                      @click="handleEdit(row)"
+                    >编辑</Button>
+                    <Button
+                      v-if="row.stage === TRAN_STAGE.PENDING"
+                      variant="secondary"
+                      size="sm"
+                      @click="handleApprove(row)"
+                    >审批</Button>
+                    <Button
+                      v-if="row.stage === TRAN_STAGE.APPROVED"
+                      variant="outline"
+                      size="sm"
+                      @click="handleInvoice(row)"
+                    >开票</Button>
+                    <Button
+                      v-if="row.stage === TRAN_STAGE.QUOTATION"
+                      variant="destructive"
+                      size="sm"
+                      @click="handleDelete(row.id)"
+                    >删除</Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </template>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-center gap-2 mt-3">
+      <Button variant="outline" size="sm" @click="handleCurrentChange(currentPage - 1)" :disabled="currentPage <= 1">上一页</Button>
+      <span class="text-sm text-muted-foreground px-2">{{ currentPage }} / {{ Math.ceil(total / pageSize) || 1 }}</span>
+      <Button variant="outline" size="sm" @click="handleCurrentChange(currentPage + 1)" :disabled="currentPage >= Math.ceil(total / pageSize)">下一页</Button>
+    </div>
+
+    <!-- Transaction Edit Dialog -->
+    <Dialog v-model:open="dialogOpen">
+      <DialogContent class="max-w-[800px]" @update:open="(v) => { if (!v) handleDialogClose() }">
+        <DialogHeader>
+          <DialogTitle>{{ isEdit ? '编辑交易' : '新增交易' }}</DialogTitle>
+        </DialogHeader>
+
+        <form class="space-y-4 mt-4" @submit.prevent="onSubmit">
+          <!-- Customer -->
+          <div class="space-y-2">
+            <Label>客户名称</Label>
+            <Select v-model="values.customerId" @update:model-value="onCustomerChange">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择客户" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="customer in customerOptions" :key="customer.customerId" :value="customer.customerId">
+                  {{ customer.customerName }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.customerId" class="text-sm text-destructive">{{ errors.customerId }}</p>
+          </div>
+
+          <!-- Products -->
+          <div class="border rounded-md p-4 bg-muted/30 space-y-3">
+            <div v-for="(product, index) in values.products" :key="index" class="space-y-2">
+              <Label v-if="index === 0">产品选择</Label>
+              <div class="flex items-center gap-2">
+                <Select v-model="product.productId" @update:model-value="(v) => onProductChange(index, v)" class="flex-1">
+                  <SelectTrigger class="w-[60%]">
+                    <SelectValue placeholder="请选择产品" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="item in productOptions.list" :key="item.id" :value="item.id">
+                      {{ item.name }} (&yen;{{ item.price }})
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <NumberField
                   v-model="product.quantity"
                   :min="1"
                   :max="999"
-                  placeholder="数量"
-                  style="width: 25%; margin-right: 10px;"
-                />
-                
-                <el-button 
-                  v-if="form.products.length > 1"
-                  type="danger" 
-                  size="small" 
-                  @click="removeProduct(index)"
-                  style="width: 10%;"
+                  class="w-[25%]"
                 >
-                  删除
-                </el-button>
+                  <NumberFieldContent>
+                    <NumberFieldDecrement />
+                    <NumberFieldInput placeholder="数量" />
+                    <NumberFieldIncrement />
+                  </NumberFieldContent>
+                </NumberField>
+
+                <Button
+                  v-if="values.products.length > 1"
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  @click="removeProduct(index)"
+                  class="w-[10%]"
+                >删除</Button>
               </div>
-            </el-form-item>
+              <p v-if="errors[`products.${index}.productId`]" class="text-sm text-destructive">{{ errors[`products.${index}.productId`] }}</p>
+            </div>
+
+            <Button type="button" variant="outline" @click="addProduct">追加商品</Button>
           </div>
-          
-          <el-form-item>
-            <el-button type="primary" plain @click="addProduct">追加商品</el-button>
-          </el-form-item>
-        </div>
 
-        <el-form-item label="交易描述" prop="description">
-          <el-input
-            v-model="form.description"
-            type="textarea"
-            rows="4"
-            placeholder="请输入交易描述"
-          />
-        </el-form-item>
+          <!-- Description -->
+          <div class="space-y-2">
+            <Label>交易描述</Label>
+            <Textarea v-model="values.description" :rows="4" placeholder="请输入交易描述" />
+          </div>
 
-        <el-form-item label="预计交付日期" prop="expectedDeliveryDate">
-          <el-date-picker
-            v-model="form.expectedDeliveryDate"
-            type="date"
-            placeholder="选择日期"
-            style="width: 100%"
-          />
-        </el-form-item>
-      </el-form>
+          <!-- Expected Delivery Date -->
+          <div class="space-y-2">
+            <Label>预计交付日期</Label>
+            <Input type="date" v-model="values.expectedDeliveryDate" class="w-full" />
+            <p v-if="errors.expectedDeliveryDate" class="text-sm text-destructive">{{ errors.expectedDeliveryDate }}</p>
+          </div>
+        </form>
 
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="handleDialogClose">取消</el-button>
-          <el-button type="primary" @click="submitForm">保存</el-button>
-        </div>
-      </template>
-    </el-dialog>
-    
+        <DialogFooter>
+          <Button variant="outline" type="button" @click="handleDialogClose">取消</Button>
+          <Button @click="onSubmit" :disabled="isSubmitting">保存</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
 import { getTranList, updateTran, createTran, getTranDetail, getTranProducts, deleteTran, batchDeleteTran } from '@/modules/tran/api/tran-api'
 import { getProductList } from '@/modules/product/api/product-api'
 import { getCustomerOptions } from '@/modules/customer/api/customer-api'
 import { TRAN_STAGE, TRAN_STAGE_OPTIONS, getTranStageText, getTranStageType, normalizeTranStage } from '@/modules/tran/model/tran-stage'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { messageTip, messageConfirm } from '@/shared/utils/feedback'
 import { useRouter } from 'vue-router'
+
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import { NumberField, NumberFieldContent, NumberFieldInput, NumberFieldIncrement, NumberFieldDecrement } from '@/components/ui/number-field'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const router = useRouter()
 const loading = ref(false)
@@ -224,10 +248,9 @@ const pageSize = ref(10)
 const total = ref(0)
 const selectedIds = ref([])
 
-// 对话框相关
-const dialogVisible = ref(false)
+// Dialog state
+const dialogOpen = ref(false)
 const isEdit = ref(false)
-const formRef = ref()
 const productOptions = reactive({
   list: []
 })
@@ -240,37 +263,70 @@ const searchForm = reactive({
   stage: ''
 })
 
-// 表单数据
-const form = reactive({
-  id: null, // 添加id字段用于编辑
-  customerId: null,
-  customerName: '',
-  amount: 0,
-  products: [
-    {
-      productId: null,
-      quantity: 1,
-      price: 0
-    }
-  ],
-  description: '',
-  expectedDeliveryDate: ''
+// Form schema
+const tranSchema = toTypedSchema(z.object({
+  customerId: z.string().min(1, '请选择客户'),
+  description: z.string().optional().default(''),
+  expectedDeliveryDate: z.string().min(1, '请选择预计交付日期'),
+  products: z.array(z.object({
+    productId: z.string().min(1, '请选择产品'),
+    quantity: z.number().min(1, '数量至少为1').max(999),
+    price: z.number().min(0),
+  })).min(1),
+}))
+
+const { handleSubmit, errors, values, isSubmitting, setFieldValue, resetForm, setValues } = useForm({
+  validationSchema: tranSchema,
+  initialValues: {
+    customerId: '',
+    description: '',
+    expectedDeliveryDate: '',
+    products: [{ productId: '', quantity: 1, price: 0 }],
+  },
 })
 
-// 表单验证规则
-const rules = reactive({
-  customerId: [
-    { required: true, message: '请选择客户', trigger: 'change' }
-  ],
-  expectedDeliveryDate: [
-    { required: true, message: '请选择预计交付日期', trigger: 'change' }
-  ]
-})
+// Internal edit ID (not in form schema)
+let editId = null
 
 const getStatusType = getTranStageType
 const getStatusText = getTranStageText
 
-// 获取交易列表
+// Badge class mapping
+const getBadgeClass = (stage) => {
+  const type = getStatusType(stage)
+  switch (type) {
+    case 'success': return 'bg-green-600 text-white'
+    case 'warning': return 'bg-yellow-600 text-white'
+    case 'danger': return 'bg-red-600 text-white'
+    case 'info': return ''
+    default: return ''
+  }
+}
+
+// Selection helpers
+const isAllSelected = computed(() => {
+  return tableData.value.length > 0 && selectedIds.value.length === tableData.value.length
+})
+
+const toggleSelectAll = (checked) => {
+  if (checked) {
+    selectedIds.value = tableData.value.map(item => item.id)
+  } else {
+    selectedIds.value = []
+  }
+}
+
+const toggleRowSelection = (id, checked) => {
+  if (checked) {
+    if (!selectedIds.value.includes(id)) {
+      selectedIds.value.push(id)
+    }
+  } else {
+    selectedIds.value = selectedIds.value.filter(i => i !== id)
+  }
+}
+
+// Fetch transaction list
 const fetchData = async () => {
   loading.value = true
   try {
@@ -284,173 +340,143 @@ const fetchData = async () => {
       tableData.value = res.list.map(item => ({
         id: item.id,
         tranNo: item.tranNo,
-        customerName: `${item.customerName}`, 
+        customerName: `${item.customerName}`,
         amount: item.money,
         stage: normalizeTranStage(item.stage),
         createTime: item.createTime
       }))
       total.value = res.total
     } else {
-      ElMessage.error('请求失败' || '获取数据失败')
+      messageTip('请求失败', 'error')
     }
   } catch (error) {
     console.error('获取交易列表失败:', error)
-    ElMessage.error('获取数据失败')
+    messageTip('获取数据失败', 'error')
   } finally {
     loading.value = false
   }
 }
 
-// 搜索
+// Search
 const handleSearch = () => {
   currentPage.value = 1
   fetchData()
 }
 
-// 表格选择变化
-const handleSelectionChange = (selection) => {
-  selectedIds.value = selection.map(item => item.id)
-}
-
-// 单个删除
+// Single delete
 const handleDelete = async (id) => {
   try {
-    await ElMessageBox.confirm(
-      '您确定要删除该交易吗？',
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-    
+    await messageConfirm('您确定要删除该交易吗？')
+
     const res = await deleteTran(id)
     if (true) {
-      ElMessage.success('删除成功')
+      messageTip('删除成功', 'success')
       fetchData()
     } else {
-      ElMessage.error('请求失败' || '删除失败')
+      messageTip('请求失败', 'error')
     }
   } catch (error) {
-    if (error !== 'cancel') {
+    if (error.message !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      messageTip('删除失败', 'error')
     }
   }
 }
 
-// 批量删除
+// Batch delete
 const handleBatchDelete = async () => {
   if (selectedIds.value.length === 0) {
-    ElMessage.warning('请选择要删除的交易')
+    messageTip('请选择要删除的交易', 'warning')
     return
   }
 
   try {
-    await ElMessageBox.confirm(
-      `您确定要删除选中的 ${selectedIds.value.length} 条交易吗？`,
-      '确认批量删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-    
+    await messageConfirm(`您确定要删除选中的 ${selectedIds.value.length} 条交易吗？`)
+
     const res = await batchDeleteTran(selectedIds.value)
     if (true) {
-      ElMessage.success(`成功删除 ${selectedIds.value.length} 条交易`)
+      messageTip(`成功删除 ${selectedIds.value.length} 条交易`, 'success')
       selectedIds.value = []
       fetchData()
     } else {
-      ElMessage.error('请求失败' || '批量删除失败')
+      messageTip('请求失败', 'error')
     }
   } catch (error) {
-    if (error !== 'cancel') {
+    if (error.message !== 'cancel') {
       console.error('批量删除失败:', error)
-      ElMessage.error('批量删除失败')
+      messageTip('批量删除失败', 'error')
     }
   }
 }
 
-// 新增交易
+// Add transaction
 const handleAdd = () => {
   isEdit.value = false
-  resetForm()
-  dialogVisible.value = true
+  editId = null
+  resetFormState()
+  dialogOpen.value = true
   loadCustomers()
   loadProducts()
 }
 
-// 编辑交易
+// Edit transaction
 const handleEdit = (row) => {
   isEdit.value = true
-  resetForm()
-  dialogVisible.value = true
+  editId = row.id
+  resetFormState()
+  dialogOpen.value = true
   loadCustomers()
   loadProducts()
-  // 存储当前编辑的交易ID
-  form.id = row.id
   setTimeout(() => {
     fetchTranDetail(row.id)
   }, 100)
 }
 
-// 重置表单
-const resetForm = () => {
-  form.id = null
-  form.customerId = null
-  form.customerName = ''
-  form.amount = 0
-  form.products = [{
-    productId: null,
-    quantity: 1,
-    price: 0
-  }]
-  form.description = ''
-  form.expectedDeliveryDate = ''
-}
-
-// 关闭Dialog
-const handleDialogClose = () => {
-  dialogVisible.value = false
+// Reset form state
+const resetFormState = () => {
+  editId = null
   resetForm()
 }
 
-// 添加产品
+// Close Dialog
+const handleDialogClose = () => {
+  dialogOpen.value = false
+  resetFormState()
+}
+
+// Add product row
 const addProduct = () => {
-  form.products.push({
-    productId: null,
+  values.products.push({
+    productId: '',
     quantity: 1,
     price: 0
   })
 }
 
-// 删除产品
+// Remove product row
 const removeProduct = (index) => {
-  if (form.products.length > 1) {
-    form.products.splice(index, 1)
+  if (values.products.length > 1) {
+    values.products.splice(index, 1)
   }
 }
 
-// 客户选择变化时更新客户名称
+// Customer selection change - update customerName
 const onCustomerChange = (customerId) => {
   const selectedCustomer = customerOptions.value.find(c => c.customerId === customerId)
   if (selectedCustomer) {
-    form.customerName = selectedCustomer.customerName
+    setFieldValue('customerName', selectedCustomer.customerName)
   }
 }
 
-// 产品选择变化时更新价格
+// Product selection change - update price
 const onProductChange = (index, productId) => {
   const selectedProduct = productOptions.list.find(p => p.id === productId)
   if (selectedProduct) {
-    form.products[index].price = selectedProduct.price
+    setFieldValue(`products.${index}.price`, selectedProduct.price)
   }
 }
 
-// 加载客户选项
+// Load customer options
 const loadCustomers = async () => {
   try {
     const res = await getCustomerOptions()
@@ -458,11 +484,11 @@ const loadCustomers = async () => {
       customerOptions.value = res
     }
   } catch (error) {
-    ElMessage.error('加载客户列表失败')
+    messageTip('加载客户列表失败', 'error')
   }
 }
 
-// 加载产品列表
+// Load product list
 const loadProducts = async () => {
   try {
     const res = await getProductList({
@@ -473,108 +499,100 @@ const loadProducts = async () => {
       productOptions.list = res.list
     }
   } catch (error) {
-    ElMessage.error('加载产品列表失败')
+    messageTip('加载产品列表失败', 'error')
   }
 }
 
-// 获取交易详情
+// Fetch transaction detail for editing
 const fetchTranDetail = async (id) => {
   try {
     const res = await getTranDetail(id)
     if (true) {
       const data = res
-      form.customerId = data.customerId
-      form.customerName = data.customerName || ''
-      form.amount = data.money || data.amount || 0
-      form.description = data.description || ''
-      
-      if (data.expectedDate) {
-        form.expectedDeliveryDate = new Date(data.expectedDate)
-      }
-      
-      // 获取产品详情
+      editId = data.id || id
+      setValues({
+        customerId: data.customerId || '',
+        description: data.description || '',
+        expectedDeliveryDate: data.expectedDate ? new Date(data.expectedDate).toISOString().split('T')[0] : '',
+        products: [],
+      })
+      // Set customerName via setFieldValue
+      setFieldValue('customerName', data.customerName || '')
+
+      // Fetch product details
       const productRes = await getTranProducts(id)
       if (true && productRes.length > 0) {
-        form.products = productRes.map(item => ({
+        setFieldValue('products', productRes.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
           price: item.price
-        }))
+        })))
       }
     } else {
-      ElMessage.error('请求失败' || '获取交易详情失败')
+      messageTip('请求失败', 'error')
     }
   } catch (error) {
     console.error('获取交易详情失败:', error)
-    ElMessage.error('获取交易详情失败')
+    messageTip('获取交易详情失败', 'error')
   }
 }
 
-// 提交表单
-const submitForm = async () => {
-  if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        // 验证产品选择
-        const hasEmptyProduct = form.products.some(p => !p.productId)
-        if (hasEmptyProduct) {
-          ElMessage.error('请选择所有产品')
-          return
-        }
-          // 格式化数据
-        const formData = {
-          id: isEdit.value ? form.id : undefined,
-          customerId: form.customerId,
-          customerName: form.customerName,
-          amount: form.amount,
-          products: form.products.map(p => ({
-            productId: p.productId,
-            quantity: p.quantity,
-            price: p.price
-          })),
-          description: form.description,
-          expectedDeliveryDate: form.expectedDeliveryDate ? 
-            new Date(form.expectedDeliveryDate).toISOString().split('T')[0] + ' 00:00:00' : null
-        }
-        let res
-        if (isEdit.value) {
-          res = await updateTran(formData)
-        } else {
-          res = await createTran(formData)
-        }
-        if (true) {
-          ElMessage.success('保存成功')
-          dialogVisible.value = false
-          resetForm()
-          fetchData()
-        } else {
-          ElMessage.error('请求失败' || '保存失败')
-        }
-      } catch (error) {
-        console.error('保存失败:', error)
-        ElMessage.error('保存失败')
-      }
+// Submit form
+const onSubmit = handleSubmit(async () => {
+  try {
+    // Format data for API
+    const customerName = (values as Record<string, unknown>).customerName as string || ''
+    const formData = {
+      id: isEdit.value ? editId : undefined,
+      customerId: values.customerId,
+      customerName,
+      amount: 0,
+      products: values.products.map(p => ({
+        productId: p.productId,
+        quantity: p.quantity,
+        price: p.price
+      })),
+      description: values.description,
+      expectedDeliveryDate: values.expectedDeliveryDate ?
+        values.expectedDeliveryDate + ' 00:00:00' : null
     }
-  })
-}
+    let res
+    if (isEdit.value) {
+      res = await updateTran(formData)
+    } else {
+      res = await createTran(formData)
+    }
+    if (true) {
+      messageTip('保存成功', 'success')
+      dialogOpen.value = false
+      resetFormState()
+      fetchData()
+    } else {
+      messageTip('请求失败', 'error')
+    }
+  } catch (error) {
+    console.error('保存失败:', error)
+    messageTip('保存失败', 'error')
+  }
+})
 
-// 查看详情
+// View detail
 const handleView = (row) => {
   router.push(`/dashboard/tran/${row.id}`)
 }
 
-// 审批交易
+// Approve transaction
 const handleApprove = (row) => {
   router.push(`/dashboard/tran/approve/${row.id}`)
 }
 
-// 开具发票
+// Invoice transaction
 const handleInvoice = (row) => {
   router.push(`/dashboard/tran/invoice/${row.id}`)
 }
 
 const handleCurrentChange = (val) => {
+  if (val < 1 || val > Math.ceil(total.value / pageSize.value)) return
   currentPage.value = val
   fetchData()
 }
@@ -587,109 +605,3 @@ onMounted(() => {
   fetchData()
 })
 </script>
-
-<style scoped>
-.tran-container {
-  padding: 20px;
-}
-
-.search-card {
-  margin-bottom: 20px;
-}
-
-.demo-form-inline {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-}
-
-.demo-form-inline .el-form-item {
-  margin-right: 15px;
-  margin-bottom: 0;
-  flex-shrink: 0;
-}
-
-.demo-form-inline .el-form-item:last-child {
-  margin-right: 0;
-  margin-left: 0;
-}
-
-.table-card {
-  margin-bottom: 20px;
-}
-
-.el-table {
-  margin-top: 12px;
-}
-
-.el-pagination {
-  margin-top: 12px;
-}
-
-.product-section {
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  padding: 15px;
-  margin-bottom: 20px;
-  background-color: #fafafa;
-}
-
-.product-item {
-  margin-bottom: 10px;
-}
-
-.product-row {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.tran-form {
-  margin-top: 20px;
-}
-
-.dialog-footer {
-  text-align: right;
-}
-
-.operation-buttons {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.operation-buttons .el-button {
-  margin: 0;
-  min-width: 52px;
-}
-
-:deep(.el-table) {
-  width: 100% !important;
-}
-
-:deep(.el-form-item) {
-  margin-bottom: 22px;
-  width: 100%;
-}
-
-:deep(.demo-form-inline .el-form-item) {
-  margin-bottom: 0 !important;
-  width: auto !important;
-}
-
-:deep(.demo-form-inline .el-form-item__label) {
-  white-space: nowrap;
-}
-
-:deep(.demo-form-inline .el-form-item__content) {
-  flex-shrink: 0;
-}
-
-:deep(.el-select),
-:deep(.el-input),
-:deep(.el-input-number),
-:deep(.el-date-picker) {
-  width: 100%;
-}
-</style> 

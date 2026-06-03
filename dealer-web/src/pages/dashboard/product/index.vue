@@ -1,137 +1,279 @@
 <template>
-  <div class="product-container">
-    <el-card class="action-card">
-      <el-button type="primary" @click="handleAdd">新增产品</el-button>
-      <el-button type="success" @click="handleCategory">分类管理</el-button>
-      <el-button type="warning" @click="handlePromotion">促销设置</el-button>
-      <el-button type="danger" @click="handleStockAlert">库存预警</el-button>
-    </el-card>
+  <div class="p-5 space-y-5">
+    <Card>
+      <CardContent class="flex gap-2.5 pt-6">
+        <Button @click="handleAdd">新增产品</Button>
+        <Button variant="secondary" @click="handleCategory">分类管理</Button>
+        <Button variant="outline" @click="handlePromotion">促销设置</Button>
+        <Button variant="destructive" @click="handleStockAlert">库存预警</Button>
+      </CardContent>
+    </Card>
 
-    <el-card class="table-card">
-      <el-table
-        :data="productList"
-        style="width: 100%"
-        @selection-change="handleSelectionChange"
-        v-loading="loading"
-        element-loading-text="加载中..."
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="60" :index="startIndex" />
-        <el-table-column prop="sku" label="SKU" show-overflow-tooltip />
-        <el-table-column prop="name" label="产品名称" show-overflow-tooltip />
-        <el-table-column prop="category" label="分类" show-overflow-tooltip />
-        <el-table-column prop="specification" label="规格" show-overflow-tooltip />
-        <el-table-column prop="price" label="价格" show-overflow-tooltip>
-          <template #default="scope">
-            ¥{{ scope.row.price.toFixed(2) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="stock" label="库存" show-overflow-tooltip>
-          <template #default="scope">
-            <span :class="{ 'stock-warning': scope.row.stock < scope.row.minStock }">
-              {{ scope.row.stock }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" show-overflow-tooltip>
-          <template #default="scope">
-            <el-tag :type="scope.row.status === '上架' ? 'success' : 'info'">
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" show-overflow-tooltip>
-          <template #default="scope">
-            <el-button type="success" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    <Card>
+      <CardContent class="pt-6">
+        <div v-if="loading" class="py-10 text-center text-muted-foreground">加载中...</div>
+        <Table v-else>
+          <TableHeader>
+            <TableRow>
+              <TableHead class="w-[55px]">
+                <Checkbox :checked="allSelected" @update:checked="toggleSelectAll" />
+              </TableHead>
+              <TableHead class="w-[60px]">序号</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead>产品名称</TableHead>
+              <TableHead>分类</TableHead>
+              <TableHead>规格</TableHead>
+              <TableHead>价格</TableHead>
+              <TableHead>库存</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="(row, idx) in productList" :key="row.id ?? idx">
+              <TableCell>
+                <Checkbox
+                  :checked="selectedIds.includes(row.id)"
+                  @update:checked="(checked: boolean) => handleRowSelect(row.id, checked)"
+                />
+              </TableCell>
+              <TableCell>{{ startIndex(idx) }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.sku }}</TableCell>
+              <TableCell class="truncate max-w-[200px]">{{ row.name }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.category }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.specification }}</TableCell>
+              <TableCell>¥{{ row.price.toFixed(2) }}</TableCell>
+              <TableCell>
+                <span :class="{ 'text-red-500 font-bold': row.stock < row.minStock }">
+                  {{ row.stock }}
+                </span>
+              </TableCell>
+              <TableCell>
+                <Badge :class="row.status === '上架' ? 'bg-green-600 text-white' : ''" :variant="row.status === '上架' ? undefined : 'outline'">
+                  {{ row.status }}
+                </Badge>
+              </TableCell>
+              <TableCell class="flex gap-2">
+                <Button variant="secondary" size="sm" @click="handleEdit(row)">编辑</Button>
+                <Button variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
 
-    <el-pagination
-      background
-      layout="prev, pager, next"
+    <DataTablePagination
       :page-size="pageSize"
       :total="total"
-      @prev-click="handleCurrentChange"
-      @next-click="handleCurrentChange"
-      @current-change="handleCurrentChange"
-      style="margin-top: 12px; width: 100%;"
+      @change="handleCurrentChange"
     />
 
     <!-- 产品表单对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogType === 'add' ? '新增产品' : '编辑产品'"
-      width="30%"
-    >
-      <el-form :model="productForm" label-width="100px" :rules="productRules" ref="productFormRef">
-        <el-form-item label="SKU" prop="sku">
-          <el-input v-model="productForm.sku" />
-        </el-form-item>
-        <el-form-item label="产品名称" prop="name">
-          <el-input v-model="productForm.name" />
-        </el-form-item>
-        <el-form-item label="分类" prop="category">
-          <el-select v-model="productForm.category" placeholder="请选择分类">
-            <el-option
-              v-for="item in categoryOptions.list"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="规格">
-          <el-input v-model="productForm.specification" />
-        </el-form-item>
-        <el-form-item label="价格" prop="price">
-          <el-input-number v-model="productForm.price" :precision="2" :step="0.1" :min="0.01" />
-        </el-form-item>
-        <el-form-item label="库存" prop="stock">
-          <el-input-number v-model="productForm.stock" :min="0" />
-        </el-form-item>
-        <el-form-item label="最低库存">
-          <el-input-number v-model="productForm.minStock" :min="0" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="productForm.status">
-            <el-option label="上架" value="上架" />
-            <el-option label="下架" value="下架" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <Dialog v-model:open="dialogVisible">
+      <DialogContent class="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{{ dialogType === 'add' ? '新增产品' : '编辑产品' }}</DialogTitle>
+        </DialogHeader>
+        <form class="space-y-4" @submit.prevent="onSubmit">
+          <div class="space-y-2">
+            <Label>SKU</Label>
+            <Input v-model="values.sku" />
+            <p v-if="errors.sku" class="text-sm text-destructive">{{ errors.sku }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>产品名称</Label>
+            <Input v-model="values.name" />
+            <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>分类</Label>
+            <Select v-model="values.category">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择分类" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="item in categoryOptions.list"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.category" class="text-sm text-destructive">{{ errors.category }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>规格</Label>
+            <Input v-model="values.specification" />
+          </div>
+          <div class="space-y-2">
+            <Label>价格</Label>
+            <NumberField v-model="values.price" :min="0.01" :step="0.1">
+              <NumberFieldContent>
+                <NumberFieldDecrement />
+                <NumberFieldInput />
+                <NumberFieldIncrement />
+              </NumberFieldContent>
+            </NumberField>
+            <p v-if="errors.price" class="text-sm text-destructive">{{ errors.price }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>库存</Label>
+            <NumberField v-model="values.stock" :min="0">
+              <NumberFieldContent>
+                <NumberFieldDecrement />
+                <NumberFieldInput />
+                <NumberFieldIncrement />
+              </NumberFieldContent>
+            </NumberField>
+            <p v-if="errors.stock" class="text-sm text-destructive">{{ errors.stock }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>最低库存</Label>
+            <NumberField v-model="values.minStock" :min="0">
+              <NumberFieldContent>
+                <NumberFieldDecrement />
+                <NumberFieldInput />
+                <NumberFieldIncrement />
+              </NumberFieldContent>
+            </NumberField>
+          </div>
+          <div class="space-y-2">
+            <Label>状态</Label>
+            <Select v-model="values.status">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="上架">上架</SelectItem>
+                <SelectItem value="下架">下架</SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.status" class="text-sm text-destructive">{{ errors.status }}</p>
+          </div>
+        </form>
+        <DialogFooter>
+          <Button variant="outline" @click="dialogVisible = false">取消</Button>
+          <Button @click="onSubmit">确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
 import { messageTip, messageConfirm } from '@/shared/utils/legacy-util'
 import { useRouter } from 'vue-router'
-import { 
-  getProductList, 
-  createProduct, 
-  updateProduct, 
+import {
+  getProductList,
+  createProduct,
+  updateProduct,
   deleteProduct,
   getCategoryList
 } from '@/modules/product/api/product-api'
+import type { Product } from '@/modules/product/model/product.types'
+import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  NumberField,
+  NumberFieldContent,
+  NumberFieldDecrement,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/components/ui/number-field'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const router = useRouter()
-const productFormRef = ref(null)
 const productList = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogType = ref('add')
+const categoryOptions = reactive({
+  list: []
+})
+
+const selectedIds = ref<(number | string)[]>([])
+
+const allSelected = computed(() =>
+  productList.value.length > 0 && selectedIds.value.length === productList.value.length
+)
+
+function toggleSelectAll(checked: boolean) {
+  selectedIds.value = checked ? productList.value.map((r: Product) => r.id) : []
+  handleSelectionChange(selectedIds.value)
+}
+
+function handleRowSelect(id: number | string, checked: boolean) {
+  if (checked) {
+    selectedIds.value.push(id)
+  } else {
+    selectedIds.value = selectedIds.value.filter((v: number | string) => v !== id)
+  }
+  handleSelectionChange(selectedIds.value)
+}
+
+// zod schema for form validation
+const productSchema = toTypedSchema(z.object({
+  sku: z.string().min(1, '请输入SKU'),
+  name: z.string().min(1, '请输入产品名称'),
+  category: z.string().min(1, '请选择分类'),
+  specification: z.string().optional(),
+  price: z.number().min(0.01, '请输入价格'),
+  stock: z.number().min(0, '请输入库存'),
+  minStock: z.number().min(0).optional(),
+  status: z.string().min(1, '请选择状态'),
+}))
+
+const { handleSubmit, errors, values, setValues, resetForm } = useForm({
+  validationSchema: productSchema,
+  initialValues: {
+    sku: '',
+    name: '',
+    category: '',
+    specification: '',
+    price: 0,
+    stock: 0,
+    minStock: 0,
+    status: '上架'
+  },
+})
+
 const productForm = ref({
   sku: '',
   name: '',
@@ -142,31 +284,6 @@ const productForm = ref({
   minStock: 0,
   status: '上架'
 })
-const categoryOptions = reactive({
-  list: []
-})
-
-// 表单校验规则
-const productRules = {
-  sku: [
-    { required: true, message: '请输入SKU', trigger: 'blur' }
-  ],
-  name: [
-    { required: true, message: '请输入产品名称', trigger: 'blur' }
-  ],
-  category: [
-    { required: true, message: '请选择分类', trigger: 'change' }
-  ],
-  price: [
-    { required: true, message: '请输入价格', trigger: 'blur' }
-  ],
-  stock: [
-    { required: true, message: '请输入库存', trigger: 'blur' }
-  ],
-  status: [
-    { required: true, message: '请选择状态', trigger: 'change' }
-  ]
-}
 
 const loadCategoryOptions = async () => {
   try {
@@ -180,14 +297,18 @@ const loadCategoryOptions = async () => {
 // 加载产品列表
 const loadProducts = async () => {
   try {
+    loading.value = true
     const res = await getProductList({
       page: currentPage.value,
       size: pageSize.value
     })
     productList.value = res.list
     total.value = res.total
+    selectedIds.value = []
   } catch (error) {
     messageTip('加载产品列表失败', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -205,6 +326,8 @@ const handleAdd = async () => {
     minStock: 0,
     status: '上架'
   }
+  resetForm()
+  setValues(productForm.value)
   dialogVisible.value = true
 }
 
@@ -213,6 +336,7 @@ const handleEdit = async (row) => {
   await loadCategoryOptions()
   dialogType.value = 'edit'
   productForm.value = { ...row }
+  setValues(productForm.value)
   dialogVisible.value = true
 }
 
@@ -231,18 +355,13 @@ const handleDelete = async (row) => {
 }
 
 // 处理提交
-const handleSubmit = async () => {
-  if (!productFormRef.value) return
-  
+const onSubmit = handleSubmit(async (formValues) => {
   try {
-    const valid = await productFormRef.value.validate()
-    if (!valid) return
-    
     if (dialogType.value === 'add') {
-      await createProduct(productForm.value)
+      await createProduct(formValues)
       messageTip('新增成功', 'success')
     } else {
-      await updateProduct(productForm.value.id, productForm.value)
+      await updateProduct(productForm.value.id, formValues)
       messageTip('编辑成功', 'success')
     }
     dialogVisible.value = false
@@ -250,7 +369,7 @@ const handleSubmit = async () => {
   } catch (error) {
     messageTip('操作失败', 'error')
   }
-}
+})
 
 // 处理分类管理
 const handleCategory = () => {
@@ -286,40 +405,3 @@ onMounted(() => {
   loadProducts()
 })
 </script>
-
-<style scoped>
-.product-container {
-  padding: 20px;
-}
-
-.action-card {
-  margin-bottom: 20px;
-}
-
-.table-card {
-  margin-bottom: 20px;
-}
-
-.el-pagination {
-  margin-top: 12px;
-  width: 100%;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.stock-warning {
-  color: #f56c6c;
-}
-
-:deep(.el-table) {
-  width: 100% !important;
-}
-
-:deep(.el-form-item) {
-  margin-bottom: 18px;
-}
-</style> 

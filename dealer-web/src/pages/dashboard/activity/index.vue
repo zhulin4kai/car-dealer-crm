@@ -1,226 +1,268 @@
 <template>
-  <el-card class="action-card">
-    <el-form :inline="true" :model="activityQuery" :rules="activityRules">
-      <el-form-item label="负责人">
-        <el-select
-            v-model="activityQuery.ownerId"
-            placeholder="请选择负责人"
-            @click="loadOwner"
-            clearable
-            style="width: 150px;"
-            >
-          <el-option
-              v-for="item in ownerOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"/>
-        </el-select>
-      </el-form-item>
+  <Card class="mb-5">
+    <CardContent>
+      <div class="flex flex-wrap items-end gap-4 mb-5">
+        <div class="space-y-1">
+          <Label>负责人</Label>
+          <Select v-model="activityQuery.ownerId" @update:model-value="loadOwner">
+            <SelectTrigger class="w-[150px]">
+              <SelectValue placeholder="请选择负责人" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <el-form-item label="活动名称">
-        <el-input v-model="activityQuery.name" placeholder="请输入活动名称" clearable />
-      </el-form-item>
+        <div class="space-y-1">
+          <Label>活动名称</Label>
+          <Input v-model="activityQuery.name" placeholder="请输入活动名称" class="w-[180px]" />
+        </div>
 
-      <el-form-item label="活动时间">
-        <el-date-picker
-            v-model="activityQuery.activityTime"
-            type="datetimerange"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            value-format="YYYY-MM-DD HH:mm:ss"/>
-      </el-form-item>
+        <div class="space-y-1">
+          <Label>活动时间</Label>
+          <div class="flex items-center gap-2">
+            <Input type="datetime-local" v-model="searchStartTime" class="w-[200px]" />
+            <span class="text-muted-foreground">至</span>
+            <Input type="datetime-local" v-model="searchEndTime" class="w-[200px]" />
+          </div>
+        </div>
 
-      <el-form-item label="活动最低预算" prop="cost">
-        <el-input v-model="activityQuery.cost" placeholder="请输入活动最低预算" clearable />
-      </el-form-item>
+        <div class="space-y-1">
+          <Label>活动最低预算</Label>
+          <Input v-model="activityQuery.cost" placeholder="请输入活动最低预算" class="w-[180px]" />
+        </div>
 
-      <el-form-item label="创建时间">
-        <el-date-picker
-            v-model="activityQuery.createTime"
-            type="datetime"
-            placeholder="请选择创建时间"
-            value-format="YYYY-MM-DD HH:mm:ss"/>
-      </el-form-item>
+        <div class="space-y-1">
+          <Label>创建时间</Label>
+          <Input type="datetime-local" v-model="activityQuery.createTime" class="w-[200px]" />
+        </div>
 
-      <el-form-item>
-        <el-button type="primary" @click="onSearch">搜 索</el-button>
-        <el-button type="primary" plain @click="onReset">重 置</el-button>
-      </el-form-item>
-    </el-form>
+        <div class="flex items-end gap-2">
+          <Button @click="onSearch">搜 索</Button>
+          <Button variant="outline" @click="onReset">重 置</Button>
+        </div>
+      </div>
 
-    <el-button type="primary" @click="add">录入市场活动</el-button>
-    <el-button type="danger" @click="batchDel">批量删除</el-button>
-  </el-card>
+      <div class="flex gap-2">
+        <Button @click="add">录入市场活动</Button>
+        <Button variant="destructive" @click="batchDel">批量删除</Button>
+      </div>
+    </CardContent>
+  </Card>
 
-  <el-card class="table-card">
-    <el-table
-        :data="activityList"
-        style="width: 100%"
-        @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55" />
-      <el-table-column type="index" label="序号" width="80" :index="startIndex" />
-      <el-table-column prop="ownerDO.name" label="负责人" width="100"/>
-      <el-table-column property="name" label="活动名称" width="150"/>
-      <el-table-column property="startTime" label="开始时间" show-overflow-tooltip/>
-      <el-table-column property="endTime" label="结束时间" show-overflow-tooltip/>
-      <el-table-column property="cost" label="活动预算" width="100"/>
-      <el-table-column property="createTime" label="创建时间" show-overflow-tooltip/>
-      <el-table-column label="操作" show-overflow-tooltip>
-        <template #default="scope">
-          <el-button type="primary" @click="view(scope.row.id)">详情</el-button>
-          <el-button type="success" @click="edit(scope.row.id)">编辑</el-button>
-          <el-button type="danger" @click="del(scope.row.id)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-  </el-card>
-  <el-pagination
-      background
-      layout="prev, pager, next"
-      :page-size="pageSize"
-      :total="total"
-      @prev-click="toPage"
-      @next-click="toPage"
-      @current-change="toPage"/>
+  <Card class="mb-5">
+    <CardContent>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead class="w-[55px]">
+              <Checkbox
+                :checked="isAllSelected"
+                @update:checked="toggleSelectAll"
+              />
+            </TableHead>
+            <TableHead class="w-[80px]">序号</TableHead>
+            <TableHead class="w-[100px]">负责人</TableHead>
+            <TableHead class="w-[150px]">活动名称</TableHead>
+            <TableHead>开始时间</TableHead>
+            <TableHead>结束时间</TableHead>
+            <TableHead class="w-[100px]">活动预算</TableHead>
+            <TableHead>创建时间</TableHead>
+            <TableHead>操作</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="(activity, index) in activityList" :key="activity.id">
+            <TableCell>
+              <Checkbox
+                :checked="selectedActivityIds.includes(activity.id)"
+                @update:checked="(checked: boolean) => toggleSelection(activity.id, checked)"
+              />
+            </TableCell>
+            <TableCell>{{ (currentPage - 1) * pageSize + index + 1 }}</TableCell>
+            <TableCell>{{ activity.ownerDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ activity.name }}</TableCell>
+            <TableCell class="truncate max-w-[180px]">{{ activity.startTime }}</TableCell>
+            <TableCell class="truncate max-w-[180px]">{{ activity.endTime }}</TableCell>
+            <TableCell>{{ activity.cost }}</TableCell>
+            <TableCell class="truncate max-w-[180px]">{{ activity.createTime }}</TableCell>
+            <TableCell>
+              <div class="flex gap-1">
+                <Button size="sm" @click="view(activity.id)">详情</Button>
+                <Button size="sm" variant="secondary" @click="edit(activity.id)">编辑</Button>
+                <Button size="sm" variant="destructive" @click="del(activity.id)">删除</Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
+
+  <DataTablePagination :page-size="pageSize" :total="total" @change="toPage" />
 
   <!-- 活动录入/编辑对话框 -->
-  <el-dialog 
-      v-model="activityDialogVisible" 
-      :title="dialogTitle" 
-      width="30%" 
-      center 
-      draggable
-      @close="resetActivityForm">
-    <el-form ref="activityFormRef" :model="activityForm" label-width="110px" :rules="activityFormRules">
-      <el-form-item label="负责人" prop="ownerId">
-        <el-select v-model="activityForm.ownerId" placeholder="请选择" style="width: 100%;">
-          <el-option
-              v-for="item in ownerOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"/>
-        </el-select>
-      </el-form-item>
+  <Dialog v-model:open="activityDialogVisible">
+    <DialogContent class="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>{{ dialogTitle }}</DialogTitle>
+      </DialogHeader>
 
-      <el-form-item label="活动名称" prop="name">
-        <el-input v-model="activityForm.name" placeholder="请输入活动名称" />
-      </el-form-item>
+      <form @submit.prevent="onSubmitForm" class="space-y-4">
+        <div class="space-y-2">
+          <Label>负责人</Label>
+          <Select v-model="values.ownerId">
+            <SelectTrigger class="w-full">
+              <SelectValue placeholder="请选择" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
+                {{ item.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p v-if="errors.ownerId" class="text-sm text-destructive">{{ errors.ownerId }}</p>
+        </div>
 
-      <el-form-item label="开始时间" prop="startTime">
-        <el-date-picker
-            v-model="activityForm.startTime"
-            type="datetime"
-            placeholder="请选择开始时间"
-            value-format="YYYY-MM-DD HH:mm:ss" 
-            style="width:100%;"/>
-      </el-form-item>
+        <div class="space-y-2">
+          <Label>活动名称</Label>
+          <Input v-model="values.name" placeholder="请输入活动名称" />
+          <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
+        </div>
 
-      <el-form-item label="结束时间" prop="endTime">
-        <el-date-picker
-            v-model="activityForm.endTime"
-            type="datetime"
-            placeholder="请选择结束时间"
-            value-format="YYYY-MM-DD HH:mm:ss" 
-            style="width:100%;"/>
-      </el-form-item>
+        <div class="space-y-2">
+          <Label>开始时间</Label>
+          <Input type="datetime-local" v-model="values.startTime" class="w-full" />
+          <p v-if="errors.startTime" class="text-sm text-destructive">{{ errors.startTime }}</p>
+        </div>
 
-      <el-form-item label="活动预算" prop="cost">
-        <el-input v-model="activityForm.cost" placeholder="请输入活动预算" />
-      </el-form-item>
+        <div class="space-y-2">
+          <Label>结束时间</Label>
+          <Input type="datetime-local" v-model="values.endTime" class="w-full" />
+          <p v-if="errors.endTime" class="text-sm text-destructive">{{ errors.endTime }}</p>
+        </div>
 
-      <el-form-item label="活动描述" prop="description">
-        <el-input
-            v-model="activityForm.description"
-            :rows="6"
-            type="textarea"
-            placeholder="请输入活动描述"/>
-      </el-form-item>
-    </el-form>
+        <div class="space-y-2">
+          <Label>活动预算</Label>
+          <Input v-model="values.cost" placeholder="请输入活动预算" />
+          <p v-if="errors.cost" class="text-sm text-destructive">{{ errors.cost }}</p>
+        </div>
 
-    <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="activityDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="submitActivityForm">提 交</el-button>
-      </span>
-    </template>
-  </el-dialog>
+        <div class="space-y-2">
+          <Label>活动描述</Label>
+          <Textarea v-model="values.description" :rows="6" placeholder="请输入活动描述" />
+          <p v-if="errors.description" class="text-sm text-destructive">{{ errors.description }}</p>
+        </div>
 
+        <DialogFooter>
+          <Button type="button" variant="outline" @click="activityDialogVisible = false">取 消</Button>
+          <Button type="submit">提 交</Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { useRouter } from 'vue-router';
-import { 
-  getActivityList, 
-  getOwnerList, 
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
+import { messageTip, messageConfirm } from '@/shared/utils/feedback'
+import {
+  getActivityList,
+  getOwnerList,
   batchDeleteActivities,
   deleteActivity,
   createActivity,
   updateActivity,
   getActivityById
-} from '@/modules/activity/api/activity-api';
+} from '@/modules/activity/api/activity-api'
+import type { Activity } from '@/modules/activity/model/activity.types'
+import type { User } from '@/modules/user/model/user.types'
+
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
 // 响应式状态
-const router = useRouter();
-const activityQuery = reactive({});
-const activityList = ref([{ ownerDO: {} }]);
-const pageSize = ref(10);
-const total = ref(0);
-const ownerOptions = ref([{}]);
-const currentPage = ref(1);
-const selectedActivityIds = ref([]);
+const router = useRouter()
+const activityQuery = reactive<Record<string, unknown>>({})
+const searchStartTime = ref('')
+const searchEndTime = ref('')
+const activityList = ref([{ ownerDO: {} }])
+const pageSize = ref(10)
+const total = ref(0)
+const ownerOptions = ref([{}])
+const currentPage = ref(1)
+const selectedActivityIds = ref<(number | string)[]>([])
 
 // 对话框状态
-const activityDialogVisible = ref(false);
-const dialogTitle = ref('录入市场活动');
-const activityForm = reactive({});
-const activityFormRef = ref(null);
-const isEditing = ref(false);
+const activityDialogVisible = ref(false)
+const dialogTitle = ref('录入市场活动')
+const isEditing = ref(false)
+const editingId = ref<number | string | null>(null)
 
-// 校验规则
-const activityRules = {
-  cost: [
-    { pattern: /^[0-9]+(\.[0-9]{1,2})?$/, message: '活动预算必须是整数或最多两位小数', trigger: 'blur' }
-  ]
-};
+// 活动表单校验规则 (zod)
+const activityFormSchema = toTypedSchema(z.object({
+  ownerId: z.string().min(1, '请选择负责人'),
+  name: z.string().min(1, '请输入活动名称'),
+  startTime: z.string().min(1, '请选择开始时间'),
+  endTime: z.string().min(1, '请选择结束时间'),
+  cost: z.string().min(1, '请输入活动预算')
+    .refine(v => /^[0-9]+(\.[0-9]{1,2})?$/.test(v), { message: '活动预算必须是整数或最多两位小数' }),
+  description: z.string().min(5, '活动描述长度为5-255个字符').max(255, '活动描述长度为5-255个字符'),
+}))
 
-// 活动表单校验规则
-const activityFormRules = {
-  ownerId: [
-    { required: true, message: '请选择负责人', trigger: 'blur' }
-  ],
-  name: [
-    { required: true, message: '请输入活动名称', trigger: 'blur' }
-  ],
-  startTime: [
-    { required: true, message: '请选择开始时间', trigger: 'blur' }
-  ],
-  endTime: [
-    { required: true, message: '请选择结束时间', trigger: 'blur' }
-  ],
-  cost: [
-    { required: true, message: '请输入活动预算', trigger: 'blur' },
-    { pattern: /^[0-9]+(\.[0-9]{1,2})?$/, message: '活动预算必须是整数或最多两位小数', trigger: 'blur'}
-  ],
-  description: [
-    { required: true, message: '请输入活动描述', trigger: 'blur' },
-    { min: 5, max: 255, message: '活动描述长度为5-255个字符', trigger: 'blur' }
-  ]
-};
+const { handleSubmit, errors, values, resetForm, setValues } = useForm({
+  validationSchema: activityFormSchema,
+  initialValues: {
+    ownerId: '',
+    name: '',
+    startTime: '',
+    endTime: '',
+    cost: '',
+    description: '',
+  },
+})
 
-// 计算序号起始值的属性
-const startIndex = (index) => {
-  return (currentPage.value - 1) * pageSize.value + index + 1;
-};
+// 全选计算
+const isAllSelected = computed(() =>
+  activityList.value.length > 0 && selectedActivityIds.value.length === activityList.value.length
+)
 
-// 获取数据
-const getData = async (current) => {
-  let startTime = '';
-  let endTime = '';
-  for (let key in activityQuery.activityTime) {
-    if (key === '0') startTime = activityQuery.activityTime[key];
-    if (key === '1') endTime = activityQuery.activityTime[key];
+const toggleSelectAll = (checked: boolean) => {
+  selectedActivityIds.value = checked ? activityList.value.map((item: Activity) => item.id) : []
+}
+
+const toggleSelection = (id: number | string, checked: boolean) => {
+  if (checked) {
+    selectedActivityIds.value.push(id)
+  } else {
+    selectedActivityIds.value = selectedActivityIds.value.filter((sid: number | string) => sid !== id)
+  }
+}
+
+// 获取数据 (严禁修改)
+const getData = async (current: number) => {
+  let startTime = ''
+  let endTime = ''
+  if (searchStartTime.value) {
+    startTime = searchStartTime.value.replace('T', ' ') + ':00'
+  }
+  if (searchEndTime.value) {
+    endTime = searchEndTime.value.replace('T', ' ') + ':00'
   }
 
   const params = {
@@ -231,207 +273,177 @@ const getData = async (current) => {
     endTime: endTime,
     cost: activityQuery.cost,
     createTime: activityQuery.createTime
-  };
+  }
 
   try {
-    const res = await getActivityList(params);
+    const res = await getActivityList(params)
     if (true) {
-      activityList.value = res.list;
-      pageSize.value = res.pageSize;
-      total.value = res.total;
+      activityList.value = res.list
+      pageSize.value = res.pageSize
+      total.value = res.total
     }
   } catch (error) {
-    console.error('获取活动列表失败:', error);
+    console.error('获取活动列表失败:', error)
   }
-  currentPage.value = current;
-};
+  currentPage.value = current
+}
 
 // 分页
-const toPage = (current) => {
-  getData(current);
-};
+const toPage = (current: number) => {
+  getData(current)
+}
 
-// 加载负责人
+// 加载负责人 (严禁修改)
 const loadOwner = async () => {
   try {
-    const res = await getOwnerList();
+    const res = await getOwnerList()
     if (true) {
-      ownerOptions.value = res;
+      ownerOptions.value = res
     }
   } catch (error) {
-    console.error('获取负责人列表失败:', error);
+    console.error('获取负责人列表失败:', error)
   }
-};
+}
 
 // 搜索
 const onSearch = () => {
-  getData(1);
-};
+  getData(1)
+}
 
 // 重置搜索
 const onReset = () => {
-  Object.keys(activityQuery).forEach(key => delete activityQuery[key]);
-  getData(1);
-};
+  Object.keys(activityQuery).forEach(key => delete activityQuery[key])
+  searchStartTime.value = ''
+  searchEndTime.value = ''
+  getData(1)
+}
 
 // 导航
 const add = async () => {
-  dialogTitle.value = '录入市场活动';
-  isEditing.value = false;
-  resetActivityForm();
-  await loadOwner();
-  activityDialogVisible.value = true;
-};
+  dialogTitle.value = '录入市场活动'
+  isEditing.value = false
+  editingId.value = null
+  resetForm()
+  await loadOwner()
+  activityDialogVisible.value = true
+}
 
-const edit = async (id) => {
-  dialogTitle.value = '编辑市场活动';
-  isEditing.value = true;
-  await loadOwner();
-  await loadActivityForEdit(id);
-  activityDialogVisible.value = true;
-};
+const edit = async (id: number | string) => {
+  dialogTitle.value = '编辑市场活动'
+  isEditing.value = true
+  await loadOwner()
+  await loadActivityForEdit(id)
+  activityDialogVisible.value = true
+}
 
-const view = (id) => {
-  router.push("/dashboard/activity/" + id);
-};
-
-// 处理选择变化
-const handleSelectionChange = (selection) => {
-  selectedActivityIds.value = selection.map(item => item.id);
-};
+const view = (id: number | string) => {
+  router.push("/dashboard/activity/" + id)
+}
 
 // 批量删除
 const batchDel = async () => {
   if (selectedActivityIds.value.length === 0) {
-    ElMessage.warning('请至少选择一条记录');
-    return;
+    messageTip('请至少选择一条记录', 'warning')
+    return
   }
 
   try {
-    await ElMessageBox.confirm('确定要删除选中的活动吗?', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
-
-    const res = await batchDeleteActivities(selectedActivityIds.value);
+    await messageConfirm('确定要删除选中的活动吗?')
+    const res = await batchDeleteActivities(selectedActivityIds.value)
     if (true) {
-      ElMessage.success('删除成功');
-      getData(1);
+      messageTip('删除成功', 'success')
+      getData(1)
     }
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('请求失败，请检查网络或重试');
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message !== 'cancel') {
+      messageTip('请求失败，请检查网络或重试', 'error')
     } else {
-      ElMessage.info('已取消删除');
+      messageTip('已取消删除', 'info')
     }
   }
-};
+}
 
 // 单个删除
-const del = async (id) => {
+const del = async (id: number | string) => {
   try {
-    await ElMessageBox.confirm('确定要删除该活动吗?', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
-
-    const res = await deleteActivity(id);
+    await messageConfirm('确定要删除该活动吗?')
+    const res = await deleteActivity(id)
     if (true) {
-      ElMessage.success('删除成功');
-      getData(currentPage.value);
+      messageTip('删除成功', 'success')
+      getData(currentPage.value)
     }
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('请求失败，请检查网络或重试');
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message !== 'cancel') {
+      messageTip('请求失败，请检查网络或重试', 'error')
     } else {
-      ElMessage.info('已取消删除');
+      messageTip('已取消删除', 'info')
     }
   }
-};
+}
 
-// 对话框表单方法
-const resetActivityForm = () => {
-  Object.keys(activityForm).forEach(key => delete activityForm[key]);
-  if (activityFormRef.value) {
-    activityFormRef.value.clearValidate();
-  }
-};
-
-const loadActivityForEdit = async (id) => {
+// 对话框表单方法 (严禁修改 loadActivityForEdit 中的 API 调用)
+const loadActivityForEdit = async (id: number | string) => {
   try {
-    const res = await getActivityById(id);
+    const res = await getActivityById(id)
     if (true) {
-      Object.assign(activityForm, res);
+      editingId.value = res.id
+      setValues({
+        ownerId: String(res.ownerId ?? ''),
+        name: res.name ?? '',
+        startTime: res.startTime ?? '',
+        endTime: res.endTime ?? '',
+        cost: String(res.cost ?? ''),
+        description: res.description ?? '',
+      })
     }
   } catch (error) {
-    console.error('获取活动详情失败:', error);
-    ElMessage.error('获取活动详情失败');
+    console.error('获取活动详情失败:', error)
+    messageTip('获取活动详情失败', 'error')
   }
-};
+}
 
-const submitActivityForm = async () => {
-  if (!activityFormRef.value) return;
-  
+// 提交表单 (严禁修改 FormData + API 逻辑)
+const onSubmitForm = handleSubmit(async (formData) => {
   try {
-    const valid = await activityFormRef.value.validate();
-    if (!valid) return;
-
-    const formData = new FormData();
-    for (let field in activityForm) {
-      if (activityForm[field]) {
-        formData.append(field, activityForm[field]);
+    const fd = new FormData()
+    for (let field in formData) {
+      if (formData[field]) {
+        fd.append(field, formData[field])
       }
     }
+    if (isEditing.value && editingId.value) {
+      fd.append('id', editingId.value)
+    }
 
-    let res;
+    let res
     if (isEditing.value) {
-      res = await updateActivity(formData);
+      res = await updateActivity(fd)
       if (true) {
-        ElMessage.success('编辑成功');
+        messageTip('编辑成功', 'success')
       } else {
-        ElMessage.error('编辑失败');
+        messageTip('编辑失败', 'error')
       }
     } else {
-      res = await createActivity(formData);
+      res = await createActivity(fd)
       if (true) {
-        ElMessage.success('提交成功');
+        messageTip('提交成功', 'success')
       } else {
-        ElMessage.error('提交失败');
+        messageTip('提交失败', 'error')
       }
     }
 
     if (true) {
-      activityDialogVisible.value = false;
-      getData(1);
+      activityDialogVisible.value = false
+      getData(1)
     }
   } catch (error) {
-    console.error('提交失败:', error);
-    ElMessage.error('提交失败，请检查网络或重试');
+    console.error('提交失败:', error)
+    messageTip('提交失败，请检查网络或重试', 'error')
   }
-};
+})
 
 // 生命周期钩子
 onMounted(() => {
-  getData(1);
-});
+  getData(1)
+})
 </script>
-
-<style scoped>
-.action-card {
-  margin-bottom: 20px;
-}
-.table-card {
-  margin-bottom: 20px;
-}
-.el-form {
-  margin-bottom: 20px;
-}
-.el-table {
-  margin-top: 12px;
-}
-.el-pagination {
-  margin-top: 12px;
-}
-</style>

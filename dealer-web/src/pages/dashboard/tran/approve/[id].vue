@@ -1,88 +1,113 @@
 <template>
-  <div class="tran-approve-container">
-    <el-card class="approve-card">
-      <template #header>
-        <div class="card-header">
-          <span>交易审批</span>
-          <el-tag type="warning">待审批</el-tag>
+  <div class="p-5">
+    <Card class="max-w-[1000px] mx-auto">
+      <CardHeader class="flex flex-row items-center justify-between space-y-0">
+        <CardTitle>交易审批</CardTitle>
+        <Badge class="bg-yellow-600 text-white">待审批</Badge>
+      </CardHeader>
+      <CardContent>
+        <!-- Transaction Basic Info -->
+        <div class="border rounded-md mb-5">
+          <div class="grid grid-cols-[120px_1fr_120px_1fr]">
+            <div class="px-4 py-2 bg-muted font-medium text-sm border-b border-r">交易编号</div>
+            <div class="px-4 py-2 text-sm border-b border-r">{{ tranDetail.tranNo }}</div>
+            <div class="px-4 py-2 bg-muted font-medium text-sm border-b border-r">客户名称</div>
+            <div class="px-4 py-2 text-sm border-b">{{ tranDetail.customerName }}</div>
+
+            <div class="px-4 py-2 bg-muted font-medium text-sm border-b border-r">交易金额</div>
+            <div class="px-4 py-2 text-sm border-b border-r">
+              <span v-if="tranDetail.stage === TRAN_STAGE.QUOTATION">?</span>
+              <span v-else>&yen;{{ tranDetail.amount }}</span>
+            </div>
+            <div class="px-4 py-2 bg-muted font-medium text-sm border-b border-r">创建时间</div>
+            <div class="px-4 py-2 text-sm border-b">{{ tranDetail.createTime }}</div>
+
+            <div class="px-4 py-2 bg-muted font-medium text-sm border-b border-r">预计交付日期</div>
+            <div class="px-4 py-2 text-sm border-b border-r">{{ tranDetail.expectedDeliveryDate }}</div>
+            <div class="px-4 py-2 bg-muted font-medium text-sm border-b border-r">最后更新时间</div>
+            <div class="px-4 py-2 text-sm border-b">{{ tranDetail.updateTime }}</div>
+
+            <div class="px-4 py-2 bg-muted font-medium text-sm border-r">交易描述</div>
+            <div class="px-4 py-2 text-sm col-span-3">{{ tranDetail.description }}</div>
+          </div>
         </div>
-      </template>
 
-      <!-- 交易基本信息 -->
-      <el-descriptions title="交易基本信息" :column="2" border>
-        <el-descriptions-item label="交易编号">{{ tranDetail.tranNo }}</el-descriptions-item>
-        <el-descriptions-item label="客户名称">{{ tranDetail.customerName }}</el-descriptions-item>
-        <el-descriptions-item label="交易金额">
-          <span v-if="tranDetail.stage === TRAN_STAGE.QUOTATION">?</span>
-          <span v-else>¥{{ tranDetail.amount }}</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ tranDetail.createTime }}</el-descriptions-item>
-        <el-descriptions-item label="预计交付日期">{{ tranDetail.expectedDeliveryDate }}</el-descriptions-item>
-        <el-descriptions-item label="最后更新时间">{{ tranDetail.updateTime }}</el-descriptions-item>
-        <el-descriptions-item label="交易描述" :span="2">{{ tranDetail.description }}</el-descriptions-item>
-      </el-descriptions>
+        <!-- Product Info -->
+        <div class="text-base font-bold my-5 pl-2.5 border-l-4 border-primary">产品信息</div>
+        <Table class="mb-5">
+          <TableHeader>
+            <TableRow>
+              <TableHead class="w-[80px]">序号</TableHead>
+              <TableHead class="min-w-[300px]">产品名称</TableHead>
+              <TableHead class="w-[120px]">数量</TableHead>
+              <TableHead class="w-[140px]">单价</TableHead>
+              <TableHead class="w-[140px]">小计</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="(product, index) in tranDetail.products" :key="index">
+              <TableCell>{{ index + 1 }}</TableCell>
+              <TableCell>{{ product.productName }}</TableCell>
+              <TableCell>{{ product.quantity }}</TableCell>
+              <TableCell>&yen;{{ product.price }}</TableCell>
+              <TableCell>&yen;{{ product.price * product.quantity }}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
 
-      <!-- 产品信息 -->
-      <div class="section-title">产品信息</div>
-      <el-table :data="tranDetail.products" style="width: 100%">
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column prop="productName" label="产品名称" min-width="300" />
-        <el-table-column prop="quantity" label="数量" width="120" />
-        <el-table-column prop="price" label="单价" width="140">
-          <template #default="scope">
-            ¥{{ scope.row.price }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="total" label="小计" width="140">
-          <template #default="scope">
-            ¥{{ scope.row.price * scope.row.quantity }}
-          </template>
-        </el-table-column>
-      </el-table>
+        <!-- Approval Form -->
+        <form class="mt-8 max-w-[600px] space-y-4" @submit.prevent="onSubmit">
+          <div class="space-y-2">
+            <Label>审批结果</Label>
+            <RadioGroup v-model="values.approved" class="flex items-center gap-6">
+              <div class="flex items-center space-x-2">
+                <RadioGroupItem id="approve-yes" value="true" />
+                <Label for="approve-yes" class="font-normal cursor-pointer">通过</Label>
+              </div>
+              <div class="flex items-center space-x-2">
+                <RadioGroupItem id="approve-no" value="false" />
+                <Label for="approve-no" class="font-normal cursor-pointer">拒绝</Label>
+              </div>
+            </RadioGroup>
+            <p v-if="errors.approved" class="text-sm text-destructive">{{ errors.approved }}</p>
+          </div>
 
-      <!-- 审批表单 -->
-      <el-form
-        ref="formRef"
-        :model="approveForm"
-        :rules="rules"
-        label-width="120px"
-        class="approve-form"
-      >
-        <el-form-item label="审批结果" prop="approved">
-          <el-radio-group v-model="approveForm.approved">
-            <el-radio :label="true">通过</el-radio>
-            <el-radio :label="false">拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
+          <div class="space-y-2">
+            <Label>审批意见</Label>
+            <Textarea v-model="values.comment" :rows="4" placeholder="请输入审批意见" />
+            <p v-if="errors.comment" class="text-sm text-destructive">{{ errors.comment }}</p>
+          </div>
 
-        <el-form-item label="审批意见" prop="comment">
-          <el-input
-            v-model="approveForm.comment"
-            type="textarea"
-            rows="4"
-            placeholder="请输入审批意见"
-          />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="submitForm(formRef)">提交审批</el-button>
-          <el-button @click="goBack">返回</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          <div class="flex gap-2 pt-2">
+            <Button type="submit" :disabled="isSubmitting">提交审批</Button>
+            <Button type="button" variant="outline" @click="goBack">返回</Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { messageTip } from '@/shared/utils/feedback'
 import { getTranDetail, getTranProducts, approveTran } from '@/modules/tran/api/tran-api'
 import { TRAN_STAGE, normalizeTranStage } from '@/modules/tran/model/tran-stage'
 
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+
 const route = useRoute()
 const router = useRouter()
-const formRef = ref()
 
 const tranDetail = ref({
   tranNo: '',
@@ -96,22 +121,21 @@ const tranDetail = ref({
   products: []
 })
 
-const approveForm = reactive({
-  approved: true,
-  comment: ''
+// Form schema
+const approveSchema = toTypedSchema(z.object({
+  approved: z.string().min(1, '请选择审批结果'),
+  comment: z.string().min(5, '审批意见不能少于5个字符'),
+}))
+
+const { handleSubmit, errors, values, isSubmitting } = useForm({
+  validationSchema: approveSchema,
+  initialValues: {
+    approved: 'true',
+    comment: '',
+  },
 })
 
-const rules = reactive({
-  approved: [
-    { required: true, message: '请选择审批结果', trigger: 'change' }
-  ],
-  comment: [
-    { required: true, message: '请输入审批意见', trigger: 'blur' },
-    { min: 5, message: '审批意见不能少于5个字符', trigger: 'blur' }
-  ]
-})
-
-// 获取交易详情
+// Fetch transaction detail
 const fetchTranDetail = async () => {
   try {
     console.log('获取交易详情，ID:', route.params.id)
@@ -119,29 +143,28 @@ const fetchTranDetail = async () => {
     console.log('交易详情响应:', res)
     if (true) {
       const data = res
-      // 根据后端返回的数据结构进行映射
       tranDetail.value = {
         tranNo: data.tranNo || '',
         customerName: data.customerName || '',
-        amount: data.money || data.amount || 0, // 后端可能返回money字段
+        amount: data.money || data.amount || 0,
         stage: normalizeTranStage(data.stage),
         createTime: data.createTime || '',
-        updateTime: data.editTime || data.updateTime || '', // 后端可能返回editTime
+        updateTime: data.editTime || data.updateTime || '',
         expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
         description: data.description || '',
         products: data.products || []
       }
       console.log('处理后的交易详情:', tranDetail.value)
     } else {
-      ElMessage.error('请求失败' || '获取交易详情失败')
+      messageTip('请求失败', 'error')
     }
   } catch (error) {
     console.error('获取交易详情失败:', error)
-    ElMessage.error('获取交易详情失败')
+    messageTip('获取交易详情失败', 'error')
   }
 }
 
-// 获取交易产品详情
+// Fetch product details
 const fetchProducts = async () => {
   try {
     const res = await getTranProducts(route.params.id)
@@ -154,33 +177,32 @@ const fetchProducts = async () => {
   }
 }
 
-// 提交审批
-const submitForm = async (formEl) => {
-  if (!formEl) return
-  await formEl.validate(async (valid) => {
-    if (valid) {
-      try {
-        const res = await approveTran(route.params.id, approveForm)
-        if (true) {
-          ElMessage.success('审批提交成功')
-          goBack()
-        } else {
-          ElMessage.error('请求失败' || '审批提交失败')
-        }
-      } catch (error) {
-        console.error('审批提交失败:', error)
-        ElMessage.error('审批提交失败')
-      }
+// Submit approval
+const onSubmit = handleSubmit(async () => {
+  try {
+    const approveData = {
+      approved: values.approved === 'true',
+      comment: values.comment,
     }
-  })
-}
+    const res = await approveTran(route.params.id, approveData)
+    if (true) {
+      messageTip('审批提交成功', 'success')
+      goBack()
+    } else {
+      messageTip('请求失败', 'error')
+    }
+  } catch (error) {
+    console.error('审批提交失败:', error)
+    messageTip('审批提交失败', 'error')
+  }
+})
 
-// 返回列表页
+// Go back
 const goBack = () => {
   router.push('/dashboard/tran')
 }
 
-// 监听路由参数变化
+// Watch route params
 watch(() => route.params.id, async (newId) => {
   if (newId) {
     await fetchTranDetail()
@@ -192,55 +214,13 @@ onMounted(async () => {
   console.log('TranApproveView mounted')
   console.log('route.params:', route.params)
   console.log('route.params.id:', route.params.id)
-  
+
   if (!route.params.id) {
-    ElMessage.error('缺少交易ID参数')
+    messageTip('缺少交易ID参数', 'error')
     return
   }
-  
+
   await fetchTranDetail()
   await fetchProducts()
 })
 </script>
-
-<style scoped>
-.tran-approve-container {
-  padding: 20px;
-}
-
-.approve-card {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: bold;
-  margin: 20px 0;
-  padding-left: 10px;
-  border-left: 4px solid var(--el-color-primary);
-}
-
-.approve-form {
-  margin-top: 30px;
-  max-width: 600px;
-}
-
-:deep(.el-descriptions) {
-  margin-bottom: 20px;
-}
-
-:deep(.el-table) {
-  margin-bottom: 20px;
-}
-
-:deep(.el-form-item) {
-  margin-bottom: 22px;
-}
-</style> 

@@ -1,182 +1,260 @@
 <template>
   <div>
-    <el-card class="action-card">
-      <el-button type="primary" @click="add" v-hasPermission="'user:add'">添加用户</el-button>
-      <el-button type="danger" @click="batchDel" v-hasPermission="'user:delete'" :disabled="!userIdArray.length">批量删除</el-button>
-    </el-card>
+    <!-- Action buttons -->
+    <Card class="mb-5">
+      <CardContent class="flex gap-2 pt-6">
+        <Button @click="add" v-hasPermission="'user:add'">添加用户</Button>
+        <Button variant="destructive" @click="batchDel" v-hasPermission="'user:delete'" :disabled="!userIdArray.length">批量删除</Button>
+      </CardContent>
+    </Card>
 
-    <el-card class="table-card">
-      <el-table :data="userList" style="width: 100%" @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" />
-        <el-table-column 
-          type="index" 
-          label="序号" 
-          width="60" 
-          :index="startIndex" 
-        />
-        <el-table-column prop="loginAct" label="账号" />
-        <el-table-column property="name" label="姓名" show-overflow-tooltip />
-        <el-table-column property="phone" label="手机" show-overflow-tooltip />
-        <el-table-column property="email" label="邮箱" show-overflow-tooltip />
-        <el-table-column property="createTime" label="创建时间" show-overflow-tooltip />
-        <el-table-column label="操作" show-overflow-tooltip>
-          <template #default="scope">
-            <el-button type="primary" @click="view(scope.row.id)" v-hasPermission="'user:view'">详情</el-button>
-            <el-button type="success" @click="edit(scope.row.id)" v-hasPermission="'user:edit'">编辑</el-button>
-            <el-button type="danger" @click="del(scope.row.id)" v-hasPermission="'user:delete'">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    <!-- Data table -->
+    <Card class="mb-5">
+      <CardContent class="pt-6">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead class="w-[55px]">
+                <Checkbox
+                  :checked="allSelected"
+                  @update:checked="toggleSelectAll"
+                />
+              </TableHead>
+              <TableHead class="w-[60px]">序号</TableHead>
+              <TableHead>账号</TableHead>
+              <TableHead>姓名</TableHead>
+              <TableHead>手机</TableHead>
+              <TableHead>邮箱</TableHead>
+              <TableHead>创建时间</TableHead>
+              <TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="(row, idx) in userList" :key="row.id">
+              <TableCell>
+                <Checkbox
+                  :checked="userIdArray.includes(row.id)"
+                  @update:checked="(v: boolean) => toggleRowSelection(row, v)"
+                />
+              </TableCell>
+              <TableCell>{{ startIndex(idx) }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.loginAct }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.name }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.phone }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.email }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.createTime }}</TableCell>
+              <TableCell>
+                <div class="flex gap-1">
+                  <Button variant="link" size="sm" @click="view(row.id)" v-hasPermission="'user:view'">详情</Button>
+                  <Button variant="link" size="sm" @click="edit(row.id)" v-hasPermission="'user:edit'">编辑</Button>
+                  <Button variant="destructive" size="sm" @click="del(row.id)" v-hasPermission="'user:delete'">删除</Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
 
-    <el-pagination background layout="prev, pager, next" :page-size="pageSize" :total="total" @prev-click="toPage"
-      @next-click="toPage" @current-change="toPage" />
+    <!-- Pagination -->
+    <DataTablePagination :page-size="pageSize" :total="total" @change="toPage" />
 
-    <!--新增用户的弹窗(对话框)-->
-    <el-dialog v-model="userDialogVisible" :title="userQuery.id > 0 ? '编辑用户' : '新增用户'" width="20%" center draggable>
+    <!-- 新增/编辑用户的弹窗 -->
+    <Dialog v-model:open="userDialogVisible">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>{{ isEditMode ? '编辑用户' : '新增用户' }}</DialogTitle>
+        </DialogHeader>
+        <form class="space-y-4" @submit.prevent="userSubmit">
+          <div class="space-y-2">
+            <Label>账号</Label>
+            <Input v-model="values.loginAct" />
+            <p v-if="errors.loginAct" class="text-sm text-destructive">{{ errors.loginAct }}</p>
+          </div>
 
-      <el-form ref="userRefForm" :model="userQuery" label-width="110px" :rules="userRules">
-        <el-form-item label="账号" prop="loginAct">
-          <el-input v-model="userQuery.loginAct" />
-        </el-form-item>
+          <div class="space-y-2" v-if="isEditMode">
+            <Label>密码</Label>
+            <Input type="password" v-model="values.loginPwd" placeholder="******" />
+            <p v-if="errors.loginPwd" class="text-sm text-destructive">{{ errors.loginPwd }}</p>
+          </div>
 
-        <el-form-item label="密码" prop="loginPwd" v-if="userQuery.id > 0"><!--编辑-->
-          <el-input type="password" v-model="userQuery.loginPwd" placeholder="******" />
-        </el-form-item>
+          <div class="space-y-2" v-else>
+            <Label>密码</Label>
+            <Input type="password" v-model="values.loginPwd" />
+            <p v-if="errors.loginPwd" class="text-sm text-destructive">{{ errors.loginPwd }}</p>
+          </div>
 
-        <el-form-item label="密码" prop="loginPwd" v-else><!--新增-->
-          <el-input type="password" v-model="userQuery.loginPwd" />
-        </el-form-item>
+          <div class="space-y-2">
+            <Label>姓名</Label>
+            <Input v-model="values.name" />
+            <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
+          </div>
 
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="userQuery.name" />
-        </el-form-item>
+          <div class="space-y-2">
+            <Label>手机</Label>
+            <Input v-model="values.phone" />
+            <p v-if="errors.phone" class="text-sm text-destructive">{{ errors.phone }}</p>
+          </div>
 
-        <el-form-item label="手机" prop="phone">
-          <el-input v-model="userQuery.phone" />
-        </el-form-item>
+          <div class="space-y-2">
+            <Label>邮箱</Label>
+            <Input v-model="values.email" />
+            <p v-if="errors.email" class="text-sm text-destructive">{{ errors.email }}</p>
+          </div>
 
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="userQuery.email" />
-        </el-form-item>
+          <div class="space-y-2">
+            <Label>账号未过期</Label>
+            <Select v-model="values.accountNoExpired">
+              <SelectTrigger>
+                <SelectValue placeholder="请选择" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in options" :key="item.value" :value="item.value">{{ item.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.accountNoExpired" class="text-sm text-destructive">{{ errors.accountNoExpired }}</p>
+          </div>
 
-        <el-form-item label="账号未过期" prop="accountNoExpired">
-          <el-select v-model="userQuery.accountNoExpired" placeholder="请选择">
-            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
-          </el-select>
-        </el-form-item>
+          <div class="space-y-2">
+            <Label>密码未过期</Label>
+            <Select v-model="values.credentialsNoExpired">
+              <SelectTrigger>
+                <SelectValue placeholder="请选择" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in options" :key="item.value" :value="item.value">{{ item.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.credentialsNoExpired" class="text-sm text-destructive">{{ errors.credentialsNoExpired }}</p>
+          </div>
 
-        <el-form-item label="密码未过期" prop="credentialsNoExpired">
-          <el-select v-model="userQuery.credentialsNoExpired" placeholder="请选择">
-            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
-          </el-select>
-        </el-form-item>
+          <div class="space-y-2">
+            <Label>账号未锁定</Label>
+            <Select v-model="values.accountNoLocked">
+              <SelectTrigger>
+                <SelectValue placeholder="请选择" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in options" :key="item.value" :value="item.value">{{ item.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.accountNoLocked" class="text-sm text-destructive">{{ errors.accountNoLocked }}</p>
+          </div>
 
-        <el-form-item label="账号未锁定" prop="accountNoLocked">
-          <el-select v-model="userQuery.accountNoLocked" placeholder="请选择">
-            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
-          </el-select>
-        </el-form-item>
+          <div class="space-y-2">
+            <Label>账号是否启用</Label>
+            <Select v-model="values.accountEnabled">
+              <SelectTrigger>
+                <SelectValue placeholder="请选择" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in options" :key="item.value" :value="item.value">{{ item.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.accountEnabled" class="text-sm text-destructive">{{ errors.accountEnabled }}</p>
+          </div>
+        </form>
+        <DialogFooter>
+          <Button variant="outline" @click="userDialogVisible = false">关 闭</Button>
+          <Button @click="userSubmit">提 交</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
-        <el-form-item label="账号是否启用" prop="accountEnabled">
-          <el-select v-model="userQuery.accountEnabled" placeholder="请选择">
-            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="userDialogVisible = false">关 闭</el-button>
-          <el-button type="primary" @click="userSubmit">提 交</el-button>
-        </span>
-      </template>
-    </el-dialog>    <!--用户详情的弹窗(对话框)-->
-    <el-dialog v-model="userDetailDialogVisible" title="用户详情" width="20%" center draggable>
-      <el-form :model="userDetail" label-width="120px">
-        <el-form-item label="ID">
-          <div class="detail">&nbsp;{{userDetail.id}}</div>
-        </el-form-item>
-
-        <el-form-item label="账号">
-          <div class="detail">&nbsp;{{userDetail.loginAct}}</div>
-        </el-form-item>
-
-        <el-form-item label="密码">
-          <div class="detail">&nbsp;******</div>
-        </el-form-item>
-
-        <el-form-item label="姓名">
-          <div class="detail">&nbsp;{{userDetail.name}}</div>
-        </el-form-item>
-
-        <el-form-item label="手机">
-          <div class="detail">&nbsp;{{userDetail.phone}}</div>
-        </el-form-item>
-
-        <el-form-item label="邮箱">
-          <div class="detail">&nbsp;{{userDetail.email}}</div>
-        </el-form-item>
-
-        <el-form-item label="账号未过期">
-          <div class="detail">&nbsp;{{userDetail.accountNoExpired === 1 ? '是' : '否'}}</div>
-        </el-form-item>
-
-        <el-form-item label="密码未过期">
-          <div class="detail">&nbsp;{{userDetail.credentialsNoExpired === 1 ? '是' : '否'}}</div>
-        </el-form-item>
-
-        <el-form-item label="账号未锁定">
-          <div class="detail">&nbsp;{{userDetail.accountNoLocked === 1 ? '是' : '否'}}</div>
-        </el-form-item>
-
-        <el-form-item label="账号是否启用">
-          <div class="detail">&nbsp;{{userDetail.accountEnabled === 1 ? '是' : '否'}}</div>
-        </el-form-item>
-
-        <el-form-item label="创建时间">
-          <div class="detail">&nbsp;{{userDetail.createTime}}</div>
-        </el-form-item>
-
-        <el-form-item label="创建人">
-          <div class="detail">&nbsp;{{userDetail.createByDO?.name}}</div>
-        </el-form-item>
-
-        <el-form-item label="编辑时间">
-          <div class="detail">&nbsp;{{userDetail.editTime}}</div>
-        </el-form-item>
-
-        <el-form-item label="编辑人">
-          <div class="detail">&nbsp;{{userDetail.editByDO?.name}}</div>
-        </el-form-item>
-
-        <el-form-item label="最近登录时间">
-          <div class="detail">&nbsp;{{userDetail.lastLoginTime}}</div>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button type="success" @click="userDetailDialogVisible = false">返 回</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <!-- 用户详情的弹窗 -->
+    <Dialog v-model:open="userDetailDialogVisible">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>用户详情</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-3">
+          <div class="space-y-1">
+            <Label>ID</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.id }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>账号</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.loginAct }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>密码</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">******</div>
+          </div>
+          <div class="space-y-1">
+            <Label>姓名</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.name }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>手机</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.phone }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>邮箱</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.email }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>账号未过期</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.accountNoExpired === 1 ? '是' : '否' }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>密码未过期</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.credentialsNoExpired === 1 ? '是' : '否' }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>账号未锁定</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.accountNoLocked === 1 ? '是' : '否' }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>账号是否启用</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.accountEnabled === 1 ? '是' : '否' }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>创建时间</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.createTime }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>创建人</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.createByDO?.name }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>编辑时间</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.editTime }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>编辑人</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.editByDO?.name }}</div>
+          </div>
+          <div class="space-y-1">
+            <Label>最近登录时间</Label>
+            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.lastLoginTime }}</div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" @click="userDetailDialogVisible = false">返 回</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
-
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
 import { doDelete, doGet, doPost, doPut } from '@/shared/api/http-client'
+import type { User } from '@/modules/user/model/user.types'
 import { messageConfirm, messageTip } from '@/shared/utils/legacy-util'
 import { useRouter } from 'vue-router'
-
-// // 注入父级页面提供的属性
-// const age = inject('age')
-// const arr = inject('arr')
-// const content = inject('content')
-// const reload = inject('reload')
-// const user = inject('user')
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
 // 响应式数据
 const userList = ref([{}])
@@ -185,8 +263,8 @@ const total = ref(0)
 const userDialogVisible = ref(false)
 const userQuery = ref({})
 const userIdArray = ref([])
-const userRefForm = ref(null)
 const currentPage = ref(1)
+const isEditMode = ref(false)
 const router = useRouter()
 
 // 用户详情相关数据
@@ -196,36 +274,68 @@ const userDetail = ref({
   editByDO: {}
 })
 
-// 表单验证规则
-const userRules = {
-  loginAct: [{ required: true, message: '请输入登录账号', trigger: 'blur' }],
-  loginPwd: [
-    { required: true, message: '请输入登录密码', trigger: 'blur' },
-    { min: 6, max: 16, message: '登录密码长度为6-16位', trigger: 'blur' }
-  ],
-  name: [
-    { required: true, message: '请输入姓名', trigger: 'blur' },
-    { pattern: /^[\u4E00-\u9FA5]{1,5}$/, message: '姓名必须是中文', trigger: 'blur' }
-  ],
-  phone: [
-    { required: true, message: '请输入手机号码', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '手机号码格式有误', trigger: 'blur' }
-  ],
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, message: '邮箱格式有误', trigger: 'blur' }
-  ],
-  accountNoExpired: [{ required: true, message: '请选择账号是否未过期', trigger: 'blur' }],
-  credentialsNoExpired: [{ required: true, message: '请选择密码是否未过期', trigger: 'blur' }],
-  accountNoLocked: [{ required: true, message: '请选择账号是否未锁定', trigger: 'blur' }],
-  accountEnabled: [{ required: true, message: '请选择账号是否可用', trigger: 'blur' }]
-}
+// 表单验证 schema (动态：新增时密码必填，编辑时可选)
+const userSchema = computed(() =>
+  toTypedSchema(z.object({
+    id: z.number().optional().default(0),
+    loginAct: z.string().min(1, '请输入登录账号'),
+    loginPwd: isEditMode.value
+      ? z.string().optional()
+      : z.string().min(6, '登录密码长度为6-16位').max(16, '登录密码长度为6-16位'),
+    name: z.string().min(1, '请输入姓名').regex(/^[\u4E00-\u9FA5]{1,5}$/, '姓名必须是中文'),
+    phone: z.string().min(1, '请输入手机号码').regex(/^1[3-9]\d{9}$/, '手机号码格式有误'),
+    email: z.string().min(1, '请输入邮箱').regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, '邮箱格式有误'),
+    accountNoExpired: z.number({ required_error: '请选择账号是否未过期' }),
+    credentialsNoExpired: z.number({ required_error: '请选择密码是否未过期' }),
+    accountNoLocked: z.number({ required_error: '请选择账号是否未锁定' }),
+    accountEnabled: z.number({ required_error: '请选择账号是否可用' }),
+  }))
+)
+
+const { handleSubmit, errors, values, setValues, resetForm } = useForm({
+  validationSchema: userSchema,
+  initialValues: {
+    id: 0,
+    loginAct: '',
+    loginPwd: '',
+    name: '',
+    phone: '',
+    email: '',
+    accountNoExpired: 0,
+    credentialsNoExpired: 0,
+    accountNoLocked: 0,
+    accountEnabled: 0,
+  },
+})
 
 // 下拉选项
 const options = [
   { label: '是', value: 1 },
   { label: '否', value: 0 }
 ]
+
+// 全选相关
+const allSelected = computed(() =>
+  userList.value.length > 0 && userIdArray.value.length === userList.value.length
+)
+
+const toggleSelectAll = (checked: boolean) => {
+  if (checked) {
+    userIdArray.value = userList.value.map(data => data.id)
+  } else {
+    userIdArray.value = []
+  }
+}
+
+const toggleRowSelection = (row: User, checked: boolean) => {
+  if (checked) {
+    if (!userIdArray.value.includes(row.id)) {
+      userIdArray.value.push(row.id)
+    }
+  } else {
+    userIdArray.value = userIdArray.value.filter((id: number | string) => id !== row.id)
+  }
+}
 
 // 方法
 const handleSelectionChange = (selectionnDataArray) => {
@@ -254,30 +364,43 @@ const view = (id) => {
 
 const add = () => {
   userQuery.value = {}
+  isEditMode.value = false
+  resetForm({
+    values: {
+      id: 0,
+      loginAct: '',
+      loginPwd: '',
+      name: '',
+      phone: '',
+      email: '',
+      accountNoExpired: 0,
+      credentialsNoExpired: 0,
+      accountNoLocked: 0,
+      accountEnabled: 0,
+    },
+  })
   userDialogVisible.value = true
 }
 
-const userSubmit = () => {
-  const formData = new FormData()
+const userSubmit = handleSubmit(async (formData) => {
+  // 同步到 userQuery 以保留原有业务逻辑
+  userQuery.value = { ...formData }
+  const formDataObj = new FormData()
   for (let field in userQuery.value) {
-    formData.append(field, userQuery.value[field])
+    formDataObj.append(field, userQuery.value[field])
   }
-  userRefForm.value.validate((isValid) => {
-    if (isValid) {
-      const request = userQuery.value.id > 0 ? doPut : doPost
-      request("/api/user", formData).then(resp => {
-        if (true) {
-          messageTip(userQuery.value.id > 0 ? "编辑成功" : "提交成功", "success")
-          userDialogVisible.value = false
-          userQuery.value = {}
-          getData(currentPage.value) 
-        } else {
-          messageTip(userQuery.value.id > 0 ? "编辑失败" : "提交失败", "error")
-        }
-      })
+  const request = userQuery.value.id > 0 ? doPut : doPost
+  request("/api/user", formDataObj).then(resp => {
+    if (true) {
+      messageTip(userQuery.value.id > 0 ? "编辑成功" : "提交成功", "success")
+      userDialogVisible.value = false
+      userQuery.value = {}
+      getData(currentPage.value)
+    } else {
+      messageTip(userQuery.value.id > 0 ? "编辑失败" : "提交失败", "error")
     }
   })
-}
+})
 
 const edit = (id) => {
   userDialogVisible.value = true
@@ -290,6 +413,19 @@ const loadUser = (id) => {
     if (true) {
       userQuery.value = resp
       userQuery.value.loginPwd = ""
+      isEditMode.value = true
+      setValues({
+        id: resp.id || 0,
+        loginAct: resp.loginAct || '',
+        loginPwd: '',
+        name: resp.name || '',
+        phone: resp.phone || '',
+        email: resp.email || '',
+        accountNoExpired: resp.accountNoExpired ?? 0,
+        credentialsNoExpired: resp.credentialsNoExpired ?? 0,
+        accountNoLocked: resp.accountNoLocked ?? 0,
+        accountEnabled: resp.accountEnabled ?? 0,
+      })
     }
   })
 }
@@ -314,7 +450,7 @@ const del = (id) => {
     doDelete("/api/user/" + id, {}).then(resp => {
       if (true) {
         messageTip("删除成功", "success")
-        getData(currentPage.value) 
+        getData(currentPage.value)
       } else {
         messageTip("删除失败，原因：" + '请求失败', "error")
       }
@@ -333,7 +469,7 @@ const batchDel = () => {
     doDelete("/api/user", userIdArray.value).then(resp => {
       if (true) {
         messageTip("批量删除成功", "success")
-        getData(currentPage.value) 
+        getData(currentPage.value)
       } else {
         messageTip("批量删除失败，原因：" + '请求失败', "error")
       }
@@ -353,31 +489,3 @@ onMounted(() => {
   getData(1)
 })
 </script>
-
-<style scoped>
-.el-table {
-  margin-top: 12px;
-}
-
-.el-pagination {
-  margin-top: 12px;
-}
-
-.el-select {
-  width: 100%;
-}
-
-.action-card {
-  margin-bottom: 20px;
-}
-
-.table-card {
-  margin-bottom: 20px;
-}
-
-.detail {
-  background-color: #e9eae3;
-  width: 100%;
-  padding-left: 15px;
-}
-</style>

@@ -1,138 +1,176 @@
 <template>
-  <div class="dict-value-container">
+  <div class="p-5">
     <!-- 搜索栏 -->
-    <el-card class="search-card">
-      <el-form :inline="true" :model="searchForm" class="demo-form-inline">
-        <el-form-item label="字典类型">
-          <el-select v-model="searchForm.typeCode" placeholder="请选择字典类型" clearable style="width: 200px">
-            <el-option
-              v-for="item in dictTypes"
-              :key="item.typeCode"
-              :label="item.typeName"
-              :value="item.typeCode"
+    <Card class="mb-5">
+      <CardContent class="pt-6">
+        <div class="flex flex-wrap items-end gap-4">
+          <div class="space-y-2">
+            <Label>字典类型</Label>
+            <Select v-model="searchForm.typeCode">
+              <SelectTrigger class="w-[200px]">
+                <SelectValue placeholder="请选择字典类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">全部</SelectItem>
+                <SelectItem
+                  v-for="item in dictTypes"
+                  :key="item.typeCode"
+                  :value="item.typeCode"
+                >{{ item.typeName }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="space-y-2">
+            <Label>字典值</Label>
+            <Input
+              v-model="searchForm.typeValue"
+              placeholder="请输入字典值"
+              class="w-[200px]"
+              @keyup.enter="handleSearch"
             />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="字典值">
-          <el-input 
-            v-model="searchForm.typeValue" 
-            placeholder="请输入字典值" 
-            clearable 
-            style="width: 200px" 
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch()">查询</el-button>
-          <!-- <el-button @click="resetForm">重置</el-button> -->
-          <el-button type="success" @click="handleAdd()">新增字典值</el-button>
-          <el-button type="danger" @click="handleBatchDelete()" :disabled="!selectedIds.length">批量删除</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          </div>
+          <div class="flex gap-2">
+            <Button @click="handleSearch()">查询</Button>
+            <Button variant="secondary" @click="handleAdd()">新增字典值</Button>
+            <Button variant="destructive" @click="handleBatchDelete()" :disabled="!selectedIds.length">批量删除</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
     <!-- 数据表格 -->
-    <el-card class="table-card">
-      <el-table 
-        :data="tableData" 
-        style="width: 100%" 
-        v-loading="loading"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column 
-          type="index" 
-          label="序号" 
-          width="80"
-          :index="startIndex"
-        />
-        <el-table-column prop="typeCode" label="字典类型" width="180">
-          <template #default="scope">
-            {{ getDictTypeName(scope.row.typeCode) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="typeValue" label="字典值" width="180" />
-        <el-table-column prop="order" label="排序" width="100" />
-        <el-table-column prop="remark" label="备注" />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="scope">
-            <el-button type="success" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    <Card class="mb-5">
+      <CardContent class="pt-6">
+        <template v-if="loading">
+          <Skeleton class="h-8 w-full mb-2" v-for="i in 5" :key="i" />
+        </template>
+        <Table v-else>
+          <TableHeader>
+            <TableRow>
+              <TableHead class="w-[55px]">
+                <Checkbox
+                  :checked="allSelected"
+                  @update:checked="toggleSelectAll"
+                />
+              </TableHead>
+              <TableHead class="w-[80px]">序号</TableHead>
+              <TableHead class="w-[180px]">字典类型</TableHead>
+              <TableHead class="w-[180px]">字典值</TableHead>
+              <TableHead class="w-[100px]">排序</TableHead>
+              <TableHead>备注</TableHead>
+              <TableHead class="w-[200px]">操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="(row, idx) in tableData" :key="row.id">
+              <TableCell>
+                <Checkbox
+                  :checked="selectedIds.includes(row.id)"
+                  @update:checked="(v: boolean) => toggleRowSelection(row, v)"
+                />
+              </TableCell>
+              <TableCell>{{ startIndex(idx) }}</TableCell>
+              <TableCell>{{ getDictTypeName(row.typeCode) }}</TableCell>
+              <TableCell>{{ row.typeValue }}</TableCell>
+              <TableCell>{{ row.order }}</TableCell>
+              <TableCell>{{ row.remark }}</TableCell>
+              <TableCell>
+                <div class="flex gap-1">
+                  <Button variant="link" size="sm" @click="handleEdit(row)">编辑</Button>
+                  <Button variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
 
     <!-- 分页 -->
-    <el-pagination
-      background
-      layout="prev, pager, next"
-      :page-size="pageSize"
-      :total="total"
-        @current-change="handleCurrentChange"
-        style="margin-top: 20px; width: 100%;"
-    />
+    <DataTablePagination :page-size="pageSize" :total="total" @change="handleCurrentChange" />
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog 
-      v-model="dialogVisible" 
-      :title="isEdit ? '编辑字典值' : '新增字典值'"
-      width="500px"
-    >
-      <el-form 
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="100px"
-      >
-        <el-form-item label="字典类型" prop="typeCode">
-          <el-select v-model="form.typeCode" placeholder="请选择字典类型" style="width: 100%">
-            <el-option
-              v-for="item in dictTypes"
-              :key="item.typeCode"
-              :label="item.typeName"
-              :value="item.typeCode"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="字典值" prop="typeValue">
-          <el-input v-model="form.typeValue" placeholder="请输入字典值" />
-        </el-form-item>
-        <el-form-item label="排序" prop="order">
-          <el-input-number v-model="form.order" :min="1" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input 
-            v-model="form.remark" 
-            type="textarea" 
-            placeholder="请输入备注"
-            :rows="3"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <Dialog v-model:open="dialogVisible">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>{{ isEdit ? '编辑字典值' : '新增字典值' }}</DialogTitle>
+        </DialogHeader>
+        <form class="space-y-4" @submit.prevent="onFormSubmit">
+          <div class="space-y-2">
+            <Label>字典类型</Label>
+            <Select v-model="values.typeCode">
+              <SelectTrigger>
+                <SelectValue placeholder="请选择字典类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="item in dictTypes"
+                  :key="item.typeCode"
+                  :value="item.typeCode"
+                >{{ item.typeName }}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.typeCode" class="text-sm text-destructive">{{ errors.typeCode }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>字典值</Label>
+            <Input v-model="values.typeValue" placeholder="请输入字典值" />
+            <p v-if="errors.typeValue" class="text-sm text-destructive">{{ errors.typeValue }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>排序</Label>
+            <NumberField v-model="values.order" :min="1">
+              <NumberFieldContent>
+                <NumberFieldDecrement />
+                <NumberFieldInput />
+                <NumberFieldIncrement />
+              </NumberFieldContent>
+            </NumberField>
+            <p v-if="errors.order" class="text-sm text-destructive">{{ errors.order }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>备注</Label>
+            <Textarea v-model="values.remark" placeholder="请输入备注" :rows="3" />
+          </div>
+        </form>
+        <DialogFooter>
+          <Button variant="outline" @click="dialogVisible = false">取消</Button>
+          <Button @click="onFormSubmit">确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  getDictValueList, 
-  createDictValue, 
-  updateDictValue, 
-  deleteDictValue, 
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
+import {
+  getDictValueList,
+  createDictValue,
+  updateDictValue,
+  deleteDictValue,
   batchDeleteDictValues,
   clearCache,
   getDictTypeList
 } from '@/modules/dict/api/dict-api'
+import type { DictValue } from '@/modules/dict/model/dict.types'
 import { messageConfirm } from '@/shared/utils/legacy-util'
+import { messageTip } from '@/shared/utils/feedback'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { NumberField, NumberFieldContent, NumberFieldDecrement, NumberFieldIncrement, NumberFieldInput } from '@/components/ui/number-field'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
+import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -142,7 +180,6 @@ const selectedIds = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const formRef = ref()
 const dictTypes = ref([])
 
 const searchForm = reactive({
@@ -150,23 +187,45 @@ const searchForm = reactive({
   typeValue: ''
 })
 
-const form = reactive({
-  typeCode: '',
-  typeValue: '',
-  order: 1,
-  remark: ''
+// 表单验证 schema
+const formSchema = toTypedSchema(z.object({
+  typeCode: z.string().min(1, '请选择字典类型'),
+  typeValue: z.string().min(1, '请输入字典值'),
+  order: z.number({ required_error: '请输入排序' }).min(1, '排序最小为1'),
+  remark: z.string().optional(),
+}))
+
+const { handleSubmit, errors, values, resetForm } = useForm({
+  validationSchema: formSchema,
+  initialValues: {
+    typeCode: '',
+    typeValue: '',
+    order: 1,
+    remark: '',
+  },
 })
 
-const rules = {
-  typeCode: [
-    { required: true, message: '请选择字典类型', trigger: 'change' }
-  ],
-  typeValue: [
-    { required: true, message: '请输入字典值', trigger: 'blur' }
-  ],
-  order: [
-    { required: true, message: '请输入排序', trigger: 'blur' }
-  ]
+// 全选相关
+const allSelected = computed(() =>
+  tableData.value.length > 0 && selectedIds.value.length === tableData.value.length
+)
+
+const toggleSelectAll = (checked: boolean) => {
+  if (checked) {
+    selectedIds.value = tableData.value.map(data => data.id)
+  } else {
+    selectedIds.value = []
+  }
+}
+
+const toggleRowSelection = (row: DictValue, checked: boolean) => {
+  if (checked) {
+    if (!selectedIds.value.includes(row.id)) {
+      selectedIds.value.push(row.id)
+    }
+  } else {
+    selectedIds.value = selectedIds.value.filter((id: number | string) => id !== row.id)
+  }
 }
 
 // 加载字典类型
@@ -204,7 +263,7 @@ const loadData = async () => {
     }
   } catch (error) {
     console.error('获取字典值列表失败:', error)
-    ElMessage.error('获取数据失败')
+    messageTip('获取数据失败', 'error')
   } finally {
     loading.value = false
   }
@@ -228,17 +287,21 @@ const handleSearch = async () => {
 // 新增
 const handleAdd = () => {
   isEdit.value = false
-  form.typeCode = ''
-  form.typeValue = ''
-  form.order = 1
-  form.remark = ''
+  resetForm({
+    values: {
+      typeCode: '',
+      typeValue: '',
+      order: 1,
+      remark: '',
+    },
+  })
   dialogVisible.value = true
 }
 
 // 编辑
 const handleEdit = (row) => {
   isEdit.value = true
-  Object.assign(form, row)
+  Object.assign(values, row)
   dialogVisible.value = true
 }
 
@@ -248,12 +311,12 @@ const handleDelete = async (row) => {
     await messageConfirm('确认删除该字典值吗？')
     const res = await deleteDictValue(row.id)
     if (true) {
-      ElMessage.success('删除成功')
+      messageTip('删除成功', 'success')
       loadData()
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      messageTip('删除失败', 'error')
     }
   }
 }
@@ -261,54 +324,44 @@ const handleDelete = async (row) => {
 // 批量删除
 const handleBatchDelete = async () => {
   if (selectedIds.value.length === 0) {
-    ElMessage.warning('请至少选择一条记录');
+    messageTip('请至少选择一条记录', 'warning');
     return;
   }
 
   try {
-    await ElMessageBox.confirm('确定要删除选中的字典值吗?', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
+    await messageConfirm('确定要删除选中的字典值吗?');
 
     const res = await batchDeleteDictValues(selectedIds.value);
     if (true) {
-      ElMessage.success('批量删除成功');
+      messageTip('批量删除成功', 'success');
       loadData();
     } else {
       loadData();
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('请求失败，请检查网络或重试');
+      messageTip('请求失败，请检查网络或重试', 'error');
     } else {
-      ElMessage.info('已取消删除');
+      messageTip('已取消删除', 'info');
     }
   }
-};
+}
 
 // 提交表单
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  
+const doSubmit = async (formData: Record<string, unknown>) => {
   try {
-    // 1. 表单验证
-    const valid = await formRef.value.validate()
-    if (!valid) return
-
     // 2. 准备请求数据
     const requestData = {
-      typeCode: form.typeCode,
-      typeValue: form.typeValue,
-      order: form.order,
-      remark: form.remark
+      typeCode: formData.typeCode,
+      typeValue: formData.typeValue,
+      order: formData.order,
+      remark: formData.remark
     }
 
     // 3. 根据编辑状态选择API并调用
     let res
     if (isEdit.value) {
-      res = await updateDictValue(form.id, requestData)
+      res = await updateDictValue(values.id, requestData)
     } else {
       console.log(requestData)
       res = await createDictValue(requestData)
@@ -317,17 +370,19 @@ const handleSubmit = async () => {
 
     // 4. 处理响应结果
     if (true) {
-      ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
+      messageTip(isEdit.value ? '更新成功' : '创建成功', 'success')
       dialogVisible.value = false
       loadData()
     } else {
-      ElMessage.error('请求失败' || (isEdit.value ? '更新失败' : '创建失败'))
+      messageTip('请求失败' || (isEdit.value ? '更新失败' : '创建失败'), 'error')
     }
   } catch (error) {
     console.error('提交字典值失败:', error)
-    ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
+    messageTip(isEdit.value ? '更新失败' : '创建失败', 'error')
   }
 }
+
+const onFormSubmit = handleSubmit(doSubmit)
 
 // 选择变化
 const handleSelectionChange = (selection) => {
@@ -350,33 +405,3 @@ onMounted(() => {
   loadData()
 })
 </script>
-
-<style scoped>
-.dict-value-container {
-  padding: 20px;
-}
-
-.search-card {
-  margin-bottom: 20px;
-}
-
-.table-card {
-  margin-bottom: 20px;
-}
-
-:deep(.el-table) {
-  width: 100% !important;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-:deep(.el-select),
-:deep(.el-input),
-:deep(.el-input-number) {
-  width: 100%;
-}
-</style> 

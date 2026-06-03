@@ -1,51 +1,87 @@
 <template>
-  <el-card class="action-card">
-    <el-button type="primary" class="btn" @click="batchExportExcel">全部导出(Excel)</el-button>
-    <el-button type="success" class="btn" @click="chooseExportExcel">选择导出(Excel)</el-button>
-  </el-card>
+  <Card class="mb-5">
+    <CardContent class="flex gap-2">
+      <Button @click="batchExportExcel">全部导出(Excel)</Button>
+      <Button @click="chooseExportExcel">选择导出(Excel)</Button>
+    </CardContent>
+  </Card>
 
-  <el-card class="table-card">
-    <el-table
-        :data="customerList"
-        style="width: 100%"
-        @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="50"/>
-      <el-table-column type="index" label="序号" width="80" :index="startIndex"/>
-      <el-table-column property="ownerDO.name" label="负责人" show-overflow-tooltip />
-      <el-table-column property="activityDO.name" label="所属活动" show-overflow-tooltip />
-      <el-table-column label="姓名" show-overflow-tooltip>
-        <template #default="scope">
-          <a href="javascript:" @click="view(scope.row.id)">{{ scope.row.clueDO.fullName }}</a>
-        </template>
-      </el-table-column>
-      <el-table-column property="appellationDO.typeValue" label="称呼" show-overflow-tooltip />
-      <el-table-column property="clueDO.phone" label="手机" show-overflow-tooltip />
-      <el-table-column property="clueDO.weixin" label="微信" show-overflow-tooltip />
-      <el-table-column property="needLoanDO.typeValue" label="是否贷款" show-overflow-tooltip />
-      <el-table-column property="intentionStateDO.typeValue" label="意向状态" show-overflow-tooltip />
-      <el-table-column property="stateDO.typeValue" label="线索状态" show-overflow-tooltip />
-      <el-table-column property="sourceDO.typeValue" label="线索来源" show-overflow-tooltip />
-      <el-table-column property="intentionProductDO.name" label="意向产品" show-overflow-tooltip />
-      <el-table-column property="nextContactTime" label="下次联系时间" show-overflow-tooltip />
-    </el-table>
-  </el-card>
-  <p>
-    <el-pagination
-        background
-        layout="prev, pager, next"
-        :page-size="pageSize"
-        :total="total"
-        @prev-click="page"
-        @next-click="page"
-        @current-change="page"/>
-  </p>
+  <Card class="mt-5">
+    <CardContent class="p-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead class="w-[50px]">
+              <Checkbox
+                :checked="isAllSelected"
+                @update:checked="toggleAllSelection"
+              />
+            </TableHead>
+            <TableHead class="w-[80px]">序号</TableHead>
+            <TableHead>负责人</TableHead>
+            <TableHead>所属活动</TableHead>
+            <TableHead>姓名</TableHead>
+            <TableHead>称呼</TableHead>
+            <TableHead>手机</TableHead>
+            <TableHead>微信</TableHead>
+            <TableHead>是否贷款</TableHead>
+            <TableHead>意向状态</TableHead>
+            <TableHead>线索状态</TableHead>
+            <TableHead>线索来源</TableHead>
+            <TableHead>意向产品</TableHead>
+            <TableHead>下次联系时间</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="(row, index) in customerList" :key="row.id ?? index">
+            <TableCell>
+              <Checkbox
+                :checked="selectedIds.includes(row.id)"
+                @update:checked="(v) => toggleRowSelection(row, v)"
+              />
+            </TableCell>
+            <TableCell>{{ startIndex(index) }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.ownerDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.activityDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">
+              <Button variant="link" size="sm" class="h-auto p-0" @click="view(row.id)">
+                {{ row.clueDO?.fullName }}
+              </Button>
+            </TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.appellationDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.phone }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.weixin }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.needLoanDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.intentionStateDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.stateDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.sourceDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.intentionProductDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.nextContactTime }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
+  <div class="mt-4">
+    <DataTablePagination
+      :page-size="pageSize"
+      :total="total"
+      @change="page"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { env } from '@/shared/config/env'
 import { getToken, messageTip } from '@/shared/utils/legacy-util'
 import { getCustomerList } from '@/modules/customer/api/customer-api'
+import type { Customer } from '@/modules/customer/model/customer.types'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
 // 响应式数据
 const customerList = ref([{
@@ -63,6 +99,32 @@ const pageSize = ref(10)
 const total = ref(0)
 const customerIdArray = ref([])
 const currentPage = ref(1)
+const selectedIds = ref<(number | string)[]>([])
+
+// 计算是否全选
+const isAllSelected = computed(() => {
+  return customerList.value.length > 0 && selectedIds.value.length === customerList.value.length
+})
+
+// 全选/取消全选
+function toggleAllSelection(checked: boolean) {
+  if (checked) {
+    selectedIds.value = customerList.value.map((row: Customer) => row.id)
+  } else {
+    selectedIds.value = []
+  }
+  customerIdArray.value = [...selectedIds.value]
+}
+
+// 单行选择切换
+function toggleRowSelection(row: Customer, checked: boolean) {
+  if (checked) {
+    selectedIds.value = [...selectedIds.value, row.id]
+  } else {
+    selectedIds.value = selectedIds.value.filter((id: number | string) => id !== row.id)
+  }
+  customerIdArray.value = [...selectedIds.value]
+}
 
 // 计算序号起始值
 const startIndex = (index) => {
@@ -77,15 +139,12 @@ const getData = async (current) => {
       customerList.value = resp.list
       pageSize.value = resp.pageSize
       total.value = resp.total
+      selectedIds.value = []
+      customerIdArray.value = []
     }
   } catch (error) {
     messageTip('获取客户列表失败', 'error')
   }
-}
-
-// 处理勾选或取消勾选
-const handleSelectionChange = (selectionnDataArray) => {
-  customerIdArray.value = selectionnDataArray.map(data => data.id)
 }
 
 // 分页函数
@@ -125,12 +184,3 @@ onMounted(() => {
   getData(1)
 })
 </script>
-
-<style scoped>
-.action-card {
-  margin-bottom: 20px;
-}
-.table-card {
-  margin-top: 20px;
-}
-</style>

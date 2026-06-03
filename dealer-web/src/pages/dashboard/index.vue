@@ -1,42 +1,35 @@
 <template>
   <!--概览统计-->
-  <el-row>
-    <el-col :span="6">
-      <el-statistic :value="summaryData.effectiveActivityCount">
-        <template #title>
-          <div style="display: inline-flex; align-items: center">
-            市场活动
-          </div>
-        </template>
-        <template #suffix>/{{summaryData.totalActivityCount}}</template>
-      </el-statistic>
-    </el-col>
+  <div class="grid grid-cols-4 gap-4 text-center">
+    <div class="rounded-lg border p-6">
+      <div class="text-sm text-muted-foreground">市场活动</div>
+      <div class="mt-2 text-2xl font-bold">
+        {{ summaryData.effectiveActivityCount }}
+        <span class="text-base font-normal text-muted-foreground">/{{ summaryData.totalActivityCount }}</span>
+      </div>
+    </div>
+    <div class="rounded-lg border p-6">
+      <div class="text-sm text-muted-foreground">线索总数</div>
+      <div class="mt-2 text-2xl font-bold">{{ summaryData.totalClueCount }}</div>
+    </div>
+    <div class="rounded-lg border p-6">
+      <div class="text-sm text-muted-foreground">客户总数</div>
+      <div class="mt-2 text-2xl font-bold">{{ summaryData.totalCustomerCount }}</div>
+    </div>
+    <div class="rounded-lg border p-6">
+      <div class="text-sm text-muted-foreground">交易总额</div>
+      <div class="mt-2 text-2xl font-bold">
+        {{ summaryData.successTranAmount }}
+        <span class="text-base font-normal text-muted-foreground">/{{ summaryData.totalTranAmount }}</span>
+      </div>
+    </div>
+  </div>
 
-    <el-col :span="6">
-      <el-statistic title="线索总数" :value="summaryData.totalClueCount" />
-    </el-col>
+  <!-- 销售漏斗图,为 ECharts 准备一个定义了宽高的 DOM -->
+  <div id="saleFunnelChart" class="float-left m-2.5 h-[350px] w-[48%]"> 图渲染在此处 </div>
 
-    <el-col :span="6">
-      <el-statistic title="客户总数" :value="summaryData.totalCustomerCount" />
-    </el-col>
-
-    <el-col :span="6">
-      <el-statistic :value="summaryData.successTranAmount">
-        <template #title>
-          <div style="display: inline-flex; align-items: center">
-            交易总额
-          </div>
-        </template>
-        <template #suffix>/{{summaryData.totalTranAmount}}</template>
-      </el-statistic>
-    </el-col>
-  </el-row>
-
-  <!-- 销售漏斗图，为 ECharts 准备一个定义了宽高的 DOM -->
-  <div id="saleFunnelChart" style="width: 48%; height:350px; margin:10px; float: left;"> 图渲染在此处 </div>
-
-  <!-- 线索来源饼图，为 ECharts 准备一个定义了宽高的 DOM -->
-  <div id="sourcePieChart" style="width: 48%; height:350px; margin:10px; float: left;"> 图渲染在此处 </div>
+  <!-- 线索来源饼图,为 ECharts 准备一个定义了宽高的 DOM -->
+  <div id="sourcePieChart" class="float-left m-2.5 h-[350px] w-[48%]"> 图渲染在此处 </div>
 
 </template>
 
@@ -177,9 +170,3 @@ onMounted(() => {
   void loadSourcePieChart()
 })
 </script>
-
-<style scoped>
-.el-row {
-  text-align: center;
-}
-</style>

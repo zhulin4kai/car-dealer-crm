@@ -1,124 +1,136 @@
 <template>
-  <div class="promotion-container">
-    <el-card class="operation-bar">
-      <el-button type="primary" plain @click="goBack">返 回</el-button>
-      <el-button type="primary" @click="handleAdd">新增促销</el-button>
-    </el-card>
+  <div class="p-5 space-y-5">
+    <Card>
+      <CardContent class="flex gap-2.5 pt-6">
+        <Button variant="outline" @click="goBack">返 回</Button>
+        <Button @click="handleAdd">新增促销</Button>
+      </CardContent>
+    </Card>
 
-    <el-card class="table-card">
-      <el-table 
-        :data="promotionList" 
-        style="width: 100%"
-        v-loading="loading"
-        element-loading-text="加载中..."
-      >
-        <el-table-column prop="id" label="ID" show-overflow-tooltip />
-        <el-table-column prop="name" label="促销名称" show-overflow-tooltip />
-        <el-table-column prop="type" label="促销类型" show-overflow-tooltip>
-          <template #default="scope">
-            <el-tag :type="getPromotionTypeTag(scope.row.type)">
-              {{ scope.row.type }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="discount" label="折扣/金额" show-overflow-tooltip>
-          <template #default="scope">
-            {{ scope.row.type === '折扣' ? scope.row.discount + '折' : '¥' + scope.row.discount }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="startTime" label="开始时间" show-overflow-tooltip>
-          <template #default="scope">
-            {{ formatDateTime(scope.row.startTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="endTime" label="结束时间" show-overflow-tooltip>
-          <template #default="scope">
-            {{ formatDateTime(scope.row.endTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" show-overflow-tooltip>
-          <template #default="scope">
-            <el-tag :type="getStatusTag(scope.row.status)">
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" show-overflow-tooltip>
-          <template #default="scope">
-            <el-button type="default" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    <Card>
+      <CardContent class="pt-6">
+        <div v-if="loading" class="py-10 text-center text-muted-foreground">加载中...</div>
+        <Table v-else>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>促销名称</TableHead>
+              <TableHead>促销类型</TableHead>
+              <TableHead>折扣/金额</TableHead>
+              <TableHead>开始时间</TableHead>
+              <TableHead>结束时间</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="row in promotionList" :key="row.id">
+              <TableCell>{{ row.id }}</TableCell>
+              <TableCell class="truncate max-w-[200px]">{{ row.name }}</TableCell>
+              <TableCell>
+                <Badge
+                  :variant="getPromotionTypeTag(row.type).variant"
+                  :class="getPromotionTypeTag(row.type).badgeClass"
+                >
+                  {{ row.type }}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {{ row.type === '折扣' ? row.discount + '折' : '¥' + row.discount }}
+              </TableCell>
+              <TableCell>{{ formatDateTime(row.startTime) }}</TableCell>
+              <TableCell>{{ formatDateTime(row.endTime) }}</TableCell>
+              <TableCell>
+                <Badge
+                  :variant="getStatusTag(row.status).variant"
+                  :class="getStatusTag(row.status).badgeClass"
+                >
+                  {{ row.status }}
+                </Badge>
+              </TableCell>
+              <TableCell class="flex gap-2">
+                <Button variant="outline" size="sm" @click="handleEdit(row)">编辑</Button>
+                <Button variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
 
-    <el-pagination
-      background
-      layout="prev, pager, next"
+    <DataTablePagination
       :page-size="pageSize"
       :total="total"
-      @prev-click="handleCurrentChange"
-      @next-click="handleCurrentChange"
-      @current-change="handleCurrentChange"
-        style="margin-top: 12px; width: 100%;"
+      @change="handleCurrentChange"
     />
-    
 
     <!-- 促销表单对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogType === 'add' ? '新增促销' : '编辑促销'"
-      width="30%"
-    >
-      <el-form :model="promotionForm" label-width="100px">
-        <el-form-item label="促销名称">
-          <el-input v-model="promotionForm.name" />
-        </el-form-item>
-        <el-form-item label="促销类型">
-          <el-select v-model="promotionForm.type">
-            <el-option label="折扣" value="折扣" />
-            <el-option label="满减" value="满减" />
-            <el-option label="直降" value="直降" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="折扣/金额">
-          <el-input-number 
-            v-model="promotionForm.discount" 
-            :precision="promotionForm.type === '折扣' ? 1 : 2"
-            :step="promotionForm.type === '折扣' ? 0.1 : 1"
-            :min="0"
-            :max="promotionForm.type === '折扣' ? 10 : 999999"
-          />
-        </el-form-item>
-        <el-form-item label="开始时间">
-          <el-date-picker
-            v-model="promotionForm.startTime"
-            type="datetime"
-            placeholder="选择开始时间"
-          />
-        </el-form-item>
-        <el-form-item label="结束时间">
-          <el-date-picker
-            v-model="promotionForm.endTime"
-            type="datetime"
-            placeholder="选择结束时间"
-          />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="promotionForm.status">
-            <el-option label="未开始" value="未开始" />
-            <el-option label="进行中" value="进行中" />
-            <el-option label="已结束" value="已结束" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <Dialog v-model:open="dialogVisible">
+      <DialogContent class="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{{ dialogType === 'add' ? '新增促销' : '编辑促销' }}</DialogTitle>
+        </DialogHeader>
+        <form class="space-y-4" @submit.prevent="handleSubmit">
+          <div class="space-y-2">
+            <Label>促销名称</Label>
+            <Input v-model="promotionForm.name" />
+          </div>
+          <div class="space-y-2">
+            <Label>促销类型</Label>
+            <Select v-model="promotionForm.type">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="折扣">折扣</SelectItem>
+                <SelectItem value="满减">满减</SelectItem>
+                <SelectItem value="直降">直降</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="space-y-2">
+            <Label>折扣/金额</Label>
+            <NumberField
+              v-model="promotionForm.discount"
+              :min="0"
+              :max="promotionForm.type === '折扣' ? 10 : 999999"
+              :step="promotionForm.type === '折扣' ? 0.1 : 1"
+            >
+              <NumberFieldContent>
+                <NumberFieldDecrement />
+                <NumberFieldInput />
+                <NumberFieldIncrement />
+              </NumberFieldContent>
+            </NumberField>
+          </div>
+          <div class="space-y-2">
+            <Label>开始时间</Label>
+            <Input type="datetime-local" v-model="promotionForm.startTime" />
+          </div>
+          <div class="space-y-2">
+            <Label>结束时间</Label>
+            <Input type="datetime-local" v-model="promotionForm.endTime" />
+          </div>
+          <div class="space-y-2">
+            <Label>状态</Label>
+            <Select v-model="promotionForm.status">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="未开始">未开始</SelectItem>
+                <SelectItem value="进行中">进行中</SelectItem>
+                <SelectItem value="已结束">已结束</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </form>
+        <DialogFooter>
+          <Button variant="outline" @click="dialogVisible = false">取消</Button>
+          <Button @click="handleSubmit">确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -128,6 +140,42 @@ import { onMounted, ref } from 'vue'
 import { createPromotion, deletePromotion, getPromotionList, updatePromotion } from '@/modules/product/api/product-api'
 import type { ProductForm, ProductPromotion } from '@/modules/product/model/product.types'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
+import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  NumberField,
+  NumberFieldContent,
+  NumberFieldDecrement,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/components/ui/number-field'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 defineOptions({ name: 'ProductPromotionView' })
 
@@ -140,12 +188,27 @@ const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
 const promotionForm = ref<ProductForm>({ name: '', type: '折扣', discount: 0, startTime: '', endTime: '', status: '未开始' })
 
-function getPromotionTypeTag(type: string): string {
-  return ({ 折扣: 'success', 满减: 'warning', 直降: 'danger' } as Record<string, string>)[type] ?? 'info'
+interface BadgeStyle {
+  variant: 'default' | 'secondary' | 'destructive' | 'outline'
+  badgeClass: string
 }
 
-function getStatusTag(status: string): string {
-  return ({ 未开始: 'info', 进行中: 'success', 已结束: 'danger' } as Record<string, string>)[status] ?? 'info'
+function getPromotionTypeTag(type: string): BadgeStyle {
+  const map: Record<string, BadgeStyle> = {
+    折扣: { variant: 'default', badgeClass: 'bg-green-600 text-white' },
+    满减: { variant: 'secondary', badgeClass: '' },
+    直降: { variant: 'destructive', badgeClass: '' },
+  }
+  return map[type] ?? { variant: 'outline', badgeClass: '' }
+}
+
+function getStatusTag(status: string): BadgeStyle {
+  const map: Record<string, BadgeStyle> = {
+    未开始: { variant: 'outline', badgeClass: '' },
+    进行中: { variant: 'default', badgeClass: 'bg-green-600 text-white' },
+    已结束: { variant: 'destructive', badgeClass: '' },
+  }
+  return map[status] ?? { variant: 'outline', badgeClass: '' }
 }
 
 function formatDateTime(dateTimeStr: string): string {
@@ -224,31 +287,3 @@ function goBack(): void {
 
 onMounted(() => { void loadPromotions() })
 </script>
-
-<style scoped>
-.promotion-container {
-  padding: 20px;
-}
-
-.operation-bar {
-  margin-bottom: 20px;
-  display: flex;
-  gap: 10px;
-}
-
-.el-table {
-  margin-top: 10px;
-  width: 100%;
-}
-
-.el-pagination {
-  margin-top: 12px;
-  width: 100%;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-</style> 

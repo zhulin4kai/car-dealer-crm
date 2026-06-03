@@ -1,82 +1,103 @@
 <template>
-  <div class="category-container">
-    <el-card class="operation-bar">
-      <el-button type="primary" plain @click="goBack">返 回</el-button>
-      <el-button type="primary" @click="handleAdd">新增分类</el-button>
-    </el-card>
+  <div class="p-5 space-y-5">
+    <Card>
+      <CardContent class="flex gap-2.5 pt-6">
+        <Button variant="outline" @click="goBack">返 回</Button>
+        <Button @click="handleAdd">新增分类</Button>
+      </CardContent>
+    </Card>
 
-    <el-card class="table-card">
-      <el-table 
-        :data="categoryList" 
-        style="width: 100%"
-        v-loading="loading"
-        element-loading-text="加载中..."
-      >
-        <el-table-column prop="id" label="ID" show-overflow-tooltip />
-        <el-table-column prop="name" label="分类名称" show-overflow-tooltip />
-        <el-table-column prop="code" label="分类编码" show-overflow-tooltip />
-        <el-table-column prop="description" label="描述" show-overflow-tooltip />
-        <el-table-column prop="sort" label="排序" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" show-overflow-tooltip>
-          <template #default="scope">
-            <el-tag :type="scope.row.status === '启用' ? 'success' : 'info'">
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" show-overflow-tooltip>
-          <template #default="scope">
-            <el-button @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="danger" @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-        </el-table>
-    </el-card>
+    <Card>
+      <CardContent class="pt-6">
+        <div v-if="loading" class="py-10 text-center text-muted-foreground">加载中...</div>
+        <Table v-else>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>分类名称</TableHead>
+              <TableHead>分类编码</TableHead>
+              <TableHead>描述</TableHead>
+              <TableHead>排序</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="row in categoryList" :key="row.id">
+              <TableCell>{{ row.id }}</TableCell>
+              <TableCell class="truncate max-w-[200px]">{{ row.name }}</TableCell>
+              <TableCell class="truncate max-w-[200px]">{{ row.code }}</TableCell>
+              <TableCell class="truncate max-w-[200px]">{{ row.description }}</TableCell>
+              <TableCell>{{ row.sort }}</TableCell>
+              <TableCell>
+                <Badge :class="row.status === '启用' ? 'bg-green-600 text-white' : ''" :variant="row.status === '启用' ? undefined : 'outline'">
+                  {{ row.status }}
+                </Badge>
+              </TableCell>
+              <TableCell class="flex gap-2">
+                <Button variant="outline" size="sm" @click="handleEdit(row)">编辑</Button>
+                <Button variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
 
-    <el-pagination
-      background
-      layout="prev, pager, next"
+    <DataTablePagination
       :page-size="pageSize"
       :total="total"
-      @prev-click="handleCurrentChange"
-      @next-click="handleCurrentChange"
-      @current-change="handleCurrentChange"
-      style="margin-top: 12px; width: 100%;"
+      @change="handleCurrentChange"
     />
 
     <!-- 分类表单对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogType === 'add' ? '新增分类' : '编辑分类'"
-      width="30%"
-    >
-      <el-form :model="categoryForm" label-width="100px">
-        <el-form-item label="分类名称">
-          <el-input v-model="categoryForm.name" />
-        </el-form-item>
-        <el-form-item label="分类编码">
-          <el-input v-model="categoryForm.code" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input type="textarea" v-model="categoryForm.description" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="categoryForm.sort" :min="0" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="categoryForm.status">
-            <el-option label="启用" value="启用" />
-            <el-option label="禁用" value="禁用" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <Dialog v-model:open="dialogVisible">
+      <DialogContent class="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{{ dialogType === 'add' ? '新增分类' : '编辑分类' }}</DialogTitle>
+        </DialogHeader>
+        <form class="space-y-4" @submit.prevent="handleSubmit">
+          <div class="space-y-2">
+            <Label>分类名称</Label>
+            <Input v-model="categoryForm.name" />
+          </div>
+          <div class="space-y-2">
+            <Label>分类编码</Label>
+            <Input v-model="categoryForm.code" />
+          </div>
+          <div class="space-y-2">
+            <Label>描述</Label>
+            <Textarea v-model="categoryForm.description" />
+          </div>
+          <div class="space-y-2">
+            <Label>排序</Label>
+            <NumberField v-model="categoryForm.sort" :min="0">
+              <NumberFieldContent>
+                <NumberFieldDecrement />
+                <NumberFieldInput />
+                <NumberFieldIncrement />
+              </NumberFieldContent>
+            </NumberField>
+          </div>
+          <div class="space-y-2">
+            <Label>状态</Label>
+            <Select v-model="categoryForm.status">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="启用">启用</SelectItem>
+                <SelectItem value="禁用">禁用</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </form>
+        <DialogFooter>
+          <Button variant="outline" @click="dialogVisible = false">取消</Button>
+          <Button @click="handleSubmit">确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -86,6 +107,43 @@ import { onMounted, ref } from 'vue'
 import { createCategory, deleteCategory, getCategoryList, updateCategory } from '@/modules/product/api/product-api'
 import type { ProductCategory, ProductForm } from '@/modules/product/model/product.types'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
+import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  NumberField,
+  NumberFieldContent,
+  NumberFieldDecrement,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/components/ui/number-field'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
 
 defineOptions({ name: 'ProductCategoryView' })
 
@@ -162,35 +220,3 @@ function goBack(): void {
 
 onMounted(() => { void loadCategories() })
 </script>
-
-<style scoped>
-.category-container {
-  padding: 20px;
-}
-
-.table-card {
-  margin-top: 20px;
-}
-
-.operation-bar {
-  margin-bottom: 20px;
-  display: flex;
-  gap: 10px;
-}
-
-.el-table {
-  margin-top: 10px;
-  width: 100%;
-}
-
-.el-pagination {
-  margin-top: 12px;
-  width: 100%;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-</style> 

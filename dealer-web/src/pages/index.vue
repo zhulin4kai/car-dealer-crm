@@ -1,50 +1,59 @@
 <template>
-  <el-container>
-    <!--左侧-->
-    <el-aside width="200px">
-      <img src="@/assets/logo-2.svg" class="login_img">
-      <p class="imgTitle">
+  <div class="flex h-screen">
+    <!-- 左侧展示区 -->
+    <aside class="hidden md:flex w-[40%] flex-col justify-center items-center text-center bg-muted p-8">
+      <img src="@/assets/logo-2.svg" class="w-4/5 h-auto max-h-[413px]">
+      <p class="text-3xl md:text-4xl text-muted-foreground mt-4">
         欢迎使用
         <br>
         徐州工程学院汽车销售管理系统
       </p>
-    </el-aside>
+    </aside>
 
-    <!--右侧-->
-    <el-main>
-      <div class="loginTile">登录您的账号</div>
+    <!-- 右侧登录区 -->
+    <main class="flex-1 flex flex-col justify-center items-center">
+      <div class="text-2xl font-bold text-center mb-6">登录您的账号</div>
 
-      <el-form ref="loginRefForm" :model="user" :rules="loginRules" label-width="auto">
-        <el-form-item label="账号" prop="loginAct">
-          <el-input v-model="user.loginAct" />
-        </el-form-item>
+      <form class="w-[90%] sm:w-[60%] md:w-[40%] lg:w-[30%] p-10 border rounded-md shadow-lg space-y-4" @submit.prevent="onSubmit">
+        <div class="space-y-2">
+          <Label for="loginAct">账号</Label>
+          <Input id="loginAct" v-model="loginAct" placeholder="请输入登录账号" />
+          <p v-if="errors.loginAct" class="text-sm text-destructive">{{ errors.loginAct }}</p>
+        </div>
 
-        <el-form-item label="密码" prop="loginPwd">
-          <el-input type="password" v-model="user.loginPwd" />
-        </el-form-item>
+        <div class="space-y-2">
+          <Label for="loginPwd">密码</Label>
+          <Input id="loginPwd" type="password" v-model="loginPwd" placeholder="请输入登录密码" />
+          <p v-if="errors.loginPwd" class="text-sm text-destructive">{{ errors.loginPwd }}</p>
+        </div>
 
-        <el-form-item label-position="left" style="margin-left: 50px">
-          <el-button type="primary" @click="login">登 录</el-button>
-        </el-form-item>
+        <Button type="submit" class="w-full" :disabled="isSubmitting">登 录</Button>
 
-        <el-form-item style="margin-left: 50px">
-          <el-checkbox label="记住我" v-model="user.rememberMe" />
-        </el-form-item>
-      </el-form>
-
-    </el-main>
-  </el-container>
+        <div class="flex items-center space-x-2">
+          <Checkbox id="rememberMe" :checked="rememberMe" @update:checked="(v: boolean) => rememberMe = v" />
+          <Label for="rememberMe" class="text-sm font-normal cursor-pointer">记住我</Label>
+        </div>
+      </form>
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">
-import type { FormInstance, FormRules } from 'element-plus'
-import { onMounted, reactive, ref } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import * as z from 'zod'
 
 import { freeLogin } from '@/modules/user/api/user-api'
 import type { LoginForm } from '@/modules/user/model/user.types'
 import { messageTip } from '@/shared/utils/feedback'
 import { useAuthStore } from '@/stores/auth.store'
+
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 defineOptions({
   name: 'LoginView',
@@ -52,32 +61,31 @@ defineOptions({
 
 const router = useRouter()
 const authStore = useAuthStore()
-const loginRefForm = ref<FormInstance>()
 
-const user = reactive<LoginForm>({
-  loginAct: '',
-  loginPwd: '',
-  rememberMe: false,
+const loginSchema = toTypedSchema(z.object({
+  loginAct: z.string().min(1, '请输入登录账号'),
+  loginPwd: z.string().min(6, '登录密码长度为6-16位').max(16, '登录密码长度为6-16位'),
+  rememberMe: z.boolean(),
+}))
+
+const { handleSubmit, errors, isSubmitting, defineField } = useForm<LoginForm>({
+  validationSchema: loginSchema,
+  initialValues: {
+    loginAct: '',
+    loginPwd: '',
+    rememberMe: false,
+  },
 })
 
-const loginRules: FormRules<LoginForm> = {
-  loginAct: [{ required: true, message: '请输入登录账号', trigger: 'blur' }],
-  loginPwd: [
-    { required: true, message: '请输入登录密码', trigger: 'blur' },
-    { min: 6, max: 16, message: '登录密码长度为6-16位', trigger: 'blur' },
-  ],
-}
+const [loginAct] = defineField('loginAct')
+const [loginPwd] = defineField('loginPwd')
+const [rememberMe] = defineField('rememberMe')
 
-async function login(): Promise<void> {
-  const valid = await loginRefForm.value?.validate()
-  if (!valid) {
-    return
-  }
-
-  await authStore.login(user)
+const onSubmit = handleSubmit(async (formData) => {
+  await authStore.login(formData)
   messageTip('登录成功', 'success')
   await router.push('/dashboard')
-}
+})
 
 async function restoreRememberedSession(): Promise<void> {
   authStore.restoreSession()
@@ -93,57 +101,3 @@ onMounted(() => {
   void restoreRememberedSession()
 })
 </script>
-
-<style scoped>
-.login_img {
-  width: 80%;
-  height: 50%;
-}
-.el-aside {
-  background: #871d1f;
-  width: 40%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-.el-main {
-  height: calc(100vh);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-img {
-  height: 413px;
-}
-.imgTitle {
-  color: #ebeef5;
-  font-size: 40px;
-}
-.el-form {
-  width: 25%; /* 原来是60%，缩短到三分之一，即20% */
-  margin: 0; /* 移除auto，因为flex会处理居中 */
-  padding: 50px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: left;
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
-}
-.loginTile {
-  text-align: center;
-  /* margin-top: 100px;  移除，因为flex会处理居中 */
-  margin-bottom: 25px;
-  font-size: 30px;
-  font-weight: bold;
-}
-.el-button {
-  width: 100%;
-  background-color: #1a1a1a;
-  border-color: #1a1a1a;
-}
-</style>

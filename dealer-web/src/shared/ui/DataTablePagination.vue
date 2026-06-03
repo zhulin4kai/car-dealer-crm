@@ -1,17 +1,44 @@
 <template>
-  <el-pagination
-    background
-    layout="prev, pager, next"
-    :page-size="pageSize"
+  <Pagination
+    v-slot="{ page }"
+    :page="currentPage"
     :total="total"
-    @current-change="emit('change', $event)"
-    @next-click="emit('change', $event)"
-    @prev-click="emit('change', $event)"
-  />
+    :items-per-page="pageSize"
+    :sibling-count="1"
+    show-edges
+    @update:page="onPageChange"
+  >
+    <PaginationContent>
+      <PaginationPrevious />
+      <template v-for="item in page" :key="item.value">
+        <PaginationItem v-if="item.type === 'page'">
+          <PaginationLink
+            :is-active="item.value === currentPage"
+            @click="onPageChange(item.value)"
+          >
+            {{ item.value }}
+          </PaginationLink>
+        </PaginationItem>
+        <PaginationEllipsis v-else />
+      </template>
+      <PaginationNext />
+    </PaginationContent>
+  </Pagination>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { ref, watch } from 'vue'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
+
+const props = defineProps<{
   pageSize: number
   total: number
 }>()
@@ -19,4 +46,18 @@ defineProps<{
 const emit = defineEmits<{
   change: [page: number]
 }>()
+
+const currentPage = ref(1)
+
+function onPageChange(page: number) {
+  currentPage.value = page
+  emit('change', page)
+}
+
+watch(() => props.total, () => {
+  if (currentPage.value > Math.ceil(props.total / props.pageSize) && Math.ceil(props.total / props.pageSize) > 0) {
+    currentPage.value = 1
+    emit('change', 1)
+  }
+})
 </script>
