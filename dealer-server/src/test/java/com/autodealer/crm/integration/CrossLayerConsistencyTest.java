@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Cross-layer contract tests. These tests MUST fail on real inconsistencies
- * between the frontend (dealer-web/src/api, dealer-web/src/view), the backend
+ * between the frontend API/page layers, the backend
  * controllers (dealer-server/src/main/java/.../web), the SecurityConfig and
  * the docs (docs/api.md, docs/integration.md).
  *
@@ -45,8 +45,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
 
     private static final Path PROJECT_ROOT = Paths.get(System.getProperty("user.dir")).getParent();
-    private static final Path FRONTEND_API_DIR = PROJECT_ROOT.resolve("dealer-web/src/api");
-    private static final Path FRONTEND_VIEW_DIR = PROJECT_ROOT.resolve("dealer-web/src/view");
+    private static final List<Path> FRONTEND_API_ROOTS = List.of(
+            PROJECT_ROOT.resolve("dealer-web/src/modules"),
+            PROJECT_ROOT.resolve("dealer-web/src/api")
+    );
+    private static final List<Path> FRONTEND_VIEW_ROOTS = List.of(
+            PROJECT_ROOT.resolve("dealer-web/src/pages"),
+            PROJECT_ROOT.resolve("dealer-web/src/layouts"),
+            PROJECT_ROOT.resolve("dealer-web/src/view")
+    );
+    private static final Path FRONTEND_USER_API = PROJECT_ROOT.resolve("dealer-web/src/modules/user/api/user-api.ts");
+    private static final Path FRONTEND_DASHBOARD_LAYOUT = PROJECT_ROOT.resolve("dealer-web/src/layouts/DashboardLayout.vue");
     private static final Path BACKEND_CONTROLLER_DIR = PROJECT_ROOT.resolve("dealer-server/src/main/java/com/autodealer/crm/web");
     private static final Path BACKEND_SECURITY_CONFIG = PROJECT_ROOT.resolve("dealer-server/src/main/java/com/autodealer/crm/config/SecurityConfig.java");
     private static final Path DOCS_INTEGRATION = PROJECT_ROOT.resolve("docs/integration.md");
@@ -55,7 +64,7 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
     // ==================== API path/method coverage ====================
 
     @Test
-    @DisplayName("every frontend /api path declared in dealer-web/src/api/*.js MUST exist in the backend controllers")
+    @DisplayName("every frontend /api path declared in frontend API modules MUST exist in the backend controllers")
     void everyFrontendApiPathMustExistInBackend() throws IOException {
         Set<ApiRef> frontendApis = collectFrontendApis();
         Set<ApiRef> backendApis = collectBackendApis();
@@ -72,7 +81,7 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("every API method/path called directly from a Vue view (axios or doGet/Post) MUST exist in the backend")
+    @DisplayName("every API method/path called directly from a Vue page/layout MUST exist in the backend")
     void everyViewInlineApiPathMustExistInBackend() throws IOException {
         Set<ApiRef> viewApis = collectViewInlineApis();
         Set<ApiRef> backendApis = collectBackendApis();
@@ -119,14 +128,14 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
         StringBuilder msg = new StringBuilder();
         if (!backendMethod.equals(frontendMethod)) {
             msg.append("Backend SecurityConfig uses ").append(backendMethod)
-                    .append(" but frontend DashboardView uses ").append(frontendMethod).append("; ");
+                    .append(" but frontend logout API uses ").append(frontendMethod).append("; ");
         }
         if (!backendMethod.equals(docsMethod)) {
             msg.append("Backend SecurityConfig uses ").append(backendMethod)
                     .append(" but docs/integration.md says ").append(docsMethod).append("; ");
         }
         if (!frontendMethod.equals(docsMethod)) {
-            msg.append("Frontend DashboardView uses ").append(frontendMethod)
+            msg.append("Frontend logout API uses ").append(frontendMethod)
                     .append(" but docs/integration.md says ").append(docsMethod).append("; ");
         }
         assertEquals("", msg.toString(),
@@ -194,42 +203,67 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
 
     private Set<ApiRef> collectFrontendApis() throws IOException {
         Set<ApiRef> out = new HashSet<>();
-        try (Stream<Path> files = Files.list(FRONTEND_API_DIR)) {
-            for (Path file : files.filter(p -> p.toString().endsWith(".js")).collect(Collectors.toList())) {
-                String content = Files.readString(file);
-                Pattern p = Pattern.compile(
-                        "do(Get|Post|Put|Delete)\\s*\\(\\s*(['\"`])([^'\"`]*?)\\2",
-                        Pattern.CASE_INSENSITIVE);
-                Matcher m = p.matcher(content);
-                while (m.find()) {
-                    String method = m.group(1).toUpperCase();
-                    String path = m.group(3);
-                    if (path.startsWith("/api/")) {
-                        out.add(new ApiRef(method, normalizePath(stripQuery(path))));
-                    }
-                }
-            }
+        for (Path file : collectFrontendFiles(FRONTEND_API_ROOTS, Set.of(".ts", ".js"))) {
+            String content = Files.readString(file);
+            collectHttpClientRefs(content, out);
+            collectLegacyDoRefs(content, out);
         }
+        out.removeIf(api -> isFrameworkEndpoint(api.path()));
         return out;
     }
 
     private Set<ApiRef> collectViewInlineApis() throws IOException {
         Set<ApiRef> out = new HashSet<>();
-        try (Stream<Path> files = Files.list(FRONTEND_VIEW_DIR)) {
-            for (Path file : files.filter(p -> p.toString().endsWith(".vue")).collect(Collectors.toList())) {
-                String content = Files.readString(file);
-                Pattern p = Pattern.compile("do(Get|Post|Put|Delete)\\s*\\(\\s*(['\"`])([^'\"`]*?)\\2");
-                Matcher m = p.matcher(content);
-                while (m.find()) {
-                    String method = m.group(1).toUpperCase();
-                    String path = m.group(3);
-                    if (path.startsWith("/api/") && !isFrameworkEndpoint(path)) {
-                        out.add(new ApiRef(method, normalizePath(stripQuery(path))));
-                    }
-                }
+        for (Path file : collectFrontendFiles(FRONTEND_VIEW_ROOTS, Set.of(".vue"))) {
+            String content = Files.readString(file);
+            collectLegacyDoRefs(content, out);
+            collectHttpClientRefs(content, out);
+        }
+        out.removeIf(api -> isFrameworkEndpoint(api.path()));
+        return out;
+    }
+
+    private static List<Path> collectFrontendFiles(List<Path> roots, Set<String> suffixes) throws IOException {
+        List<Path> files = new ArrayList<>();
+        for (Path root : roots) {
+            if (!Files.exists(root)) {
+                continue;
+            }
+            try (Stream<Path> stream = Files.walk(root)) {
+                files.addAll(stream
+                        .filter(Files::isRegularFile)
+                        .filter(path -> suffixes.stream().anyMatch(suffix -> path.toString().endsWith(suffix)))
+                        .collect(Collectors.toList()));
             }
         }
-        return out;
+        return files;
+    }
+
+    private static void collectLegacyDoRefs(String content, Set<ApiRef> out) {
+        Pattern p = Pattern.compile("do(Get|Post|Put|Delete)\\s*\\(\\s*(['\"`])([^'\"`]*?)\\2",
+                Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(content);
+        while (m.find()) {
+            String method = m.group(1).toUpperCase();
+            String path = m.group(3);
+            if (path.startsWith("/api/")) {
+                out.add(new ApiRef(method, normalizePath(stripQuery(path))));
+            }
+        }
+    }
+
+    private static void collectHttpClientRefs(String content, Set<ApiRef> out) {
+        Pattern p = Pattern.compile(
+                "httpClient\\s*\\.\\s*(get|post|put|delete)\\s*(?:<[^\\n(]*>)?\\s*\\(\\s*(['\"`])([^'\"`]*?)\\2",
+                Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(content);
+        while (m.find()) {
+            String method = m.group(1).toUpperCase();
+            String path = m.group(3);
+            if (path.startsWith("/api/")) {
+                out.add(new ApiRef(method, normalizePath(stripQuery(path))));
+            }
+        }
     }
 
     /**
@@ -319,14 +353,38 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
     }
 
     private String detectFrontendLogoutMethod() throws IOException {
-        Path dashboard = FRONTEND_VIEW_DIR.resolve("DashboardView.vue");
-        if (!Files.exists(dashboard)) fail("DashboardView.vue not found at " + dashboard);
-        String content = Files.readString(dashboard);
-        if (content.contains("doPost(\"/api/logout\"")) return "POST";
-        if (content.contains("doGet(\"/api/logout\"")) return "GET";
-        if (content.contains("axios.post(\"/api/logout\"")) return "POST";
-        if (content.contains("axios.get(\"/api/logout\"")) return "GET";
-        fail("DashboardView.vue does not call /api/logout via doGet/doPost/axios");
+        if (Files.exists(FRONTEND_USER_API)) {
+            String method = detectLogoutMethodInContent(Files.readString(FRONTEND_USER_API));
+            if (!method.isEmpty()) {
+                return method;
+            }
+        }
+
+        if (Files.exists(FRONTEND_DASHBOARD_LAYOUT)) {
+            String method = detectLogoutMethodInContent(Files.readString(FRONTEND_DASHBOARD_LAYOUT));
+            if (!method.isEmpty()) {
+                return method;
+            }
+        }
+
+        for (Path file : collectFrontendFiles(FRONTEND_VIEW_ROOTS, Set.of(".vue"))) {
+            String method = detectLogoutMethodInContent(Files.readString(file));
+            if (!method.isEmpty()) {
+                return method;
+            }
+        }
+
+        fail("Frontend does not declare /api/logout in user-api.ts, DashboardLayout.vue, or Vue pages");
+        return "";
+    }
+
+    private static String detectLogoutMethodInContent(String content) {
+        if (content.contains("httpClient.post('/api/logout'") || content.contains("httpClient.post(\"/api/logout\"")) return "POST";
+        if (content.contains("httpClient.get('/api/logout'") || content.contains("httpClient.get(\"/api/logout\"")) return "GET";
+        if (content.contains("doPost(\"/api/logout\"") || content.contains("doPost('/api/logout'")) return "POST";
+        if (content.contains("doGet(\"/api/logout\"") || content.contains("doGet('/api/logout'")) return "GET";
+        if (content.contains("axios.post(\"/api/logout\"") || content.contains("axios.post('/api/logout'")) return "POST";
+        if (content.contains("axios.get(\"/api/logout\"") || content.contains("axios.get('/api/logout'")) return "GET";
         return "";
     }
 
