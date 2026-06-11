@@ -57,6 +57,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests((authorize) -> {
                     authorize.requestMatchers(org.springframework.http.HttpMethod.POST, "/api/login").permitAll()
+                            .requestMatchers("/api/login/free").permitAll()
                             .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // 允许所有OPTIONS请求
                             .anyRequest().authenticated(); // 其它任何请求都需要登录后才能访问
                 })
