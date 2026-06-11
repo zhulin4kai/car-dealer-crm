@@ -266,6 +266,27 @@ CREATE TABLE IF NOT EXISTS t_operation_log
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS t_payment
+(
+    id              INTEGER NOT NULL AUTO_INCREMENT,
+    tran_id         INTEGER NOT NULL,
+    payment_no      VARCHAR(64) NOT NULL,
+    amount          DECIMAL(10,2) NOT NULL,
+    payment_method  VARCHAR(32) NOT NULL,
+    payment_type    VARCHAR(32) NOT NULL,
+    payment_status  VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    payment_time    TIMESTAMP,
+    transaction_ref VARCHAR(128),
+    remark          VARCHAR(255),
+    create_time     TIMESTAMP,
+    create_by       INTEGER,
+    edit_time       TIMESTAMP,
+    edit_by         INTEGER,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_payment_no (payment_no),
+    INDEX idx_tran_id (tran_id)
+);
+
 CREATE TABLE IF NOT EXISTS t_product
 (
     id            BIGINT NOT NULL AUTO_INCREMENT,

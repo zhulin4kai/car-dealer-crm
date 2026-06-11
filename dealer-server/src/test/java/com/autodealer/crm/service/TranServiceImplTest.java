@@ -40,6 +40,10 @@ class TranServiceImplTest {
     private TProductMapper productMapper;
     @Mock
     private RedisManager redisManager;
+    @Mock
+    private TPaymentMapper paymentMapper;
+    @Mock
+    private TTranHistoryMapper tranHistoryMapper;
 
     private TTran newTran(Integer id, TranStage stage) {
         TTran t = new TTran();

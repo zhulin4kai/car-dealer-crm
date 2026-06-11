@@ -13,6 +13,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -39,6 +40,12 @@ public class TranServiceImpl implements TranService {
 
     @Resource
     private RedisManager redisManager;
+
+    @Resource
+    private TPaymentMapper paymentMapper;
+
+    @Resource
+    private TTranHistoryMapper tranHistoryMapper;
 
     @Override
     public PageInfo<TTran> getTransactionList(TranQuery query, Integer pageNum, Integer pageSize) {
@@ -116,6 +123,7 @@ public class TranServiceImpl implements TranService {
 
         int result = tranMapper.updateStageAtomic(id, newStage, existing.getStage(), existing.getEditBy());
         if (result > 0) {
+            writeHistory(id, newStage.getLabel(), existing.getMoney(), existing.getExpectedDate(), existing.getEditBy());
             clearTransactionCache(id);
             return true;
         }
@@ -222,6 +230,10 @@ public class TranServiceImpl implements TranService {
             throw new RuntimeException("当前交易状态不允许审批操作");
         }
 
+        TTran tran = tranMapper.selectByPrimaryKey(tranId);
+        writeHistory(tranId, (approved ? TranStage.APPROVED : TranStage.LOST).getLabel(),
+                tran != null ? tran.getMoney() : null, null, approveBy);
+
         TTranApprove approve = new TTranApprove();
         approve.setTranId(tranId);
         approve.setApproveResult(approved);
@@ -279,6 +291,8 @@ public class TranServiceImpl implements TranService {
 
         int result = tranInvoiceMapper.insertSelective(invoice);
         if (result > 0) {
+            writeHistory(invoice.getTranId(), TranStage.PAYMENT.getLabel(),
+                    tran != null ? tran.getMoney() : null, null, invoice.getCreateBy());
             clearTransactionCache(invoice.getTranId());
             return true;
         }
@@ -356,6 +370,7 @@ public class TranServiceImpl implements TranService {
         tranRemarkMapper.deleteByTranId(id);
         tranInvoiceMapper.deleteByTranId(id);
         tranApproveMapper.deleteByTranId(id);
+        paymentMapper.deleteByTranId(id);
 
         int result = tranMapper.deleteByPrimaryKey(id);
         if (result > 0) {
@@ -415,6 +430,7 @@ public class TranServiceImpl implements TranService {
         // 清除旧的审批记录
         tranApproveMapper.deleteByTranId(tranId);
 
+        writeHistory(tranId, TranStage.QUOTATION.getLabel(), null, null, userId);
         clearTransactionCache(tranId);
         return true;
     }
@@ -468,6 +484,132 @@ public class TranServiceImpl implements TranService {
         return updateTranInvoiceStatus(id, status, invoice.getEditBy());
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TPayment recordPayment(TPayment payment) {
+        if (payment == null || payment.getTranId() == null || payment.getAmount() == null) {
+            throw new RuntimeException("支付信息不完整");
+        }
+        if (payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("支付金额必须大于0");
+        }
+
+        TTran tran = tranMapper.selectByPrimaryKey(payment.getTranId());
+        if (tran == null) {
+            throw new RuntimeException("交易记录不存在");
+        }
+        if (tran.getStage() != TranStage.PAYMENT) {
+            throw new RuntimeException("当前交易状态不允许收款");
+        }
+
+        Date now = new Date();
+        payment.setPaymentNo(generatePaymentNo());
+        if (payment.getPaymentStatus() == null) {
+            payment.setPaymentStatus("COMPLETED");
+        }
+        if (payment.getPaymentTime() == null && "COMPLETED".equals(payment.getPaymentStatus())) {
+            payment.setPaymentTime(now);
+        }
+        payment.setCreateTime(now);
+
+        paymentMapper.insertSelective(payment);
+
+        // 检查是否已收齐：SUM(已到账金额) >= 交易金额
+        if ("COMPLETED".equals(payment.getPaymentStatus())) {
+            List<TPayment> allPayments = paymentMapper.selectByTranId(payment.getTranId());
+            BigDecimal totalPaid = allPayments.stream()
+                    .filter(p -> "COMPLETED".equals(p.getPaymentStatus()))
+                    .map(TPayment::getAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (totalPaid.compareTo(tran.getMoney()) >= 0) {
+                int rows = tranMapper.updateStageToCompleted(payment.getTranId(), payment.getCreateBy());
+                if (rows > 0) {
+                    writeHistory(payment.getTranId(), "COMPLETED", tran.getMoney(), null, payment.getCreateBy());
+                }
+            }
+        }
+
+        clearTransactionCache(payment.getTranId());
+        return payment;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TPayment refundPayment(Integer paymentId, Integer userId) {
+        TPayment original = paymentMapper.selectByPrimaryKey(paymentId);
+        if (original == null) {
+            throw new RuntimeException("支付记录不存在");
+        }
+        if (!"COMPLETED".equals(original.getPaymentStatus())) {
+            throw new RuntimeException("只能对已到账的收款进行退款");
+        }
+
+        TTran tran = tranMapper.selectByPrimaryKey(original.getTranId());
+        if (tran == null) {
+            throw new RuntimeException("交易记录不存在");
+        }
+
+        Date now = new Date();
+
+        // 创建退款记录（负金额）
+        TPayment refund = new TPayment();
+        refund.setTranId(original.getTranId());
+        refund.setAmount(original.getAmount().negate());
+        refund.setPaymentMethod(original.getPaymentMethod());
+        refund.setPaymentType("REFUND");
+        refund.setPaymentStatus("COMPLETED");
+        refund.setPaymentTime(now);
+        refund.setPaymentNo(generatePaymentNo());
+        refund.setCreateTime(now);
+        refund.setCreateBy(userId);
+        refund.setRemark("退款 - 交易取消，原收款ID: " + original.getId());
+        paymentMapper.insertSelective(refund);
+
+        // 标记原收款为已退款
+        original.setPaymentStatus("REFUNDED");
+        original.setEditTime(now);
+        original.setEditBy(userId);
+        paymentMapper.updateByPrimaryKeySelective(original);
+
+        // 恢复库存
+        List<TTranProduct> products = tranProductMapper.selectByTranId(original.getTranId());
+        if (products != null) {
+            for (TTranProduct p : products) {
+                productMapper.updateStock(p.getProductId().longValue(), p.getQuantity());
+            }
+        }
+
+        // 回退到 PAYMENT 阶段（从 COMPLETED）
+        tranMapper.updateStageAtomic(original.getTranId(), TranStage.PAYMENT, TranStage.COMPLETED, userId);
+        writeHistory(original.getTranId(), "PAYMENT (退款)", tran.getMoney(), null, userId);
+
+        clearTransactionCache(original.getTranId());
+        return refund;
+    }
+
+    @Override
+    public List<TPayment> getTransactionPayments(Integer tranId) {
+        return paymentMapper.selectByTranId(tranId);
+    }
+
+    private void writeHistory(Integer tranId, String stage, BigDecimal money, Date expectedDate, Integer userId) {
+        TTranHistory history = new TTranHistory();
+        history.setTranId(tranId);
+        history.setStage(stage);
+        history.setMoney(money);
+        history.setExpectedDate(expectedDate);
+        history.setCreateTime(new Date());
+        history.setCreateBy(userId);
+        tranHistoryMapper.insert(history);
+    }
+
+    private String generatePaymentNo() {
+        String dateStr = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
+        String nanoStr = String.format("%010d", Math.abs(System.nanoTime() % 10000000000L));
+        return "PAY" + dateStr + nanoStr;
+    }
+
     private String generateTranNo() {
         String dateStr = new java.text.SimpleDateFormat("yyyyMMdd").format(new Date());
         String nanoStr = String.format("%010d", Math.abs(System.nanoTime() % 10000000000L));
@@ -485,5 +627,6 @@ public class TranServiceImpl implements TranService {
         redisManager.deletePattern(Constants.CACHE_KEY_TRAN_LIST + "*");
         redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
         redisManager.delete(Constants.CACHE_KEY_TRAN_INVOICES + tranId);
+        redisManager.delete("cdrm:tran:payments:" + tranId);
     }
 }

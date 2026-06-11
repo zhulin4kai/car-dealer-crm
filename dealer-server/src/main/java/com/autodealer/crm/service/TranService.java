@@ -183,4 +183,19 @@ public interface TranService {
      * @return 是否更新成功
      */
     boolean updateTransactionWithProducts(TTran tran, List<TTranProduct> products);
+
+    /**
+     * 记录收款
+     */
+    TPayment recordPayment(TPayment payment);
+
+    /**
+     * 退款（交易取消，恢复库存）
+     */
+    TPayment refundPayment(Integer paymentId, Integer userId);
+
+    /**
+     * 获取交易收款记录
+     */
+    List<TPayment> getTransactionPayments(Integer tranId);
 }
