@@ -8,6 +8,7 @@ import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.TranService;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +31,7 @@ public class TranController {
     /**
      * 获取交易列表
      */
+    @PreAuthorize("hasAuthority('tran:list')")
     @GetMapping("/list")
     public R<PageInfo<TTran>> list(
             TranQuery query,
@@ -41,6 +43,7 @@ public class TranController {
     /**
      * 获取交易详情
      */
+    @PreAuthorize("hasAuthority('tran:view')")
     @GetMapping("/{id}")
     public R<TTran> detail(@PathVariable Integer id) {
         return R.OK(tranService.getTransactionById(id));
@@ -49,6 +52,7 @@ public class TranController {
     /**
      * 创建交易
      */
+    @PreAuthorize("hasAuthority('tran:create')")
     @PostMapping("/create")
     public R<Integer> create(@RequestBody TranCreateRequest request) {
         // 获取当前登录用户
@@ -92,6 +96,7 @@ public class TranController {
     /**
      * 更新交易
      */
+    @PreAuthorize("hasAuthority('tran:edit')")
     @PutMapping("/update")
     public R<Boolean> update(@RequestBody TranCreateRequest request) {
         // 获取当前登录用户
@@ -145,6 +150,7 @@ public class TranController {
      * 结算交易 - 计算总金额并更新状态为待审批
      * 支持前端传递促销后的结算金额
      */
+    @PreAuthorize("hasAuthority('tran:edit')")
     @PutMapping("/settle/{id}")
     public R<Boolean> settle(@PathVariable Integer id, @RequestBody(required = false) Map<String, Object> body) {
         // 获取当前登录用户
@@ -199,6 +205,7 @@ public class TranController {
     /**
      * 审批交易
      */
+    @PreAuthorize("hasAuthority('tran:approve')")
     @PutMapping("/approve/{id}")
     public R<Boolean> approve(
             @PathVariable Integer id,
@@ -221,6 +228,7 @@ public class TranController {
     /**
      * 获取交易审批信息
      */
+    @PreAuthorize("hasAuthority('tran:view')")
     @GetMapping("/approve/info/{tranId}")
     public R<TTranApprove> getApproveInfo(@PathVariable Integer tranId) {
         TTranApprove approve = tranService.getTranApprove(tranId);
@@ -230,6 +238,7 @@ public class TranController {
     /**
      * 创建发票
      */
+    @PreAuthorize("hasAuthority('tran:invoice')")
     @PostMapping("/invoice")
     public R<Boolean> createInvoice(@RequestBody TTranInvoice invoice) {
         // 获取当前登录用户
@@ -246,6 +255,7 @@ public class TranController {
     /**
      * 获取交易发票列表
      */
+    @PreAuthorize("hasAuthority('tran:view')")
     @GetMapping("/invoice/{tranId}")
     public R<List<TTranInvoice>> getInvoiceList(@PathVariable Integer tranId) {
         List<TTranInvoice> invoices = tranService.getTranInvoices(tranId);
@@ -255,6 +265,7 @@ public class TranController {
     /**
      * 更新发票状态
      */
+    @PreAuthorize("hasAuthority('tran:invoice')")
     @PutMapping("/invoice/{invoiceId}/status")
     public R<Boolean> updateInvoiceStatus(
             @PathVariable Integer invoiceId,
@@ -275,6 +286,7 @@ public class TranController {
     /**
      * 获取交易备注
      */
+    @PreAuthorize("hasAuthority('tran:view')")
     @GetMapping("/remarks/{tranId}")
     public R<List<TTranRemark>> remarks(@PathVariable Integer tranId) {
         return R.OK(tranService.getTransactionRemarks(tranId));
@@ -283,6 +295,7 @@ public class TranController {
     /**
      * 获取交易产品详情列表
      */
+    @PreAuthorize("hasAuthority('tran:view')")
     @GetMapping("/products/{id}")
     public R<List<TTranProduct>> getTransactionProducts(@PathVariable Integer id) {
         return R.OK(tranService.getTransactionProductDetails(id));
@@ -291,6 +304,7 @@ public class TranController {
     /**
      * 删除交易
      */
+    @PreAuthorize("hasAuthority('tran:delete')")
     @DeleteMapping("/{id}")
     public R<String> delete(@PathVariable Integer id) {
         boolean result = tranService.deleteTransaction(id);
@@ -304,6 +318,7 @@ public class TranController {
     /**
      * 批量删除交易
      */
+    @PreAuthorize("hasAuthority('tran:delete')")
     @PostMapping("/batch-delete")
     public R<String> batchDelete(@RequestBody Map<String, List<Integer>> request) {
         List<Integer> ids = request.get("ids");
@@ -322,6 +337,7 @@ public class TranController {
     /**
      * 重新提交交易（审批拒绝后）
      */
+    @PreAuthorize("hasAuthority('tran:edit')")
     @PutMapping("/resubmit/{id}")
     public R<Boolean> resubmit(@PathVariable Integer id) {
         // 获取当前登录用户

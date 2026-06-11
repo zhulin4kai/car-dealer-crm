@@ -29,6 +29,7 @@
     <include refid="Base_Column_List" />
     from t_tran_approve
     where tran_id = #{tranId,jdbcType=INTEGER}
+    ORDER BY id DESC LIMIT 1
   </select>
 
   <insert id="insert" parameterType="com.autodealer.crm.model.TTranApprove">
@@ -135,5 +136,10 @@
       create_by = #{createBy,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
+
+  <delete id="deleteByTranId" parameterType="java.lang.Integer">
+    delete from t_tran_approve
+    where tran_id = #{tranId,jdbcType=INTEGER}
+  </delete>
 
 </mapper> 

@@ -575,6 +575,16 @@ VALUES (26, '交易管理-列表', 'tran:list', NULL, 'button', 25, NULL, NULL);
 INSERT INTO `t_permission`
 VALUES (27, '交易管理-查看', 'tran:view', NULL, 'button', 25, NULL, NULL);
 INSERT INTO `t_permission`
+VALUES (2701, '交易管理-创建', 'tran:create', NULL, 'button', 25, NULL, NULL);
+INSERT INTO `t_permission`
+VALUES (2702, '交易管理-编辑', 'tran:edit', NULL, 'button', 25, NULL, NULL);
+INSERT INTO `t_permission`
+VALUES (2703, '交易管理-删除', 'tran:delete', NULL, 'button', 25, NULL, NULL);
+INSERT INTO `t_permission`
+VALUES (2704, '交易管理-审批', 'tran:approve', NULL, 'button', 25, NULL, NULL);
+INSERT INTO `t_permission`
+VALUES (2705, '交易管理-发票', 'tran:invoice', NULL, 'button', 25, NULL, NULL);
+INSERT INTO `t_permission`
 VALUES (28, '产品管理', NULL, NULL, 'menu', 0, 5, 'Memo');
 INSERT INTO `t_permission`
 VALUES (29, '产品管理', NULL, '/dashboard/product', 'menu', 28, 1, 'SetUp');
@@ -1305,7 +1315,7 @@ CREATE TABLE `t_tran_approve`
     `create_time`     datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
     `create_by`       int                                                           NULL DEFAULT NULL COMMENT '创建人',
     PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_tran_id` (`tran_id` ASC) USING BTREE,
+    UNIQUE KEY `uk_tran_id` (`tran_id`),
     INDEX `idx_approve_by` (`approve_by` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1

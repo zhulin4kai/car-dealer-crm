@@ -12,7 +12,7 @@ import java.util.Date;
 @EqualsAndHashCode(callSuper = true)
 public class TranQuery extends BaseQuery {
     /** 交易编号 */
-    @Pattern(regexp = "^\\d{8}\\d{6}$", message = "交易编号格式不正确")
+    @Pattern(regexp = "^TN\\d{8}\\d+$", message = "交易编号格式不正确")
     private String tranNo;
     
     /** 客户ID */

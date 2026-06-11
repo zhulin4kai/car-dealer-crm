@@ -131,7 +131,11 @@ public class CustomerServiceImpl implements CustomerService {
         // 检查是否有未完成的交易
         int tranCount = tTranMapper.selectCountByCustomerId(id);
         if (tranCount > 0) {
-            throw new RuntimeException("该客户有未完成的交易，无法删除");
+            // 检查是否有非终态的交易
+            int activeCount = tTranMapper.selectActiveCountByCustomerId(id);
+            if (activeCount > 0) {
+                throw new RuntimeException("该客户有未完成的交易，无法删除");
+            }
         }
 
         // 删除客户

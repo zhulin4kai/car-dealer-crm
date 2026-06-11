@@ -259,4 +259,9 @@
     where id = #{id,jdbcType=INTEGER}
   </update>
 
+  <delete id="deleteByTranId" parameterType="java.lang.Integer">
+    delete from t_tran_invoice
+    where tran_id = #{tranId,jdbcType=INTEGER}
+  </delete>
+
 </mapper> 

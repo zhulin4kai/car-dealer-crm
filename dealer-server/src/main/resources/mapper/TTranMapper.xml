@@ -86,9 +86,6 @@
       <if test="invoiceStatus != null and invoiceStatus != ''">
         AND ti.status = #{invoiceStatus}
       </if>
-      <if test="filterSQL != null and filterSQL != ''">
-        AND ${filterSQL}
-      </if>
     </where>
     ORDER BY t.create_time DESC
   </select>
@@ -336,5 +333,38 @@
     FROM t_tran
     WHERE customer_id = #{customerId,jdbcType=INTEGER}
   </select>
+
+  <select id="selectActiveCountByCustomerId" resultType="java.lang.Integer">
+    SELECT COUNT(*)
+    FROM t_tran
+    WHERE customer_id = #{customerId,jdbcType=INTEGER}
+      AND stage NOT IN ('COMPLETED', 'LOST')
+  </select>
+
+  <!-- 原子更新交易阶段 (CAS: Compare And Swap) -->
+  <update id="updateStageAtomic">
+    UPDATE t_tran
+    SET stage = #{newStage,jdbcType=VARCHAR},
+        edit_time = NOW(),
+        edit_by = #{editBy,jdbcType=INTEGER}
+    WHERE id = #{id,jdbcType=INTEGER}
+      AND stage = #{expectedStage,jdbcType=VARCHAR}
+  </update>
+
+  <!-- 原子完成交易：仅当已收款 >= 交易金额时更新 -->
+  <update id="updateStageToCompleted">
+    UPDATE t_tran
+    SET stage = 'COMPLETED',
+        edit_time = NOW(),
+        edit_by = #{editBy,jdbcType=INTEGER}
+    WHERE id = #{id,jdbcType=INTEGER}
+      AND stage = 'PAYMENT'
+      AND money &lt;= (
+        SELECT COALESCE(SUM(amount), 0)
+        FROM t_payment
+        WHERE tran_id = #{id,jdbcType=INTEGER}
+          AND payment_status = 'COMPLETED'
+      )
+  </update>
 
 </mapper>

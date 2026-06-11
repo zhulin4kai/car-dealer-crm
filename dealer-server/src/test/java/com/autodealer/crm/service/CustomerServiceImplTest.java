@@ -334,7 +334,8 @@ class CustomerServiceImplTest {
         customer.setId(1);
 
         when(tCustomerMapper.selectByPrimaryKey(1)).thenReturn(customer);
-        when(tTranMapper.selectCountByCustomerId(1)).thenReturn(3); // 有3个交易
+        when(tTranMapper.selectCountByCustomerId(1)).thenReturn(3);
+        when(tTranMapper.selectActiveCountByCustomerId(1)).thenReturn(3);
 
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> customerService.deleteCustomer(1));

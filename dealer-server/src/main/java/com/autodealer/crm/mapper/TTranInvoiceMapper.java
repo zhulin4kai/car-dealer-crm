@@ -22,4 +22,9 @@ public interface TTranInvoiceMapper {
      * 根据交易ID查询发票列表
      */
     List<TTranInvoice> selectByTranId(Integer tranId);
+
+    /**
+     * 根据交易ID删除所有发票
+     */
+    int deleteByTranId(Integer tranId);
 } 

@@ -17,4 +17,9 @@ public interface TTranApproveMapper {
     int updateByPrimaryKeySelective(TTranApprove record);
 
     int updateByPrimaryKey(TTranApprove record);
+
+    /**
+     * 根据交易ID删除审批记录
+     */
+    int deleteByTranId(Integer tranId);
 } 
