@@ -1,6 +1,5 @@
 package com.autodealer.crm.model;
 
-import com.autodealer.crm.dto.ProductSimpleDTO;
 import java.io.Serializable;
 import java.util.Date;
 import lombok.Data;
@@ -58,17 +57,9 @@ public class TCustomer implements Serializable {
     private Integer editBy;
 
     /**
-     * 一对一关联8个对象
+     * 一对一关联
      */
     private TClue clueDO;
-    private TUser ownerDO;
-    private TActivity activityDO;
-    private TDicValue appellationDO;
-    private TDicValue needLoanDO;
-    private TDicValue intentionStateDO;
-    private ProductSimpleDTO intentionProductDO;
-    private TDicValue stateDO;
-    private TDicValue sourceDO;
 
     private static final long serialVersionUID = 1L;
 }

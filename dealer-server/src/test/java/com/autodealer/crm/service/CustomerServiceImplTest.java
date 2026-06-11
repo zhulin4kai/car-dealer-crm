@@ -183,30 +183,30 @@ class CustomerServiceImplTest {
 
         TUser owner = new TUser();
         owner.setName("Owner A");
+        clue.setOwnerDO(owner);
 
         TActivity activity = new TActivity();
         activity.setName("Spring Sale");
+        clue.setActivityDO(activity);
 
         TDicValue appellation = new TDicValue();
         appellation.setTypeValue("Mr.");
+        clue.setAppellationDO(appellation);
 
         TDicValue needLoan = new TDicValue();
         needLoan.setTypeValue("Yes");
+        clue.setNeedLoanDO(needLoan);
 
         TDicValue source = new TDicValue();
         source.setTypeValue("Web");
+        clue.setSourceDO(source);
 
         ProductSimpleDTO product = new ProductSimpleDTO();
         product.setName("Car Model X");
+        clue.setIntentionProductDO(product);
 
         TCustomer customer1 = new TCustomer();
         customer1.setClueDO(clue);
-        customer1.setOwnerDO(owner);
-        customer1.setActivityDO(activity);
-        customer1.setAppellationDO(appellation);
-        customer1.setNeedLoanDO(needLoan);
-        customer1.setSourceDO(source);
-        customer1.setIntentionProductDO(product);
         customer1.setDescription("First customer");
         customer1.setNextContactTime(new Date());
 
@@ -215,15 +215,15 @@ class CustomerServiceImplTest {
         clue2.setFullName("Jane Smith");
         clue2.setPhone("13900139000");
         clue2.setAge(25);
-        customer2.setClueDO(clue2);
         TUser owner2 = new TUser();
         owner2.setName("Owner B");
-        customer2.setOwnerDO(owner2);
-        customer2.setActivityDO(new TActivity());
-        customer2.setAppellationDO(new TDicValue());
-        customer2.setNeedLoanDO(new TDicValue());
-        customer2.setSourceDO(new TDicValue());
-        customer2.setIntentionProductDO(new ProductSimpleDTO());
+        clue2.setOwnerDO(owner2);
+        clue2.setActivityDO(new TActivity());
+        clue2.setAppellationDO(new TDicValue());
+        clue2.setNeedLoanDO(new TDicValue());
+        clue2.setSourceDO(new TDicValue());
+        clue2.setIntentionProductDO(new ProductSimpleDTO());
+        customer2.setClueDO(clue2);
         customer2.setDescription("Second customer");
 
         List<TCustomer> customers = Arrays.asList(customer1, customer2);

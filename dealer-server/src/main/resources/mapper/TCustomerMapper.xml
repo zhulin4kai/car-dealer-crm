@@ -35,46 +35,38 @@
       <result column="job" jdbcType="VARCHAR" property="job" />
       <result column="year_income" jdbcType="DECIMAL" property="yearIncome" />
       <result column="address" jdbcType="VARCHAR" property="address" />
-    </association>
-    <!--一对一关联查询的映射-->
-    <association property="ownerDO" javaType="com.autodealer.crm.model.TUser">
-      <id column="ownerId" jdbcType="INTEGER" property="id" />
-      <result column="ownerName" jdbcType="VARCHAR" property="name" />
-    </association>
-    <!--一对一关联查询的映射-->
-    <association property="activityDO" javaType="com.autodealer.crm.model.TActivity">
-      <id column="activityId" jdbcType="INTEGER" property="id" />
-      <result column="activityName" jdbcType="VARCHAR" property="name" />
-    </association>
-    <!--一对一关联查询的映射-->
-    <association property="appellationDO" javaType="com.autodealer.crm.model.TDicValue">
-      <id column="appellationId" jdbcType="INTEGER" property="id" />
-      <result column="appellationName" jdbcType="VARCHAR" property="typeValue" />
-    </association>
-    <!--一对一关联查询的映射-->
-    <association property="needLoanDO" javaType="com.autodealer.crm.model.TDicValue">
-      <id column="needLoanId" jdbcType="INTEGER" property="id" />
-      <result column="needLoanName" jdbcType="VARCHAR" property="typeValue" />
-    </association>
-    <!--一对一关联查询的映射-->
-    <association property="intentionStateDO" javaType="com.autodealer.crm.model.TDicValue">
-      <id column="intentionStateId" jdbcType="INTEGER" property="id" />
-      <result column="intentionStateName" jdbcType="VARCHAR" property="typeValue" />
-    </association>
-    <!--一对一关联查询的映射-->
-    <association property="stateDO" javaType="com.autodealer.crm.model.TDicValue">
-      <id column="stateId" jdbcType="INTEGER" property="id" />
-      <result column="stateName" jdbcType="VARCHAR" property="typeValue" />
-    </association>
-    <!--一对一关联查询的映射-->
-    <association property="sourceDO" javaType="com.autodealer.crm.model.TDicValue">
-      <id column="sourceId" jdbcType="INTEGER" property="id" />
-      <result column="sourceName" jdbcType="VARCHAR" property="typeValue" />
-    </association>
-    <!--一对一关联查询的映射-->
-    <association property="intentionProductDO" javaType="com.autodealer.crm.dto.ProductSimpleDTO">
-      <id column="intentionProductId" jdbcType="INTEGER" property="id" />
-      <result column="intentionProductName" jdbcType="VARCHAR" property="name" />
+      <association property="ownerDO" javaType="com.autodealer.crm.model.TUser">
+        <id column="ownerId" jdbcType="INTEGER" property="id" />
+        <result column="ownerName" jdbcType="VARCHAR" property="name" />
+      </association>
+      <association property="activityDO" javaType="com.autodealer.crm.model.TActivity">
+        <id column="activityId" jdbcType="INTEGER" property="id" />
+        <result column="activityName" jdbcType="VARCHAR" property="name" />
+      </association>
+      <association property="appellationDO" javaType="com.autodealer.crm.model.TDicValue">
+        <id column="appellationId" jdbcType="INTEGER" property="id" />
+        <result column="appellationName" jdbcType="VARCHAR" property="typeValue" />
+      </association>
+      <association property="needLoanDO" javaType="com.autodealer.crm.model.TDicValue">
+        <id column="needLoanId" jdbcType="INTEGER" property="id" />
+        <result column="needLoanName" jdbcType="VARCHAR" property="typeValue" />
+      </association>
+      <association property="intentionStateDO" javaType="com.autodealer.crm.model.TDicValue">
+        <id column="intentionStateId" jdbcType="INTEGER" property="id" />
+        <result column="intentionStateName" jdbcType="VARCHAR" property="typeValue" />
+      </association>
+      <association property="stateDO" javaType="com.autodealer.crm.model.TDicValue">
+        <id column="stateId" jdbcType="INTEGER" property="id" />
+        <result column="stateName" jdbcType="VARCHAR" property="typeValue" />
+      </association>
+      <association property="sourceDO" javaType="com.autodealer.crm.model.TDicValue">
+        <id column="sourceId" jdbcType="INTEGER" property="id" />
+        <result column="sourceName" jdbcType="VARCHAR" property="typeValue" />
+      </association>
+      <association property="intentionProductDO" javaType="com.autodealer.crm.dto.ProductSimpleDTO">
+        <id column="intentionProductId" jdbcType="INTEGER" property="id" />
+        <result column="intentionProductName" jdbcType="VARCHAR" property="name" />
+      </association>
     </association>
   </resultMap>
 

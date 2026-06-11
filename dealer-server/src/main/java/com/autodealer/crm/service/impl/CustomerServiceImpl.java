@@ -4,6 +4,7 @@ import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.manager.CustomerManager;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TTranMapper;
+import com.autodealer.crm.model.TClue;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.dto.CustomerOption;
 import com.autodealer.crm.query.CustomerQuery;
@@ -59,21 +60,26 @@ public class CustomerServiceImpl implements CustomerService {
             CustomerExcel customerExcel = new CustomerExcel();
 
             //需要一个一个设置，没有办法，因为没法使用BeanUtils复制
-            customerExcel.setOwnerName(ObjectUtils.isEmpty(tCustomer.getOwnerDO()) ? Constants.EMPTY : tCustomer.getOwnerDO().getName());
-            customerExcel.setActivityName(ObjectUtils.isEmpty(tCustomer.getActivityDO()) ? Constants.EMPTY : tCustomer.getActivityDO().getName());
-            
-            // 添加空指针保护
             if (tCustomer.getClueDO() != null) {
-                customerExcel.setFullName(tCustomer.getClueDO().getFullName());
-                customerExcel.setPhone(tCustomer.getClueDO().getPhone());
-                customerExcel.setWeixin(tCustomer.getClueDO().getWeixin());
-                customerExcel.setQq(tCustomer.getClueDO().getQq());
-                customerExcel.setEmail(tCustomer.getClueDO().getEmail());
-                customerExcel.setAge(tCustomer.getClueDO().getAge() != null ? tCustomer.getClueDO().getAge() : 0);
-                customerExcel.setJob(tCustomer.getClueDO().getJob());
-                customerExcel.setYearIncome(tCustomer.getClueDO().getYearIncome());
-                customerExcel.setAddress(tCustomer.getClueDO().getAddress());
+                TClue clue = tCustomer.getClueDO();
+                customerExcel.setOwnerName(ObjectUtils.isEmpty(clue.getOwnerDO()) ? Constants.EMPTY : clue.getOwnerDO().getName());
+                customerExcel.setActivityName(ObjectUtils.isEmpty(clue.getActivityDO()) ? Constants.EMPTY : clue.getActivityDO().getName());
+                customerExcel.setFullName(clue.getFullName());
+                customerExcel.setPhone(clue.getPhone());
+                customerExcel.setWeixin(clue.getWeixin());
+                customerExcel.setQq(clue.getQq());
+                customerExcel.setEmail(clue.getEmail());
+                customerExcel.setAge(clue.getAge() != null ? clue.getAge() : 0);
+                customerExcel.setJob(clue.getJob());
+                customerExcel.setYearIncome(clue.getYearIncome());
+                customerExcel.setAddress(clue.getAddress());
+                customerExcel.setAppellationName(ObjectUtils.isEmpty(clue.getAppellationDO()) ? Constants.EMPTY : clue.getAppellationDO().getTypeValue());
+                customerExcel.setNeedLoanName(ObjectUtils.isEmpty(clue.getNeedLoanDO()) ? Constants.EMPTY : clue.getNeedLoanDO().getTypeValue());
+                customerExcel.setProductName(ObjectUtils.isEmpty(clue.getIntentionProductDO()) ? Constants.EMPTY : clue.getIntentionProductDO().getName());
+                customerExcel.setSourceName(ObjectUtils.isEmpty(clue.getSourceDO()) ? Constants.EMPTY : clue.getSourceDO().getTypeValue());
             } else {
+                customerExcel.setOwnerName(Constants.EMPTY);
+                customerExcel.setActivityName(Constants.EMPTY);
                 customerExcel.setFullName(Constants.EMPTY);
                 customerExcel.setPhone(Constants.EMPTY);
                 customerExcel.setWeixin(Constants.EMPTY);
@@ -83,12 +89,11 @@ public class CustomerServiceImpl implements CustomerService {
                 customerExcel.setJob(Constants.EMPTY);
                 customerExcel.setYearIncome(null);
                 customerExcel.setAddress(Constants.EMPTY);
+                customerExcel.setAppellationName(Constants.EMPTY);
+                customerExcel.setNeedLoanName(Constants.EMPTY);
+                customerExcel.setProductName(Constants.EMPTY);
+                customerExcel.setSourceName(Constants.EMPTY);
             }
-            
-            customerExcel.setAppellationName(ObjectUtils.isEmpty(tCustomer.getAppellationDO()) ? Constants.EMPTY : tCustomer.getAppellationDO().getTypeValue());
-            customerExcel.setNeedLoanName(ObjectUtils.isEmpty(tCustomer.getNeedLoanDO()) ? Constants.EMPTY : tCustomer.getNeedLoanDO().getTypeValue());
-            customerExcel.setProductName(ObjectUtils.isEmpty(tCustomer.getIntentionProductDO()) ? Constants.EMPTY : tCustomer.getIntentionProductDO().getName());
-            customerExcel.setSourceName(ObjectUtils.isEmpty(tCustomer.getSourceDO()) ? Constants.EMPTY : tCustomer.getSourceDO().getTypeValue());
             customerExcel.setDescription(tCustomer.getDescription());
             customerExcel.setNextContactTime(tCustomer.getNextContactTime());
 

@@ -41,21 +41,21 @@
               />
             </TableCell>
             <TableCell>{{ startIndex(index) }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.ownerDO?.name }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.activityDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.ownerDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.activityDO?.name }}</TableCell>
             <TableCell class="truncate max-w-[150px]">
               <Button variant="link" size="sm" class="h-auto p-0" @click="view(row.id)">
                 {{ row.clueDO?.fullName }}
               </Button>
             </TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.appellationDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.appellationDO?.typeValue }}</TableCell>
             <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.phone }}</TableCell>
             <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.weixin }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.needLoanDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.intentionStateDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.stateDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.sourceDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.intentionProductDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.needLoanDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.intentionStateDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.stateDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.sourceDO?.typeValue }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.intentionProductDO?.name }}</TableCell>
             <TableCell class="truncate max-w-[150px]">{{ row.nextContactTime }}</TableCell>
           </TableRow>
         </TableBody>
@@ -86,14 +86,6 @@ import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 // 响应式数据
 const customerList = ref([{
   clueDO: {},
-  ownerDO: {},
-  activityDO: {},
-  appellationDO: {},
-  needLoanDO: {},
-  intentionStateDO: {},
-  stateDO: {},
-  sourceDO: {},
-  intentionProductDO: {},
 }])
 const pageSize = ref(10)
 const total = ref(0)
