@@ -173,15 +173,15 @@
 
 ## Surprising Connections (you probably didn't know these)
 - `Customer API Module - Customer List & Options` --conceptually_related_to--> `t_customer - Customer Table (客户表) from Clue Conversion`  [INFERRED]
-  dlyk-front/src/api/customer.js → dlyk-server/src/main/resources/CarManager.sql
+  dlyk-front/src/api/customer.js → dlyk-server/src/main/resources/CarDealerCRM.sql
 - `TProduct` --semantically_similar_to--> `Product`  [INFERRED] [semantically similar]
   dlyk-server/src/main/java/com/bjpowernode/model/TProduct.java → dlyk-server/src/main/java/com/bjpowernode/model/Product.java
 - `Spring Test Configuration (application-test.yml)` --conceptually_related_to--> `BaseQuery`  [INFERRED]
   dlyk-server/src/test/resources/application-test.yml → dlyk-server/src/main/java/com/bjpowernode/query/BaseQuery.java
 - `Dashboard View - Main Layout with Sidebar Menu & User Info` --conceptually_related_to--> `t_permission - Permission Table with Hierarchical Menu & Button Perms`  [INFERRED]
-  dlyk-front/src/view/DashboardView.vue → dlyk-server/src/main/resources/CarManager.sql
+  dlyk-front/src/view/DashboardView.vue → dlyk-server/src/main/resources/CarDealerCRM.sql
 - `Clue View - Clue CRUD, Import, Batch Delete & Conversion` --conceptually_related_to--> `t_clue - Clue Table (线索表) with Owner, Activity, State, Source`  [INFERRED]
-  dlyk-front/src/view/ClueView.vue → dlyk-server/src/main/resources/CarManager.sql
+  dlyk-front/src/view/ClueView.vue → dlyk-server/src/main/resources/CarDealerCRM.sql
 
 ## Hyperedges (group relationships)
 - **Transaction Lifecycle: Create→Settle→Approve→Invoice(Complete)** — TranView_transactionManagement, TranDetailView_settlement, TranApproveView_approval, TranInvoiceView_completeTransaction, TranView_stateMachine [INFERRED 0.90]

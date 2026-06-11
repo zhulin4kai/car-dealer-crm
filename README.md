@@ -80,7 +80,7 @@ car-dealer-crm/
 │   ├── src/main/resources/
 │   │   ├── mapper/             # MyBatis XML
 │   │   ├── application.yml     # 应用配置
-│   │   └── CarManager.sql      # 数据库脚本
+│   │   └── CarDealerCRM.sql      # 数据库脚本
 │   ├── src/test/               # 后端测试 (JUnit 5, 804 tests)
 │   └── pom.xml
 └── README.md
@@ -101,7 +101,7 @@ car-dealer-crm/
 cd dealer-server
 
 # 创建数据库
-mysql -u root -p < src/main/resources/CarManager.sql
+mysql -u root -p < src/main/resources/CarDealerCRM.sql
 
 # 配置数据库连接 (src/main/resources/application.yml)
 # 设置环境变量或修改配置文件中的 DB_PASSWORD

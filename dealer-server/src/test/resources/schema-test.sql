@@ -1,5 +1,5 @@
 -- H2 Database Schema for Testing
--- Converted from MySQL CarManager.sql
+-- Converted from MySQL CarDealerCRM.sql
 
 CREATE TABLE IF NOT EXISTS t_activity
 (
