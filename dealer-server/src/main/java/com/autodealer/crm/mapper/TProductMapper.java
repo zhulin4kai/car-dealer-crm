@@ -28,7 +28,7 @@ public interface TProductMapper {
         @Param("limit") Integer limit, 
         @Param("sku") String sku, 
         @Param("name") String name, 
-        @Param("category") String category
+        @Param("categoryId") Long categoryId
     );
     
     Integer selectStockAlertsCount();

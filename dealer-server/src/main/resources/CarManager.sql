@@ -1103,7 +1103,7 @@ CREATE TABLE `t_product`
     `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '商品的唯一标识符',
     `sku`           VARCHAR(255)   DEFAULT NULL COMMENT '商品的库存单位',
     `name`          VARCHAR(255) NOT NULL COMMENT '商品名称',
-    `category`      VARCHAR(255)   DEFAULT NULL COMMENT '商品类别',
+  `category_id` BIGINT DEFAULT NULL COMMENT '商品类别ID',
     `specification` VARCHAR(255)   DEFAULT NULL COMMENT '商品规格',
     `price`         DECIMAL(10, 2) DEFAULT NULL COMMENT '商品价格',
     `stock`         INT            DEFAULT NULL COMMENT '当前商品库存量',
@@ -1115,86 +1115,86 @@ CREATE TABLE `t_product`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='商品表';
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BMW-X5-2023', '宝马 X5', 'SUV', '2023款 xDrive40i 尊享型', 569800.00, 15, 5, '上架', '2023-05-01 10:00:00', '2023-05-01 10:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BMW-X5-2023', '宝马 X5', 1, '2023款 xDrive40i 尊享型', 569800.00, 15, 5, '上架', '2023-05-01 10:00:00', '2023-05-01 10:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BMW-X3-2023', '宝马 X3', 'SUV', '2023款 xDrive30i M运动套装', 399900.00, 20, 8, '上架', '2023-05-01 10:15:00', '2023-05-01 10:15:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BMW-X3-2023', '宝马 X3', 1, '2023款 xDrive30i M运动套装', 399900.00, 20, 8, '上架', '2023-05-01 10:15:00', '2023-05-01 10:15:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BMW-3-2023', '宝马 3系', '轿车', '2023款 330i M运动套装', 329800.00, 25, 10, '上架', '2023-05-02 09:30:00', '2023-05-02 09:30:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BMW-3-2023', '宝马 3系', 2, '2023款 330i M运动套装', 329800.00, 25, 10, '上架', '2023-05-02 09:30:00', '2023-05-02 09:30:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BMW-5-2023', '宝马 5系', '轿车', '2023款 530Li 行政型', 459800.00, 18, 7, '上架', '2023-05-02 10:45:00', '2023-05-02 10:45:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BMW-5-2023', '宝马 5系', 2, '2023款 530Li 行政型', 459800.00, 18, 7, '上架', '2023-05-02 10:45:00', '2023-05-02 10:45:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('AUDI-A4-2023', '奥迪 A4L', '轿车', '2023款 40 TFSI 时尚型', 309800.00, 22, 8, '上架', '2023-05-03 11:00:00', '2023-05-03 11:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('AUDI-A4-2023', '奥迪 A4L', 2, '2023款 40 TFSI 时尚型', 309800.00, 22, 8, '上架', '2023-05-03 11:00:00', '2023-05-03 11:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('AUDI-Q5-2023', '奥迪 Q5L', 'SUV', '2023款 40 TFSI 荣享时尚型', 399800.00, 16, 6, '上架', '2023-05-03 14:20:00', '2023-05-03 14:20:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('AUDI-Q5-2023', '奥迪 Q5L', 1, '2023款 40 TFSI 荣享时尚型', 399800.00, 16, 6, '上架', '2023-05-03 14:20:00', '2023-05-03 14:20:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('AUDI-A6-2023', '奥迪 A6L', '轿车', '2023款 45 TFSI 豪华型', 469800.00, 14, 5, '上架', '2023-05-04 09:15:00', '2023-05-04 09:15:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('AUDI-A6-2023', '奥迪 A6L', 2, '2023款 45 TFSI 豪华型', 469800.00, 14, 5, '上架', '2023-05-04 09:15:00', '2023-05-04 09:15:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BENZ-C-2023', '奔驰 C级', '轿车', '2023款 C 260 L 运动版', 339800.00, 20, 8, '上架', '2023-05-04 10:30:00', '2023-05-04 10:30:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BENZ-C-2023', '奔驰 C级', 2, '2023款 C 260 L 运动版', 339800.00, 20, 8, '上架', '2023-05-04 10:30:00', '2023-05-04 10:30:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BENZ-E-2023', '奔驰 E级', '轿车', '2023款 E 300 L 运动豪华型', 499800.00, 15, 6, '上架', '2023-05-05 11:45:00', '2023-05-05 11:45:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BENZ-E-2023', '奔驰 E级', 2, '2023款 E 300 L 运动豪华型', 499800.00, 15, 6, '上架', '2023-05-05 11:45:00', '2023-05-05 11:45:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BENZ-GLC-2023', '奔驰 GLC', 'SUV', '2023款 GLC 300 L 4MATIC', 479800.00, 18, 7, '上架', '2023-05-05 13:00:00', '2023-05-05 13:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BENZ-GLC-2023', '奔驰 GLC', 1, '2023款 GLC 300 L 4MATIC', 479800.00, 18, 7, '上架', '2023-05-05 13:00:00', '2023-05-05 13:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('LEXUS-ES-2023', '雷克萨斯 ES', '轿车', '2023款 ES 300h 豪华版', 359800.00, 22, 10, '上架', '2023-05-06 09:00:00', '2023-05-06 09:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('LEXUS-ES-2023', '雷克萨斯 ES', 2, '2023款 ES 300h 豪华版', 359800.00, 22, 10, '上架', '2023-05-06 09:00:00', '2023-05-06 09:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('LEXUS-NX-2023', '雷克萨斯 NX', 'SUV', '2023款 NX 300h 锋尚版', 399800.00, 17, 8, '上架', '2023-05-06 10:30:00', '2023-05-06 10:30:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('LEXUS-NX-2023', '雷克萨斯 NX', 1, '2023款 NX 300h 锋尚版', 399800.00, 17, 8, '上架', '2023-05-06 10:30:00', '2023-05-06 10:30:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('TOYOTA-CAMRY-2023', '丰田 凯美瑞', '轿车', '2023款 2.5L 豪华版', 219800.00, 30, 12, '上架', '2023-05-07 09:15:00', '2023-05-07 09:15:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('TOYOTA-CAMRY-2023', '丰田 凯美瑞', 2, '2023款 2.5L 豪华版', 219800.00, 30, 12, '上架', '2023-05-07 09:15:00', '2023-05-07 09:15:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('TOYOTA-RAV4-2023', '丰田 RAV4', 'SUV', '2023款 2.0L 豪华版', 209800.00, 25, 10, '上架', '2023-05-07 11:00:00', '2023-05-07 11:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('TOYOTA-RAV4-2023', '丰田 RAV4', 1, '2023款 2.0L 豪华版', 209800.00, 25, 10, '上架', '2023-05-07 11:00:00', '2023-05-07 11:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('HONDA-ACCORD-2023', '本田 雅阁', '轿车', '2023款 2.0L 锐·豪华版', 199800.00, 28, 12, '上架', '2023-05-08 10:00:00', '2023-05-08 10:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('HONDA-ACCORD-2023', '本田 雅阁', 2, '2023款 2.0L 锐·豪华版', 199800.00, 28, 12, '上架', '2023-05-08 10:00:00', '2023-05-08 10:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('HONDA-CRV-2023', '本田 CR-V', 'SUV', '2023款 240TURBO CVT 两驱都市版', 199800.00, 22, 9, '上架', '2023-05-08 14:00:00', '2023-05-08 14:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('HONDA-CRV-2023', '本田 CR-V', 1, '2023款 240TURBO CVT 两驱都市版', 199800.00, 22, 9, '上架', '2023-05-08 14:00:00', '2023-05-08 14:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('NISSAN-TEANA-2023', '日产 天籁', '轿车', '2023款 2.0L XL 舒适版', 189800.00, 24, 10, '上架', '2023-05-09 09:30:00', '2023-05-09 09:30:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('NISSAN-TEANA-2023', '日产 天籁', 2, '2023款 2.0L XL 舒适版', 189800.00, 24, 10, '上架', '2023-05-09 09:30:00', '2023-05-09 09:30:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('NISSAN-XTRAIL-2023', '日产 奇骏', 'SUV', '2023款 2.0L CVT 舒适版', 179800.00, 20, 8, '上架', '2023-05-09 11:15:00', '2023-05-09 11:15:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('NISSAN-XTRAIL-2023', '日产 奇骏', 1, '2023款 2.0L CVT 舒适版', 179800.00, 20, 8, '上架', '2023-05-09 11:15:00', '2023-05-09 11:15:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('VOLVO-S90-2023', '沃尔沃 S90', '轿车', '2023款 T5 智逸豪华版', 389800.00, 16, 6, '上架', '2023-05-10 09:45:00', '2023-05-10 09:45:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('VOLVO-S90-2023', '沃尔沃 S90', 2, '2023款 T5 智逸豪华版', 389800.00, 16, 6, '上架', '2023-05-10 09:45:00', '2023-05-10 09:45:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('VOLVO-XC60-2023', '沃尔沃 XC60', 'SUV', '2023款 T5 智逸豪华版', 339800.00, 18, 7, '上架', '2023-05-10 11:30:00', '2023-05-10 11:30:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('VOLVO-XC60-2023', '沃尔沃 XC60', 1, '2023款 T5 智逸豪华版', 339800.00, 18, 7, '上架', '2023-05-10 11:30:00', '2023-05-10 11:30:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('TESLA-MODEL3-2023', '特斯拉 Model 3', '电动轿车', '2023款 后轮驱动版', 259900.00, 30, 15, '上架', '2023-05-11 10:00:00', '2023-05-11 10:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('TESLA-MODEL3-2023', '特斯拉 Model 3', 3, '2023款 后轮驱动版', 259900.00, 30, 15, '上架', '2023-05-11 10:00:00', '2023-05-11 10:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('TESLA-MODELY-2023', '特斯拉 Model Y', '电动SUV', '2023款 后轮驱动版', 299900.00, 25, 12, '上架', '2023-05-11 13:45:00', '2023-05-11 13:45:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('TESLA-MODELY-2023', '特斯拉 Model Y', 4, '2023款 后轮驱动版', 299900.00, 25, 12, '上架', '2023-05-11 13:45:00', '2023-05-11 13:45:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BYD-HAN-2023', '比亚迪 汉', '电动轿车', '2023款 EV 尊贵型', 219800.00, 32, 15, '上架', '2023-05-12 09:15:00', '2023-05-12 09:15:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BYD-HAN-2023', '比亚迪 汉', 3, '2023款 EV 尊贵型', 219800.00, 32, 15, '上架', '2023-05-12 09:15:00', '2023-05-12 09:15:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('BYD-TANG-2023', '比亚迪 唐', '电动SUV', '2023款 EV 四驱尊贵型', 279800.00, 28, 12, '上架', '2023-05-12 11:00:00', '2023-05-12 11:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('BYD-TANG-2023', '比亚迪 唐', 4, '2023款 EV 四驱尊贵型', 279800.00, 28, 12, '上架', '2023-05-12 11:00:00', '2023-05-12 11:00:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('XPENG-P7-2023', '小鹏 P7', '电动轿车', '2023款 后驱长续航智享版', 249900.00, 24, 10, '上架', '2023-05-13 10:30:00', '2023-05-13 10:30:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('XPENG-P7-2023', '小鹏 P7', 3, '2023款 后驱长续航智享版', 249900.00, 24, 10, '上架', '2023-05-13 10:30:00', '2023-05-13 10:30:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('NIO-ES6-2023', '蔚来 ES6', '电动SUV', '2023款 100kWh 首发纪念版', 448000.00, 15, 6, '上架', '2023-05-13 14:15:00', '2023-05-13 14:15:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('NIO-ES6-2023', '蔚来 ES6', 4, '2023款 100kWh 首发纪念版', 448000.00, 15, 6, '上架', '2023-05-13 14:15:00', '2023-05-13 14:15:00');
 
-INSERT INTO `t_product` (`sku`, `name`, `category`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
-VALUES ('PORSCHE-911-2023', '保时捷 911', '跑车', '2023款 Carrera 4S', 1458000.00, 8, 3, '上架', '2023-05-14 09:00:00', '2023-05-14 09:00:00');
+INSERT INTO `t_product` (`sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
+VALUES ('PORSCHE-911-2023', '保时捷 911', 5, '2023款 Carrera 4S', 1458000.00, 8, 3, '上架', '2023-05-14 09:00:00', '2023-05-14 09:00:00');
 
 -- ----------------------------
 -- Table structure for t_product_category

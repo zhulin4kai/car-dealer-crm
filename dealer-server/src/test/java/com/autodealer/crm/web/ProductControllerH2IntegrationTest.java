@@ -89,7 +89,7 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
                 {
                   "sku": "%s",
                   "name": "测试商品",
-                  "category": "test-category",
+                  "categoryId": 1,
                   "specification": "spec-1",
                   "price": 99.50,
                   "stock": 10,
@@ -136,7 +136,7 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
                 {
                   "sku": "%s",
                   "name": "新名称",
-                  "category": "updated",
+                  "categoryId": 1,
                   "price": 75.0,
                   "stock": 5,
                   "minStock": 1,
@@ -194,7 +194,7 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
                 {
                   "sku": "%s",
                   "name": "%s",
-                  "category": "test",
+                  "categoryId": 1,
                   "price": %s,
                   "stock": 10,
                   "minStock": 1,

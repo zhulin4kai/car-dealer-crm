@@ -30,7 +30,7 @@
           </div>
           <div class="space-y-2">
             <Label>分类</Label>
-            <Select v-model="filterForm.category">
+            <Select v-model="filterForm.categoryId">
               <SelectTrigger class="w-[180px]">
                 <SelectValue placeholder="请选择分类" />
               </SelectTrigger>
@@ -79,7 +79,7 @@
               <TableCell>{{ idx + 1 }}</TableCell>
               <TableCell class="truncate max-w-[150px]">{{ row.sku }}</TableCell>
               <TableCell class="truncate max-w-[200px]">{{ row.name }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.category }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.categoryName }}</TableCell>
               <TableCell class="truncate max-w-[150px]">{{ row.specification }}</TableCell>
               <TableCell>
                 <span :class="{ 'text-red-500 font-bold px-2 py-0.5 rounded bg-red-500/10': row.stock < row.minStock }">
@@ -257,7 +257,7 @@ const restockForm = ref({
 const filterForm = ref({
   sku: '',
   name: '',
-  category: ''
+    categoryId: null as number | null,
 })
 const categoryOptions = ref([])
 const detailDialogVisible = ref(false)
@@ -276,7 +276,7 @@ const loadCategoryOptions = async () => {
 
     if (res.data && res && res.list) {
       const categoryList = res.list.map(item => ({
-        value: item.name,
+        value: item.id,
         label: item.name
       }))
       categoryOptions.value = [...options, ...categoryList]
@@ -305,8 +305,8 @@ const loadStockAlerts = async () => {
     if (filterForm.value.name && filterForm.value.name.trim() !== '') {
       params.name = filterForm.value.name.trim()
     }
-    if (filterForm.value.category) {
-      params.category = filterForm.value.category
+    if (filterForm.value.categoryId) {
+      params.categoryId = filterForm.value.categoryId
     }
 
     const res = await getStockAlerts(params)
@@ -346,7 +346,7 @@ const handleReset = () => {
   filterForm.value = {
     sku: '',
     name: '',
-    category: ''
+  categoryId: null as number | null,
   }
   currentPage.value = 1
   loadStockAlerts()

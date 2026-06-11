@@ -261,20 +261,20 @@ INSERT INTO t_product_category (id, name, code, description, sort, status, creat
 VALUES (3, '电动轿车', 'ELECTRIC_SEDAN', '纯电动驱动的三厢式乘用车', 3, '启用', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ==================== Products ====================
-INSERT INTO t_product (id, sku, name, category, specification, price, stock, min_stock, status, create_time, update_time)
-VALUES (1, 'BMW-X5-2023', '宝马 X5', 'SUV', '2023款 xDrive40i 尊享型', 569800.00, 15, 5, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time)
+VALUES (1, 'BMW-X5-2023', '宝马 X5', 1, '2023款 xDrive40i 尊享型', 569800.00, 15, 5, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
-INSERT INTO t_product (id, sku, name, category, specification, price, stock, min_stock, status, create_time, update_time)
-VALUES (2, 'BENZ-E-2023', '奔驰 E级', '轿车', '2023款 E 300 L 运动豪华型', 499800.00, 15, 6, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time)
+VALUES (2, 'BENZ-E-2023', '奔驰 E级', 2, '2023款 E 300 L 运动豪华型', 499800.00, 15, 6, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
-INSERT INTO t_product (id, sku, name, category, specification, price, stock, min_stock, status, create_time, update_time)
-VALUES (3, 'AUDI-Q5-2023', '奥迪 Q5L', 'SUV', '2023款 40 TFSI 荣享时尚型', 399800.00, 16, 6, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time)
+VALUES (3, 'AUDI-Q5-2023', '奥迪 Q5L', 1, '2023款 40 TFSI 荣享时尚型', 399800.00, 16, 6, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
-INSERT INTO t_product (id, sku, name, category, specification, price, stock, min_stock, status, create_time, update_time)
-VALUES (4, 'BMW-5-2023', '宝马 5系', '轿车', '2023款 530Li 行政型', 459800.00, 18, 7, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time)
+VALUES (4, 'BMW-5-2023', '宝马 5系', 2, '2023款 530Li 行政型', 459800.00, 18, 7, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
-INSERT INTO t_product (id, sku, name, category, specification, price, stock, min_stock, status, create_time, update_time)
-VALUES (5, 'TESLA-MODEL3-2023', '特斯拉 Model 3', '电动轿车', '2023款 后轮驱动版', 259900.00, 30, 15, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time)
+VALUES (5, 'TESLA-MODEL3-2023', '特斯拉 Model 3', 3, '2023款 后轮驱动版', 259900.00, 30, 15, '上架', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ==================== Activities ====================
 INSERT INTO t_activity (id, owner_id, name, start_time, end_time, cost, description, create_time, create_by, edit_time, edit_by)

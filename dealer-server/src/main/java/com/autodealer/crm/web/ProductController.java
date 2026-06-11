@@ -53,8 +53,8 @@ public class ProductController {
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) String sku,
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) String category) {
-        return R.OK(productService.getStockAlerts(page, size, sku, name, category));
+            @RequestParam(required = false) Long categoryId) {
+        return R.OK(productService.getStockAlerts(page, size, sku, name, categoryId));
     }
     
     @PostMapping("/stock/restock")

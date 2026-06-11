@@ -6,7 +6,8 @@
         <id column="id" property="id" />
         <result column="sku" property="sku" />
         <result column="name" property="name" />
-        <result column="category" property="category" />
+        <result column="category_id" property="categoryId" />
+        <result column="category_name" property="categoryName" />
         <result column="specification" property="specification" />
         <result column="price" property="price" />
         <result column="stock" property="stock" />
@@ -17,13 +18,14 @@
     </resultMap>
     
     <sql id="Base_Column_List">
-        id, sku, name, category, specification, price, stock, min_stock, status, create_time, update_time
+        id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time
     </sql>
     
     <select id="selectList" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List" />
-        FROM t_product
-        ORDER BY create_time DESC
+        SELECT p.id, p.sku, p.name, p.category_id, tpc.name as category_name,
+               p.specification, p.price, p.stock, p.min_stock, p.status, p.create_time, p.update_time
+        FROM t_product p LEFT JOIN t_product_category tpc ON p.category_id = tpc.id
+        ORDER BY p.create_time DESC
     </select>
     
     <select id="selectCount" resultType="java.lang.Integer">
@@ -32,22 +34,24 @@
     </select>
     
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List" />
-        FROM t_product
-        WHERE id = #{id}
+        SELECT p.id, p.sku, p.name, p.category_id, tpc.name as category_name,
+               p.specification, p.price, p.stock, p.min_stock, p.status, p.create_time, p.update_time
+        FROM t_product p LEFT JOIN t_product_category tpc ON p.category_id = tpc.id
+        WHERE p.id = #{id}
     </select>
     
     <select id="selectBySku" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List" />
-        FROM t_product
-        WHERE sku = #{sku}
+        SELECT p.id, p.sku, p.name, p.category_id, tpc.name as category_name,
+               p.specification, p.price, p.stock, p.min_stock, p.status, p.create_time, p.update_time
+        FROM t_product p LEFT JOIN t_product_category tpc ON p.category_id = tpc.id
+        WHERE p.sku = #{sku}
     </select>
     
     <insert id="insert" parameterType="com.autodealer.crm.model.TProduct" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_product (
-            sku, name, category, specification, price, stock, min_stock, status, create_time, update_time
+            sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time
         ) VALUES (
-            #{sku}, #{name}, #{category}, #{specification}, #{price}, #{stock}, #{minStock}, #{status}, #{createTime}, #{updateTime}
+            #{sku}, #{name}, #{categoryId}, #{specification}, #{price}, #{stock}, #{minStock}, #{status}, #{createTime}, #{updateTime}
         )
     </insert>
     
@@ -55,7 +59,7 @@
         UPDATE t_product
         SET sku = #{sku},
             name = #{name},
-            category = #{category},
+            category_id = #{categoryId},
             specification = #{specification},
             price = #{price},
             stock = #{stock},
@@ -71,26 +75,28 @@
     </delete>
     
     <select id="selectStockAlerts" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List" />
-        FROM t_product
-        WHERE stock <![CDATA[ <= ]]> min_stock
-        ORDER BY create_time DESC
+        SELECT p.id, p.sku, p.name, p.category_id, tpc.name as category_name,
+               p.specification, p.price, p.stock, p.min_stock, p.status, p.create_time, p.update_time
+        FROM t_product p LEFT JOIN t_product_category tpc ON p.category_id = tpc.id
+        WHERE p.stock <![CDATA[ <= ]]> p.min_stock
+        ORDER BY p.create_time DESC
     </select>
     
     <select id="selectStockAlertsWithFilter" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List" />
-        FROM t_product
-        WHERE stock <![CDATA[ <= ]]> min_stock
+        SELECT p.id, p.sku, p.name, p.category_id, tpc.name as category_name,
+               p.specification, p.price, p.stock, p.min_stock, p.status, p.create_time, p.update_time
+        FROM t_product p LEFT JOIN t_product_category tpc ON p.category_id = tpc.id
+        WHERE p.stock <![CDATA[ <= ]]> p.min_stock
         <if test="sku != null and sku != ''">
-            AND sku LIKE CONCAT('%', #{sku}, '%')
+            AND p.sku LIKE CONCAT('%', #{sku}, '%')
         </if>
         <if test="name != null and name != ''">
-            AND name LIKE CONCAT('%', #{name}, '%')
+            AND p.name LIKE CONCAT('%', #{name}, '%')
         </if>
-        <if test="category != null and category != ''">
-            AND category = #{category}
+        <if test="categoryId != null">
+            AND p.category_id = #{categoryId}
         </if>
-        ORDER BY create_time DESC
+        ORDER BY p.create_time DESC
     </select>
     
     <select id="selectStockAlertsCount" resultType="java.lang.Integer">
@@ -109,9 +115,10 @@
     </update>
     
     <select id="selectAllOnSale" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List" />
-        FROM t_product
-        WHERE status = 'on_sale'
-        ORDER BY create_time DESC
+        SELECT p.id, p.sku, p.name, p.category_id, tpc.name as category_name,
+               p.specification, p.price, p.stock, p.min_stock, p.status, p.create_time, p.update_time
+        FROM t_product p LEFT JOIN t_product_category tpc ON p.category_id = tpc.id
+        WHERE p.status = 'on_sale'
+        ORDER BY p.create_time DESC
     </select>
 </mapper>

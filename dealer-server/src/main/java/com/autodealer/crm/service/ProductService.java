@@ -20,7 +20,7 @@ public interface ProductService {
     
     PageInfo<TProduct> getStockAlerts(Integer pageNum, Integer pageSize);
     
-    PageInfo<TProduct> getStockAlerts(Integer pageNum, Integer pageSize, String sku, String name, String category);
+    PageInfo<TProduct> getStockAlerts(Integer pageNum, Integer pageSize, String sku, String name, Long categoryId);
     
     void restock(Long productId, Integer quantity, String remark);
     

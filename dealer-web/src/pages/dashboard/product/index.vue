@@ -40,7 +40,7 @@
               <TableCell>{{ startIndex(idx) }}</TableCell>
               <TableCell class="truncate max-w-[150px]">{{ row.sku }}</TableCell>
               <TableCell class="truncate max-w-[200px]">{{ row.name }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.category }}</TableCell>
+              <TableCell class="truncate max-w-[150px]">{{ row.categoryName }}</TableCell>
               <TableCell class="truncate max-w-[150px]">{{ row.specification }}</TableCell>
               <TableCell>¥{{ row.price.toFixed(2) }}</TableCell>
               <TableCell>
@@ -88,7 +88,7 @@
           </div>
           <div class="space-y-2">
             <Label>分类</Label>
-            <Select v-model="values.category">
+            <Select v-model="values.categoryId">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择分类" />
               </SelectTrigger>
@@ -102,7 +102,7 @@
                 </SelectItem>
               </SelectContent>
             </Select>
-            <p v-if="errors.category" class="text-sm text-destructive">{{ errors.category }}</p>
+            <p v-if="errors.categoryId" class="text-sm text-destructive">{{ errors.categoryId }}</p>
           </div>
           <div class="space-y-2">
             <Label>规格</Label>
@@ -252,7 +252,7 @@ function handleRowSelect(id: number | string, checked: boolean) {
 const productSchema = toTypedSchema(z.object({
   sku: z.string().min(1, '请输入SKU'),
   name: z.string().min(1, '请输入产品名称'),
-  category: z.string().min(1, '请选择分类'),
+  categoryId: z.number({ required_error: '请选择分类' }).min(1, '请选择分类'),
   specification: z.string().optional(),
   price: z.number().min(0.01, '请输入价格'),
   stock: z.number().min(0, '请输入库存'),
@@ -265,7 +265,7 @@ const { handleSubmit, errors, values, setValues, resetForm } = useForm({
   initialValues: {
     sku: '',
     name: '',
-    category: '',
+    categoryId: null as number | null,
     specification: '',
     price: 0,
     stock: 0,
@@ -277,7 +277,7 @@ const { handleSubmit, errors, values, setValues, resetForm } = useForm({
 const productForm = ref({
   sku: '',
   name: '',
-  category: '',
+  categoryId: null as number | null,
   specification: '',
   price: 0,
   stock: 0,
@@ -319,7 +319,7 @@ const handleAdd = async () => {
   productForm.value = {
     sku: '',
     name: '',
-    category: '',
+    categoryId: null as number | null,
     specification: '',
     price: 0,
     stock: 0,

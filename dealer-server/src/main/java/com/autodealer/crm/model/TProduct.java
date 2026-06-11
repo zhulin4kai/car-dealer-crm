@@ -24,7 +24,8 @@ public class TProduct {
     @NotBlank(message = "产品名称不能为空")
     private String name;  // 商品名称
     
-    private String category;  // 商品类别
+    private Long categoryId;  // 商品类别ID，关联 t_product_category
+    private String categoryName;  // 类别名称（关联查询填充，非数据库字段）
     private String specification;  // 商品规格
     
     @NotNull(message = "价格不能为空")

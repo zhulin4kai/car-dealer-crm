@@ -257,7 +257,7 @@ CREATE TABLE IF NOT EXISTS t_product
     id            BIGINT NOT NULL AUTO_INCREMENT,
     sku           VARCHAR(255),
     name          VARCHAR(255) NOT NULL,
-    category      VARCHAR(255),
+    category_id   BIGINT,
     specification VARCHAR(255),
     price         DECIMAL(10, 2),
     stock         INTEGER,

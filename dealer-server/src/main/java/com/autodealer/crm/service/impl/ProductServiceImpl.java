@@ -73,14 +73,14 @@ public class ProductServiceImpl implements ProductService {
     }
     
     @Override
-    public PageInfo<TProduct> getStockAlerts(Integer pageNum, Integer pageSize, String sku, String name, String category) {
+    public PageInfo<TProduct> getStockAlerts(Integer pageNum, Integer pageSize, String sku, String name, Long categoryId) {
         PageHelper.startPage(pageNum, pageSize);
         List<TProduct> products = productMapper.selectStockAlertsWithFilter(
             null, 
             null, 
             sku, 
             name, 
-            category
+                categoryId
         );
         return new PageInfo<>(products);
     }

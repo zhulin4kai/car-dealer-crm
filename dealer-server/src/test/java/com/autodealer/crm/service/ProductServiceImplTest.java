@@ -39,7 +39,7 @@ class ProductServiceImplTest {
         product.setId(id);
         product.setSku("SKU-" + id);
         product.setName(name);
-        product.setCategory("Cars");
+        product.setCategoryId(1L);
         product.setPrice(BigDecimal.valueOf(200000));
         product.setStock(10);
         product.setMinStock(5);
@@ -168,14 +168,14 @@ class ProductServiceImplTest {
         product.setStock(3);
         List<TProduct> alerts = Collections.singletonList(product);
 
-        when(productMapper.selectStockAlertsWithFilter(null, null, "SKU-1", "Filtered", "Cars"))
+        when(productMapper.selectStockAlertsWithFilter(null, null, "SKU-1", "Filtered", 1L))
                 .thenReturn(alerts);
 
-        PageInfo<TProduct> result = productService.getStockAlerts(1, 10, "SKU-1", "Filtered", "Cars");
+        PageInfo<TProduct> result = productService.getStockAlerts(1, 10, "SKU-1", "Filtered", 1L);
 
         assertNotNull(result);
         assertEquals(1, result.getList().size());
-        verify(productMapper).selectStockAlertsWithFilter(null, null, "SKU-1", "Filtered", "Cars");
+        verify(productMapper).selectStockAlertsWithFilter(null, null, "SKU-1", "Filtered", 1L);
     }
 
     @Test
