@@ -252,6 +252,20 @@ CREATE TABLE IF NOT EXISTS t_tran_invoice
     CONSTRAINT uk_invoice_no UNIQUE (invoice_no)
 );
 
+CREATE TABLE IF NOT EXISTS t_operation_log
+(
+    id          INTEGER NOT NULL AUTO_INCREMENT,
+    user_id     INTEGER,
+    user_name   VARCHAR(64),
+    operation   VARCHAR(32) NOT NULL,
+    module      VARCHAR(64),
+    record_id   INTEGER,
+    detail      VARCHAR(512),
+    ip          VARCHAR(64),
+    create_time TIMESTAMP,
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS t_product
 (
     id            BIGINT NOT NULL AUTO_INCREMENT,
