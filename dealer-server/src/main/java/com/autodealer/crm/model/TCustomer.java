@@ -60,15 +60,15 @@ public class TCustomer implements Serializable {
     /**
      * 一对一关联8个对象
      */
-    private TClue clueDO = new TClue();
-    private TUser ownerDO = new TUser();
-    private TActivity activityDO = new TActivity();
-    private TDicValue appellationDO = new TDicValue();
-    private TDicValue needLoanDO = new TDicValue();
-    private TDicValue intentionStateDO = new TDicValue();
-    private ProductSimpleDTO intentionProductDO = new ProductSimpleDTO();
-    private TDicValue stateDO = new TDicValue();
-    private TDicValue sourceDO = new TDicValue();
+    private TClue clueDO;
+    private TUser ownerDO;
+    private TActivity activityDO;
+    private TDicValue appellationDO;
+    private TDicValue needLoanDO;
+    private TDicValue intentionStateDO;
+    private ProductSimpleDTO intentionProductDO;
+    private TDicValue stateDO;
+    private TDicValue sourceDO;
 
     private static final long serialVersionUID = 1L;
 }
