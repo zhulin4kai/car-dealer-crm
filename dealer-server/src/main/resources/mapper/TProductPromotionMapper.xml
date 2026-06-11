@@ -5,6 +5,7 @@
     <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TProductPromotion">
         <id column="id" property="id" />
         <result column="name" property="name" />
+        <result column="product_id" property="productId" />
         <result column="type" property="type" />
         <result column="discount" property="discount" />
         <result column="start_time" property="startTime" />
@@ -15,7 +16,7 @@
     </resultMap>
     
     <sql id="Base_Column_List">
-        id, name, type, discount, start_time, end_time, status, create_time, update_time
+        id, product_id, name, type, discount, start_time, end_time, status, create_time, update_time
     </sql>
     
     <select id="selectList" resultMap="BaseResultMap">

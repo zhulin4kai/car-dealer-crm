@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Data
 public class TProductPromotion {
     private Long id;
+    private Long productId;
     private String name;
     private String type;
     private BigDecimal discount;

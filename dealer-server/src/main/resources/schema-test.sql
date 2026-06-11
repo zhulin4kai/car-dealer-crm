@@ -298,8 +298,9 @@ CREATE TABLE IF NOT EXISTS t_product_category
 
 CREATE TABLE IF NOT EXISTS t_product_promotion
 (
-    id          BIGINT NOT NULL AUTO_INCREMENT,
-    name        VARCHAR(255) NOT NULL,
+    id           BIGINT NOT NULL AUTO_INCREMENT,
+    product_id   BIGINT,
+    name         VARCHAR(255) NOT NULL,
     type        VARCHAR(50),
     discount    DECIMAL(10, 2),
     start_time  TIMESTAMP,
