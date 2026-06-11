@@ -9,6 +9,7 @@ import com.autodealer.crm.constant.Constants;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -60,9 +61,8 @@ public class SecurityConfig {
                             .anyRequest().authenticated(); // 其它任何请求都需要登录后才能访问
                 })
 
-                .csrf(AbstractHttpConfigurer::disable) // 方法引用，禁用跨站请求伪造
-
-                // CORS is handled by CorsConfig.java
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
 
                 .sessionManagement((session) -> {
                     // session创建策略
