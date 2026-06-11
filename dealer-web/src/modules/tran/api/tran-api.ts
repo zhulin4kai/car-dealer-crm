@@ -1,7 +1,7 @@
 import { httpClient } from '@/shared/api/http-client'
 import type { PageResult } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
-import type { Tran, TranForm, TranInvoice, TranProduct, TranQuery } from '@/modules/tran/model/tran.types'
+import type { Tran, TranForm, TranInvoice, TranProduct, TPayment, PaymentForm } from '@/modules/tran/model/tran.types'
 
 export function fetchTranPage(params: TranQuery): Promise<PageResult<Tran>> {
   return httpClient.get<PageResult<Tran>>('/api/tran/list', { params })
@@ -57,7 +57,20 @@ export function batchDeleteTran(ids: EntityId[]): Promise<unknown> {
   return httpClient.post('/api/tran/batch-delete', { ids })
 }
 
+export function recordPayment(data: PaymentForm): Promise<TPayment> {
+  return httpClient.post<TPayment>('/api/tran/payment', data)
+}
+
+export function fetchTranPayments(tranId: EntityId): Promise<TPayment[]> {
+  return httpClient.get<TPayment[]>(`/api/tran/payment/${tranId}`)
+}
+
+export function refundPayment(id: EntityId): Promise<TPayment> {
+  return httpClient.post<TPayment>(`/api/tran/payment/${id}/refund`)
+}
+
 export const getTranList = fetchTranPage
 export const getTranDetail = fetchTranDetail
 export const getTranProducts = fetchTranProducts
 export const getTranInvoiceList = fetchTranInvoiceList
+export const getTranPayments = fetchTranPayments

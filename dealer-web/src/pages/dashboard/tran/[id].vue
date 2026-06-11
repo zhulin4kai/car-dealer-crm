@@ -134,6 +134,95 @@
       </CardContent>
     </Card>
 
+    <!-- Payment Records -->
+    <Card class="mb-5" v-if="tranDetail.stage === TRAN_STAGE.PAYMENT || tranDetail.stage === TRAN_STAGE.COMPLETED">
+      <CardHeader>
+        <CardTitle>收款记录</CardTitle>
+        <span class="text-sm text-muted-foreground">
+          已收: &yen;{{ totalPaid.toFixed(2) }} / 应收: &yen;{{ tranDetail.amount }}
+          <span v-if="balance > 0" class="text-red-500 ml-2">待收: &yen;{{ balance.toFixed(2) }}</span>
+          <span v-else class="text-green-600 ml-2">已收齐</span>
+        </span>
+      </CardHeader>
+      <CardContent>
+        <Table v-if="paymentList.length > 0">
+          <TableHeader>
+            <TableRow>
+              <TableHead>流水号</TableHead>
+              <TableHead>金额</TableHead>
+              <TableHead>方式</TableHead>
+              <TableHead>类型</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>时间</TableHead>
+              <TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="(pay, idx) in paymentList" :key="idx">
+              <TableCell>{{ pay.paymentNo }}</TableCell>
+              <TableCell :class="pay.amount < 0 ? 'text-red-500' : ''">&yen;{{ pay.amount }}</TableCell>
+              <TableCell>{{ getPaymentMethodText(pay.paymentMethod) }}</TableCell>
+              <TableCell>{{ getPaymentTypeText(pay.paymentType) }}</TableCell>
+              <TableCell>
+                <Badge :class="getPaymentStatusClass(pay.paymentStatus)">
+                  {{ getPaymentStatusText(pay.paymentStatus) }}
+                </Badge>
+              </TableCell>
+              <TableCell>{{ pay.paymentTime || pay.createTime }}</TableCell>
+              <TableCell>
+                <Button
+                  v-if="pay.paymentStatus === 'COMPLETED' && pay.paymentType !== 'REFUND'"
+                  variant="destructive"
+                  size="sm"
+                  @click="handleRefund(pay.id)"
+                >退款</Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+        <div v-else class="text-sm text-muted-foreground py-4 text-center">暂无收款记录</div>
+      </CardContent>
+    </Card>
+
+    <!-- Collection Dialog -->
+    <div v-if="showCollectionDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-background p-6 rounded-lg w-[400px] space-y-4">
+        <h3 class="text-lg font-bold">记录收款</h3>
+        <div class="space-y-3">
+          <div>
+            <Label>收款金额</Label>
+            <Input v-model.number="collectionForm.amount" type="number" placeholder="请输入收款金额" />
+          </div>
+          <div>
+            <Label>支付方式</Label>
+            <Select v-model="collectionForm.paymentMethod">
+              <SelectTrigger><SelectValue placeholder="选择支付方式" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="m in PAYMENT_METHODS" :key="m.value" :value="m.value">{{ m.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>收款类型</Label>
+            <Select v-model="collectionForm.paymentType">
+              <SelectTrigger><SelectValue placeholder="选择收款类型" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="t in PAYMENT_TYPES" :key="t.value" :value="t.value">{{ t.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>备注</Label>
+            <Input v-model="collectionForm.remark" placeholder="备注（可选）" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-3">
+          <Button variant="outline" @click="showCollectionDialog = false">取消</Button>
+          <Button @click="submitCollection">确认收款</Button>
+        </div>
+      </div>
+    </div>
+
     <!-- Action Buttons -->
     <div class="flex justify-center gap-5 mt-5">
       <Button variant="outline" @click="goBack">返回</Button>
@@ -152,6 +241,11 @@
         @click="handleInvoice"
         v-if="tranDetail.stage === TRAN_STAGE.APPROVED"
       >开票</Button>
+      <Button
+        variant="secondary"
+        @click="showCollectionDialog = true"
+        v-if="tranDetail.stage === TRAN_STAGE.PAYMENT"
+      >收款</Button>
     </div>
   </div>
 </template>
@@ -160,7 +254,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
-import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran } from '@/modules/tran/api/tran-api'
+import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran, getTranPayments, recordPayment, refundPayment } from '@/modules/tran/api/tran-api'
 import { TRAN_STAGE, getTranStageText, getTranStageType, normalizeTranStage } from '@/modules/tran/model/tran-stage'
 import { getPromotionList } from '@/modules/product/api/product-api'
 
@@ -170,6 +264,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 
 const route = useRoute()
 const router = useRouter()
@@ -394,6 +489,104 @@ const fetchInvoiceInfo = async () => {
   }
 }
 
+// Payment
+const paymentList = ref([])
+const showCollectionDialog = ref(false)
+const collectionForm = ref({
+  amount: 0,
+  paymentMethod: '',
+  paymentType: 'FULL',
+  remark: ''
+})
+
+const PAYMENT_METHODS = [
+  { value: 'CASH', label: '现金' },
+  { value: 'BANK_TRANSFER', label: '银行转账' },
+  { value: 'WECHAT', label: '微信支付' },
+  { value: 'ALIPAY', label: '支付宝' },
+  { value: 'CHECK', label: '支票' },
+  { value: 'OTHER', label: '其他' }
+]
+
+const PAYMENT_TYPES = [
+  { value: 'DEPOSIT', label: '定金' },
+  { value: 'INSTALLMENT', label: '分期款' },
+  { value: 'FULL', label: '全款' },
+  { value: 'BALANCE', label: '尾款' }
+]
+
+const totalPaid = computed(() => {
+  return paymentList.value
+    .filter(p => p.paymentStatus === 'COMPLETED' && p.paymentType !== 'REFUND')
+    .reduce((sum, p) => sum + (p.amount || 0), 0)
+})
+
+const balance = computed(() => {
+  return (tranDetail.value.amount || 0) - totalPaid.value
+})
+
+const getPaymentMethodText = (m) => PAYMENT_METHODS.find(p => p.value === m)?.label || m
+const getPaymentTypeText = (t) => PAYMENT_TYPES.find(p => p.value === t)?.label || t
+
+const getPaymentStatusText = (s) => {
+  const map = { PENDING: '待确认', COMPLETED: '已到账', FAILED: '失败', REFUNDED: '已退款' }
+  return map[s] || s
+}
+
+const getPaymentStatusClass = (s) => {
+  const map = { COMPLETED: 'bg-green-600 text-white', REFUNDED: 'bg-red-600 text-white', PENDING: 'bg-yellow-600 text-white', FAILED: 'bg-red-600 text-white' }
+  return map[s] || ''
+}
+
+const fetchPaymentList = async () => {
+  try {
+    const res = await getTranPayments(route.params.id)
+    paymentList.value = res || []
+  } catch (error) {
+    console.error('获取收款记录失败:', error)
+  }
+}
+
+const submitCollection = async () => {
+  if (!collectionForm.value.amount || collectionForm.value.amount <= 0) {
+    messageTip('请输入有效的收款金额', 'error')
+    return
+  }
+  if (!collectionForm.value.paymentMethod) {
+    messageTip('请选择支付方式', 'error')
+    return
+  }
+  try {
+    await recordPayment({
+      tranId: Number(route.params.id),
+      amount: collectionForm.value.amount,
+      paymentMethod: collectionForm.value.paymentMethod,
+      paymentType: collectionForm.value.paymentType,
+      remark: collectionForm.value.remark
+    })
+    messageTip('收款记录成功', 'success')
+    showCollectionDialog.value = false
+    collectionForm.value = { amount: 0, paymentMethod: '', paymentType: 'FULL', remark: '' }
+    await fetchPaymentList()
+    await fetchTranDetail()
+  } catch (error) {
+    messageTip('收款失败: ' + (error.message || ''), 'error')
+  }
+}
+
+const handleRefund = async (paymentId) => {
+  const confirmResult = await messageConfirm('确认退款？退款后将取消该交易并恢复库存').catch(() => false)
+  if (!confirmResult) return
+  try {
+    await refundPayment(paymentId)
+    messageTip('退款成功', 'success')
+    await fetchPaymentList()
+    await fetchTranDetail()
+  } catch (error) {
+    messageTip('退款失败: ' + (error.message || ''), 'error')
+  }
+}
+
 // Go back to list
 const goBack = () => {
   router.push('/dashboard/tran')
@@ -461,10 +654,11 @@ const handleInvoice = () => {
 
 // Watch route params change
 watch(() => route.params.id, async (newId) => {
-  if (newId) {
+    if (newId) {
     await fetchTranDetail()
     await fetchProducts()
     await fetchInvoiceInfo()
+    await fetchPaymentList()
     await fetchPromotionList()
   }
 })
@@ -478,6 +672,7 @@ onMounted(async () => {
   await fetchTranDetail()
   await fetchProducts()
   await fetchInvoiceInfo()
+  await fetchPaymentList()
   await fetchPromotionList()
 })
 </script>

@@ -359,18 +359,9 @@ const onSubmit = handleSubmit(async () => {
     }
     const res = await createInvoice(invoiceData)
     if (true) {
-      const newInvoiceId = res.id
-
-      // Immediately mark invoice as issued
-      await updateInvoiceStatus(newInvoiceId, 'ISSUED')
-      if (true) {
-        messageTip('发票开具成功', 'success')
-        await fetchInvoiceList()
-        await fetchTranDetail()
-      } else {
-        messageTip('发票创建成功，但状态更新失败', 'warning')
-        await fetchInvoiceList()
-      }
+      messageTip('发票创建成功', 'success')
+      await fetchInvoiceList()
+      await fetchTranDetail()
     } else {
       messageTip('请求失败', 'error')
     }

@@ -347,4 +347,40 @@ public class TranController {
         boolean result = tranService.resubmitTransaction(id, currentUser.getId());
         return R.OK(result);
     }
+
+    /**
+     * 记录收款
+     */
+    @PreAuthorize("hasAuthority('tran:edit')")
+    @PostMapping("/payment")
+    public R<TPayment> recordPayment(@RequestBody TPayment payment) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication.getPrincipal() instanceof TUser currentUser)) {
+            return R.FAIL("未登录");
+        }
+        payment.setCreateBy(currentUser.getId());
+        return R.OK(tranService.recordPayment(payment));
+    }
+
+    /**
+     * 获取交易收款记录
+     */
+    @PreAuthorize("hasAuthority('tran:view')")
+    @GetMapping("/payment/{tranId}")
+    public R<List<TPayment>> getPayments(@PathVariable Integer tranId) {
+        return R.OK(tranService.getTransactionPayments(tranId));
+    }
+
+    /**
+     * 退款（交易取消）
+     */
+    @PreAuthorize("hasAuthority('tran:edit')")
+    @PostMapping("/payment/{id}/refund")
+    public R<TPayment> refund(@PathVariable Integer id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication.getPrincipal() instanceof TUser currentUser)) {
+            return R.FAIL("未登录");
+        }
+        return R.OK(tranService.refundPayment(id, currentUser.getId()));
+    }
 }
