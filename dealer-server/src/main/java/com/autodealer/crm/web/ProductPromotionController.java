@@ -1,6 +1,6 @@
 package com.autodealer.crm.web;
 
-import com.autodealer.crm.model.ProductPromotion;
+import com.autodealer.crm.model.TProductPromotion;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.ProductPromotionService;
 import com.github.pagehelper.PageInfo;
@@ -15,25 +15,25 @@ public class ProductPromotionController {
     private ProductPromotionService promotionService;
     
     @GetMapping
-    public R<PageInfo<ProductPromotion>> getPromotionList(
+    public R<PageInfo<TProductPromotion>> getPromotionList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         return R.OK(promotionService.getPromotionList(page, size));
     }
     
     @GetMapping("/{id}")
-    public R<ProductPromotion> getPromotionById(@PathVariable Long id) {
+    public R<TProductPromotion> getPromotionById(@PathVariable Long id) {
         return R.OK(promotionService.getPromotionById(id));
     }
     
     @PostMapping
-    public R<Void> addPromotion(@RequestBody ProductPromotion promotion) {
+    public R<Void> addPromotion(@RequestBody TProductPromotion promotion) {
         promotionService.addPromotion(promotion);
         return R.OK();
     }
     
     @PutMapping("/{id}")
-    public R<Void> updatePromotion(@PathVariable Long id, @RequestBody ProductPromotion promotion) {
+    public R<Void> updatePromotion(@PathVariable Long id, @RequestBody TProductPromotion promotion) {
         promotion.setId(id);
         promotionService.updatePromotion(promotion);
         return R.OK();

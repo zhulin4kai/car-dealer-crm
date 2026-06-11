@@ -5,7 +5,7 @@ import com.alibaba.excel.metadata.GlobalConfiguration;
 import com.alibaba.excel.metadata.data.ReadCellData;
 import com.alibaba.excel.metadata.property.ExcelContentProperty;
 import com.autodealer.crm.DealerCRMApplication;
-import com.autodealer.crm.model.TProduct;
+import com.autodealer.crm.dto.ProductSimpleDTO;
 import com.autodealer.crm.result.DicEnum;
 
 import java.util.List;
@@ -33,13 +33,13 @@ public class IntentionProductConverter implements Converter<Integer> {
         //cellData是Excel中读取到的数据，是“比亚迪e2”、“秦PLUS EV”
         String cellIntentionProductName = cellData.getStringValue();
 
-        List<TProduct> tDicValueList = (List<TProduct>) DealerCRMApplication.cacheMap.get(DicEnum.PRODUCT.getCode());
+        List<ProductSimpleDTO> tDicValueList = (List<ProductSimpleDTO>) DealerCRMApplication.cacheMap.get(DicEnum.PRODUCT.getCode());
         if (tDicValueList == null) {
             return -1;
         }
-        for (TProduct tProduct : tDicValueList) {
-            Integer id  = tProduct.getId();
-            String name = tProduct.getName();
+        for (ProductSimpleDTO dto : tDicValueList) {
+            Integer id  = dto.getId();
+            String name = dto.getName();
 
             if (cellIntentionProductName.equals(name)) {
                 return id;

@@ -1,5 +1,6 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.dto.TranCreateRequest;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.query.TranQuery;
@@ -236,7 +237,7 @@ public class TranController {
         TUser currentUser = (TUser) authentication.getPrincipal();
         
         invoice.setCreateBy(currentUser.getId());
-        invoice.setUpdateBy(currentUser.getId());
+        invoice.setEditBy(currentUser.getId());
         
         boolean result = tranService.createTranInvoice(invoice);
         return R.OK(result);

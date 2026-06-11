@@ -1,6 +1,6 @@
 package com.autodealer.crm.service;
 
-import com.autodealer.crm.model.ProductStockRecord;
+import com.autodealer.crm.model.TProductStockRecord;
 import com.github.pagehelper.PageInfo;
 
 public interface ProductStockRecordService {
@@ -12,6 +12,6 @@ public interface ProductStockRecordService {
      * @param pageSize 每页大小
      * @return 库存记录分页结果
      */
-    PageInfo<ProductStockRecord> getStockRecordsByProductId(Long productId, Integer pageNum, Integer pageSize);
+    PageInfo<TProductStockRecord> getStockRecordsByProductId(Long productId, Integer pageNum, Integer pageSize);
     
 } 

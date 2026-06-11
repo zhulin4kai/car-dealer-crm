@@ -1,10 +1,10 @@
 package com.autodealer.crm.service.impl;
 
-import com.autodealer.crm.mapper.ProductMapper;
-import com.autodealer.crm.mapper.ProductStockRecordMapper;
-import com.autodealer.crm.model.Product;
-import com.autodealer.crm.model.ProductStockRecord;
+import com.autodealer.crm.dto.ProductSimpleDTO;
+import com.autodealer.crm.mapper.TProductMapper;
+import com.autodealer.crm.mapper.TProductStockRecordMapper;
 import com.autodealer.crm.model.TProduct;
+import com.autodealer.crm.model.TProductStockRecord;
 import com.autodealer.crm.service.ProductService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -22,31 +22,31 @@ import java.util.stream.Collectors;
 public class ProductServiceImpl implements ProductService {
     
     @Autowired
-    private ProductMapper productMapper;
+    private TProductMapper productMapper;
     
     @Autowired
-    private ProductStockRecordMapper stockRecordMapper;
+    private TProductStockRecordMapper stockRecordMapper;
     
     @Override
-    public PageInfo<Product> getProductList(Integer pageNum, Integer pageSize) {
+    public PageInfo<TProduct> getProductList(Integer pageNum, Integer pageSize) {
         PageHelper.startPage(pageNum, pageSize);
-        List<Product> products = productMapper.selectList((pageNum - 1) * pageSize, pageSize);
+        List<TProduct> products = productMapper.selectList((pageNum - 1) * pageSize, pageSize);
         return new PageInfo<>(products);
     }
     
     @Override
-    public Product getProductById(Long id) {
+    public TProduct getProductById(Long id) {
         return productMapper.selectById(id);
     }
     
     @Override
-    public Product getProductBySku(String sku) {
+    public TProduct getProductBySku(String sku) {
         return productMapper.selectBySku(sku);
     }
     
     @Override
     @Transactional
-    public void addProduct(Product product) {
+    public void addProduct(TProduct product) {
         product.setCreateTime(LocalDateTime.now());
         product.setUpdateTime(LocalDateTime.now());
         productMapper.insert(product);
@@ -54,7 +54,7 @@ public class ProductServiceImpl implements ProductService {
     
     @Override
     @Transactional
-    public void updateProduct(Product product) {
+    public void updateProduct(TProduct product) {
         product.setUpdateTime(LocalDateTime.now());
         productMapper.update(product);
     }
@@ -66,16 +66,16 @@ public class ProductServiceImpl implements ProductService {
     }
     
     @Override
-    public PageInfo<Product> getStockAlerts(Integer pageNum, Integer pageSize) {
+    public PageInfo<TProduct> getStockAlerts(Integer pageNum, Integer pageSize) {
         PageHelper.startPage(pageNum, pageSize);
-        List<Product> products = productMapper.selectStockAlerts(null, null);
+        List<TProduct> products = productMapper.selectStockAlerts(null, null);
         return new PageInfo<>(products);
     }
     
     @Override
-    public PageInfo<Product> getStockAlerts(Integer pageNum, Integer pageSize, String sku, String name, String category) {
+    public PageInfo<TProduct> getStockAlerts(Integer pageNum, Integer pageSize, String sku, String name, String category) {
         PageHelper.startPage(pageNum, pageSize);
-        List<Product> products = productMapper.selectStockAlertsWithFilter(
+        List<TProduct> products = productMapper.selectStockAlertsWithFilter(
             null, 
             null, 
             sku, 
@@ -92,7 +92,7 @@ public class ProductServiceImpl implements ProductService {
         productMapper.updateStock(productId, quantity);
         
         // 记录库存变动
-        ProductStockRecord record = new ProductStockRecord();
+        TProductStockRecord record = new TProductStockRecord();
         record.setProductId(productId);
         record.setQuantity(quantity);
         record.setType("入库");
@@ -108,23 +108,23 @@ public class ProductServiceImpl implements ProductService {
     }
     
     @Override
-    public List<TProduct> getAllOnSaleProduct() {
-        List<Product> products = productMapper.selectAllOnSale();
+    public List<ProductSimpleDTO> getAllOnSaleProduct() {
+        List<TProduct> products = productMapper.selectAllOnSale();
         return products.stream()
-                .map(this::convertToTProduct)
+                .map(this::convertToProductSimpleDTO)
                 .collect(Collectors.toList());
     }
     
-    private TProduct convertToTProduct(Product product) {
-        TProduct tProduct = new TProduct();
-        tProduct.setId(product.getId().intValue());
-        tProduct.setName(product.getName());
-        tProduct.setGuidePriceS(product.getPrice());
-        tProduct.setGuidePriceE(product.getPrice());
-        tProduct.setQuotation(product.getPrice());
-        tProduct.setState("on_sale".equals(product.getStatus()) ? 0 : 1);
-        tProduct.setCreateTime(Date.from(product.getCreateTime().atZone(ZoneId.systemDefault()).toInstant()));
-        tProduct.setEditTime(Date.from(product.getUpdateTime().atZone(ZoneId.systemDefault()).toInstant()));
-        return tProduct;
+    private ProductSimpleDTO convertToProductSimpleDTO(TProduct product) {
+        ProductSimpleDTO dto = new ProductSimpleDTO();
+        dto.setId(product.getId().intValue());
+        dto.setName(product.getName());
+        dto.setGuidePriceS(product.getPrice());
+        dto.setGuidePriceE(product.getPrice());
+        dto.setQuotation(product.getPrice());
+        dto.setState("on_sale".equals(product.getStatus()) ? 0 : 1);
+        dto.setCreateTime(Date.from(product.getCreateTime().atZone(ZoneId.systemDefault()).toInstant()));
+        dto.setEditTime(Date.from(product.getUpdateTime().atZone(ZoneId.systemDefault()).toInstant()));
+        return dto;
     }
 }

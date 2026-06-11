@@ -1,7 +1,7 @@
 package com.autodealer.crm.service.impl;
 
-import com.autodealer.crm.mapper.ProductPromotionMapper;
-import com.autodealer.crm.model.ProductPromotion;
+import com.autodealer.crm.mapper.TProductPromotionMapper;
+import com.autodealer.crm.model.TProductPromotion;
 import com.autodealer.crm.service.ProductPromotionService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -16,23 +16,23 @@ import java.util.List;
 public class ProductPromotionServiceImpl implements ProductPromotionService {
     
     @Autowired
-    private ProductPromotionMapper promotionMapper;
+    private TProductPromotionMapper promotionMapper;
     
     @Override
-    public PageInfo<ProductPromotion> getPromotionList(Integer pageNum, Integer pageSize) {
+    public PageInfo<TProductPromotion> getPromotionList(Integer pageNum, Integer pageSize) {
         PageHelper.startPage(pageNum, pageSize);
-        List<ProductPromotion> promotions = promotionMapper.selectList((pageNum - 1) * pageSize, pageSize);
+        List<TProductPromotion> promotions = promotionMapper.selectList((pageNum - 1) * pageSize, pageSize);
         return new PageInfo<>(promotions);
     }
     
     @Override
-    public ProductPromotion getPromotionById(Long id) {
+    public TProductPromotion getPromotionById(Long id) {
         return promotionMapper.selectById(id);
     }
     
     @Override
     @Transactional
-    public void addPromotion(ProductPromotion promotion) {
+    public void addPromotion(TProductPromotion promotion) {
         promotion.setCreateTime(LocalDateTime.now());
         promotion.setUpdateTime(LocalDateTime.now());
         promotionMapper.insert(promotion);
@@ -40,7 +40,7 @@ public class ProductPromotionServiceImpl implements ProductPromotionService {
     
     @Override
     @Transactional
-    public void updatePromotion(ProductPromotion promotion) {
+    public void updatePromotion(TProductPromotion promotion) {
         promotion.setUpdateTime(LocalDateTime.now());
         promotionMapper.update(promotion);
     }

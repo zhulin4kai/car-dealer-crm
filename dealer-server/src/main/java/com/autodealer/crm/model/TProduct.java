@@ -1,145 +1,43 @@
 package com.autodealer.crm.model;
 
-import java.io.Serializable;
-import java.math.BigDecimal;
-import java.util.Date;
 import lombok.Data;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-/**
- * 产品表
- * t_product
- */
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 @Data
-public class TProduct implements Serializable {
+public class TProduct {
     /**
-     * 主键，自动增长，线索ID
+     * 商品类
+     *
+     * 该类表示商品的基本信息，包括商品的唯一标识、库存单位、名称、类别、规格、价格、库存量、最低库存量、状态以及创建和更新时间
      */
-    private Integer id;
-
-    /**
-     * 产品名称
-     */
-    private String name;
-
-    /**
-     * 官方指导起始价
-     */
-    private BigDecimal guidePriceS;
-
-    /**
-     * 官方指导最高价
-     */
-    private BigDecimal guidePriceE;
-
-    /**
-     * 经销商报价
-     */
-    private BigDecimal quotation;
-
-    /**
-     * 状态 0在售 1售罄
-     */
-    private Integer state;
-
-    /**
-     * 创建时间
-     */
-    private Date createTime;
-
-    /**
-     * 创建人
-     */
-    private Integer createBy;
-
-    /**
-     * 编辑时间
-     */
-    private Date editTime;
-
-    /**
-     * 编辑人
-     */
-    private Integer editBy;
-
-    private static final long serialVersionUID = 1L;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public BigDecimal getGuidePriceS() {
-        return guidePriceS;
-    }
-
-    public void setGuidePriceS(BigDecimal guidePriceS) {
-        this.guidePriceS = guidePriceS;
-    }
-
-    public BigDecimal getGuidePriceE() {
-        return guidePriceE;
-    }
-
-    public void setGuidePriceE(BigDecimal guidePriceE) {
-        this.guidePriceE = guidePriceE;
-    }
-
-    public BigDecimal getQuotation() {
-        return quotation;
-    }
-
-    public void setQuotation(BigDecimal quotation) {
-        this.quotation = quotation;
-    }
-
-    public Integer getState() {
-        return state;
-    }
-
-    public void setState(Integer state) {
-        this.state = state;
-    }
-
-    public Date getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(Date createTime) {
-        this.createTime = createTime;
-    }
-
-    public Integer getCreateBy() {
-        return createBy;
-    }
-
-    public void setCreateBy(Integer createBy) {
-        this.createBy = createBy;
-    }
-
-    public Date getEditTime() {
-        return editTime;
-    }
-
-    public void setEditTime(Date editTime) {
-        this.editTime = editTime;
-    }
-
-    public Integer getEditBy() {
-        return editBy;
-    }
-
-    public void setEditBy(Integer editBy) {
-        this.editBy = editBy;
-    }
+    private Long id;  // 商品的唯一标识符
+    
+    @NotBlank(message = "SKU不能为空")
+    private String sku;  // 商品的库存单位
+    
+    @NotBlank(message = "产品名称不能为空")
+    private String name;  // 商品名称
+    
+    private String category;  // 商品类别
+    private String specification;  // 商品规格
+    
+    @NotNull(message = "价格不能为空")
+    @DecimalMin(value = "0", message = "价格不能为负数")
+    private BigDecimal price;  // 商品价格
+    
+    @Min(value = 0, message = "库存不能为负数")
+    private Integer stock;  // 当前商品库存量
+    
+    @Min(value = 0, message = "最低库存不能为负数")
+    private Integer minStock;  // 商品的最低库存警戒值
+    
+    private String status;  // 商品状态，如上架、下架等
+    private LocalDateTime createTime;  // 商品信息的创建时间
+    private LocalDateTime updateTime;  // 商品信息的最后更新时间
 }

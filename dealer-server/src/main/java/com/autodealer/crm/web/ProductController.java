@@ -1,6 +1,6 @@
 package com.autodealer.crm.web;
 
-import com.autodealer.crm.model.Product;
+import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.ProductService;
 import com.github.pagehelper.PageInfo;
@@ -17,25 +17,25 @@ public class ProductController {
     private ProductService productService;
     
     @GetMapping
-    public R<PageInfo<Product>> getProductList(
+    public R<PageInfo<TProduct>> getProductList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         return R.OK(productService.getProductList(page, size));
     }
     
     @GetMapping("/{id:[0-9]+}")
-    public R<Product> getProductById(@PathVariable Long id) {
+    public R<TProduct> getProductById(@PathVariable Long id) {
         return R.OK(productService.getProductById(id));
     }
     
     @PostMapping
-    public R<Void> addProduct(@Valid @RequestBody Product product) {
+    public R<Void> addProduct(@Valid @RequestBody TProduct product) {
         productService.addProduct(product);
         return R.OK();
     }
     
     @PutMapping("/{id}")
-    public R<Void> updateProduct(@PathVariable Long id, @Valid @RequestBody Product product) {
+    public R<Void> updateProduct(@PathVariable Long id, @Valid @RequestBody TProduct product) {
         product.setId(id);
         productService.updateProduct(product);
         return R.OK();
@@ -48,7 +48,7 @@ public class ProductController {
     }
     
     @GetMapping("/stockalerts")
-    public R<PageInfo<Product>> getStockAlerts(
+    public R<PageInfo<TProduct>> getStockAlerts(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) String sku,

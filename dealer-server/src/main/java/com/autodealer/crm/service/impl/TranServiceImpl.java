@@ -38,7 +38,7 @@ public class TranServiceImpl implements TranService {
     private TTranApproveMapper tranApproveMapper;
 
     @Resource
-    private ProductMapper productMapper;
+    private TProductMapper productMapper;
 
     @Resource
     private RedisManager redisManager;
@@ -317,7 +317,7 @@ public class TranServiceImpl implements TranService {
         invoice.setInvoiceNo(generateInvoiceNo());
         invoice.setStatus("PENDING"); // 待开具
         invoice.setCreateTime(now);
-        invoice.setUpdateTime(now);
+        invoice.setEditTime(now);
 
         int result = tranInvoiceMapper.insertSelective(invoice);
 
@@ -353,8 +353,8 @@ public class TranServiceImpl implements TranService {
         TTranInvoice invoice = new TTranInvoice();
         invoice.setId(invoiceId);
         invoice.setStatus(status);
-        invoice.setUpdateTime(now);
-        invoice.setUpdateBy(updateBy);
+        invoice.setEditTime(now);
+        invoice.setEditBy(updateBy);
 
         if ("ISSUED".equals(status)) {
             invoice.setIssueTime(now);

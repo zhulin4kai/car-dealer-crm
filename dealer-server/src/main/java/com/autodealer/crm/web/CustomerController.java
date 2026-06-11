@@ -2,7 +2,7 @@ package com.autodealer.crm.web;
 
 import com.alibaba.excel.EasyExcel;
 import com.autodealer.crm.constant.Constants;
-import com.autodealer.crm.model.CustomerOption;
+import com.autodealer.crm.dto.CustomerOption;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.query.CustomerQuery;
 import com.autodealer.crm.result.CustomerExcel;

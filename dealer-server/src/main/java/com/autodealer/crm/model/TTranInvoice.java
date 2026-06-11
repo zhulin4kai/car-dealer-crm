@@ -92,14 +92,14 @@ public class TTranInvoice implements Serializable {
     private Integer createBy;
 
     /**
-     * 更新时间
+     * 编辑时间
      */
-    private Date updateTime;
+    private Date editTime;
 
     /**
-     * 更新人
+     * 编辑人
      */
-    private Integer updateBy;
+    private Integer editBy;
 
     private static final long serialVersionUID = 1L;
 } 

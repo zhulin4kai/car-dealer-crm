@@ -387,5 +387,5 @@ INSERT INTO t_tran_production (id, tran_product_id, status, description, create_
 VALUES (1, 1, 'PENDING', '待生产', CURRENT_TIMESTAMP, 1, NULL, NULL);
 
 -- ==================== Transaction Invoices ====================
-INSERT INTO t_tran_invoice (id, tran_id, invoice_no, type, title, tax_number, bank_name, bank_account, address, phone, amount, status, remark, issue_time, create_time, create_by, update_time, update_by)
+INSERT INTO t_tran_invoice (id, tran_id, invoice_no, type, title, tax_number, bank_name, bank_account, address, phone, amount, status, remark, issue_time, create_time, create_by, edit_time, edit_by)
 VALUES (1, 3, 'INV20250618001', 'VAT_NORMAL', '宝马X5发票', '91110000MA01XXXX', '中国银行', '6222021234567890123', '北京市朝阳区', '010-12345678', 399800.00, 'ISSUED', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, NULL, NULL);

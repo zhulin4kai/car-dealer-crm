@@ -1081,13 +1081,13 @@ CREATE TABLE `t_tran_invoice`
     `issue_time`   datetime       NULL DEFAULT NULL COMMENT '开具时间',
     `create_time`  datetime       NULL DEFAULT NULL COMMENT '创建时间',
     `create_by`    int            NULL DEFAULT NULL COMMENT '创建人',
-    `update_time`  datetime       NULL DEFAULT NULL COMMENT '更新时间',
-    `update_by`    int            NULL DEFAULT NULL COMMENT '更新人',
+  `edit_time`    datetime       NULL DEFAULT NULL COMMENT '编辑时间',
+  `edit_by`      int            NULL DEFAULT NULL COMMENT '编辑人',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE KEY `uk_invoice_no` (`invoice_no`),
     INDEX `t_tran_invoice_ibfk_1` (`tran_id` ASC) USING BTREE,
     INDEX `t_tran_invoice_ibfk_2` (`create_by` ASC) USING BTREE,
-    INDEX `t_tran_invoice_ibfk_3` (`update_by` ASC) USING BTREE
+    INDEX `t_tran_invoice_ibfk_3` (`edit_by` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
   CHARACTER SET = utf8mb3

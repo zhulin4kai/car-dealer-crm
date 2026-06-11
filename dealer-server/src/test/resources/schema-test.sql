@@ -246,8 +246,8 @@ CREATE TABLE IF NOT EXISTS t_tran_invoice
     issue_time   TIMESTAMP,
     create_time  TIMESTAMP,
     create_by    INTEGER,
-    update_time  TIMESTAMP,
-    update_by    INTEGER,
+    edit_time    TIMESTAMP,
+    edit_by      INTEGER,
     PRIMARY KEY (id),
     CONSTRAINT uk_invoice_no UNIQUE (invoice_no)
 );

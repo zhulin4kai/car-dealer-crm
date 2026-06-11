@@ -1,6 +1,6 @@
 package com.autodealer.crm.web;
 
-import com.autodealer.crm.model.ProductStockRecord;
+import com.autodealer.crm.model.TProductStockRecord;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.ProductService;
 import com.autodealer.crm.service.ProductStockRecordService;
@@ -26,7 +26,7 @@ public class ProductStockController {
     }
     
     @GetMapping("/records/{productId}")
-    public R<PageInfo<ProductStockRecord>> getStockRecords(
+    public R<PageInfo<TProductStockRecord>> getStockRecords(
             @PathVariable Long productId,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {

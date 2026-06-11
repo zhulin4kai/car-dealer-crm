@@ -1,18 +1,18 @@
 package com.autodealer.crm.service;
 
-import com.autodealer.crm.model.ProductCategory;
+import com.autodealer.crm.model.TProductCategory;
 import com.github.pagehelper.PageInfo;
 
 public interface ProductCategoryService {
-    PageInfo<ProductCategory> getCategoryList(Integer pageNum, Integer pageSize);
+    PageInfo<TProductCategory> getCategoryList(Integer pageNum, Integer pageSize);
     
-    ProductCategory getCategoryById(Long id);
+    TProductCategory getCategoryById(Long id);
     
-    ProductCategory getCategoryByCode(String code);
+    TProductCategory getCategoryByCode(String code);
     
-    void addCategory(ProductCategory category);
+    void addCategory(TProductCategory category);
     
-    void updateCategory(ProductCategory category);
+    void updateCategory(TProductCategory category);
     
     void deleteCategory(Long id);
 } 

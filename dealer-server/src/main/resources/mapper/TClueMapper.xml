@@ -79,7 +79,7 @@
       <result column="intentionStateName" jdbcType="VARCHAR" property="typeValue" />
     </association>
     <!--一对一关联查询的映射-->
-    <association property="intentionProductDO" javaType="com.autodealer.crm.model.TProduct">
+    <association property="intentionProductDO" javaType="com.autodealer.crm.dto.ProductSimpleDTO">
       <id column="intentionProductId" jdbcType="INTEGER" property="id" />
       <result column="intentionProductName" jdbcType="VARCHAR" property="name" />
     </association>

@@ -1,8 +1,8 @@
 package com.autodealer.crm.service;
 
-import com.autodealer.crm.mapper.ProductMapper;
-import com.autodealer.crm.mapper.ProductStockRecordMapper;
-import com.autodealer.crm.model.Product;
+import com.autodealer.crm.dto.ProductSimpleDTO;
+import com.autodealer.crm.mapper.TProductMapper;
+import com.autodealer.crm.mapper.TProductStockRecordMapper;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.service.impl.ProductServiceImpl;
 import com.github.pagehelper.PageInfo;
@@ -29,13 +29,13 @@ class ProductServiceImplTest {
     private ProductServiceImpl productService;
 
     @Mock
-    private ProductMapper productMapper;
+    private TProductMapper productMapper;
 
     @Mock
-    private ProductStockRecordMapper stockRecordMapper;
+    private TProductStockRecordMapper stockRecordMapper;
 
-    private Product createSampleProduct(Long id, String name, String status) {
-        Product product = new Product();
+    private TProduct createSampleProduct(Long id, String name, String status) {
+        TProduct product = new TProduct();
         product.setId(id);
         product.setSku("SKU-" + id);
         product.setName(name);
@@ -51,12 +51,12 @@ class ProductServiceImplTest {
 
     @Test
     void testGetProductList() {
-        Product product = createSampleProduct(1L, "Model X", "on_sale");
-        List<Product> products = Collections.singletonList(product);
+        TProduct product = createSampleProduct(1L, "Model X", "on_sale");
+        List<TProduct> products = Collections.singletonList(product);
 
         when(productMapper.selectList(0, 10)).thenReturn(products);
 
-        PageInfo<Product> result = productService.getProductList(1, 10);
+        PageInfo<TProduct> result = productService.getProductList(1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getList().size());
@@ -68,7 +68,7 @@ class ProductServiceImplTest {
     void testGetProductListEmpty() {
         when(productMapper.selectList(0, 10)).thenReturn(Collections.emptyList());
 
-        PageInfo<Product> result = productService.getProductList(1, 10);
+        PageInfo<TProduct> result = productService.getProductList(1, 10);
 
         assertNotNull(result);
         assertTrue(result.getList().isEmpty());
@@ -76,10 +76,10 @@ class ProductServiceImplTest {
 
     @Test
     void testGetProductById() {
-        Product product = createSampleProduct(1L, "Model X", "on_sale");
+        TProduct product = createSampleProduct(1L, "Model X", "on_sale");
         when(productMapper.selectById(1L)).thenReturn(product);
 
-        Product result = productService.getProductById(1L);
+        TProduct result = productService.getProductById(1L);
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
@@ -91,17 +91,17 @@ class ProductServiceImplTest {
     void testGetProductByIdNotFound() {
         when(productMapper.selectById(999L)).thenReturn(null);
 
-        Product result = productService.getProductById(999L);
+        TProduct result = productService.getProductById(999L);
 
         assertNull(result);
     }
 
     @Test
     void testGetProductBySku() {
-        Product product = createSampleProduct(1L, "Model X", "on_sale");
+        TProduct product = createSampleProduct(1L, "Model X", "on_sale");
         when(productMapper.selectBySku("SKU-1")).thenReturn(product);
 
-        Product result = productService.getProductBySku("SKU-1");
+        TProduct result = productService.getProductBySku("SKU-1");
 
         assertNotNull(result);
         assertEquals("SKU-1", result.getSku());
@@ -112,14 +112,14 @@ class ProductServiceImplTest {
     void testGetProductBySkuNotFound() {
         when(productMapper.selectBySku("NONEXISTENT")).thenReturn(null);
 
-        Product result = productService.getProductBySku("NONEXISTENT");
+        TProduct result = productService.getProductBySku("NONEXISTENT");
 
         assertNull(result);
     }
 
     @Test
     void testAddProduct() {
-        Product product = createSampleProduct(null, "New Model", "on_sale");
+        TProduct product = createSampleProduct(null, "New Model", "on_sale");
 
         productService.addProduct(product);
 
@@ -130,7 +130,7 @@ class ProductServiceImplTest {
 
     @Test
     void testUpdateProduct() {
-        Product product = createSampleProduct(1L, "Updated Model", "on_sale");
+        TProduct product = createSampleProduct(1L, "Updated Model", "on_sale");
 
         productService.updateProduct(product);
 
@@ -147,14 +147,14 @@ class ProductServiceImplTest {
 
     @Test
     void testGetStockAlerts() {
-        Product product = createSampleProduct(1L, "Low Stock Model", "on_sale");
+        TProduct product = createSampleProduct(1L, "Low Stock Model", "on_sale");
         product.setStock(2);
         product.setMinStock(5);
-        List<Product> alerts = Collections.singletonList(product);
+        List<TProduct> alerts = Collections.singletonList(product);
 
         when(productMapper.selectStockAlerts(null, null)).thenReturn(alerts);
 
-        PageInfo<Product> result = productService.getStockAlerts(1, 10);
+        PageInfo<TProduct> result = productService.getStockAlerts(1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getList().size());
@@ -164,14 +164,14 @@ class ProductServiceImplTest {
 
     @Test
     void testGetStockAlertsWithFilter() {
-        Product product = createSampleProduct(1L, "Filtered Model", "on_sale");
+        TProduct product = createSampleProduct(1L, "Filtered Model", "on_sale");
         product.setStock(3);
-        List<Product> alerts = Collections.singletonList(product);
+        List<TProduct> alerts = Collections.singletonList(product);
 
         when(productMapper.selectStockAlertsWithFilter(null, null, "SKU-1", "Filtered", "Cars"))
                 .thenReturn(alerts);
 
-        PageInfo<Product> result = productService.getStockAlerts(1, 10, "SKU-1", "Filtered", "Cars");
+        PageInfo<TProduct> result = productService.getStockAlerts(1, 10, "SKU-1", "Filtered", "Cars");
 
         assertNotNull(result);
         assertEquals(1, result.getList().size());
@@ -201,13 +201,13 @@ class ProductServiceImplTest {
 
     @Test
     void testGetAllOnSaleProduct() {
-        Product product1 = createSampleProduct(1L, "Model X", "on_sale");
-        Product product2 = createSampleProduct(2L, "Model Y", "on_sale");
-        List<Product> products = Arrays.asList(product1, product2);
+        TProduct product1 = createSampleProduct(1L, "Model X", "on_sale");
+        TProduct product2 = createSampleProduct(2L, "Model Y", "on_sale");
+        List<TProduct> products = Arrays.asList(product1, product2);
 
         when(productMapper.selectAllOnSale()).thenReturn(products);
 
-        List<TProduct> result = productService.getAllOnSaleProduct();
+        List<ProductSimpleDTO> result = productService.getAllOnSaleProduct();
 
         assertNotNull(result);
         assertEquals(2, result.size());
@@ -223,7 +223,7 @@ class ProductServiceImplTest {
     void testGetAllOnSaleProductEmpty() {
         when(productMapper.selectAllOnSale()).thenReturn(Collections.emptyList());
 
-        List<TProduct> result = productService.getAllOnSaleProduct();
+        List<ProductSimpleDTO> result = productService.getAllOnSaleProduct();
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -231,11 +231,11 @@ class ProductServiceImplTest {
 
     @Test
     void testGetAllOnSaleProductConvertsStateOff() {
-        Product product = createSampleProduct(1L, "Sold Out Model", "off_sale");
+        TProduct product = createSampleProduct(1L, "Sold Out Model", "off_sale");
 
         when(productMapper.selectAllOnSale()).thenReturn(Collections.singletonList(product));
 
-        List<TProduct> result = productService.getAllOnSaleProduct();
+        List<ProductSimpleDTO> result = productService.getAllOnSaleProduct();
 
         assertEquals(1, result.size());
         assertEquals(Integer.valueOf(1), result.get(0).getState());

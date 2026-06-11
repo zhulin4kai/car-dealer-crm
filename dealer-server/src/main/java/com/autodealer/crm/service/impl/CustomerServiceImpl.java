@@ -5,7 +5,7 @@ import com.autodealer.crm.manager.CustomerManager;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TTranMapper;
 import com.autodealer.crm.model.TCustomer;
-import com.autodealer.crm.model.CustomerOption;
+import com.autodealer.crm.dto.CustomerOption;
 import com.autodealer.crm.query.CustomerQuery;
 import com.autodealer.crm.result.CustomerExcel;
 import com.autodealer.crm.service.CustomerService;

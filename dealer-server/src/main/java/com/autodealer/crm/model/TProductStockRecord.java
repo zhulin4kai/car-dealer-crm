@@ -4,7 +4,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class ProductStockRecord {
+public class TProductStockRecord {
     private Long id;
     private Long productId;
     private Integer quantity;

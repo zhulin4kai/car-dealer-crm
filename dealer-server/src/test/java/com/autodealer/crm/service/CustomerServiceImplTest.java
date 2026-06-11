@@ -3,6 +3,8 @@ package com.autodealer.crm.service;
 import com.autodealer.crm.manager.CustomerManager;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TTranMapper;
+import com.autodealer.crm.dto.CustomerOption;
+import com.autodealer.crm.dto.ProductSimpleDTO;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.query.CustomerQuery;
 import com.autodealer.crm.result.CustomerExcel;
@@ -194,7 +196,7 @@ class CustomerServiceImplTest {
         TDicValue source = new TDicValue();
         source.setTypeValue("Web");
 
-        TProduct product = new TProduct();
+        ProductSimpleDTO product = new ProductSimpleDTO();
         product.setName("Car Model X");
 
         TCustomer customer1 = new TCustomer();
@@ -221,7 +223,7 @@ class CustomerServiceImplTest {
         customer2.setAppellationDO(new TDicValue());
         customer2.setNeedLoanDO(new TDicValue());
         customer2.setSourceDO(new TDicValue());
-        customer2.setIntentionProductDO(new TProduct());
+        customer2.setIntentionProductDO(new ProductSimpleDTO());
         customer2.setDescription("Second customer");
 
         List<TCustomer> customers = Arrays.asList(customer1, customer2);

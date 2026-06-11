@@ -1,8 +1,7 @@
-package com.autodealer.crm.model;
+package com.autodealer.crm.dto;
 
 import lombok.Data;
 import java.math.BigDecimal;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -45,4 +44,4 @@ public class TranCreateRequest {
         /** 单价 */
         private BigDecimal price;
     }
-} 
+}

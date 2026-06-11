@@ -1,4 +1,4 @@
-package com.autodealer.crm.model;
+package com.autodealer.crm.dto;
 
 import lombok.Data;
 
@@ -15,4 +15,4 @@ public class CustomerOption {
     
     /** 线索ID */
     private Integer clueId;
-} 
+}

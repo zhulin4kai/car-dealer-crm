@@ -1,7 +1,7 @@
 package com.autodealer.crm.service;
 
-import com.autodealer.crm.mapper.ProductPromotionMapper;
-import com.autodealer.crm.model.ProductPromotion;
+import com.autodealer.crm.mapper.TProductPromotionMapper;
+import com.autodealer.crm.model.TProductPromotion;
 import com.autodealer.crm.service.impl.ProductPromotionServiceImpl;
 import com.github.pagehelper.PageInfo;
 import org.junit.jupiter.api.Test;
@@ -27,17 +27,17 @@ class ProductPromotionServiceImplTest {
     private ProductPromotionServiceImpl promotionService;
 
     @Mock
-    private ProductPromotionMapper promotionMapper;
+    private TProductPromotionMapper promotionMapper;
 
     @Test
     void testGetPromotionList() {
-        List<ProductPromotion> promotions = Arrays.asList(
+        List<TProductPromotion> promotions = Arrays.asList(
                 createPromotion(1L, "Summer Sale"),
                 createPromotion(2L, "Winter Discount")
         );
         when(promotionMapper.selectList(anyInt(), anyInt())).thenReturn(promotions);
 
-        PageInfo<ProductPromotion> result = promotionService.getPromotionList(1, 10);
+        PageInfo<TProductPromotion> result = promotionService.getPromotionList(1, 10);
 
         assertNotNull(result);
         assertEquals(2, result.getList().size());
@@ -48,7 +48,7 @@ class ProductPromotionServiceImplTest {
     void testGetPromotionListEmpty() {
         when(promotionMapper.selectList(anyInt(), anyInt())).thenReturn(Collections.emptyList());
 
-        PageInfo<ProductPromotion> result = promotionService.getPromotionList(1, 10);
+        PageInfo<TProductPromotion> result = promotionService.getPromotionList(1, 10);
 
         assertNotNull(result);
         assertTrue(result.getList().isEmpty());
@@ -56,10 +56,10 @@ class ProductPromotionServiceImplTest {
 
     @Test
     void testGetPromotionById() {
-        ProductPromotion promotion = createPromotion(1L, "Summer Sale");
+        TProductPromotion promotion = createPromotion(1L, "Summer Sale");
         when(promotionMapper.selectById(1L)).thenReturn(promotion);
 
-        ProductPromotion result = promotionService.getPromotionById(1L);
+        TProductPromotion result = promotionService.getPromotionById(1L);
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
@@ -70,18 +70,18 @@ class ProductPromotionServiceImplTest {
     void testGetPromotionByIdNotFound() {
         when(promotionMapper.selectById(999L)).thenReturn(null);
 
-        ProductPromotion result = promotionService.getPromotionById(999L);
+        TProductPromotion result = promotionService.getPromotionById(999L);
 
         assertNull(result);
     }
 
     @Test
     void testAddPromotion() {
-        ProductPromotion promotion = new ProductPromotion();
+        TProductPromotion promotion = new TProductPromotion();
         promotion.setName("New Promotion");
         promotion.setType("DISCOUNT");
         promotion.setDiscount(BigDecimal.valueOf(0.15));
-        when(promotionMapper.insert(any(ProductPromotion.class))).thenReturn(1);
+        when(promotionMapper.insert(any(TProductPromotion.class))).thenReturn(1);
 
         promotionService.addPromotion(promotion);
 
@@ -92,10 +92,10 @@ class ProductPromotionServiceImplTest {
 
     @Test
     void testUpdatePromotion() {
-        ProductPromotion promotion = new ProductPromotion();
+        TProductPromotion promotion = new TProductPromotion();
         promotion.setId(1L);
         promotion.setName("Updated Promotion");
-        when(promotionMapper.update(any(ProductPromotion.class))).thenReturn(1);
+        when(promotionMapper.update(any(TProductPromotion.class))).thenReturn(1);
 
         promotionService.updatePromotion(promotion);
 
@@ -112,8 +112,8 @@ class ProductPromotionServiceImplTest {
         verify(promotionMapper).deleteById(1L);
     }
 
-    private ProductPromotion createPromotion(Long id, String name) {
-        ProductPromotion promotion = new ProductPromotion();
+    private TProductPromotion createPromotion(Long id, String name) {
+        TProductPromotion promotion = new TProductPromotion();
         promotion.setId(id);
         promotion.setName(name);
         promotion.setType("DISCOUNT");

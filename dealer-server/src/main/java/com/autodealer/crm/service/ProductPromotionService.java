@@ -1,16 +1,16 @@
 package com.autodealer.crm.service;
 
-import com.autodealer.crm.model.ProductPromotion;
+import com.autodealer.crm.model.TProductPromotion;
 import com.github.pagehelper.PageInfo;
 
 public interface ProductPromotionService {
-    PageInfo<ProductPromotion> getPromotionList(Integer pageNum, Integer pageSize);
+    PageInfo<TProductPromotion> getPromotionList(Integer pageNum, Integer pageSize);
     
-    ProductPromotion getPromotionById(Long id);
+    TProductPromotion getPromotionById(Long id);
     
-    void addPromotion(ProductPromotion promotion);
+    void addPromotion(TProductPromotion promotion);
     
-    void updatePromotion(ProductPromotion promotion);
+    void updatePromotion(TProductPromotion promotion);
     
     void deletePromotion(Long id);
 }

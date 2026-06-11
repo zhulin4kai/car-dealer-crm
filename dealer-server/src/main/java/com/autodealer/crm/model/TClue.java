@@ -1,5 +1,6 @@
 package com.autodealer.crm.model;
 
+import com.autodealer.crm.dto.ProductSimpleDTO;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
@@ -141,7 +142,7 @@ public class TClue implements Serializable {
     private TDicValue appellationDO = new TDicValue();
     private TDicValue needLoanDO = new TDicValue();
     private TDicValue intentionStateDO = new TDicValue();
-    private TProduct intentionProductDO = new TProduct();
+    private ProductSimpleDTO intentionProductDO = new ProductSimpleDTO();
     private TDicValue stateDO = new TDicValue();
     private TDicValue sourceDO = new TDicValue();
 

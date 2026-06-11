@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.autodealer.crm.mapper.ProductStockRecordMapper">
+<mapper namespace="com.autodealer.crm.mapper.TProductStockRecordMapper">
     
-    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.ProductStockRecord">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TProductStockRecord">
         <id column="id" property="id" />
         <result column="product_id" property="productId" />
         <result column="quantity" property="quantity" />
@@ -28,7 +28,7 @@
         WHERE product_id = #{productId}
     </select>
     
-    <insert id="insert" parameterType="com.autodealer.crm.model.ProductStockRecord" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.autodealer.crm.model.TProductStockRecord" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_product_stock_record (
             product_id, quantity, type, remark, create_time
         ) VALUES (

@@ -1,7 +1,7 @@
 package com.autodealer.crm.service;
 
 import com.autodealer.crm.config.converter.*;
-import com.autodealer.crm.model.TranCreateRequest;
+import com.autodealer.crm.dto.TranCreateRequest;
 import com.autodealer.crm.DealerCRMApplication;
 import com.autodealer.crm.model.TUser;
 import org.junit.jupiter.api.Test;

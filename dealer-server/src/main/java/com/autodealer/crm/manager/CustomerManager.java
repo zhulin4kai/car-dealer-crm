@@ -3,10 +3,10 @@ package com.autodealer.crm.manager;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
-import com.autodealer.crm.mapper.ProductMapper;
+import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.model.TTran;
-import com.autodealer.crm.model.Product;
+import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TTranProduct;
 import com.autodealer.crm.query.CustomerQuery;
 import com.autodealer.crm.service.TranService;
@@ -30,7 +30,7 @@ public class CustomerManager {
     private TClueMapper tClueMapper;
 
     @Resource
-    private ProductMapper productMapper;
+    private TProductMapper productMapper;
 
     @Resource
     private TranService tranService;
@@ -66,7 +66,7 @@ public class CustomerManager {
             List<TTranProduct> products = new ArrayList<>();
             if (customerQuery.getProduct() != null) {
                 // 使用ProductMapper获取产品信息
-                Product product = productMapper.selectById(customerQuery.getProduct().longValue());
+                TProduct product = productMapper.selectById(customerQuery.getProduct().longValue());
                 
                 if (product != null) {
                     TTranProduct tranProduct = new TTranProduct();

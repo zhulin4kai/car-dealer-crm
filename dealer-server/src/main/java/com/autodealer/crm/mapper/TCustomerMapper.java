@@ -1,6 +1,6 @@
 package com.autodealer.crm.mapper;
 
-import com.autodealer.crm.model.CustomerOption;
+import com.autodealer.crm.dto.CustomerOption;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.query.CustomerQuery;
 

@@ -1,7 +1,7 @@
 package com.autodealer.crm.service.impl;
 
-import com.autodealer.crm.mapper.ProductCategoryMapper;
-import com.autodealer.crm.model.ProductCategory;
+import com.autodealer.crm.mapper.TProductCategoryMapper;
+import com.autodealer.crm.model.TProductCategory;
 import com.autodealer.crm.service.ProductCategoryService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -16,28 +16,28 @@ import java.util.List;
 public class ProductCategoryServiceImpl implements ProductCategoryService {
     
     @Autowired
-    private ProductCategoryMapper categoryMapper;
+    private TProductCategoryMapper categoryMapper;
     
     @Override
-    public PageInfo<ProductCategory> getCategoryList(Integer pageNum, Integer pageSize) {
+    public PageInfo<TProductCategory> getCategoryList(Integer pageNum, Integer pageSize) {
         PageHelper.startPage(pageNum, pageSize);
-        List<ProductCategory> categories = categoryMapper.selectList((pageNum - 1) * pageSize, pageSize);
+        List<TProductCategory> categories = categoryMapper.selectList((pageNum - 1) * pageSize, pageSize);
         return new PageInfo<>(categories);
     }
     
     @Override
-    public ProductCategory getCategoryById(Long id) {
+    public TProductCategory getCategoryById(Long id) {
         return categoryMapper.selectById(id);
     }
     
     @Override
-    public ProductCategory getCategoryByCode(String code) {
+    public TProductCategory getCategoryByCode(String code) {
         return categoryMapper.selectByCode(code);
     }
     
     @Override
     @Transactional
-    public void addCategory(ProductCategory category) {
+    public void addCategory(TProductCategory category) {
         category.setCreateTime(LocalDateTime.now());
         category.setUpdateTime(LocalDateTime.now());
         categoryMapper.insert(category);
@@ -45,7 +45,7 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
     
     @Override
     @Transactional
-    public void updateCategory(ProductCategory category) {
+    public void updateCategory(TProductCategory category) {
         category.setUpdateTime(LocalDateTime.now());
         categoryMapper.update(category);
     }

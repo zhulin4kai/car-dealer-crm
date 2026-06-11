@@ -45,7 +45,7 @@ class TranServiceImplTest {
     private TTranApproveMapper tranApproveMapper;
 
     @Mock
-    private ProductMapper productMapper;
+    private TProductMapper productMapper;
 
     @Mock
     private RedisManager redisManager;
@@ -915,7 +915,7 @@ class TranServiceImplTest {
         assertNotNull(invoice.getInvoiceNo());
         assertEquals("PENDING", invoice.getStatus());
         assertNotNull(invoice.getCreateTime());
-        assertNotNull(invoice.getUpdateTime());
+        assertNotNull(invoice.getEditTime());
         verify(tranMapper).updateByPrimaryKeySelective(argThat(t -> {
             TTran tt = (TTran) t;
             return tt.getId().equals(1) && tt.getStage() == TranStage.PAYMENT;

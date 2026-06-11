@@ -1,9 +1,9 @@
 package com.autodealer.crm.manager;
 
-import com.autodealer.crm.mapper.ProductMapper;
+import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
-import com.autodealer.crm.model.Product;
+import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.query.CustomerQuery;
@@ -35,7 +35,7 @@ class CustomerManagerTest {
     private TClueMapper tClueMapper;
 
     @Mock
-    private ProductMapper productMapper;
+    private TProductMapper productMapper;
 
     @Mock
     private TranService tranService;
@@ -49,7 +49,7 @@ class CustomerManagerTest {
         query.setDescription("测试客户");
         query.setNextContactTime(new Date());
 
-        Product product = new Product();
+        TProduct product = new TProduct();
         product.setId(5L);
         product.setName("比亚迪e2");
         product.setPrice(new BigDecimal("100000"));

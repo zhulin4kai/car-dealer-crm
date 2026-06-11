@@ -3,7 +3,7 @@ package com.autodealer.crm.config.converter;
 import com.alibaba.excel.metadata.data.ReadCellData;
 import com.autodealer.crm.DealerCRMApplication;
 import com.autodealer.crm.model.TDicValue;
-import com.autodealer.crm.model.TProduct;
+import com.autodealer.crm.dto.ProductSimpleDTO;
 import com.autodealer.crm.result.DicEnum;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -180,10 +180,10 @@ class ConverterTest {
 
     @Test
     void testIntentionProductConverterWithMatchingValue() throws Exception {
-        TProduct product = new TProduct();
+        ProductSimpleDTO product = new ProductSimpleDTO();
         product.setId(2);
         product.setName("比亚迪e2");
-        List<TProduct> list = Collections.singletonList(product);
+        List<ProductSimpleDTO> list = Collections.singletonList(product);
         DealerCRMApplication.cacheMap.put(DicEnum.PRODUCT.getCode(), list);
 
         IntentionProductConverter converter = new IntentionProductConverter();
@@ -208,10 +208,10 @@ class ConverterTest {
 
     @Test
     void testIntentionProductConverterWithNoMatch() throws Exception {
-        TProduct product = new TProduct();
+        ProductSimpleDTO product = new ProductSimpleDTO();
         product.setId(2);
         product.setName("比亚迪e2");
-        List<TProduct> list = Collections.singletonList(product);
+        List<ProductSimpleDTO> list = Collections.singletonList(product);
         DealerCRMApplication.cacheMap.put(DicEnum.PRODUCT.getCode(), list);
 
         IntentionProductConverter converter = new IntentionProductConverter();

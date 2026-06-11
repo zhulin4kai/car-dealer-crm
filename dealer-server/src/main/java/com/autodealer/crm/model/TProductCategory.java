@@ -4,7 +4,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class ProductCategory {
+public class TProductCategory {
     private Long id;
     private String name;
     private String code;

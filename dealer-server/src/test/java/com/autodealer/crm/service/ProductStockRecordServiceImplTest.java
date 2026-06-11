@@ -1,7 +1,7 @@
 package com.autodealer.crm.service;
 
-import com.autodealer.crm.mapper.ProductStockRecordMapper;
-import com.autodealer.crm.model.ProductStockRecord;
+import com.autodealer.crm.mapper.TProductStockRecordMapper;
+import com.autodealer.crm.model.TProductStockRecord;
 import com.autodealer.crm.service.impl.ProductStockRecordServiceImpl;
 import com.github.pagehelper.PageInfo;
 import org.junit.jupiter.api.Test;
@@ -25,18 +25,18 @@ class ProductStockRecordServiceImplTest {
     private ProductStockRecordServiceImpl stockRecordService;
 
     @Mock
-    private ProductStockRecordMapper stockRecordMapper;
+    private TProductStockRecordMapper stockRecordMapper;
 
     @Test
     void testGetStockRecordsByProductId() {
         Long productId = 1L;
-        List<ProductStockRecord> records = Arrays.asList(
+        List<TProductStockRecord> records = Arrays.asList(
                 createStockRecord(1L, productId, 100, "IN"),
                 createStockRecord(2L, productId, -50, "OUT")
         );
         when(stockRecordMapper.selectByProductId(eq(productId), anyInt(), anyInt())).thenReturn(records);
 
-        PageInfo<ProductStockRecord> result = stockRecordService.getStockRecordsByProductId(productId, 1, 10);
+        PageInfo<TProductStockRecord> result = stockRecordService.getStockRecordsByProductId(productId, 1, 10);
 
         assertNotNull(result);
         assertEquals(2, result.getList().size());
@@ -48,7 +48,7 @@ class ProductStockRecordServiceImplTest {
         Long productId = 999L;
         when(stockRecordMapper.selectByProductId(eq(productId), anyInt(), anyInt())).thenReturn(Collections.emptyList());
 
-        PageInfo<ProductStockRecord> result = stockRecordService.getStockRecordsByProductId(productId, 1, 10);
+        PageInfo<TProductStockRecord> result = stockRecordService.getStockRecordsByProductId(productId, 1, 10);
 
         assertNotNull(result);
         assertTrue(result.getList().isEmpty());
@@ -57,14 +57,14 @@ class ProductStockRecordServiceImplTest {
     @Test
     void testGetStockRecordsByProductIdPagination() {
         Long productId = 1L;
-        List<ProductStockRecord> records = Arrays.asList(
+        List<TProductStockRecord> records = Arrays.asList(
                 createStockRecord(1L, productId, 10, "IN"),
                 createStockRecord(2L, productId, 20, "IN"),
                 createStockRecord(3L, productId, -5, "OUT")
         );
         when(stockRecordMapper.selectByProductId(eq(productId), anyInt(), anyInt())).thenReturn(records);
 
-        PageInfo<ProductStockRecord> result = stockRecordService.getStockRecordsByProductId(productId, 2, 10);
+        PageInfo<TProductStockRecord> result = stockRecordService.getStockRecordsByProductId(productId, 2, 10);
 
         assertNotNull(result);
         assertEquals(3, result.getList().size());
@@ -83,8 +83,8 @@ class ProductStockRecordServiceImplTest {
         verify(stockRecordMapper).selectByProductId(productId, 10, 5);
     }
 
-    private ProductStockRecord createStockRecord(Long id, Long productId, Integer quantity, String type) {
-        ProductStockRecord record = new ProductStockRecord();
+    private TProductStockRecord createStockRecord(Long id, Long productId, Integer quantity, String type) {
+        TProductStockRecord record = new TProductStockRecord();
         record.setId(id);
         record.setProductId(productId);
         record.setQuantity(quantity);
