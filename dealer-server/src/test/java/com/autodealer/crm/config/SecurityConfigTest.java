@@ -11,7 +11,9 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -20,6 +22,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * + TokenVerifyFilter + H2 seed data, NOT by @MockBean or @AutoConfigureMockMvc(addFilters = false).
  */
 class SecurityConfigTest extends BackendIntegrationTestBase {
+
+    @Test
+    @DisplayName("CORS preflight from the Vite dev server on 8081 is allowed for login")
+    void loginCorsPreflightAllowsViteDevServer() throws Exception {
+        mockMvc.perform(options(Constants.LOGIN_URI)
+                        .header(HttpHeaders.ORIGIN, "http://localhost:8081")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:8081"))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"));
+    }
 
     @Test
     @DisplayName("unauthenticated request to /api/users must be rejected by the real Security filter chain")
