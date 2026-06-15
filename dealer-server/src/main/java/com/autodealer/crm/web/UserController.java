@@ -28,7 +28,8 @@ public class UserController {
     @GetMapping(value = "/api/login/info")
     public R loginInfo(Authentication authentication) {
         TUser tUser = (TUser)authentication.getPrincipal();
-        return R.OK(tUser);
+        TUser loginUser = userService.getLoginUserById(tUser.getId());
+        return R.OK(loginUser);
     }
 
     /**

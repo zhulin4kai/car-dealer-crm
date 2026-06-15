@@ -30,8 +30,21 @@ public class MyAuthenticationSuccessHandler implements AuthenticationSuccessHand
         TUser tUser = (TUser) authentication.getPrincipal();
 
         //1、生成jwt
-        //把tUser对象转成json作为负载数据放入jwt
-        String userJSON = JSONUtils.toJSON(tUser);
+        //JWT 只保存后续鉴权必需的数据，菜单树通过 /api/login/info 实时查询，避免 token 过大。
+        TUser tokenUser = new TUser();
+        tokenUser.setId(tUser.getId());
+        tokenUser.setLoginAct(tUser.getLoginAct());
+        tokenUser.setLoginPwd(tUser.getLoginPwd());
+        tokenUser.setName(tUser.getName());
+        tokenUser.setPhone(tUser.getPhone());
+        tokenUser.setEmail(tUser.getEmail());
+        tokenUser.setAccountNoExpired(tUser.getAccountNoExpired());
+        tokenUser.setCredentialsNoExpired(tUser.getCredentialsNoExpired());
+        tokenUser.setAccountNoLocked(tUser.getAccountNoLocked());
+        tokenUser.setAccountEnabled(tUser.getAccountEnabled());
+        tokenUser.setRoleList(tUser.getRoleList());
+        tokenUser.setPermissionList(tUser.getPermissionList());
+        String userJSON = JSONUtils.toJSON(tokenUser);
         String jwt = JWTUtils.createJWT(userJSON);
 
         //2、写入redis

@@ -21,8 +21,8 @@ export function installRouterGuards(router: Router): void {
 
     if (to.meta.requiresAuth && authStore.isAuthenticated && !permissionStore.hasMenu) {
       try {
-        await authStore.loadCurrentUser()
-        await permissionStore.loadPermissions()
+        const user = await authStore.loadCurrentUser()
+        permissionStore.setPermissionsFromUser(user)
       } catch {
         authStore.forceLogout()
         permissionStore.clearPermissions()

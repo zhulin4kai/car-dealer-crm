@@ -20,12 +20,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(form: LoginForm): Promise<void> {
-    const formData = new FormData()
-    formData.append('loginAct', form.loginAct)
-    formData.append('loginPwd', form.loginPwd)
-    formData.append('rememberMe', String(form.rememberMe))
+    const loginParams = new URLSearchParams()
+    loginParams.append('loginAct', form.loginAct)
+    loginParams.append('loginPwd', form.loginPwd)
+    loginParams.append('rememberMe', String(form.rememberMe))
 
-    const jwt = await loginRequest(formData)
+    const jwt = await loginRequest(loginParams)
     token.value = jwt
     rememberMe.value = form.rememberMe
     writeStoredToken(jwt, form.rememberMe)

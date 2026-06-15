@@ -12,6 +12,8 @@ public interface UserService extends UserDetailsService {
 
     PageInfo<TUser> getUserByPage(Integer current);
 
+    TUser getLoginUserById(Integer id);
+
     TUser getUserById(Integer id);
 
     int saveUser(UserQuery userQuery);

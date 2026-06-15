@@ -61,6 +61,23 @@ public class UserServiceImpl implements UserService {
             throw new UsernameNotFoundException("登录账号不存在");
         }
 
+        loadLoginPermissions(tUser);
+
+        return tUser;
+    }
+
+    @Override
+    public TUser getLoginUserById(Integer id) {
+        TUser tUser = tUserMapper.selectByPrimaryKey(id);
+        if (tUser == null) {
+            return null;
+        }
+
+        loadLoginPermissions(tUser);
+        return tUser;
+    }
+
+    private void loadLoginPermissions(TUser tUser) {
         //查询一下当前用户的角色
         List<TRole> tRoleList = tRoleMapper.selectByUserId(tUser.getId());
         //字符串的角色列表
@@ -81,8 +98,6 @@ public class UserServiceImpl implements UserService {
             stringPermissionList.add(tPermission.getCode());//权限标识符
         });
         tUser.setPermissionList(stringPermissionList);//设置用户的权限标识符
-
-        return tUser;
     }
 
     @Override

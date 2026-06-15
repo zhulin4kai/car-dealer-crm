@@ -3,8 +3,10 @@ import type { PageResult } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
 import type { LoginForm, User, UserForm, UserQuery } from '@/modules/user/model/user.types'
 
-export function login(payload: FormData | LoginForm): Promise<string> {
-  return httpClient.post<string>('/api/login', payload)
+export function login(payload: URLSearchParams | LoginForm): Promise<string> {
+  return httpClient.post<string>('/api/login', payload, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  })
 }
 
 export function freeLogin(): Promise<string | boolean> {

@@ -19,11 +19,15 @@ export const usePermissionStore = defineStore('permission', () => {
     permissionList.value = readPermissionCodes() ?? []
   }
 
-  async function loadPermissions(): Promise<void> {
-    const user = await fetchLoginInfo()
+  function setPermissionsFromUser(user: { permissionList?: string[]; menuPermissionList?: Permission[] }): void {
     permissionList.value = user.permissionList ?? []
     menuPermissionList.value = user.menuPermissionList ?? []
     writePermissionCodes(permissionList.value)
+  }
+
+  async function loadPermissions(): Promise<void> {
+    const user = await fetchLoginInfo()
+    setPermissionsFromUser(user)
   }
 
   function hasPermission(code: string): boolean {
@@ -41,6 +45,7 @@ export const usePermissionStore = defineStore('permission', () => {
     menuPermissionList,
     hasMenu,
     restorePermissions,
+    setPermissionsFromUser,
     loadPermissions,
     hasPermission,
     clearPermissions,
