@@ -567,6 +567,8 @@ VALUES (22, '客户管理-查看', 'customer:view', NULL, 'button', 20, NULL, NU
 INSERT INTO `t_permission`
 VALUES (23, '客户管理-导出', 'customer:export', NULL, 'button', 20, NULL, NULL);
 INSERT INTO `t_permission`
+VALUES (62, '客户管理-转客户', 'customer:transfer', NULL, 'button', 20, NULL, NULL);
+INSERT INTO `t_permission`
 VALUES (24, '交易管理', NULL, NULL, 'menu', 0, 4, 'Wallet');
 INSERT INTO `t_permission`
 VALUES (25, '交易管理', NULL, '/dashboard/tran', 'menu', 24, 1, 'Coin');
@@ -652,6 +654,8 @@ INSERT INTO `t_permission`
 VALUES (60, '系统管理-查看', 'system:view', NULL, 'button', 56, NULL, NULL);
 INSERT INTO `t_permission`
 VALUES (61, '系统管理-删除', 'system:delete', NULL, 'button', 56, NULL, NULL);
+INSERT INTO `t_permission`
+VALUES (63, '统计报表-查看', 'statistic:view', NULL, 'button', 0, NULL, NULL);
 
 
 -- ----------------------------
@@ -823,6 +827,20 @@ INSERT INTO `t_role_permission`
 VALUES (58, 1, 60);
 INSERT INTO `t_role_permission`
 VALUES (59, 1, 61);
+INSERT INTO `t_role_permission`
+VALUES (77, 1, 62);
+INSERT INTO `t_role_permission`
+VALUES (78, 1, 63);
+INSERT INTO `t_role_permission`
+VALUES (79, 1, 2701);
+INSERT INTO `t_role_permission`
+VALUES (80, 1, 2702);
+INSERT INTO `t_role_permission`
+VALUES (81, 1, 2703);
+INSERT INTO `t_role_permission`
+VALUES (82, 1, 2704);
+INSERT INTO `t_role_permission`
+VALUES (83, 1, 2705);
 INSERT INTO `t_role_permission`
 VALUES (60, 2, 10);
 INSERT INTO `t_role_permission`
@@ -1430,4 +1448,3 @@ create index t_tran_remark_ibfk_3
 
 create index t_tran_remark_ibfk_4
     on t_tran_remark (edit_by);
-

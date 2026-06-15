@@ -30,6 +30,7 @@ INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) 
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (5, '市场活动-编辑', 'activity:edit', NULL, 'button', 2, NULL, NULL);
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (6, '市场活动-查看', 'activity:view', NULL, 'button', 2, NULL, NULL);
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (7, '市场活动-删除', 'activity:delete', NULL, 'button', 2, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (9, '市场活动-搜索', 'activity:search', NULL, 'button', 2, NULL, NULL);
 
 -- Menu: 线索管理
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (10, '线索管理', NULL, NULL, 'menu', 0, 2, 'Magnet');
@@ -39,18 +40,26 @@ INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) 
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (15, '线索管理-编辑', 'clue:edit', NULL, 'button', 12, NULL, NULL);
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (16, '线索管理-查看', 'clue:view', NULL, 'button', 12, NULL, NULL);
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (17, '线索管理-删除', 'clue:delete', NULL, 'button', 12, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (18, '线索管理-导入', 'clue:import', NULL, 'button', 12, NULL, NULL);
 
 -- Menu: 客户管理
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (19, '客户管理', NULL, NULL, 'menu', 0, 3, 'User');
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (20, '客户管理', NULL, '/dashboard/customer', 'menu', 19, 1, 'UserFilled');
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (21, '客户管理-列表', 'customer:list', NULL, 'button', 20, NULL, NULL);
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (22, '客户管理-查看', 'customer:view', NULL, 'button', 20, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (23, '客户管理-导出', 'customer:export', NULL, 'button', 20, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (62, '客户管理-转客户', 'customer:transfer', NULL, 'button', 20, NULL, NULL);
 
 -- Menu: 交易管理
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (24, '交易管理', NULL, NULL, 'menu', 0, 4, 'Wallet');
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (25, '交易管理', NULL, '/dashboard/tran', 'menu', 24, 1, 'Coin');
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (26, '交易管理-列表', 'tran:list', NULL, 'button', 25, NULL, NULL);
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (27, '交易管理-查看', 'tran:view', NULL, 'button', 25, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (2701, '交易管理-创建', 'tran:create', NULL, 'button', 25, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (2702, '交易管理-编辑', 'tran:edit', NULL, 'button', 25, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (2703, '交易管理-删除', 'tran:delete', NULL, 'button', 25, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (2704, '交易管理-审批', 'tran:approve', NULL, 'button', 25, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (2705, '交易管理-发票', 'tran:invoice', NULL, 'button', 25, NULL, NULL);
 
 -- Menu: 产品管理
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (28, '产品管理', NULL, NULL, 'menu', 0, 5, 'Memo');
@@ -85,6 +94,7 @@ INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) 
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (59, '系统管理-编辑', 'system:edit', NULL, 'button', 56, NULL, NULL);
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (60, '系统管理-查看', 'system:view', NULL, 'button', 56, NULL, NULL);
 INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (61, '系统管理-删除', 'system:delete', NULL, 'button', 56, NULL, NULL);
+INSERT INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) VALUES (63, '统计报表-查看', 'statistic:view', NULL, 'button', 0, NULL, NULL);
 
 -- ==================== Role Permissions ====================
 -- Admin role: all permissions
@@ -136,6 +146,16 @@ INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (45, 1, 58);
 INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (46, 1, 59);
 INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (47, 1, 60);
 INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (48, 1, 61);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (85, 1, 9);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (86, 1, 18);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (87, 1, 23);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (88, 1, 62);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (89, 1, 63);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (90, 1, 2701);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (91, 1, 2702);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (92, 1, 2703);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (93, 1, 2704);
+INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (94, 1, 2705);
 
 -- User role: limited permissions (clue and customer only)
 INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (50, 2, 10);
