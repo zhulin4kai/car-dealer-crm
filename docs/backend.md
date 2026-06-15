@@ -887,7 +887,7 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 | `verifyJWT(String jwt)` | 验证 JWT 签名是否有效 |
 | `parseUserFromJWT(String jwt)` | 从 JWT 解析用户信息（TUser 对象） |
 
-**密钥**: 优先从环境变量 `JWT_SECRET` 获取，默认值 `dY8300olWQ3345;1d<3w48`
+**密钥**: 从环境变量 `JWT_SECRET` 获取；未配置时应用启动失败，避免使用可预测的默认签名密钥。
 
 ### 15.2 CacheUtils
 **路径**: `util/CacheUtils.java`

@@ -18,17 +18,17 @@ import java.util.Map;
  */
 public class JWTUtils {
 
-    // 从环境变量读取JWT密钥，如果没有配置则抛出异常
-    private static final String SECRET;
-    static {
-        String secret = System.getenv("JWT_SECRET");
-        if (secret == null || secret.isEmpty()) {
-            throw new IllegalStateException("JWT_SECRET 环境变量未配置，应用无法启动");
-        }
-        SECRET = secret;
-    }
+    private static final String SECRET = resolveSecret();
 
     private static final long EXPIRATION_MS = 24 * 60 * 60 * 1000L; // 24 hours
+
+    private static String resolveSecret() {
+        String secret = System.getenv("JWT_SECRET");
+        if (secret == null || secret.trim().isEmpty()) {
+            throw new IllegalStateException("JWT_SECRET 环境变量未配置，应用无法签发或校验 JWT");
+        }
+        return secret.trim();
+    }
 
     /**
      * 生成JWT （token）
@@ -69,7 +69,7 @@ public class JWTUtils {
 
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            // Invalid or expired tokens are expected auth failures; callers handle the false result.
         }
         return false;
     }

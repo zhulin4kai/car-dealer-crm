@@ -13,7 +13,7 @@ class JWTUtilsTest {
 
     @Test
     void testSecretReadsFromEnvironment() throws Exception {
-        // JWTUtils reads SECRET from JWT_SECRET env variable with fallback to default
+        // JWTUtils reads SECRET from JWT_SECRET env variable.
         java.lang.reflect.Field secretField = JWTUtils.class.getDeclaredField("SECRET");
         secretField.setAccessible(true);
         String currentSecret = (String) secretField.get(null);
@@ -22,7 +22,6 @@ class JWTUtilsTest {
         assertNotNull(currentSecret, "SECRET should not be null");
         assertFalse(currentSecret.isEmpty(), "SECRET should not be empty");
         
-        // If JWT_SECRET env is set, it should use that; otherwise it falls back to default
         String envSecret = System.getenv("JWT_SECRET");
         if (envSecret != null) {
             assertEquals(envSecret, currentSecret, "SECRET should match JWT_SECRET environment variable");

@@ -105,6 +105,7 @@ mysql -u root -p < src/main/resources/CarDealerCRM.sql
 
 # 配置数据库连接 (src/main/resources/application.yml)
 # 设置环境变量或修改配置文件中的 DB_PASSWORD
+export JWT_SECRET='replace-with-a-long-random-local-secret'
 
 # 启动
 mvn spring-boot:run
