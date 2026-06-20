@@ -1,17 +1,16 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.model.TActivity;
-import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.query.ActivityQuery;
 import com.autodealer.crm.service.impl.ActivityServiceImpl;
-import com.autodealer.crm.util.JWTUtils;
 import com.github.pagehelper.PageInfo;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -32,6 +31,14 @@ class ActivityServiceImplTest {
 
     @Mock
     private TActivityMapper tActivityMapper;
+
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(10);
+    }
 
     @Test
     void testGetActivityByPage() {
@@ -65,15 +72,11 @@ class ActivityServiceImplTest {
 
     @Test
     void testSaveActivity() {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
             ActivityQuery query = new ActivityQuery();
             query.setName("New Activity");
             query.setCost(BigDecimal.valueOf(1000));
-            query.setToken("test-token");
 
-            TUser loginUser = new TUser();
-            loginUser.setId(10);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("test-token")).thenReturn(loginUser);
+            when(currentUserProvider.getCurrentUserId()).thenReturn(10);
 
             when(tActivityMapper.insertSelective(any(TActivity.class))).thenReturn(1);
 
@@ -85,7 +88,6 @@ class ActivityServiceImplTest {
                             && activity.getCreateBy() != null
                             && activity.getCreateTime() != null
             ));
-        }
     }
 
     @Test
@@ -94,37 +96,34 @@ class ActivityServiceImplTest {
         activity.setId(1);
         activity.setName("Test Activity");
 
-        when(tActivityMapper.selectDetailByPrimaryKey(1)).thenReturn(activity);
+        when(tActivityMapper.selectDetailByPrimaryKey(1, 10)).thenReturn(activity);
 
         TActivity result = activityService.getActivityById(1);
 
         assertNotNull(result);
         assertEquals(1, result.getId());
         assertEquals("Test Activity", result.getName());
-        verify(tActivityMapper).selectDetailByPrimaryKey(1);
+        verify(tActivityMapper).selectDetailByPrimaryKey(1, 10);
     }
 
     @Test
     void testGetActivityByIdNotFound() {
-        when(tActivityMapper.selectDetailByPrimaryKey(999)).thenReturn(null);
+        when(tActivityMapper.selectDetailByPrimaryKey(999, 10)).thenReturn(null);
 
         TActivity result = activityService.getActivityById(999);
 
         assertNull(result);
-        verify(tActivityMapper).selectDetailByPrimaryKey(999);
+        verify(tActivityMapper).selectDetailByPrimaryKey(999, 10);
     }
 
     @Test
     void testUpdateActivity() {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
             ActivityQuery query = new ActivityQuery();
             query.setId(1);
             query.setName("Updated Activity");
-            query.setToken("test-token");
 
-            TUser loginUser = new TUser();
-            loginUser.setId(10);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("test-token")).thenReturn(loginUser);
+            when(currentUserProvider.getCurrentUserId()).thenReturn(10);
+            when(tActivityMapper.selectDetailByPrimaryKey(1, 10)).thenReturn(activity(1));
 
             when(tActivityMapper.updateByPrimaryKeySelective(any(TActivity.class))).thenReturn(1);
 
@@ -136,7 +135,6 @@ class ActivityServiceImplTest {
                             && activity.getEditBy() != null
                             && activity.getEditTime() != null
             ));
-        }
     }
 
     @Test
@@ -148,27 +146,29 @@ class ActivityServiceImplTest {
         activity2.setId(2);
         activity2.setName("Ongoing 2");
 
-        when(tActivityMapper.selecOngoingActivity()).thenReturn(Arrays.asList(activity1, activity2));
+        when(tActivityMapper.selecOngoingActivity(10)).thenReturn(Arrays.asList(activity1, activity2));
 
         List<TActivity> result = activityService.getOngoingActivity();
 
         assertEquals(2, result.size());
-        verify(tActivityMapper).selecOngoingActivity();
+        verify(tActivityMapper).selecOngoingActivity(10);
     }
 
     @Test
     void testGetOngoingActivityEmpty() {
-        when(tActivityMapper.selecOngoingActivity()).thenReturn(Collections.emptyList());
+        when(tActivityMapper.selecOngoingActivity(10)).thenReturn(Collections.emptyList());
 
         List<TActivity> result = activityService.getOngoingActivity();
 
         assertTrue(result.isEmpty());
-        verify(tActivityMapper).selecOngoingActivity();
+        verify(tActivityMapper).selecOngoingActivity(10);
     }
 
     @Test
     void testBatchDeleteActivities() {
         List<Integer> ids = Arrays.asList(1, 2, 3);
+        when(tActivityMapper.selectDetailByPrimaryKey(anyInt(), eq(10)))
+                .thenAnswer(invocation -> activity(invocation.getArgument(0)));
         when(tActivityMapper.batchDeleteByIds(ids)).thenReturn(3);
 
         int result = activityService.batchDeleteActivities(ids);
@@ -195,6 +195,7 @@ class ActivityServiceImplTest {
 
     @Test
     void testDeleteActivity() {
+        when(tActivityMapper.selectDetailByPrimaryKey(1, 10)).thenReturn(activity(1));
         when(tActivityMapper.deleteByPrimaryKey(1)).thenReturn(1);
 
         int result = activityService.deleteActivity(1);
@@ -209,5 +210,12 @@ class ActivityServiceImplTest {
 
         assertEquals(0, result);
         verify(tActivityMapper, never()).deleteByPrimaryKey(any());
+    }
+
+    private TActivity activity(Integer id) {
+        TActivity activity = new TActivity();
+        activity.setId(id);
+        activity.setOwnerId(10);
+        return activity;
     }
 }

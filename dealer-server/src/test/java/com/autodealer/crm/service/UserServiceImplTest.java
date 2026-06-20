@@ -1,5 +1,6 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.TPermissionMapper;
 import com.autodealer.crm.mapper.TRoleMapper;
@@ -9,13 +10,12 @@ import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.query.UserQuery;
 import com.autodealer.crm.service.impl.UserServiceImpl;
-import com.autodealer.crm.util.JWTUtils;
 import com.github.pagehelper.PageInfo;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -49,6 +49,14 @@ class UserServiceImplTest {
 
     @Mock
     private TPermissionMapper tPermissionMapper;
+
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+    }
 
     @Test
     void testGetUserByPage() {
@@ -132,7 +140,7 @@ class UserServiceImplTest {
         user.setId(1);
         user.setName("Admin");
 
-        when(tUserMapper.selectDetailById(1)).thenReturn(user);
+        when(tUserMapper.selectAuthUserById(1)).thenReturn(user);
 
         TUser result = userService.getUserById(1);
 
@@ -143,7 +151,7 @@ class UserServiceImplTest {
 
     @Test
     void testGetUserByIdNotFound() {
-        when(tUserMapper.selectDetailById(999)).thenReturn(null);
+        when(tUserMapper.selectAuthUserById(999)).thenReturn(null);
 
         TUser result = userService.getUserById(999);
 
@@ -152,17 +160,12 @@ class UserServiceImplTest {
 
     @Test
     void testSaveUser() {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
             UserQuery query = new UserQuery();
             query.setLoginAct("newuser");
             query.setLoginPwd("rawPassword");
             query.setName("New User");
-            query.setToken("test-token");
 
-            TUser loginUser = new TUser();
-            loginUser.setId(10);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("test-token")).thenReturn(loginUser);
-
+            when(currentUserProvider.getCurrentUserId()).thenReturn(10);
             when(passwordEncoder.encode("rawPassword")).thenReturn("encodedPassword");
             when(tUserMapper.insertSelective(any(TUser.class))).thenReturn(1);
 
@@ -176,22 +179,16 @@ class UserServiceImplTest {
                             && user.getCreateTime() != null
                             && user.getCreateBy() != null
             ));
-        }
     }
 
     @Test
     void testUpdateUser() {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
             UserQuery query = new UserQuery();
             query.setId(1);
             query.setName("Updated User");
             query.setLoginPwd("newPassword");
-            query.setToken("test-token");
 
-            TUser loginUser = new TUser();
-            loginUser.setId(10);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("test-token")).thenReturn(loginUser);
-
+            when(currentUserProvider.getCurrentUserId()).thenReturn(10);
             when(passwordEncoder.encode("newPassword")).thenReturn("encodedNewPwd");
             when(tUserMapper.updateByPrimaryKeySelective(any(TUser.class))).thenReturn(1);
 
@@ -205,21 +202,15 @@ class UserServiceImplTest {
                             && user.getEditTime() != null
                             && user.getEditBy() != null
             ));
-        }
     }
 
     @Test
     void testUpdateUserWithoutPassword() {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
             UserQuery query = new UserQuery();
             query.setId(1);
             query.setName("Updated User");
-            query.setToken("test-token");
 
-            TUser loginUser = new TUser();
-            loginUser.setId(10);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("test-token")).thenReturn(loginUser);
-
+            when(currentUserProvider.getCurrentUserId()).thenReturn(10);
             when(tUserMapper.updateByPrimaryKeySelective(any(TUser.class))).thenReturn(1);
 
             int result = userService.updateUser(query);
@@ -230,7 +221,6 @@ class UserServiceImplTest {
                     "Updated User".equals(user.getName())
                             && user.getLoginPwd() == null
             ));
-        }
     }
 
     @Test
@@ -261,13 +251,13 @@ class UserServiceImplTest {
         owner.setName("Owner");
         List<TUser> cachedList = Collections.singletonList(owner);
 
-        when(redisManager.getValue(anyString())).thenReturn(cachedList);
+        when(redisManager.getList(anyString())).thenReturn(cachedList);
 
         List<TUser> result = userService.getOwnerList();
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        verify(redisManager).getValue(anyString());
+        verify(redisManager).getList(anyString());
     }
 
     @Test
@@ -277,7 +267,7 @@ class UserServiceImplTest {
         owner.setName("Owner");
         List<TUser> dbList = Collections.singletonList(owner);
 
-        when(redisManager.getValue(anyString())).thenReturn(null);
+        when(redisManager.getList(anyString())).thenReturn(null);
         when(tUserMapper.selectByOwner()).thenReturn(dbList);
 
         List<TUser> result = userService.getOwnerList();
@@ -285,6 +275,6 @@ class UserServiceImplTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         verify(tUserMapper).selectByOwner();
-        verify(redisManager).setValue(anyString(), anyList());
+        verify(redisManager).setList(anyString(), anyList());
     }
 }

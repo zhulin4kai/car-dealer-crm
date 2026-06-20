@@ -1,11 +1,12 @@
 package com.autodealer.crm.service.impl;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.mapper.TClueRemarkMapper;
+import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.model.TClueRemark;
 import com.autodealer.crm.query.ClueRemarkQuery;
 import com.autodealer.crm.service.ClueRemarkService;
-import com.autodealer.crm.util.JWTUtils;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
@@ -22,9 +23,19 @@ public class ClueRemarkServiceImpl implements ClueRemarkService {
     @Resource
     private TClueRemarkMapper tClueRemarkMapper;
 
+    @Resource
+    private TClueMapper tClueMapper;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
+
     @Transactional(rollbackFor = Exception.class)
     @Override
     public int saveClueRemark(ClueRemarkQuery clueRemarkQuery) {
+        if (tClueMapper.selectScopedByPrimaryKey(
+                clueRemarkQuery.getClueId(), currentUserProvider.getDataScopeUserId()) == null) {
+            throw new RuntimeException("线索不存在或无权访问");
+        }
         TClueRemark tClueRemark = new TClueRemark();
 
         //把ClueRemarkQuery对象里面的属性数据复制到TClueRemark对象里面去(复制要求：两个对象的属性名相同，属性类型要相同，这样才能复制)
@@ -32,9 +43,7 @@ public class ClueRemarkServiceImpl implements ClueRemarkService {
 
         tClueRemark.setCreateTime(new Date()); //创建时间
 
-        //登录人的id
-        Integer loginUserId = JWTUtils.parseUserFromJWT(clueRemarkQuery.getToken()).getId();
-        tClueRemark.setCreateBy(loginUserId); //创建人
+        tClueRemark.setCreateBy(currentUserProvider.getCurrentUserId()); //创建人
 
         return tClueRemarkMapper.insertSelective(tClueRemark);
     }

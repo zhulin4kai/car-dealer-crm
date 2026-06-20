@@ -1,5 +1,6 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.manager.CustomerManager;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TTranMapper;
@@ -40,6 +41,9 @@ class CustomerServiceImplTest {
     @Mock
     private TTranMapper tTranMapper;
 
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
     // ==================== getCustomerList ====================
 
     @Test
@@ -79,18 +83,18 @@ class CustomerServiceImplTest {
         customer.setId(1);
         List<TCustomer> list = Collections.singletonList(customer);
 
-        when(tCustomerMapper.selectCustomerPage()).thenReturn(list);
+        when(tCustomerMapper.selectByQuery(any(CustomerQuery.class))).thenReturn(list);
 
         var pageInfo = customerService.getCustomerByPage(1);
 
         assertNotNull(pageInfo);
         assertEquals(1, pageInfo.getList().size());
-        verify(tCustomerMapper).selectCustomerPage();
+        verify(tCustomerMapper).selectByQuery(any(CustomerQuery.class));
     }
 
     @Test
     void getCustomerByPage_emptyResult_shouldReturnEmptyPageInfo() {
-        when(tCustomerMapper.selectCustomerPage()).thenReturn(Collections.emptyList());
+        when(tCustomerMapper.selectByQuery(any(CustomerQuery.class))).thenReturn(Collections.emptyList());
 
         var pageInfo = customerService.getCustomerByPage(1);
 
@@ -107,7 +111,8 @@ class CustomerServiceImplTest {
         customer.setDescription("VIP customer");
         customer.setClueId(10);
 
-        when(tCustomerMapper.selectByPrimaryKey(1)).thenReturn(customer);
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(7);
+        when(tCustomerMapper.selectScopedById(1, 7)).thenReturn(customer);
 
         TCustomer result = customerService.getCustomerById(1);
 
@@ -119,7 +124,8 @@ class CustomerServiceImplTest {
 
     @Test
     void getCustomerById_notFound_shouldReturnNull() {
-        when(tCustomerMapper.selectByPrimaryKey(999)).thenReturn(null);
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(7);
+        when(tCustomerMapper.selectScopedById(999, 7)).thenReturn(null);
 
         TCustomer result = customerService.getCustomerById(999);
 
@@ -133,12 +139,12 @@ class CustomerServiceImplTest {
         CustomerQuery query = new CustomerQuery();
         query.setClueId(1);
 
-        when(customerManager.convertCustomer(query)).thenReturn(true);
+        when(customerManager.convertCustomer(query, 7)).thenReturn(true);
 
-        Boolean result = customerService.convertCustomer(query);
+        Boolean result = customerService.convertCustomer(query, 7);
 
         assertTrue(result);
-        verify(customerManager).convertCustomer(query);
+        verify(customerManager).convertCustomer(query, 7);
     }
 
     @Test
@@ -146,9 +152,9 @@ class CustomerServiceImplTest {
         CustomerQuery query = new CustomerQuery();
         query.setClueId(1);
 
-        when(customerManager.convertCustomer(query)).thenReturn(false);
+        when(customerManager.convertCustomer(query, 7)).thenReturn(false);
 
-        Boolean result = customerService.convertCustomer(query);
+        Boolean result = customerService.convertCustomer(query, 7);
 
         assertFalse(result);
     }
@@ -158,10 +164,10 @@ class CustomerServiceImplTest {
         CustomerQuery query = new CustomerQuery();
         query.setClueId(1);
 
-        when(customerManager.convertCustomer(query))
+        when(customerManager.convertCustomer(query, 7))
                 .thenThrow(new RuntimeException("该线索已经转过客户，不能再转了."));
 
-        assertThrows(RuntimeException.class, () -> customerService.convertCustomer(query));
+        assertThrows(RuntimeException.class, () -> customerService.convertCustomer(query, 7));
     }
 
     // ==================== getCustomerByExcel ====================
@@ -228,7 +234,8 @@ class CustomerServiceImplTest {
 
         List<TCustomer> customers = Arrays.asList(customer1, customer2);
 
-        when(tCustomerMapper.selectCustomerByExcel(idList)).thenReturn(customers);
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+        when(tCustomerMapper.selectCustomerByExcel(idList, null)).thenReturn(customers);
 
         List<CustomerExcel> result = customerService.getCustomerByExcel(idList);
 
@@ -261,7 +268,9 @@ class CustomerServiceImplTest {
 
     @Test
     void getCustomerByExcel_emptyList_shouldReturnEmptyResult() {
-        when(tCustomerMapper.selectCustomerByExcel(Collections.emptyList())).thenReturn(Collections.emptyList());
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+        when(tCustomerMapper.selectCustomerByExcel(Collections.emptyList(), null))
+                .thenReturn(Collections.emptyList());
 
         List<CustomerExcel> result = customerService.getCustomerByExcel(Collections.emptyList());
 
@@ -278,7 +287,8 @@ class CustomerServiceImplTest {
         option.setCustomerName("John Doe");
         option.setClueId(10);
 
-        when(tCustomerMapper.selectCustomerOptions()).thenReturn(Collections.singletonList(option));
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+        when(tCustomerMapper.selectCustomerOptions(null)).thenReturn(Collections.singletonList(option));
 
         List<CustomerOption> result = customerService.getCustomerOptions();
 
@@ -289,7 +299,8 @@ class CustomerServiceImplTest {
 
     @Test
     void getCustomerOptions_empty_shouldReturnEmptyList() {
-        when(tCustomerMapper.selectCustomerOptions()).thenReturn(Collections.emptyList());
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+        when(tCustomerMapper.selectCustomerOptions(null)).thenReturn(Collections.emptyList());
 
         List<CustomerOption> result = customerService.getCustomerOptions();
 

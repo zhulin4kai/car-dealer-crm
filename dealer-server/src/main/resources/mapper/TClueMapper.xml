@@ -123,6 +123,11 @@
 
                    left join t_dic_value tdv4 on tc.state = tdv4.id
                    left join t_dic_value tdv5 on tc.source = tdv5.id
+    <where>
+      <if test="dataScopeUserId != null">
+        tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
+    </where>
   </select>
 
   <select id="selectByCount" parameterType="java.lang.String" resultType="java.lang.Integer">
@@ -161,6 +166,9 @@
                    left join t_dic_value tdv4 on tc.state = tdv4.id
                    left join t_dic_value tdv5 on tc.source = tdv5.id
     where tc.id = #{id, jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -168,6 +176,16 @@
     <include refid="Base_Column_List" />
     from t_clue
     where id = #{id,jdbcType=INTEGER}
+  </select>
+
+  <select id="selectScopedByPrimaryKey" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from t_clue
+    where id = #{id,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </select>
 
   <select id="selectBySource" resultType="com.autodealer.crm.result.NameValue">
@@ -491,5 +509,8 @@
     UPDATE t_clue
     SET `state` = -1, edit_time = NOW(), edit_by = #{editBy}
     WHERE id = #{id} AND `state` != -1
+    <if test="dataScopeUserId != null">
+      AND owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </update>
 </mapper>

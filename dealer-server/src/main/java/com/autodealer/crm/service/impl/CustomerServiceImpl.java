@@ -1,5 +1,6 @@
 package com.autodealer.crm.service.impl;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.manager.CustomerManager;
 import com.autodealer.crm.mapper.TCustomerMapper;
@@ -32,9 +33,12 @@ public class CustomerServiceImpl implements CustomerService {
     @Resource
     private TTranMapper tTranMapper;
 
+    @Resource
+    private CurrentUserProvider currentUserProvider;
+
     @Override
-    public Boolean convertCustomer(CustomerQuery customerQuery) {
-        return customerManager.convertCustomer(customerQuery);
+    public Boolean convertCustomer(CustomerQuery customerQuery, Integer operatorId) {
+        return customerManager.convertCustomer(customerQuery, operatorId);
     }
 
     @Override
@@ -42,7 +46,7 @@ public class CustomerServiceImpl implements CustomerService {
         //1.设置PageHelper
         PageHelper.startPage(current, Constants.PAGE_SIZE);
         //2.查询
-        List<TCustomer> list = tCustomerMapper.selectCustomerPage();
+        List<TCustomer> list = tCustomerMapper.selectByQuery(new CustomerQuery());
         //3.封装分页数据到PageInfo
         PageInfo<TCustomer> info = new PageInfo<>(list);
 
@@ -53,7 +57,8 @@ public class CustomerServiceImpl implements CustomerService {
     public List<CustomerExcel> getCustomerByExcel(List<String> idList) {
         List<CustomerExcel> customerExcelList = new ArrayList<>();
 
-        List<TCustomer> tCustomerList = tCustomerMapper.selectCustomerByExcel(idList);
+        List<TCustomer> tCustomerList = tCustomerMapper.selectCustomerByExcel(
+                idList, currentUserProvider.getDataScopeUserId());
 
         //把从数据库查询出来的List<TCustomer>数据，转换为 List<CustomerExcel>数据
         tCustomerList.forEach(tCustomer -> {
@@ -111,12 +116,12 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public List<CustomerOption> getCustomerOptions() {
-        return tCustomerMapper.selectCustomerOptions();
+        return tCustomerMapper.selectCustomerOptions(currentUserProvider.getDataScopeUserId());
     }
 
     @Override
     public TCustomer getCustomerById(Integer id) {
-        return tCustomerMapper.selectByPrimaryKey(id);
+        return tCustomerMapper.selectScopedById(id, currentUserProvider.getDataScopeUserId());
     }
 
     @Override

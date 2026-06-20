@@ -35,7 +35,7 @@ public interface CustomerService {
      */
     TCustomer getCustomerById(Integer id);
 
-    Boolean convertCustomer(CustomerQuery customerQuery);
+    Boolean convertCustomer(CustomerQuery customerQuery, Integer operatorId);
 
     PageInfo<TCustomer> getCustomerByPage(Integer current);
 

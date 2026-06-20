@@ -1,5 +1,6 @@
 package com.autodealer.crm.manager;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
@@ -8,6 +9,7 @@ import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.query.CustomerQuery;
 import com.autodealer.crm.service.TranService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,6 +42,14 @@ class CustomerManagerTest {
     @Mock
     private TranService tranService;
 
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(10);
+    }
+
     @Test
     void testConvertCustomerSuccess() {
         CustomerQuery query = new CustomerQuery();
@@ -54,15 +64,15 @@ class CustomerManagerTest {
         product.setName("比亚迪e2");
         product.setPrice(new BigDecimal("100000"));
 
-        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(1); // 原子性更新成功
+        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1); // 原子性更新成功
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
         when(productMapper.selectById(5L)).thenReturn(product);
         when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
-        Boolean result = customerManager.convertCustomer(query);
+        Boolean result = customerManager.convertCustomer(query, 10);
 
         assertTrue(result);
-        verify(tClueMapper).updateStateToConverted(1, 10);
+        verify(tClueMapper).updateStateToConverted(1, 10, 10);
         verify(tCustomerMapper).insertSelective(any(TCustomer.class));
         verify(tranService).createTransaction(any(TTran.class), anyList());
     }
@@ -73,14 +83,14 @@ class CustomerManagerTest {
         query.setClueId(1);
         query.setCreateBy(10);
 
-        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(0); // 已经转过客户，返回0
+        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(0); // 已经转过客户，返回0
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            customerManager.convertCustomer(query);
+            customerManager.convertCustomer(query, 10);
         });
 
         assertTrue(exception.getMessage().contains("已经转过客户"));
-        verify(tClueMapper).updateStateToConverted(1, 10);
+        verify(tClueMapper).updateStateToConverted(1, 10, 10);
         verify(tCustomerMapper, never()).insertSelective(any());
     }
 
@@ -92,11 +102,11 @@ class CustomerManagerTest {
         query.setProduct(null);
         query.setDescription("测试客户");
 
-        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(1);
+        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
         when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
-        Boolean result = customerManager.convertCustomer(query);
+        Boolean result = customerManager.convertCustomer(query, 10);
 
         assertTrue(result);
         verify(tCustomerMapper).insertSelective(any(TCustomer.class));
@@ -111,12 +121,12 @@ class CustomerManagerTest {
         query.setProduct(999);
         query.setDescription("测试客户");
 
-        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(1);
+        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
         when(productMapper.selectById(999L)).thenReturn(null);
         when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
-        Boolean result = customerManager.convertCustomer(query);
+        Boolean result = customerManager.convertCustomer(query, 10);
 
         assertTrue(result);
         verify(tranService).createTransaction(any(TTran.class), argThat(products -> products.isEmpty()));
@@ -128,10 +138,10 @@ class CustomerManagerTest {
         query.setClueId(1);
         query.setCreateBy(10);
 
-        when(tClueMapper.updateStateToConverted(1, 10)).thenReturn(1);
+        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(0);
 
-        Boolean result = customerManager.convertCustomer(query);
+        Boolean result = customerManager.convertCustomer(query, 10);
 
         assertFalse(result);
         verify(tranService, never()).createTransaction(any(), anyList());

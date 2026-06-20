@@ -6,6 +6,7 @@ import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.ClueRemarkService;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,14 +16,15 @@ public class ClueRemarkController {
     private ClueRemarkService clueRemarkService;
 
     @PostMapping(value = "/api/clue/remark")
-    public R addActivityRemark(@RequestBody ClueRemarkQuery clueRemarkQuery, @RequestHeader(value = "Authorization") String token) {
+    @PreAuthorize("hasAuthority('clue:add')")
+    public R addActivityRemark(@RequestBody ClueRemarkQuery clueRemarkQuery) {
         //axios提交post请求，提交过来的是json数据，使用@RequestBody注解接收
-        clueRemarkQuery.setToken(token);
         int save = clueRemarkService.saveClueRemark(clueRemarkQuery);
         return save >= 1 ? R.OK( ) : R.FAIL();
     }
 
     @GetMapping(value = "/api/clue/remark")
+    @PreAuthorize("hasAuthority('clue:view')")
     public R clueRemarkPage(@RequestParam(value = "current", required = false) Integer current,
                             @RequestParam(value = "clueId") Integer clueId) {
 

@@ -6,6 +6,7 @@ import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.ActivityService;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.management.Query;
@@ -24,6 +25,7 @@ public class ActivityController {
      * @return
      */
     @GetMapping(value = "/api/activitys")
+    @PreAuthorize("hasAuthority('activity:list')")
     public R activityPage(@RequestParam(value = "current", required = false) Integer current, ActivityQuery activityQuery) {
 
         //required = false 表示参数可以传，也可以不传；
@@ -36,32 +38,35 @@ public class ActivityController {
     }
 
     @PostMapping(value = "/api/activity")
-    public R addActivity(ActivityQuery activityQuery, @RequestHeader(value = "Authorization") String token) {
-        activityQuery.setToken(token);
+    @PreAuthorize("hasAuthority('activity:add')")
+    public R addActivity(ActivityQuery activityQuery) {
         int save = activityService.saveActivity(activityQuery);
         return save >= 1 ? R.OK() : R.FAIL();
     }
 
     @GetMapping(value = "/api/activity/{id}")
+    @PreAuthorize("hasAuthority('activity:view')")
     public R loadActivity(@PathVariable(value = "id") Integer id) {
         TActivity tActivity = activityService.getActivityById(id);
         return R.OK(tActivity);
     }
 
     @PutMapping(value = "/api/activity")
-    public R editActivity(ActivityQuery activityQuery, @RequestHeader(value = "Authorization") String token) {
-        activityQuery.setToken(token);
+    @PreAuthorize("hasAuthority('activity:edit')")
+    public R editActivity(ActivityQuery activityQuery) {
         int update = activityService.updateActivity(activityQuery);
         return update >= 1 ? R.OK() : R.FAIL();
     }
 
     @PostMapping(value = "/api/activity/batch")
+    @PreAuthorize("hasAuthority('activity:delete')")
     public R batchDeleteActivities(@RequestBody List<Integer> ids) {
         int result = activityService.batchDeleteActivities(ids);
         return result > 0 ? R.OK() : R.FAIL("批量删除失败");
     }
 
     @DeleteMapping(value = "/api/activity/{id}")
+    @PreAuthorize("hasAuthority('activity:delete')")
     public R deleteActivity(@PathVariable(value = "id") Integer id) {
         int result = activityService.deleteActivity(id);
         return result > 0 ? R.OK() : R.FAIL("删除失败");

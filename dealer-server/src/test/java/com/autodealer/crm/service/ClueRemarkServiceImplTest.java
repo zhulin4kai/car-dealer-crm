@@ -1,17 +1,17 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
+import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TClueRemarkMapper;
+import com.autodealer.crm.model.TClue;
 import com.autodealer.crm.model.TClueRemark;
-import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.query.ClueRemarkQuery;
 import com.autodealer.crm.service.impl.ClueRemarkServiceImpl;
-import com.autodealer.crm.util.JWTUtils;
 import com.github.pagehelper.PageInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
@@ -31,19 +31,22 @@ class ClueRemarkServiceImplTest {
     @Mock
     private TClueRemarkMapper tClueRemarkMapper;
 
+    @Mock
+    private TClueMapper tClueMapper;
+
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
     @Test
     void testSaveClueRemark() {
         ClueRemarkQuery query = new ClueRemarkQuery();
         query.setClueId(1);
         query.setNoteContent("Test note");
         query.setNoteWay(1);
-        query.setToken("valid-token");
 
-        TUser mockUser = new TUser();
-        mockUser.setId(100);
-
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token")).thenReturn(mockUser);
+            when(currentUserProvider.getCurrentUserId()).thenReturn(100);
+            when(currentUserProvider.getDataScopeUserId()).thenReturn(100);
+            when(tClueMapper.selectScopedByPrimaryKey(1, 100)).thenReturn(clue(1, 100));
             when(tClueRemarkMapper.insertSelective(any(TClueRemark.class))).thenReturn(1);
 
             int result = clueRemarkService.saveClueRemark(query);
@@ -56,7 +59,6 @@ class ClueRemarkServiceImplTest {
                             remark.getCreateBy().equals(100) &&
                             remark.getCreateTime() != null
             ));
-        }
     }
 
     @Test
@@ -65,13 +67,10 @@ class ClueRemarkServiceImplTest {
         query.setClueId(2);
         query.setNoteContent("Phone call note");
         query.setNoteWay(2);
-        query.setToken("valid-token");
 
-        TUser mockUser = new TUser();
-        mockUser.setId(200);
-
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token")).thenReturn(mockUser);
+            when(currentUserProvider.getCurrentUserId()).thenReturn(200);
+            when(currentUserProvider.getDataScopeUserId()).thenReturn(200);
+            when(tClueMapper.selectScopedByPrimaryKey(2, 200)).thenReturn(clue(2, 200));
             when(tClueRemarkMapper.insertSelective(any(TClueRemark.class))).thenReturn(1);
 
             int result = clueRemarkService.saveClueRemark(query);
@@ -81,7 +80,6 @@ class ClueRemarkServiceImplTest {
                     remark.getCreateBy().equals(200) &&
                             remark.getNoteWay().equals(2)
             ));
-        }
     }
 
     @Test
@@ -141,5 +139,12 @@ class ClueRemarkServiceImplTest {
         remark.setNoteWay(1);
         remark.setCreateBy(100);
         return remark;
+    }
+
+    private TClue clue(Integer id, Integer ownerId) {
+        TClue clue = new TClue();
+        clue.setId(id);
+        clue.setOwnerId(ownerId);
+        return clue;
     }
 }

@@ -55,11 +55,14 @@
     from t_clue_remark tcr left join t_user tu1 on tcr.create_by  = tu1.id
                            left join t_user tu2 on tcr.edit_by  = tu2.id
                            left join t_dic_value tdv on tcr.note_way = tdv.id
+                           left join t_clue tc on tcr.clue_id = tc.id
 
     <where>
       tcr.clue_id = #{clueId, jdbcType=INTEGER} and (tcr.deleted is null or tcr.deleted = 0)
 
-      ${filterSQL}
+      <if test="dataScopeUserId != null">
+        and tc.owner_id = #{dataScopeUserId, jdbcType=INTEGER}
+      </if>
     </where>
   </select>
 

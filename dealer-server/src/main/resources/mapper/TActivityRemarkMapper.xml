@@ -44,12 +44,26 @@
         tu2.id editById, tu2.name editByName
     from t_activity_remark tar left join t_user tu1 on tar.create_by  = tu1.id
                                left join t_user tu2 on tar.edit_by  = tu2.id
+                               left join t_activity ta on tar.activity_id = ta.id
 
     <where>
       tar.activity_id = #{activityId, jdbcType=INTEGER} and (tar.deleted is null or tar.deleted = 0)
 
-      ${filterSQL}
+      <if test="dataScopeUserId != null">
+        and ta.owner_id = #{dataScopeUserId, jdbcType=INTEGER}
+      </if>
     </where>
+  </select>
+
+  <select id="selectScopedByPrimaryKey" resultMap="BaseResultMap">
+    select tar.*
+    from t_activity_remark tar
+    left join t_activity ta on tar.activity_id = ta.id
+    where tar.id = #{id,jdbcType=INTEGER}
+      and (tar.deleted is null or tar.deleted = 0)
+    <if test="dataScopeUserId != null">
+      and ta.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">

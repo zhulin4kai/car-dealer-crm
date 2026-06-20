@@ -11,7 +11,7 @@ public interface ClueService {
 
     PageInfo<TClue> getClueByPage(Integer current, Integer pageSize);
 
-    void importExcel(InputStream inputStreamm, String token);
+    void importExcel(InputStream inputStream);
 
     Boolean checkPhone(String phone);
 

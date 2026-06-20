@@ -38,21 +38,25 @@ public class DicController {
     }
 
     @PostMapping("/type/create")
+    @PreAuthorize("hasAuthority('admin')")
     public R addDicType(@RequestBody TDicType dicType) {
         return dicService.addDicType(dicType) ? R.OK() : R.FAIL("添加字典类型失败");
     }
 
     @PutMapping("/type/update/{id}")
+    @PreAuthorize("hasAuthority('admin')")
     public R updateDicType(@PathVariable Integer id, @RequestBody TDicType dicType) {
         return dicService.updateDicType(id, dicType) ? R.OK() : R.FAIL("更新字典类型失败");
     }
 
     @DeleteMapping("/type/delete/{id}")
+    @PreAuthorize("hasAuthority('admin')")
     public R deleteDicType(@PathVariable Integer id) {
         return dicService.deleteDicType(id) ? R.OK() : R.FAIL("删除字典类型失败");
     }
 
     @DeleteMapping("/types/batch")
+    @PreAuthorize("hasAuthority('admin')")
     public R batchDeleteDicTypes(@RequestBody List<Integer> ids) {
         return dicService.deleteDicTypesByIds(ids) ? R.OK() : R.FAIL("批量删除字典类型失败");
     }
@@ -77,21 +81,25 @@ public class DicController {
     }
 
     @PostMapping("/value/create")
+    @PreAuthorize("hasAuthority('admin')")
     public R addDicValue(@RequestBody TDicValue dicValue) {
         return dicService.addDicValue(dicValue) ? R.OK() : R.FAIL("添加字典值失败");
     }
 
     @PutMapping("/value/update/{id}")
+    @PreAuthorize("hasAuthority('admin')")
     public R updateDicValue(@PathVariable Integer id, @RequestBody TDicValue dicValue) {
         return dicService.updateDicValue(id, dicValue) ? R.OK() : R.FAIL("更新字典值失败");
     }
 
     @DeleteMapping("/value/delete/{id}")
+    @PreAuthorize("hasAuthority('admin')")
     public R deleteDicValue(@PathVariable Integer id) {
         return dicService.deleteDicValue(id) ? R.OK() : R.FAIL("删除字典值失败");
     }
 
     @DeleteMapping("/value/batch")
+    @PreAuthorize("hasAuthority('admin')")
     public R batchDeleteDicValues(@RequestBody List<Integer> ids) {
         return dicService.deleteDicValuesByIds(ids) ? R.OK() : R.FAIL("批量删除字典值失败");
     }
@@ -109,6 +117,7 @@ public class DicController {
     }
 
     @GetMapping("/refresh")
+    @PreAuthorize("hasAuthority('admin')")
     public R refreshDictData(@RequestParam(required = false) String type) {
         if ("type".equals(type)) {
             // 刷新字典类型数据

@@ -1,11 +1,11 @@
 package com.autodealer.crm.service.impl;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.model.TActivity;
 import com.autodealer.crm.query.ActivityQuery;
 import com.autodealer.crm.service.ActivityService;
-import com.autodealer.crm.util.JWTUtils;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
@@ -21,6 +21,9 @@ public class ActivityServiceImpl implements ActivityService {
 
     @Resource
     private TActivityMapper tActivityMapper;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
 
     @Override
     public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery activityQuery) {
@@ -41,40 +44,39 @@ public class ActivityServiceImpl implements ActivityService {
         //把ActivityQuery对象里面的属性数据复制到TActivity对象里面去(复制要求：两个对象的属性名相同，属性类型要相同，这样才能复制)
         BeanUtils.copyProperties(activityQuery, tActivity);
 
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        tActivity.setOwnerId(operatorId);
         tActivity.setCreateTime(new Date()); //创建时间
-
-        //登录人的id
-        Integer loginUserId = JWTUtils.parseUserFromJWT(activityQuery.getToken()).getId();
-        tActivity.setCreateBy(loginUserId); //创建人
+        tActivity.setCreateBy(operatorId); //创建人
 
         return tActivityMapper.insertSelective(tActivity);
     }
 
     @Override
     public TActivity getActivityById(Integer id) {
-        return tActivityMapper.selectDetailByPrimaryKey(id);
+        return tActivityMapper.selectDetailByPrimaryKey(id, currentUserProvider.getDataScopeUserId());
     }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public int updateActivity(ActivityQuery activityQuery) {
+        TActivity existing = requireAccessibleActivity(activityQuery.getId());
         TActivity tActivity = new TActivity();
 
         //把ActivityQuery对象里面的属性数据复制到TActivity对象里面去(复制要求：两个对象的属性名相同，属性类型要相同，这样才能复制)
         BeanUtils.copyProperties(activityQuery, tActivity);
+        tActivity.setOwnerId(existing.getOwnerId());
 
         tActivity.setEditTime(new Date()); //编辑时间
 
-        //登录人的id
-        Integer loginUserId = JWTUtils.parseUserFromJWT(activityQuery.getToken()).getId();
-        tActivity.setEditBy(loginUserId); //创建人
+        tActivity.setEditBy(currentUserProvider.getCurrentUserId()); //编辑人
 
         return tActivityMapper.updateByPrimaryKeySelective(tActivity);
     }
 
     @Override
     public List<TActivity> getOngoingActivity() {
-        return tActivityMapper.selecOngoingActivity();
+        return tActivityMapper.selecOngoingActivity(currentUserProvider.getDataScopeUserId());
     }
 
     @Override
@@ -83,7 +85,9 @@ public class ActivityServiceImpl implements ActivityService {
         if (ids == null || ids.isEmpty()) {
             return 0;
         }
-        return tActivityMapper.batchDeleteByIds(ids);
+        List<Integer> distinctIds = ids.stream().distinct().sorted().toList();
+        distinctIds.forEach(this::requireAccessibleActivity);
+        return tActivityMapper.batchDeleteByIds(distinctIds);
     }
 
     @Override
@@ -92,6 +96,16 @@ public class ActivityServiceImpl implements ActivityService {
         if (id == null) {
             return 0;
         }
+        requireAccessibleActivity(id);
         return tActivityMapper.deleteByPrimaryKey(id);
+    }
+
+    private TActivity requireAccessibleActivity(Integer id) {
+        TActivity activity = tActivityMapper.selectDetailByPrimaryKey(
+                id, currentUserProvider.getDataScopeUserId());
+        if (activity == null) {
+            throw new RuntimeException("市场活动不存在或无权访问");
+        }
+        return activity;
     }
 }

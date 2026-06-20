@@ -1,17 +1,18 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
+import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.mapper.TActivityRemarkMapper;
+import com.autodealer.crm.model.TActivity;
 import com.autodealer.crm.model.TActivityRemark;
-import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.query.ActivityRemarkQuery;
 import com.autodealer.crm.service.impl.ActivityRemarkServiceImpl;
-import com.autodealer.crm.util.JWTUtils;
 import com.github.pagehelper.PageInfo;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
@@ -31,18 +32,25 @@ class ActivityRemarkServiceImplTest {
     @Mock
     private TActivityRemarkMapper tActivityRemarkMapper;
 
+    @Mock
+    private TActivityMapper tActivityMapper;
+
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(100);
+        lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(100);
+    }
+
     @Test
     void testSaveActivityRemark() {
         ActivityRemarkQuery query = new ActivityRemarkQuery();
         query.setActivityId(1);
         query.setNoteContent("Test remark content");
-        query.setToken("valid-token");
 
-        TUser mockUser = new TUser();
-        mockUser.setId(100);
-
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token")).thenReturn(mockUser);
+            when(tActivityMapper.selectDetailByPrimaryKey(1, 100)).thenReturn(activity(1));
             when(tActivityRemarkMapper.insertSelective(any(TActivityRemark.class))).thenReturn(1);
 
             int result = activityRemarkService.saveActivityRemark(query);
@@ -54,7 +62,6 @@ class ActivityRemarkServiceImplTest {
                             remark.getCreateBy().equals(100) &&
                             remark.getCreateTime() != null
             ));
-        }
     }
 
     @Test
@@ -62,13 +69,10 @@ class ActivityRemarkServiceImplTest {
         ActivityRemarkQuery query = new ActivityRemarkQuery();
         query.setActivityId(2);
         query.setNoteContent("Another remark");
-        query.setToken("valid-token-2");
 
-        TUser mockUser = new TUser();
-        mockUser.setId(200);
-
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token-2")).thenReturn(mockUser);
+            when(currentUserProvider.getCurrentUserId()).thenReturn(200);
+            when(currentUserProvider.getDataScopeUserId()).thenReturn(200);
+            when(tActivityMapper.selectDetailByPrimaryKey(2, 200)).thenReturn(activity(2));
             when(tActivityRemarkMapper.insertSelective(any(TActivityRemark.class))).thenReturn(1);
 
             int result = activityRemarkService.saveActivityRemark(query);
@@ -77,7 +81,6 @@ class ActivityRemarkServiceImplTest {
             verify(tActivityRemarkMapper).insertSelective(argThat(remark ->
                     remark.getCreateBy().equals(200)
             ));
-        }
     }
 
     @Test
@@ -114,7 +117,7 @@ class ActivityRemarkServiceImplTest {
     @Test
     void testGetActivityRemarkById() {
         TActivityRemark remark = createActivityRemark(1, 1, "Test remark");
-        when(tActivityRemarkMapper.selectByPrimaryKey(1)).thenReturn(remark);
+        when(tActivityRemarkMapper.selectScopedByPrimaryKey(1, 100)).thenReturn(remark);
 
         TActivityRemark result = activityRemarkService.getActivityRemarkById(1);
 
@@ -125,25 +128,18 @@ class ActivityRemarkServiceImplTest {
 
     @Test
     void testGetActivityRemarkByIdNotFound() {
-        when(tActivityRemarkMapper.selectByPrimaryKey(999)).thenReturn(null);
-
-        TActivityRemark result = activityRemarkService.getActivityRemarkById(999);
-
-        assertNull(result);
+        assertThrows(RuntimeException.class,
+                () -> activityRemarkService.getActivityRemarkById(999));
     }
 
     @Test
     void testUpdateActivityRemark() {
         ActivityRemarkQuery query = new ActivityRemarkQuery();
         query.setId(1);
-        query.setNoteContent("Updated remark content");
-        query.setToken("valid-token");
+            query.setNoteContent("Updated remark content");
 
-        TUser mockUser = new TUser();
-        mockUser.setId(100);
-
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token")).thenReturn(mockUser);
+            when(tActivityRemarkMapper.selectScopedByPrimaryKey(1, 100))
+                    .thenReturn(createActivityRemark(1, 1, "Old remark"));
             when(tActivityRemarkMapper.updateByPrimaryKeySelective(any(TActivityRemark.class))).thenReturn(1);
 
             int result = activityRemarkService.updateActivityRemark(query);
@@ -155,11 +151,12 @@ class ActivityRemarkServiceImplTest {
                             remark.getEditBy().equals(100) &&
                             remark.getEditTime() != null
             ));
-        }
     }
 
     @Test
     void testDelActivityRemarkById() {
+        when(tActivityRemarkMapper.selectScopedByPrimaryKey(1, 100))
+                .thenReturn(createActivityRemark(1, 1, "Remark"));
         when(tActivityRemarkMapper.updateByPrimaryKeySelective(any(TActivityRemark.class))).thenReturn(1);
 
         int result = activityRemarkService.delActivityRemarkById(1);
@@ -173,6 +170,8 @@ class ActivityRemarkServiceImplTest {
 
     @Test
     void testDelActivityRemarkByIdLogicalDelete() {
+        when(tActivityRemarkMapper.selectScopedByPrimaryKey(5, 100))
+                .thenReturn(createActivityRemark(5, 1, "Remark"));
         when(tActivityRemarkMapper.updateByPrimaryKeySelective(any(TActivityRemark.class))).thenReturn(1);
 
         activityRemarkService.delActivityRemarkById(5);
@@ -191,5 +190,12 @@ class ActivityRemarkServiceImplTest {
         remark.setNoteContent(content);
         remark.setCreateBy(100);
         return remark;
+    }
+
+    private TActivity activity(Integer id) {
+        TActivity activity = new TActivity();
+        activity.setId(id);
+        activity.setOwnerId(id == 2 ? 200 : 100);
+        return activity;
     }
 }

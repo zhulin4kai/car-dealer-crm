@@ -126,6 +126,9 @@
           #{id}
         </foreach>
       </if>
+      <if test="dataScopeUserId != null">
+        and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
     </where>
   </select>
 
@@ -291,6 +294,9 @@
       <if test="createBy != null">
         and tct.create_by = #{createBy}
       </if>
+      <if test="dataScopeUserId != null">
+        and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
     </where>
   </select>
 
@@ -303,6 +309,23 @@
     from t_customer tct 
     left join t_clue tc on tct.clue_id = tc.id
     where tc.full_name is not null and tc.full_name != ''
+    <if test="dataScopeUserId != null">
+      and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
     order by tc.full_name
+  </select>
+
+  <select id="selectScopedById" resultMap="CustomerResultMap">
+    select
+      tct.*,
+      tc.id clueId, tc.full_name, tc.phone, tc.weixin,
+      tu1.id ownerId, tu1.name ownerName
+    from t_customer tct
+    left join t_clue tc on tct.clue_id = tc.id
+    left join t_user tu1 on tc.owner_id = tu1.id
+    where tct.id = #{id,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </select>
 </mapper>

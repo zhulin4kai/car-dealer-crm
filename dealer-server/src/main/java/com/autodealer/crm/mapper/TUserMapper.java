@@ -25,7 +25,7 @@ public interface TUserMapper {
     @DataScope(tableAlias = "tu", tableField = "id")
     List<TUser> selectUserByPage(BaseQuery query);
 
-    TUser selectDetailById(Integer id);
+    TUser selectAuthUserById(Integer id);
 
     int deleteByIds(List<Integer> ids);
 

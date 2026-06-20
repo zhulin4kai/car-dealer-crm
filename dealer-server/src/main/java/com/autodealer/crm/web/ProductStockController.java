@@ -7,6 +7,7 @@ import com.autodealer.crm.service.ProductStockRecordService;
 import com.github.pagehelper.PageInfo;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,12 +21,14 @@ public class ProductStockController {
     private ProductStockRecordService stockRecordService;
     
     @PostMapping("/restock")
+    @PreAuthorize("hasAuthority('product:edit')")
     public R<Void> restock(@RequestBody RestockRequest request) {
         productService.restock(request.getProductId(), request.getQuantity(), request.getRemark());
         return R.OK();
     }
     
     @GetMapping("/records/{productId}")
+    @PreAuthorize("hasAuthority('product:view')")
     public R<PageInfo<TProductStockRecord>> getStockRecords(
             @PathVariable Long productId,
             @RequestParam(defaultValue = "1") Integer page,

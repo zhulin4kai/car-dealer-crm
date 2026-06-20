@@ -1,5 +1,6 @@
 package com.autodealer.crm.mapper;
 
+import com.autodealer.crm.commons.DataScope;
 import com.autodealer.crm.model.TClue;
 import com.autodealer.crm.query.BaseQuery;
 import com.autodealer.crm.result.NameValue;
@@ -17,10 +18,14 @@ public interface TClueMapper {
 
     TClue selectByPrimaryKey(Integer id);
 
+    TClue selectScopedByPrimaryKey(@Param("id") Integer id,
+                                   @Param("dataScopeUserId") Integer dataScopeUserId);
+
     int updateByPrimaryKeySelective(TClue record);
 
     int updateByPrimaryKey(TClue record);
 
+    @DataScope(tableAlias = "tc", tableField = "owner_id")
     List<TClue> selectClueByPage(BaseQuery build);
 
     void saveClue(List<TClue> tClueList);
@@ -29,11 +34,13 @@ public interface TClueMapper {
 
     int selectClueByCount();
 
-    TClue selectDetailById(Integer id);
+    TClue selectDetailById(@Param("id") Integer id, @Param("dataScopeUserId") Integer dataScopeUserId);
 
     List<NameValue> selectBySource();
 
     int batchDeleteByIds(List<Integer> ids);
 
-    int updateStateToConverted(@Param("id") Integer id, @Param("editBy") Integer editBy);
+    int updateStateToConverted(@Param("id") Integer id,
+                               @Param("editBy") Integer editBy,
+                               @Param("dataScopeUserId") Integer dataScopeUserId);
 }

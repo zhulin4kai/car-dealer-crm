@@ -73,7 +73,9 @@
       <if test="createTime  != null">
         and ta.create_time >= #{createTime}
       </if>
-      ${filterSQL}
+      <if test="dataScopeUserId != null">
+        and ta.owner_id = #{dataScopeUserId, jdbcType=INTEGER}
+      </if>
     </where>
   </select>
 
@@ -87,6 +89,9 @@
                        left join t_user tu2 on ta.create_by = tu2.id
                        left join t_user tu3 on ta.edit_by = tu3.id
     where ta.id = #{id, jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      and ta.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </select>
 
   <select id="selecOngoingActivity" resultMap="BaseResultMap">
@@ -94,6 +99,9 @@
     <include refid="Base_Column_List" />
     from t_activity
     where  <![CDATA[  start_time <= now() and end_time >= now() ]]>
+    <if test="dataScopeUserId != null">
+      and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </select>
 
 

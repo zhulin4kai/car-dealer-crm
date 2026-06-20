@@ -33,14 +33,15 @@ public class ClueController {
 
     @PreAuthorize(value = "hasAuthority('clue:import')")
     @PostMapping(value = "/api/importExcel")
-    public R importExcel(MultipartFile file, @RequestHeader(value = "Authorization") String token) throws IOException { //filex的名字要和前端formData里面的名字相同，否则接收不到
+    public R importExcel(MultipartFile file) throws IOException { //filex的名字要和前端formData里面的名字相同，否则接收不到
 
-        clueService.importExcel(file.getInputStream(), token);
+        clueService.importExcel(file.getInputStream());
 
         return R.OK();
     }
 
     @GetMapping(value = "/api/clue/{phone}")
+    @PreAuthorize(value = "hasAuthority('clue:add')")
     public R checkPhone(@PathVariable(value = "phone") String phone) {
         Boolean check = clueService.checkPhone(phone);
         return check ? R.OK() : R.FAIL();
@@ -48,8 +49,7 @@ public class ClueController {
 
     @PreAuthorize(value = "hasAuthority('clue:add')")
     @PostMapping(value = "/api/clue")
-    public R addClue(ClueQuery clueQuery, @RequestHeader(value = "Authorization") String token) {
-        clueQuery.setToken(token);
+    public R addClue(ClueQuery clueQuery) {
         int save = clueService.saveClue(clueQuery);
 
         return save >= 1 ? R.OK() : R.FAIL();
@@ -64,8 +64,7 @@ public class ClueController {
 
     @PreAuthorize(value = "hasAuthority('clue:edit')")
     @PutMapping(value = "/api/clue")
-    public R editClue(ClueQuery clueQuery, @RequestHeader(value = "Authorization") String token) {
-        clueQuery.setToken(token);
+    public R editClue(ClueQuery clueQuery) {
         int update = clueService.updateClue(clueQuery);
 
         return update >= 1 ? R.OK() : R.FAIL();

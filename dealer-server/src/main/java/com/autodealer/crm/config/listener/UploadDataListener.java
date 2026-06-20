@@ -6,48 +6,46 @@ import com.alibaba.excel.util.ListUtils;
 import com.autodealer.crm.config.converter.ClueExcelConverter;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.model.TClue;
-import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.ClueExcel;
 import com.autodealer.crm.util.JSONUtils;
-import com.autodealer.crm.util.JWTUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Date;
 import java.util.List;
 
 /**
- * 每读一行Excel的数据，就会触发该监听器中的invoke()方法，Excel读完之后会触发该监听器中的doAfterAllAnalysed()方法
+ * 每读一行 Excel 的数据，就会触发该监听器中的 invoke() 方法，Excel 读完之后会触发该监听器中的 doAfterAllAnalysed() 方法
  */
 @Slf4j
 public class UploadDataListener implements ReadListener<ClueExcel> {
 
     /**
-     * 每隔100条存储数据库，实际使用中可以100条，然后清理list ，方便内存回收
+     * 每隔 100 条存储数据库，实际使用中可以 100 条，然后清理 list ，方便内存回收
      */
     private static final int BATCH_COUNT = 100;
 
-    //缓存List
+    // 缓存 List
     private List<TClue> cachedDataList = ListUtils.newArrayListWithExpectedSize(BATCH_COUNT);
 
     /**
-     * 假设这个是一个DAO，当然有业务逻辑这个也可以是一个service。当然如果不用存储这个对象没用。
+     * 假设这个是一个 DAO，当然有业务逻辑这个也可以是一个 service。当然如果不用存储这个对象没用。
      */
     private TClueMapper tClueMapper;
 
-    private String token;
+    private Integer operatorId;
 
     private ClueExcelConverter clueExcelConverter;
 
     /**
-     * 如果使用了spring,请使用这个构造方法。每次创建Listener的时候需要把spring管理的类传进来
+     * 如果使用了 spring,请使用这个构造方法。每次创建 Listener 的时候需要把 spring 管理的类传进来
      *
      * @param tClueMapper
-     * @param token
+     * @param operatorId
      * @param clueExcelConverter
      */
-    public UploadDataListener(TClueMapper tClueMapper, String token, ClueExcelConverter clueExcelConverter) {
+    public UploadDataListener(TClueMapper tClueMapper, Integer operatorId, ClueExcelConverter clueExcelConverter) {
         this.tClueMapper = tClueMapper;
-        this.token = token;
+        this.operatorId = operatorId;
         this.clueExcelConverter = clueExcelConverter;
     }
 
@@ -61,24 +59,24 @@ public class UploadDataListener implements ReadListener<ClueExcel> {
     public void invoke(ClueExcel clueExcel, AnalysisContext context) {
         log.info("读取到的每一条数据:{}", JSONUtils.toJSON(clueExcel));
 
-        // 将ClueExcel转换为TClue
+        // 将 ClueExcel 转换为 TClue
         TClue tClue = clueExcelConverter.convertToTClue(clueExcel);
 
-        //给读到的clue对象设置创建时间(导入时间)和创建人（导入人）
+        // 给读到的 clue 对象设置创建时间(导入时间)和创建人（导入人）
         tClue.setCreateTime(new Date());
 
-        TUser tUser = JWTUtils.parseUserFromJWT(token);
-        tClue.setCreateBy(tUser.getId());
+        tClue.setOwnerId(operatorId);
+        tClue.setCreateBy(operatorId);
 
-        //每读取一行，就把该数据放入到一个缓存List中
+        //每读取一行，就把该数据放入到一个缓存 List 中
         cachedDataList.add(tClue);
 
-        // 达到BATCH_COUNT了，需要去存储一次数据库，防止数据几万条数据在内存，容易OOM
+        // 达到 BATCH_COUNT 了，需要去存储一次数据库，防止数据几万条数据在内存，容易 OOM
         if (cachedDataList.size() >= BATCH_COUNT) {
-            //把缓存list中的数据写入到数据库
+            // 把缓存 list 中的数据写入到数据库
             saveData();
 
-            //存储完成清空list
+            // 存储完成清空 list
             cachedDataList = ListUtils.newArrayListWithExpectedSize(BATCH_COUNT);
         }
     }

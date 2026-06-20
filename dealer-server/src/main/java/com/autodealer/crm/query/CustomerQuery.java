@@ -9,7 +9,7 @@ import java.util.Date;
  * 客户查询条件
  */
 @Data
-public class CustomerQuery {
+public class CustomerQuery extends BaseQuery {
     /** 客户名称（线索名称） */
     private String customerName;
     

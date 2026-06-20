@@ -31,7 +31,7 @@ public class StatisticManager {
 
     public SummaryData loadSummaryData() {
         //有效的市场活动总数
-        Integer effectiveActivityCount = tActivityMapper.selecOngoingActivity().size(); //偷懒了一下
+        Integer effectiveActivityCount = tActivityMapper.selecOngoingActivity(null).size(); //全局统计
 
         //总的市场活动数
         Integer totalActivityCount = tActivityMapper.selectByCount();

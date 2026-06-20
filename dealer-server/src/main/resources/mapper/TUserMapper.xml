@@ -65,11 +65,13 @@
     <include refid="Base_Column_List" />
     from t_user tu
     <where>
-      ${filterSQL}
+      <if test="dataScopeUserId != null">
+        tu.id = #{dataScopeUserId, jdbcType=INTEGER}
+      </if>
     </where>
   </select>
 
-  <select id="selectDetailById" parameterType="java.lang.Integer" resultMap="UserResultMap">
+  <select id="selectAuthUserById" parameterType="java.lang.Integer" resultMap="UserResultMap">
     select
         tu.*,
         tu2.id createById, tu2.name createByName,

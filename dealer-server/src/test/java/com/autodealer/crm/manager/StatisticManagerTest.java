@@ -43,7 +43,7 @@ class StatisticManagerTest {
     @Test
     void testLoadSummaryData() {
         TActivity activity = new TActivity();
-        when(tActivityMapper.selecOngoingActivity()).thenReturn(Collections.singletonList(activity));
+        when(tActivityMapper.selecOngoingActivity(null)).thenReturn(Collections.singletonList(activity));
         when(tActivityMapper.selectByCount()).thenReturn(10);
         when(tClueMapper.selectClueByCount()).thenReturn(100);
         when(tCustomerMapper.selectByCount()).thenReturn(50);

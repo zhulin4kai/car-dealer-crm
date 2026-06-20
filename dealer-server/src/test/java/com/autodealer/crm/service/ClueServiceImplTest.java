@@ -1,17 +1,16 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TClueRemarkMapper;
 import com.autodealer.crm.model.TClue;
-import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.query.ClueQuery;
 import com.autodealer.crm.service.impl.ClueServiceImpl;
-import com.autodealer.crm.util.JWTUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.InputStream;
@@ -35,6 +34,14 @@ class ClueServiceImplTest {
     @Mock
     private TClueRemarkMapper tClueRemarkMapper;
 
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+    }
+
     // ==================== getClueById ====================
 
     @Test
@@ -44,7 +51,7 @@ class ClueServiceImplTest {
         clue.setFullName("John Doe");
         clue.setPhone("13800138000");
 
-        when(tClueMapper.selectDetailById(1)).thenReturn(clue);
+        when(tClueMapper.selectDetailById(1, null)).thenReturn(clue);
 
         TClue result = clueService.getClueById(1);
 
@@ -56,7 +63,7 @@ class ClueServiceImplTest {
 
     @Test
     void getClueById_notFound_shouldReturnNull() {
-        when(tClueMapper.selectDetailById(999)).thenReturn(null);
+        when(tClueMapper.selectDetailById(999, null)).thenReturn(null);
 
         TClue result = clueService.getClueById(999);
 
@@ -84,16 +91,10 @@ class ClueServiceImplTest {
         ClueQuery query = new ClueQuery();
         query.setPhone("13800138000");
         query.setFullName("John Doe");
-        query.setToken("valid-token");
-
-        TUser user = new TUser();
-        user.setId(1);
 
         when(tClueMapper.selectByCount("13800138000")).thenReturn(0);
         when(tClueMapper.insertSelective(any(TClue.class))).thenReturn(1);
-
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token")).thenReturn(user);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1);
 
             int result = clueService.saveClue(query);
 
@@ -105,7 +106,6 @@ class ClueServiceImplTest {
                         && c.getCreateTime() != null
                         && c.getCreateBy().equals(1);
             }));
-        }
     }
 
     // ==================== updateClue ====================
@@ -116,20 +116,14 @@ class ClueServiceImplTest {
         query.setId(1);
         query.setFullName("Updated Name");
         query.setPhone("13800138000");
-        query.setToken("valid-token");
-
-        TUser user = new TUser();
-        user.setId(2);
 
         TClue existingClue = new TClue();
         existingClue.setId(1);
         existingClue.setPhone("13800138000");
 
-        when(tClueMapper.selectByPrimaryKey(1)).thenReturn(existingClue);
+        when(tClueMapper.selectScopedByPrimaryKey(1, null)).thenReturn(existingClue);
         when(tClueMapper.updateByPrimaryKeySelective(any(TClue.class))).thenReturn(1);
-
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token")).thenReturn(user);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(2);
 
             int result = clueService.updateClue(query);
 
@@ -141,31 +135,21 @@ class ClueServiceImplTest {
                         && c.getEditTime() != null
                         && c.getEditBy().equals(2);
             }));
-        }
     }
 
     @Test
     void updateClue_notFound_shouldReturnZero() {
         ClueQuery query = new ClueQuery();
         query.setId(999);
-        query.setToken("valid-token");
 
-        TUser user = new TUser();
-        user.setId(1);
-
-        when(tClueMapper.selectByPrimaryKey(999)).thenReturn(null);
-
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid-token")).thenReturn(user);
-
-            assertThrows(RuntimeException.class, () -> clueService.updateClue(query));
-        }
+        assertThrows(RuntimeException.class, () -> clueService.updateClue(query));
     }
 
     // ==================== delClueById ====================
 
     @Test
     void delClueById_success_shouldReturnOne() {
+        when(tClueMapper.selectScopedByPrimaryKey(1, null)).thenReturn(clue(1));
         when(tClueRemarkMapper.deleteByClueId(1)).thenReturn(1);
         when(tClueMapper.deleteByPrimaryKey(1)).thenReturn(1);
 
@@ -186,15 +170,10 @@ class ClueServiceImplTest {
     }
 
     @Test
-    void delClueById_notFound_shouldReturnZero() {
-        when(tClueRemarkMapper.deleteByClueId(999)).thenReturn(0);
-        when(tClueMapper.deleteByPrimaryKey(999)).thenReturn(0);
-
-        int result = clueService.delClueById(999);
-
-        assertEquals(0, result);
-        verify(tClueRemarkMapper).deleteByClueId(999);
-        verify(tClueMapper).deleteByPrimaryKey(999);
+    void delClueById_notFound_shouldThrow() {
+        assertThrows(RuntimeException.class, () -> clueService.delClueById(999));
+        verify(tClueRemarkMapper, never()).deleteByClueId(999);
+        verify(tClueMapper, never()).deleteByPrimaryKey(999);
     }
 
     // ==================== batchDelClueByIds ====================
@@ -203,6 +182,8 @@ class ClueServiceImplTest {
     void batchDelClueByIds_success_shouldReturnDeletedCount() {
         List<Integer> ids = Arrays.asList(1, 2, 3);
 
+        when(tClueMapper.selectScopedByPrimaryKey(anyInt(), isNull()))
+                .thenAnswer(invocation -> clue(invocation.getArgument(0)));
         when(tClueRemarkMapper.deleteByClueId(anyInt())).thenReturn(1);
         when(tClueMapper.batchDeleteByIds(ids)).thenReturn(3);
 
@@ -263,16 +244,21 @@ class ClueServiceImplTest {
     @Test
     void importExcel_shouldAcceptInputStreamAndToken() {
         InputStream inputStream = mock(InputStream.class);
-        String token = "valid-token";
-
         assertDoesNotThrow(() -> {
             try {
-                clueService.importExcel(inputStream, token);
+                clueService.importExcel(inputStream);
             } catch (Exception e) {
                 if (e.getMessage() != null && e.getMessage().contains("token")) {
                     throw e;
                 }
             }
         });
+    }
+
+    private TClue clue(Integer id) {
+        TClue clue = new TClue();
+        clue.setId(id);
+        clue.setOwnerId(1);
+        return clue;
     }
 }

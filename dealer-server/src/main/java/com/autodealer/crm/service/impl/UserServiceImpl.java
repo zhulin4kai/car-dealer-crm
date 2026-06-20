@@ -1,5 +1,6 @@
 package com.autodealer.crm.service.impl;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.TPermissionMapper;
@@ -12,7 +13,6 @@ import com.autodealer.crm.query.BaseQuery;
 import com.autodealer.crm.query.UserQuery;
 import com.autodealer.crm.service.UserService;
 import com.autodealer.crm.util.CacheUtils;
-import com.autodealer.crm.util.JWTUtils;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
@@ -45,6 +45,9 @@ public class UserServiceImpl implements UserService {
 
     @Resource
     private TPermissionMapper tPermissionMapper;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
 
     /**
      * 登录查询
@@ -113,7 +116,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public TUser getUserById(Integer id) {
-        return tUserMapper.selectDetailById(id);
+        requireUserAccess(id);
+        return tUserMapper.selectAuthUserById(id);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -128,9 +132,7 @@ public class UserServiceImpl implements UserService {
         tUser.setLoginPwd(passwordEncoder.encode(userQuery.getLoginPwd())); //密码加密
         tUser.setCreateTime(new Date()); //创建时间
 
-        //登录人的id
-        Integer loginUserId = JWTUtils.parseUserFromJWT(userQuery.getToken()).getId();
-        tUser.setCreateBy(loginUserId); //创建人
+        tUser.setCreateBy(currentUserProvider.getCurrentUserId()); //创建人
 
         return tUserMapper.insertSelective(tUser);
     }
@@ -138,6 +140,7 @@ public class UserServiceImpl implements UserService {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public int updateUser(UserQuery userQuery) {
+        requireUserAccess(userQuery.getId());
         TUser tUser = new TUser();
 
         //把UserQuery对象里面的属性数据复制到TUser对象里面去(复制要求：两个对象的属性名相同，属性类型要相同，这样才能复制)
@@ -149,9 +152,7 @@ public class UserServiceImpl implements UserService {
 
         tUser.setEditTime(new Date()); //编辑时间
 
-        //登录人的id
-        Integer loginUserId = JWTUtils.parseUserFromJWT(userQuery.getToken()).getId();
-        tUser.setEditBy(loginUserId); //创建人
+        tUser.setEditBy(currentUserProvider.getCurrentUserId()); //编辑人
 
         return tUserMapper.updateByPrimaryKeySelective(tUser);
     }
@@ -159,13 +160,19 @@ public class UserServiceImpl implements UserService {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public int delUserById(Integer id) {
+        requireUserAccess(id);
         return tUserMapper.deleteByPrimaryKey(id);
     }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public int batchDelUserIds(List<Integer> ids) {
-        return tUserMapper.deleteByIds(ids);
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        List<Integer> distinctIds = ids.stream().distinct().sorted().toList();
+        distinctIds.forEach(this::requireUserAccess);
+        return tUserMapper.deleteByIds(distinctIds);
     }
 
     @Override
@@ -174,7 +181,7 @@ public class UserServiceImpl implements UserService {
         //2、redis查不到，就从数据库查询，并且把数据放入redis（1小时过期）
         return CacheUtils.getCacheData(() -> {
             //生产，从缓存redis查询数据
-            return (List<TUser>)redisManager.getValue(Constants.REDIS_OWNER_KEY);
+            return (List<TUser>)redisManager.getList(Constants.REDIS_OWNER_KEY);
         },
         () -> {
             //生产，从mysql查询数据
@@ -182,8 +189,15 @@ public class UserServiceImpl implements UserService {
         },
         (t) -> {
             //消费，把数据放入缓存redis
-            redisManager.setValue(Constants.REDIS_OWNER_KEY, t);
+            redisManager.setList(Constants.REDIS_OWNER_KEY, t);
         }
        );
+    }
+
+    private void requireUserAccess(Integer targetUserId) {
+        Integer scopeUserId = currentUserProvider.getDataScopeUserId();
+        if (scopeUserId != null && !scopeUserId.equals(targetUserId)) {
+            throw new RuntimeException("用户不存在或无权访问");
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.autodealer.crm.mapper;
 import com.autodealer.crm.commons.DataScope;
 import com.autodealer.crm.model.TActivity;
 import com.autodealer.crm.query.ActivityQuery;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -23,9 +24,10 @@ public interface TActivityMapper {
     @DataScope(tableAlias = "ta", tableField = "owner_id")
     List<TActivity> selectActivityByPage(ActivityQuery query);
 
-    TActivity selectDetailByPrimaryKey(Integer id);
+    TActivity selectDetailByPrimaryKey(@Param("id") Integer id,
+                                       @Param("dataScopeUserId") Integer dataScopeUserId);
 
-    List<TActivity> selecOngoingActivity();
+    List<TActivity> selecOngoingActivity(Integer dataScopeUserId);
 
     Integer selectByCount();
 

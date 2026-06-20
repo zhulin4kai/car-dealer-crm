@@ -3,6 +3,7 @@ package com.autodealer.crm.mapper;
 import com.autodealer.crm.commons.DataScope;
 import com.autodealer.crm.model.TActivityRemark;
 import com.autodealer.crm.query.ActivityRemarkQuery;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -15,6 +16,9 @@ public interface TActivityRemarkMapper {
     int insertSelective(TActivityRemark record);
 
     TActivityRemark selectByPrimaryKey(Integer id);
+
+    TActivityRemark selectScopedByPrimaryKey(@Param("id") Integer id,
+                                             @Param("dataScopeUserId") Integer dataScopeUserId);
 
     int updateByPrimaryKeySelective(TActivityRemark record);
 
