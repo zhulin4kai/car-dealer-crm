@@ -52,6 +52,9 @@ vi.mock('axios', () => {
     vi.fn(() => Promise.resolve({ data: { code: 200, msg: 'OK', data: {} } })),
     {
       create: vi.fn(),
+      isAxiosError: vi.fn((error: unknown) => Boolean(
+        error && typeof error === 'object' && 'response' in error
+      )),
       defaults: { baseURL: '' },
       get: vi.fn(() => Promise.resolve({ data: { code: 200, msg: 'OK', data: {} } })),
       post: vi.fn(() => Promise.resolve({ data: { code: 200, msg: 'OK', data: {} } })),

@@ -7,7 +7,7 @@ public enum CodeEnum {
     OK(200, "操作成功"),
     FAIL(500, "操作失败"),
     PARAM_ERROR(501, "请求参数格式有误"),
-    LOGIN_ERROR(502, "登录失败"),
+    AUTH_LOGIN_FAILED(502, "账号或密码错误"),
     UNAUTHORIZED_ERROR(503, "没有访问权限"),
     TOKEN_ERROR(504, "token无效"),
     TOKEN_EXPIRED(505, "token已过期"),

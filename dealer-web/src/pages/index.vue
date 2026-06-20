@@ -49,6 +49,8 @@ import { freeLogin } from '@/modules/user/api/user-api'
 import type { LoginForm } from '@/modules/user/model/user.types'
 import { messageTip } from '@/shared/utils/feedback'
 import { useAuthStore } from '@/stores/auth.store'
+import { ApiError } from '@/shared/api/api-error'
+import { API_ERROR_CODE } from '@/shared/api/error-codes'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -82,9 +84,17 @@ const [loginPwd] = defineField('loginPwd')
 const [rememberMe] = defineField('rememberMe')
 
 const onSubmit = handleSubmit(async (formData) => {
-  await authStore.login(formData)
-  messageTip('登录成功', 'success')
-  await router.push('/dashboard')
+  try {
+    await authStore.login(formData)
+    messageTip('登录成功', 'success')
+    await router.push('/dashboard')
+  } catch (error) {
+    if (error instanceof ApiError && error.code === API_ERROR_CODE.AUTH_LOGIN_FAILED) {
+      messageTip(error.message, 'error')
+      return
+    }
+    messageTip('登录失败，请稍后重试', 'error')
+  }
 })
 
 async function restoreRememberedSession(): Promise<void> {

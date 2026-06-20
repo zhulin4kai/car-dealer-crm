@@ -1,6 +1,7 @@
 import axios, { type AxiosRequestConfig } from 'axios'
 
 import { ApiError } from '@/shared/api/api-error'
+import { isSessionInvalidCode } from '@/shared/api/error-codes'
 import type { ApiEnvelope } from '@/shared/api/api-types'
 import { env } from '@/shared/config/env'
 import { clearPermissionCodes } from '@/shared/storage/permission-storage'
@@ -25,32 +26,45 @@ axiosClient.interceptors.request.use((config) => {
   return config
 })
 
+function handleInvalidSession(envelope: ApiEnvelope<unknown>): void {
+  if (!isSessionInvalidCode(envelope.code)) {
+    return
+  }
+
+  messageConfirm(`${envelope.msg}，是否重新去登录？`)
+    .then(() => {
+      clearStoredToken()
+      clearPermissionCodes()
+      window.location.href = '/'
+    })
+    .catch(() => {
+      messageTip('登录已过期，即将跳转到登录页', 'warning')
+      window.setTimeout(() => {
+        clearStoredToken()
+        clearPermissionCodes()
+        window.location.href = '/'
+      }, 1500)
+    })
+}
+
 axiosClient.interceptors.response.use(
   (response) => {
     const envelope = response.data as ApiEnvelope<unknown>
-
-    if (typeof envelope?.code === 'number' && envelope.code >= 500) {
-      messageConfirm(`${envelope.msg}，是否重新去登录？`)
-        .then(() => {
-          clearStoredToken()
-          clearPermissionCodes()
-          window.location.href = '/'
-        })
-        .catch(() => {
-          messageTip('登录已过期，即将跳转到登录页', 'warning')
-          window.setTimeout(() => {
-            clearStoredToken()
-            clearPermissionCodes()
-            window.location.href = '/'
-          }, 1500)
-        })
-
-      throw new ApiError(envelope.code, envelope.msg, envelope)
+    if (typeof envelope?.code === 'number') {
+      handleInvalidSession(envelope)
     }
-
     return response
   },
-  (error: unknown) => Promise.reject(error),
+  (error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      const envelope = error.response?.data as ApiEnvelope<unknown> | undefined
+      if (typeof envelope?.code === 'number') {
+        handleInvalidSession(envelope)
+        return Promise.reject(new ApiError(envelope.code, envelope.msg || '请求失败', envelope))
+      }
+    }
+    return Promise.reject(error)
+  },
 )
 
 async function request<T>(config: AxiosRequestConfig): Promise<T> {

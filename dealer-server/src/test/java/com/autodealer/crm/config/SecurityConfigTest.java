@@ -61,22 +61,16 @@ class SecurityConfigTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("login with wrong password returns a non-200 code and no JWT-shaped token in data")
+    @DisplayName("login failure returns HTTP 401 and the stable AUTH_LOGIN_FAILED contract")
     void wrongPasswordReturnsLoginError() throws Exception {
-        MvcResult result = mockMvc.perform(post(Constants.LOGIN_URI)
+        mockMvc.perform(post(Constants.LOGIN_URI)
                         .param("loginAct", "admin")
                         .param("loginPwd", "wrong-password")
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        int code = body.path("code").asInt();
-        org.junit.jupiter.api.Assertions.assertNotEquals(200, code,
-                "Wrong password must not return a successful login code");
-        JsonNode dataNode = body.path("data");
-        org.junit.jupiter.api.Assertions.assertTrue(dataNode.isNull() || dataNode.isMissingNode(),
-                "Wrong password must not return a JWT in data, got: " + dataNode);
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(502))
+                .andExpect(jsonPath("$.msg").value("账号或密码错误"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test

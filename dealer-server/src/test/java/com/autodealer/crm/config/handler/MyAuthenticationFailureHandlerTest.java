@@ -1,5 +1,6 @@
 package com.autodealer.crm.config.handler;
 
+import com.autodealer.crm.result.CodeEnum;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -10,6 +11,7 @@ import jakarta.servlet.ServletException;
 
 import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,9 +30,10 @@ class MyAuthenticationFailureHandlerTest {
                 request, response, new BadCredentialsException("登录账号不存在"));
 
         String content = response.getContentAsString();
-        assertTrue(content.contains("账号或密码错误"));
+        assertEquals(401, response.getStatus());
+        assertTrue(content.contains("\"code\":" + CodeEnum.AUTH_LOGIN_FAILED.getCode()));
+        assertTrue(content.contains(CodeEnum.AUTH_LOGIN_FAILED.getMsg()));
         assertFalse(content.contains("登录账号不存在"));
-        assertTrue(content.contains("500"));
     }
 
     @Test
@@ -53,7 +56,8 @@ class MyAuthenticationFailureHandlerTest {
                 request, response, new LockedException("账户已被锁定"));
 
         String content = response.getContentAsString();
-        assertTrue(content.contains("账号或密码错误"));
+        assertEquals(401, response.getStatus());
+        assertTrue(content.contains(CodeEnum.AUTH_LOGIN_FAILED.getMsg()));
         assertFalse(content.contains("账户已被锁定"));
     }
 }

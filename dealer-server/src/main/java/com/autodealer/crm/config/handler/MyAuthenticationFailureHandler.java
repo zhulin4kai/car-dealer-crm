@@ -1,6 +1,7 @@
 package com.autodealer.crm.config.handler;
 
 import com.autodealer.crm.result.R;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.util.JSONUtils;
 import com.autodealer.crm.util.ResponseUtils;
 import jakarta.servlet.ServletException;
@@ -21,8 +22,6 @@ import java.io.IOException;
 @Slf4j
 public class MyAuthenticationFailureHandler implements AuthenticationFailureHandler {
 
-    private static final String PUBLIC_FAILURE_MESSAGE = "账号或密码错误";
-
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
         log.warn("登录失败: loginAct={}, exception={}, reason={}",
@@ -30,8 +29,8 @@ public class MyAuthenticationFailureHandler implements AuthenticationFailureHand
                 exception.getClass().getSimpleName(),
                 exception.getMessage());
 
-        R result = R.FAIL(PUBLIC_FAILURE_MESSAGE);
-        ResponseUtils.write(response, JSONUtils.toJSON(result));
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        ResponseUtils.write(response, JSONUtils.toJSON(R.FAIL(CodeEnum.AUTH_LOGIN_FAILED)));
     }
 
     private String sanitizeForLog(String value) {

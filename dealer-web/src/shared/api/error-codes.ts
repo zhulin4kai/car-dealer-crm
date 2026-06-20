@@ -1,0 +1,18 @@
+export const API_ERROR_CODE = {
+  AUTH_LOGIN_FAILED: 502,
+  TOKEN_EMPTY: 510,
+  TOKEN_INVALID: 511,
+  TOKEN_EXPIRED: 512,
+  TOKEN_MISMATCH: 513,
+} as const
+
+const SESSION_INVALID_CODES = new Set<number>([
+  API_ERROR_CODE.TOKEN_EMPTY,
+  API_ERROR_CODE.TOKEN_INVALID,
+  API_ERROR_CODE.TOKEN_EXPIRED,
+  API_ERROR_CODE.TOKEN_MISMATCH,
+])
+
+export function isSessionInvalidCode(code: number): boolean {
+  return SESSION_INVALID_CODES.has(code)
+}

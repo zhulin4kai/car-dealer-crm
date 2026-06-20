@@ -2,6 +2,7 @@ import axios from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { doDelete, doGet, doPost, doPut } from '@/shared/api/http-client'
+import { API_ERROR_CODE, isSessionInvalidCode } from '@/shared/api/error-codes'
 import { writeStoredToken } from '@/shared/storage/token-storage'
 
 const mockedAxios = vi.mocked(axios)
@@ -41,5 +42,13 @@ describe('http client', () => {
   it('keeps token storage available for request interceptors', () => {
     writeStoredToken('jwt-token', true)
     expect(localStorage.getItem('dlyk_token')).toBe('jwt-token')
+  })
+
+  it('distinguishes login failure from invalid sessions by stable code', () => {
+    expect(isSessionInvalidCode(API_ERROR_CODE.AUTH_LOGIN_FAILED)).toBe(false)
+    expect(isSessionInvalidCode(API_ERROR_CODE.TOKEN_EMPTY)).toBe(true)
+    expect(isSessionInvalidCode(API_ERROR_CODE.TOKEN_INVALID)).toBe(true)
+    expect(isSessionInvalidCode(API_ERROR_CODE.TOKEN_EXPIRED)).toBe(true)
+    expect(isSessionInvalidCode(API_ERROR_CODE.TOKEN_MISMATCH)).toBe(true)
   })
 })
