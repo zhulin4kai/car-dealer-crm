@@ -35,22 +35,36 @@
 | MyBatis | 3.0.3 | ORM 框架 |
 | PageHelper | 1.4.7 | 分页插件 |
 | EasyExcel | 3.3.3 | Excel 导入导出 |
-| JWT (JJWT) | 0.12.3 | Token 签发与验证 |
+| Auth0 Java JWT | 4.4.0 | Token 签发与验证 |
 | Redis | - | Token 缓存、数据字典缓存 |
-| MySQL | 8.x | 关系型数据库 |
+| MariaDB / MySQL | - | 关系型数据库 |
 | HikariCP | - | 数据库连接池 |
+| Spring Validation | - | 请求参数校验 |
+| Jackson JSR310 | - | Java 时间类型序列化 |
 | OSHI | 6.4.8 | 系统监控信息采集 |
+| JUnit 5 / Mockito / MockMvc | - | 后端测试 |
+| H2 | - | 后端测试数据库 |
+| JaCoCo | 0.8.12 | 测试覆盖率报告 |
 
 **前端**
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| Vue | 3.3.x | 渐进式 JavaScript 框架 |
-| Vite | 6.x | 构建工具 |
-| Element Plus | 2.4.x | UI 组件库 |
-| ECharts | 5.4.x | 数据可视化 |
-| Vue Router | 4.2.x | 前端路由 |
-| Axios | 1.6.x | HTTP 客户端 |
+| Vue | 3.5.x | 前端框架 |
+| TypeScript | 5.9.x | 类型系统 |
+| Vite | 6.3.x | 构建工具 |
+| Tailwind CSS | 4.3.x | 样式系统 |
+| shadcn-vue | 2.7.x | UI 组件体系 |
+| reka-ui | 2.9.x | 无样式基础组件 |
+| @lucide/vue | 1.17.x | 图标库 |
+| Pinia | 3.0.x | 状态管理 |
+| ECharts | 5.6.x | 数据可视化 |
+| Vue Router | 4.5.x | 前端路由 |
+| Axios | 1.9.x | HTTP 客户端 |
+| TanStack Vue Table | 8.21.x | 表格能力 |
+| vee-validate / Zod | 4.15.x / 3.25.x | 表单校验 |
+| Vitest | 4.1.x | 前端测试 |
+| ESLint / Prettier | 9.x / 3.8.x | 代码检查与格式化 |
 
 ## 项目结构
 
@@ -58,22 +72,28 @@
 car-dealer-crm/
 ├── dealer-web/                 # 前端 Vue 3 SPA
 │   ├── src/
-│   │   ├── api/                # API 接口模块
-│   │   ├── view/               # 页面组件
-│   │   ├── components/         # 公共组件
-│   │   ├── router/             # 路由配置
-│   │   ├── http/               # Axios 封装
-│   │   ├── util/               # 工具函数
+│   │   ├── app/                # 应用入口、插件、全局指令
+│   │   ├── components/         # UI 组件
+│   │   ├── layouts/            # 布局组件
+│   │   ├── modules/            # 业务模块 API、类型、组件
+│   │   ├── pages/              # 路由页面
+│   │   ├── router/             # 路由配置与守卫
+│   │   ├── shared/             # HTTP、storage、utils、通用类型与 UI
+│   │   ├── stores/             # Pinia 状态
 │   │   └── assets/             # 静态资源
 │   ├── tests/                  # 前端测试 (Vitest)
 │   └── package.json
 ├── dealer-server/              # 后端 Spring Boot
-│   ├── src/main/java/com/bjpowernode/
+│   ├── src/main/java/com/autodealer/crm/
 │   │   ├── web/                # Controller 层
 │   │   ├── service/            # Service 层
 │   │   ├── mapper/             # MyBatis Mapper
 │   │   ├── model/              # 数据实体
+│   │   ├── query/              # 查询参数对象
+│   │   ├── dto/                # 数据传输对象
 │   │   ├── config/             # 配置（安全、CORS、转换器）
+│   │   ├── aspect/             # AOP 切面
+│   │   ├── enums/              # 业务枚举
 │   │   ├── manager/            # 业务管理器
 │   │   ├── util/               # 工具类
 │   │   └── result/             # 统一响应封装
@@ -81,8 +101,9 @@ car-dealer-crm/
 │   │   ├── mapper/             # MyBatis XML
 │   │   ├── application.yml     # 应用配置
 │   │   └── CarDealerCRM.sql      # 数据库脚本
-│   ├── src/test/               # 后端测试 (JUnit 5, 804 tests)
+│   ├── src/test/               # 后端测试 (JUnit 5)
 │   └── pom.xml
+├── docs/                       # 项目文档、审计清单与规格文档
 └── README.md
 ```
 
@@ -92,7 +113,7 @@ car-dealer-crm/
 
 - JDK 17+
 - Node.js 18+
-- MySQL 8.x
+- MariaDB / MySQL
 - Redis
 
 **后端启动**
@@ -104,11 +125,13 @@ cd dealer-server
 mysql -u root -p < src/main/resources/CarDealerCRM.sql
 
 # 配置数据库连接 (src/main/resources/application.yml)
-# 设置环境变量或修改配置文件中的 DB_PASSWORD
+# 设置环境变量或修改配置文件中的 DB_USERNAME / DB_PASSWORD
+export DB_USERNAME='your-username'
+export DB_PASSWORD='your-local-password'
 export JWT_SECRET='replace-with-a-long-random-local-secret'
 
 # 启动
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 **前端启动**
@@ -126,14 +149,14 @@ npm run dev
 **测试**
 
 ```bash
-# 后端测试 (804 tests)
-cd dealer-server && mvn test
+# 后端测试
+cd dealer-server && ./mvnw test
 
-# 前端测试 (45 tests)
+# 前端测试
 cd dealer-web && npm test
 
 # 覆盖率报告
-cd dealer-server && mvn jacoco:report
+cd dealer-server && ./mvnw jacoco:report
 # 报告位于 target/site/jacoco/index.html
 ```
 
@@ -165,15 +188,6 @@ cd dealer-server && mvn jacoco:report
 }
 ```
 
-## 测试覆盖
-
-| 指标 | 覆盖率 |
-|------|--------|
-| 行覆盖率 | 95.9% |
-| 方法覆盖率 | 85.4% |
-| 类覆盖率 | 99.2% |
-| 测试总数 | 849 (后端 804 + 前端 45) |
-
 ## 开源协议
 
 本项目基于 [BSD 3-Clause License](LICENSE) 开源。
@@ -181,5 +195,7 @@ cd dealer-server && mvn jacoco:report
 ## 致谢
 
 - [尚硅谷](https://www.atguigu.com/) - 原始动力云客系统
-- [Element Plus](https://element-plus.org/) - UI 组件库
+- [shadcn-vue](https://www.shadcn-vue.com/) - UI 组件体系
+- [reka-ui](https://reka-ui.com/) - 无样式基础组件
+- [Tailwind CSS](https://tailwindcss.com/) - 样式系统
 - [Spring Boot](https://spring.io/projects/spring-boot) - 后端框架
