@@ -341,7 +341,7 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
 
     private String detectBackendLogoutMethod() throws IOException {
         String content = Files.readString(BACKEND_SECURITY_CONFIG);
-        Matcher m = Pattern.compile("AntPathRequestMatcher\\(\\s*\\\"/api/logout\\\"\\s*,\\s*\\\"([A-Z]+)\\\"\\s*\\)")
+        Matcher m = Pattern.compile("AntPathRequestMatcher\\(\\s*(?:\\\"/api/logout\\\"|SecurityPaths\\.LOGOUT)\\s*,\\s*\\\"([A-Z]+)\\\"\\s*\\)")
                 .matcher(content);
         if (m.find()) return m.group(1);
         // fallback: formLogout only

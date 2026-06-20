@@ -1,8 +1,8 @@
 package com.autodealer.crm.config.handler;
 
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.service.RedisService;
 import com.autodealer.crm.util.JWTUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +17,6 @@ import org.springframework.security.core.Authentication;
 import jakarta.servlet.ServletException;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
@@ -30,7 +29,7 @@ class MyAuthenticationSuccessHandlerTest {
     private MyAuthenticationSuccessHandler successHandler;
 
     @Mock
-    private RedisService redisService;
+    private RedisManager redisManager;
 
     @Test
     void testOnAuthenticationSuccessShouldReturnJwtToken() throws IOException, ServletException {
@@ -45,7 +44,7 @@ class MyAuthenticationSuccessHandlerTest {
             Authentication authentication = mock(Authentication.class);
             when(authentication.getPrincipal()).thenReturn(user);
 
-            jwtUtils.when(() -> JWTUtils.createJWT(anyString())).thenReturn("generated.jwt.token");
+            jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.DEFAULT_EXPIRE_TIME)).thenReturn("generated.jwt.token");
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
@@ -53,7 +52,7 @@ class MyAuthenticationSuccessHandlerTest {
             assertTrue(content.contains("generated.jwt.token"));
             assertTrue(content.contains("200"));
 
-            verify(redisService).setValue(Constants.REDIS_JWT_KEY + 1, "generated.jwt.token");
+            verify(redisManager).set(Constants.REDIS_JWT_KEY + 1, "generated.jwt.token", Constants.DEFAULT_EXPIRE_TIME);
         }
     }
 
@@ -66,15 +65,16 @@ class MyAuthenticationSuccessHandlerTest {
 
             TUser user = new TUser();
             user.setId(1);
+            user.setLoginAct("admin");
 
             Authentication authentication = mock(Authentication.class);
             when(authentication.getPrincipal()).thenReturn(user);
 
-            jwtUtils.when(() -> JWTUtils.createJWT(anyString())).thenReturn("jwt.token");
+            jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.EXPIRE_TIME)).thenReturn("jwt.token");
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
-            verify(redisService).expire(Constants.REDIS_JWT_KEY + 1, Constants.EXPIRE_TIME, TimeUnit.SECONDS);
+            verify(redisManager).set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.EXPIRE_TIME);
         }
     }
 
@@ -86,15 +86,16 @@ class MyAuthenticationSuccessHandlerTest {
 
             TUser user = new TUser();
             user.setId(1);
+            user.setLoginAct("admin");
 
             Authentication authentication = mock(Authentication.class);
             when(authentication.getPrincipal()).thenReturn(user);
 
-            jwtUtils.when(() -> JWTUtils.createJWT(anyString())).thenReturn("jwt.token");
+            jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.DEFAULT_EXPIRE_TIME)).thenReturn("jwt.token");
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
-            verify(redisService).expire(Constants.REDIS_JWT_KEY + 1, Constants.DEFAULT_EXPIRE_TIME, TimeUnit.SECONDS);
+            verify(redisManager).set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.DEFAULT_EXPIRE_TIME);
         }
     }
 
@@ -106,11 +107,12 @@ class MyAuthenticationSuccessHandlerTest {
 
             TUser user = new TUser();
             user.setId(1);
+            user.setLoginAct("admin");
 
             Authentication authentication = mock(Authentication.class);
             when(authentication.getPrincipal()).thenReturn(user);
 
-            jwtUtils.when(() -> JWTUtils.createJWT(anyString())).thenReturn("jwt.token");
+            jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.DEFAULT_EXPIRE_TIME)).thenReturn("jwt.token");
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 

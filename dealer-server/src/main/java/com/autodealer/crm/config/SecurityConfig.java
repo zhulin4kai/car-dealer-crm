@@ -5,17 +5,17 @@ import com.autodealer.crm.config.handler.MyAccessDeniedHandler;
 import com.autodealer.crm.config.handler.MyAuthenticationFailureHandler;
 import com.autodealer.crm.config.handler.MyAuthenticationSuccessHandler;
 import com.autodealer.crm.config.handler.MyLogoutSuccessHandler;
+import com.autodealer.crm.config.security.SecurityPaths;
 import com.autodealer.crm.constant.Constants;
 import jakarta.annotation.Resource;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 
@@ -38,11 +38,6 @@ public class SecurityConfig {
     @Resource
     private TokenVerifyFilter tokenVerifyFilter;
 
-    @Bean // There is no PasswordEncoder mapped for the id "null"
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         // 禁用跨站请求伪造
@@ -56,9 +51,9 @@ public class SecurityConfig {
                 })
 
                 .authorizeHttpRequests((authorize) -> {
-                    authorize.requestMatchers(org.springframework.http.HttpMethod.POST, "/api/login").permitAll()
-                            .requestMatchers("/api/login/free").permitAll()
-                            .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // 允许所有OPTIONS请求
+                    authorize.requestMatchers(HttpMethod.POST, SecurityPaths.LOGIN).permitAll()
+                            .requestMatchers(SecurityPaths.LOGIN_FREE).permitAll()
+                            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .anyRequest().authenticated(); // 其它任何请求都需要登录后才能访问
                 })
 
@@ -66,17 +61,17 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
 
                 .sessionManagement((session) -> {
-                    // session创建策略
+                    // session 创建策略
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS); // 无session状态，也就是禁用session
                 })
 
-                // 添加自定义的Filter
+                // 添加自定义的 Filter
                 .addFilterBefore(tokenVerifyFilter, LogoutFilter.class)
 
                 // 退出登录
                 .logout((logout) -> {
-                    logout.logoutUrl("/api/logout") // 退出提交到该地址，该地址不需要我们写controller的，是框架处理
-                            .logoutRequestMatcher(new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/api/logout", "GET"))
+                    logout.logoutUrl(SecurityPaths.LOGOUT) // 退出提交到该地址，该地址不需要我们写controller的，是框架处理
+                            .logoutRequestMatcher(new org.springframework.security.web.util.matcher.AntPathRequestMatcher(SecurityPaths.LOGOUT, "POST"))
                             .logoutSuccessHandler(myLogoutSuccessHandler);
                 })
 

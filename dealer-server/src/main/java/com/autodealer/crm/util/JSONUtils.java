@@ -5,19 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class JSONUtils {
 
-    //jackson这个jar包转json
-
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
-     * 把java对象转成json
+     * 把 java 对象转成 json
      *
      * @param object
-     * @return
      */
     public static String toJSON(Object object) {
         try {
-             //把java对象转成json
             return OBJECT_MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -25,11 +21,10 @@ public class JSONUtils {
     }
 
     /**
-     * 把json字符串转java对象
+     * 把 json 字符串转 java 对象
      *
      * @param json
      * @param clazz
-     * @return
      * @param <T>
      */
     public static <T> T toBean(String json, Class<T> clazz) {

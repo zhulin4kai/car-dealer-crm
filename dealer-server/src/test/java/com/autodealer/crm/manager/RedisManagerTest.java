@@ -6,6 +6,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.ListOperations;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -64,7 +65,7 @@ class RedisManagerTest {
     @Test
     void testDeletePattern() {
         Set<String> keys = new HashSet<>(Arrays.asList("key1", "key2", "key3"));
-        when(redisTemplate.keys("pattern*")).thenReturn(keys);
+        when(redisTemplate.execute(any(RedisCallback.class))).thenReturn(keys);
 
         redisManager.deletePattern("pattern*");
 
@@ -73,7 +74,7 @@ class RedisManagerTest {
 
     @Test
     void testDeletePatternWithNoKeys() {
-        when(redisTemplate.keys("pattern*")).thenReturn(Collections.emptySet());
+        when(redisTemplate.execute(any(RedisCallback.class))).thenReturn(Collections.emptySet());
 
         redisManager.deletePattern("pattern*");
 
@@ -81,21 +82,21 @@ class RedisManagerTest {
     }
 
     @Test
-    void testGetValue() {
+    void testGetList() {
         when(redisTemplate.opsForList()).thenReturn(listOperations);
         when(listOperations.range("testKey", 0, -1)).thenReturn(Arrays.asList("item1", "item2"));
 
-        Object result = redisManager.getValue("testKey");
+        Object result = redisManager.getList("testKey");
 
         assertNotNull(result);
     }
 
     @Test
-    void testSetValue() {
+    void testSetList() {
         when(redisTemplate.opsForList()).thenReturn(listOperations);
         Collection<String> data = Arrays.asList("item1", "item2");
 
-        redisManager.setValue("testKey", data);
+        redisManager.setList("testKey", data);
 
         verify(listOperations).leftPushAll(eq("testKey"), any(Object[].class));
     }

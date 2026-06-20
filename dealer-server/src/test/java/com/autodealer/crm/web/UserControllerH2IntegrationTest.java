@@ -322,14 +322,11 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("GET /api/login/free requires auth (only /api/login is permitAll) - returns 510")
-    void freeLogin_isProtected() throws Exception {
-        // SecurityConfig only permits /api/login (not /api/login/free).
-        // Real clients always have a token by the time they call this,
-        // so an unauthenticated request gets the 510 from MyAuthenticationEntryPoint.
+    @DisplayName("GET /api/login/free is publicly accessible")
+    void freeLogin_isPublic() throws Exception {
         mockMvc.perform(get("/api/login/free"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(510));
+                .andExpect(jsonPath("$.code").value(200));
     }
 
     @Test

@@ -3,9 +3,9 @@ package com.autodealer.crm.config.filter;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
+import com.autodealer.crm.service.UserService;
 import com.autodealer.crm.util.JWTUtils;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,27 +15,22 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.IOException;
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TokenVerifyFilterTest {
 
     @InjectMocks
-    private TokenVerifyFilter tokenVerifyFilter;
-
+    private TokenVerifyFilter filter;
     @Mock
     private RedisManager redisManager;
-
     @Mock
-    private ThreadPoolTaskExecutor threadPoolTaskExecutor;
-
+    private UserService userService;
     @Mock
     private FilterChain filterChain;
 
@@ -50,168 +45,103 @@ class TokenVerifyFilterTest {
     }
 
     @Test
-    void testLoginUriShouldPassThrough() throws ServletException, IOException {
+    void publicPathShouldPassThrough() throws Exception {
+        request.setMethod("POST");
         request.setRequestURI(Constants.LOGIN_URI);
-
-        tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
+        filter.doFilterInternal(request, response, filterChain);
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
-    void testNoTokenShouldReturnTokenEmpty() throws ServletException, IOException {
+    void missingTokenShouldFailClosed() throws Exception {
         request.setRequestURI("/api/users");
-
-        tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
-        String content = response.getContentAsString();
-        assertTrue(content.contains("token为空") || content.contains("510"));
-        verify(filterChain, never()).doFilter(any(), any());
+        filter.doFilterInternal(request, response, filterChain);
+        assertTrue(response.getContentAsString().contains("510"));
+        verifyNoInteractions(filterChain);
     }
 
     @Test
-    void testInvalidTokenShouldReturnTokenError() throws ServletException, IOException {
+    void invalidTokenShouldFailClosed() throws Exception {
         request.setRequestURI("/api/users");
-        request.addHeader("Authorization", "invalid.token.value");
-
-        tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
-        String content = response.getContentAsString();
-        assertTrue(content.contains("token无效") || content.contains("511"));
-        verify(filterChain, never()).doFilter(any(), any());
+        request.addHeader("Authorization", "bad-token");
+        filter.doFilterInternal(request, response, filterChain);
+        assertTrue(response.getContentAsString().contains("511"));
+        verifyNoInteractions(filterChain);
     }
 
     @Test
-    void testExpiredTokenShouldReturnTokenExpired() throws ServletException, IOException {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            request.setRequestURI("/api/users");
-            request.addHeader("Authorization", "valid.jwt.token");
-
-            TUser user = new TUser();
-            user.setId(1);
-
-            jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
-
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn(null);
-
-            tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
-            String content = response.getContentAsString();
-            assertTrue(content.contains("token已过期") || content.contains("512"));
-            verify(filterChain, never()).doFilter(any(), any());
+    void missingRedisSessionShouldBeExpired() throws Exception {
+        try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
+            invokeProtectedPath();
+            assertTrue(response.getContentAsString().contains("512"));
+            verifyNoInteractions(filterChain);
         }
     }
 
     @Test
-    void testTokenMismatchShouldReturnTokenNoneMatch() throws ServletException, IOException {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            request.setRequestURI("/api/users");
-            request.addHeader("Authorization", "valid.jwt.token");
-
-            TUser user = new TUser();
-            user.setId(1);
-
-            jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
-
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("different.token");
-
-            tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
-            String content = response.getContentAsString();
-            assertTrue(content.contains("token不匹配") || content.contains("513"));
-            verify(filterChain, never()).doFilter(any(), any());
+    void mismatchedRedisTokenShouldBeRejected() throws Exception {
+        try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("other-token");
+            invokeProtectedPath();
+            assertTrue(response.getContentAsString().contains("513"));
+            verifyNoInteractions(filterChain);
         }
     }
 
     @Test
-    void testValidTokenShouldSetAuthenticationAndProceed() throws ServletException, IOException {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            request.setRequestURI("/api/users");
-            request.addHeader("Authorization", "valid.jwt.token");
+    void validTokenShouldSetAuthenticationWithoutRefreshingRedis() throws Exception {
+        try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
+            TUser user = usableUser();
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid-token");
+            when(userService.getLoginUserById(1)).thenReturn(user);
 
-            TUser user = new TUser();
-            user.setId(1);
-            user.setLoginAct("admin");
-            user.setLoginPwd("password");
+            invokeProtectedPath();
 
-            jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
-
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
-
-            tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
-            assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            assertSame(user, authentication.getPrincipal());
+            assertNull(authentication.getCredentials());
             verify(filterChain).doFilter(request, response);
+            verify(redisManager, never()).set(any(), any(), anyLong());
         }
     }
 
     @Test
-    void testRememberMeHeaderShouldExpireWithLongTime() throws ServletException, IOException {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            request.setRequestURI("/api/users");
-            request.addHeader("Authorization", "valid.jwt.token");
-            request.addHeader("rememberMe", "true");
+    void disabledUserShouldBeRejectedAndSessionRevoked() throws Exception {
+        try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
+            TUser user = usableUser();
+            user.setAccountEnabled(0);
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid-token");
+            when(userService.getLoginUserById(1)).thenReturn(user);
 
-            TUser user = new TUser();
-            user.setId(1);
-            user.setLoginAct("admin");
+            invokeProtectedPath();
 
-            jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
-
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
-
-            doAnswer(invocation -> {
-                Runnable runnable = invocation.getArgument(0);
-                runnable.run();
-                return null;
-            }).when(threadPoolTaskExecutor).execute(any(Runnable.class));
-
-            tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
-            verify(threadPoolTaskExecutor).execute(any(Runnable.class));
-            verify(redisManager).set(eq(Constants.REDIS_JWT_KEY + 1), eq("valid.jwt.token"), eq(Constants.EXPIRE_TIME));
+            verify(redisManager).delete(Constants.REDIS_JWT_KEY + 1);
+            verifyNoInteractions(filterChain);
+            assertNull(SecurityContextHolder.getContext().getAuthentication());
         }
     }
 
-    @Test
-    void testNoRememberMeShouldExpireWithDefaultTime() throws ServletException, IOException {
-        try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
-            request.setRequestURI("/api/users");
-            request.addHeader("Authorization", "valid.jwt.token");
-
-            TUser user = new TUser();
-            user.setId(1);
-            user.setLoginAct("admin");
-
-            jwtUtils.when(() -> JWTUtils.verifyJWT("valid.jwt.token")).thenReturn(true);
-            jwtUtils.when(() -> JWTUtils.parseUserFromJWT("valid.jwt.token")).thenReturn(user);
-
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid.jwt.token");
-
-            doAnswer(invocation -> {
-                Runnable runnable = invocation.getArgument(0);
-                runnable.run();
-                return null;
-            }).when(threadPoolTaskExecutor).execute(any(Runnable.class));
-
-            tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
-            verify(threadPoolTaskExecutor).execute(any(Runnable.class));
-            verify(redisManager).set(eq(Constants.REDIS_JWT_KEY + 1), eq("valid.jwt.token"), eq(Constants.DEFAULT_EXPIRE_TIME));
-        }
+    private void invokeProtectedPath() throws Exception {
+        request.setRequestURI("/api/users");
+        request.addHeader("Authorization", "Bearer valid-token");
+        filter.doFilterInternal(request, response, filterChain);
     }
 
-    @Test
-    void testExportExcelUriShouldGetTokenFromParameter() throws ServletException, IOException {
-        request.setRequestURI(Constants.EXPORT_EXCEL_URI);
+    private MockedStatic<JWTUtils> mockJwt(Integer userId) {
+        MockedStatic<JWTUtils> jwt = mockStatic(JWTUtils.class);
+        jwt.when(() -> JWTUtils.verifyJWT("valid-token")).thenReturn(true);
+        jwt.when(() -> JWTUtils.parseUserIdFromJWT("valid-token")).thenReturn(userId);
+        return jwt;
+    }
 
-        tokenVerifyFilter.doFilterInternal(request, response, filterChain);
-
-        String content = response.getContentAsString();
-        assertTrue(content.contains("token为空") || content.contains("510"));
+    private TUser usableUser() {
+        TUser user = new TUser();
+        user.setId(1);
+        user.setLoginAct("admin");
+        user.setAccountEnabled(1);
+        user.setAccountNoExpired(1);
+        user.setAccountNoLocked(1);
+        user.setCredentialsNoExpired(1);
+        return user;
     }
 }

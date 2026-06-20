@@ -107,31 +107,21 @@ class SecurityConfigTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("SecurityConfig wires /api/logout as GET — POST must NOT trigger logout success")
-    void logoutIsGetNotPost() throws Exception {
+    @DisplayName("POST /api/logout invalidates the token and returns logout success")
+    void logoutIsPostAndInvalidatesToken() throws Exception {
         String token = loginAsAdmin();
 
-        // Documented & implemented contract: SecurityConfig uses
-        // AntPathRequestMatcher("/api/logout", "GET"). POST must NOT log the user out.
-        // We assert that POST /api/logout does NOT return the USER_LOGOUT success code (200/退出成功).
-        MvcResult postResult = mockMvc.perform(post("/api/logout")
+        mockMvc.perform(post("/api/logout")
                         .header(HttpHeaders.AUTHORIZATION, token)
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED))
-                .andReturn();
-        JsonNode postBody = objectMapper.readTree(postResult.getResponse().getContentAsString());
-        org.junit.jupiter.api.Assertions.assertNotEquals(200, postBody.path("code").asInt(0),
-                "POST /api/logout must not return the logout success code (200)");
-        org.junit.jupiter.api.Assertions.assertNotEquals("退出成功", postBody.path("msg").asText(),
-                "POST /api/logout must not return the logout success message");
-
-        // The real GET /api/logout should succeed and return USER_LOGOUT.
-        // MyLogoutSuccessHandler uses R.OK(CodeEnum.USER_LOGOUT) -> outer code 200,
-        // outer msg "操作成功", data is CodeEnum.USER_LOGOUT (serialized as the enum name "USER_LOGOUT").
-        mockMvc.perform(get("/api/logout")
-                        .header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").value("USER_LOGOUT"));
+
+        mockMvc.perform(get("/api/login/info")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(512));
     }
 
     @Test

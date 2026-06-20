@@ -119,9 +119,7 @@ public abstract class BackendIntegrationTestBase {
      * certain authority.
      */
     protected String buildDirectToken(TUser user) {
-        String userJson = "{\"id\":" + user.getId()
-                + ",\"loginAct\":\"" + user.getLoginAct() + "\"}";
-        String token = JWTUtils.createJWT(userJson);
+        String token = JWTUtils.createJWT(user.getId(), user.getLoginAct(), Constants.DEFAULT_EXPIRE_TIME);
         tokenStore.put(Constants.REDIS_JWT_KEY + user.getId(), token);
         return token;
     }

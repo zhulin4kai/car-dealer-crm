@@ -1,14 +1,13 @@
 package com.autodealer.crm.config.handler;
 
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.result.R;
-import com.autodealer.crm.service.RedisService;
 import com.autodealer.crm.util.JSONUtils;
 import com.autodealer.crm.util.ResponseUtils;
 import jakarta.annotation.Resource;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
@@ -16,6 +15,7 @@ import org.springframework.security.web.authentication.logout.LogoutSuccessHandl
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+
 
 /**
  * 退出成功处理器
@@ -25,23 +25,16 @@ import java.io.IOException;
 public class MyLogoutSuccessHandler implements LogoutSuccessHandler {
 
     @Resource
-    private RedisService redisService;
+    private RedisManager redisManager;
 
     @Override
-    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        //退出成功，执行该方法，在该方法中返回json给前端，就行了
-        TUser tUser = (TUser)authentication.getPrincipal();
+    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
+        // 退出成功，执行该方法，在该方法中返回 json 给前端就行了
+        if (authentication != null && authentication.getPrincipal() instanceof TUser user) {
+            redisManager.delete(Constants.REDIS_JWT_KEY + user.getId());
+        }
 
-        //删除一下redis中用户的jwt
-        redisService.removeValue(Constants.REDIS_JWT_KEY + tUser.getId());
-
-        //退出成功的统一结果
         R result = R.OK(CodeEnum.USER_LOGOUT);
-
-        //把R对象转成json
-        String resultJSON = JSONUtils.toJSON(result);
-
-        //把R以json返回给前端
-        ResponseUtils.write(response, resultJSON);
+        ResponseUtils.write(response, JSONUtils.toJSON(result));
     }
 }

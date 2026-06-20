@@ -2,7 +2,6 @@ package com.autodealer.crm.util;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.autodealer.crm.model.TUser;
 import org.junit.jupiter.api.Test;
 
 import java.util.Date;
@@ -30,15 +29,7 @@ class JWTUtilsTest {
 
     @Test
     void testTokenHasExpiration() {
-        TUser user = new TUser();
-        user.setId(1);
-        user.setLoginAct("testuser");
-        user.setName("Test User");
-        user.setPhone("13800138000");
-        user.setEmail("test@example.com");
-
-        String userJSON = JSONUtils.toJSON(user);
-        String token = JWTUtils.createJWT(userJSON);
+        String token = JWTUtils.createJWT(1, "testuser", 60);
 
         DecodedJWT decodedJWT = JWT.decode(token);
         Date expiresAt = decodedJWT.getExpiresAt();
@@ -49,25 +40,12 @@ class JWTUtilsTest {
 
     @Test
     void testGenerateAndParseToken() {
-        TUser user = new TUser();
-        user.setId(42);
-        user.setLoginAct("alice");
-        user.setName("Alice Wang");
-        user.setPhone("13900139000");
-        user.setEmail("alice@example.com");
-
-        String userJSON = JSONUtils.toJSON(user);
-        String token = JWTUtils.createJWT(userJSON);
+        String token = JWTUtils.createJWT(42, "alice", 60);
         assertNotNull(token);
         assertFalse(token.isEmpty());
 
-        TUser parsed = JWTUtils.parseUserFromJWT(token);
-        assertNotNull(parsed);
-        assertEquals(42, parsed.getId());
-        assertEquals("alice", parsed.getLoginAct());
-        assertEquals("Alice Wang", parsed.getName());
-        assertEquals("13900139000", parsed.getPhone());
-        assertEquals("alice@example.com", parsed.getEmail());
+        assertEquals(42, JWTUtils.parseUserIdFromJWT(token));
+        assertEquals("alice", JWTUtils.parseLoginActFromJWT(token));
     }
 
     @Test

@@ -14,7 +14,7 @@ export function freeLogin(): Promise<string | boolean> {
 }
 
 export function logout(): Promise<unknown> {
-  return httpClient.get('/api/logout')
+  return httpClient.post('/api/logout')
 }
 
 export function fetchLoginInfo(): Promise<User> {

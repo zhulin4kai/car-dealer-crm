@@ -75,8 +75,7 @@ public class UserController {
      */
     @PreAuthorize(value = "hasAuthority('user:add')")
     @PostMapping(value = "/api/user")
-    public R addUser(@RequestBody UserQuery userQuery, @RequestHeader(value = "Authorization") String token) {
-        userQuery.setToken(token);
+    public R addUser(@RequestBody UserQuery userQuery) {
         int save = userService.saveUser(userQuery);
         return save >= 1 ? R.OK() : R.FAIL();
     }
@@ -89,8 +88,7 @@ public class UserController {
      */
     @PreAuthorize(value = "hasAuthority('user:edit')")
     @PutMapping(value = "/api/user")
-    public R editUser(@RequestBody UserQuery userQuery, @RequestHeader(value = "Authorization") String token) {
-        userQuery.setToken(token);
+    public R editUser(@RequestBody UserQuery userQuery) {
         int update = userService.updateUser(userQuery);
         return update >= 1 ? R.OK() : R.FAIL();
     }

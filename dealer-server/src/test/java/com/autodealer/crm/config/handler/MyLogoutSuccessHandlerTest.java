@@ -1,8 +1,8 @@
 package com.autodealer.crm.config.handler;
 
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.service.RedisService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,7 +26,7 @@ class MyLogoutSuccessHandlerTest {
     private MyLogoutSuccessHandler logoutSuccessHandler;
 
     @Mock
-    private RedisService redisService;
+    private RedisManager redisManager;
 
     @Test
     void testOnLogoutSuccessShouldRemoveTokenFromRedis() throws IOException, ServletException {
@@ -41,7 +41,7 @@ class MyLogoutSuccessHandlerTest {
 
         logoutSuccessHandler.onLogoutSuccess(request, response, authentication);
 
-        verify(redisService).removeValue(Constants.REDIS_JWT_KEY + 1);
+        verify(redisManager).delete(Constants.REDIS_JWT_KEY + 1);
     }
 
     @Test
