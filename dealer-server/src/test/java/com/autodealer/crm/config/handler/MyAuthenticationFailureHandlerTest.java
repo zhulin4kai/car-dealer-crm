@@ -1,38 +1,35 @@
 package com.autodealer.crm.config.handler;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 
 import jakarta.servlet.ServletException;
 
 import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class MyAuthenticationFailureHandlerTest {
 
-    @InjectMocks
-    private MyAuthenticationFailureHandler failureHandler;
+    private final MyAuthenticationFailureHandler failureHandler = new MyAuthenticationFailureHandler();
 
     @Test
     void testOnAuthenticationFailureShouldReturnErrorMessage() throws IOException, ServletException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        AuthenticationException exception = mock(AuthenticationException.class);
-        when(exception.getMessage()).thenReturn("用户名或密码错误");
+        request.setParameter("loginAct", "missing-user");
 
-        failureHandler.onAuthenticationFailure(request, response, exception);
+        failureHandler.onAuthenticationFailure(
+                request, response, new BadCredentialsException("登录账号不存在"));
 
         String content = response.getContentAsString();
-        assertTrue(content.contains("用户名或密码错误"));
+        assertTrue(content.contains("账号或密码错误"));
+        assertFalse(content.contains("登录账号不存在"));
         assertTrue(content.contains("500"));
     }
 
@@ -41,25 +38,22 @@ class MyAuthenticationFailureHandlerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        AuthenticationException exception = mock(AuthenticationException.class);
-        when(exception.getMessage()).thenReturn("登录失败");
-
-        failureHandler.onAuthenticationFailure(request, response, exception);
+        failureHandler.onAuthenticationFailure(
+                request, response, new BadCredentialsException("登录失败"));
 
         assertTrue(response.getContentType().contains("application/json"));
     }
 
     @Test
-    void testOnAuthenticationFailureWithDifferentMessages() throws IOException, ServletException {
+    void testOnAuthenticationFailureShouldHideAccountStatus() throws IOException, ServletException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        AuthenticationException exception = mock(AuthenticationException.class);
-        when(exception.getMessage()).thenReturn("账户已被锁定");
-
-        failureHandler.onAuthenticationFailure(request, response, exception);
+        failureHandler.onAuthenticationFailure(
+                request, response, new LockedException("账户已被锁定"));
 
         String content = response.getContentAsString();
-        assertTrue(content.contains("账户已被锁定"));
+        assertTrue(content.contains("账号或密码错误"));
+        assertFalse(content.contains("账户已被锁定"));
     }
 }
