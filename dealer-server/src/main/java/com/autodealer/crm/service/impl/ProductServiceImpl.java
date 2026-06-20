@@ -88,8 +88,12 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void restock(Long productId, Integer quantity, String remark) {
-        // 更新库存
-        productMapper.updateStock(productId, quantity);
+        if (productId == null || quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("入库产品和正数数量不能为空");
+        }
+        if (productMapper.updateStock(productId, quantity) != 1) {
+            throw new RuntimeException("产品不存在，入库失败");
+        }
         
         // 记录库存变动
         TProductStockRecord record = new TProductStockRecord();
@@ -98,7 +102,9 @@ public class ProductServiceImpl implements ProductService {
         record.setType("入库");
         record.setRemark(remark);
         record.setCreateTime(LocalDateTime.now());
-        stockRecordMapper.insert(record);
+        if (stockRecordMapper.insert(record) != 1) {
+            throw new RuntimeException("库存变动记录创建失败");
+        }
     }
     
     @Override

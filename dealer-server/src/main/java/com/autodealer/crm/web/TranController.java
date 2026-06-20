@@ -1,5 +1,6 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.dto.TranCreateRequest;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.*;
@@ -9,12 +10,9 @@ import com.autodealer.crm.service.TranService;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +25,9 @@ public class TranController {
 
     @Resource
     private TranService tranService;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
 
     /**
      * 获取交易列表
@@ -55,10 +56,6 @@ public class TranController {
     @PreAuthorize("hasAuthority('tran:create')")
     @PostMapping("/create")
     public R<Integer> create(@RequestBody TranCreateRequest request) {
-        // 获取当前登录用户
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        TUser currentUser = (TUser) authentication.getPrincipal();
-        
         TTran tran = new TTran();
         tran.setCustomerId(request.getCustomerId());
         tran.setMoney(request.getAmount());
@@ -75,8 +72,6 @@ public class TranController {
         }
         
         tran.setStage(TranStage.QUOTATION);
-        tran.setCreateBy(currentUser.getId()); // 设置创建人
-        
         // 从产品详情列表创建交易产品关联
         List<TTranProduct> products = request.getProducts().stream()
             .map(productDetail -> {
@@ -84,8 +79,6 @@ public class TranController {
                 tranProduct.setProductId(productDetail.getProductId());
                 tranProduct.setQuantity(productDetail.getQuantity());
                 tranProduct.setPrice(productDetail.getPrice());
-                tranProduct.setCreateTime(new Date());
-                tranProduct.setCreateBy(currentUser.getId());
                 return tranProduct;
             })
             .toList();
@@ -99,12 +92,8 @@ public class TranController {
     @PreAuthorize("hasAuthority('tran:edit')")
     @PutMapping("/update")
     public R<Boolean> update(@RequestBody TranCreateRequest request) {
-        // 获取当前登录用户
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        TUser currentUser = (TUser) authentication.getPrincipal();
-        
         if (request.getId() == null) {
-            return R.FAIL("交易ID不能为空");
+            return R.FAIL("交易 ID 不能为空");
         }
         
         TTran tran = new TTran();
@@ -123,8 +112,6 @@ public class TranController {
             }
         }
         
-        tran.setEditBy(currentUser.getId());
-        
         // 从产品详情列表创建交易产品关联
         List<TTranProduct> products = null;
         if (request.getProducts() != null && !request.getProducts().isEmpty()) {
@@ -134,8 +121,6 @@ public class TranController {
                     tranProduct.setProductId(productDetail.getProductId());
                     tranProduct.setQuantity(productDetail.getQuantity());
                     tranProduct.setPrice(productDetail.getPrice());
-                    tranProduct.setCreateTime(new Date());
-                    tranProduct.setCreateBy(currentUser.getId());
                     return tranProduct;
                 })
                 .toList();
@@ -153,10 +138,6 @@ public class TranController {
     @PreAuthorize("hasAuthority('tran:edit')")
     @PutMapping("/settle/{id}")
     public R<Boolean> settle(@PathVariable Integer id, @RequestBody(required = false) Map<String, Object> body) {
-        // 获取当前登录用户
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        TUser currentUser = (TUser) authentication.getPrincipal();
-        
         // 获取交易产品列表并计算总金额
         List<TTranProduct> products = tranService.getTransactionProducts(id);
         if (products == null || products.isEmpty()) {
@@ -177,9 +158,8 @@ public class TranController {
                     return R.FAIL("传递的金额格式不正确");
                 }
                 
-                // 验证金额不能为负数
-                if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
-                    return R.FAIL("结算金额不能为负数");
+                if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                    return R.FAIL("结算金额必须大于0");
                 }
             } catch (NumberFormatException e) {
                 return R.FAIL("传递的金额格式不正确");
@@ -191,14 +171,7 @@ public class TranController {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
         
-        // 更新交易金额和状态
-        TTran tran = new TTran();
-        tran.setId(id);
-        tran.setMoney(totalAmount);
-        tran.setStage(TranStage.PENDING);
-        tran.setEditBy(currentUser.getId());
-        
-        boolean result = tranService.updateTransaction(tran);
+        boolean result = tranService.settleTransaction(id, totalAmount);
         return R.OK(result);
     }
 
@@ -210,10 +183,6 @@ public class TranController {
     public R<Boolean> approve(
             @PathVariable Integer id,
             @RequestBody Map<String, Object> approveData) {
-        // 获取当前登录用户
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        TUser currentUser = (TUser) authentication.getPrincipal();
-        
         Boolean approved = (Boolean) approveData.get("approved");
         String comment = (String) approveData.get("comment");
         
@@ -221,7 +190,7 @@ public class TranController {
             return R.FAIL("审批结果和审批意见不能为空");
         }
         
-        boolean result = tranService.approveTran(id, approved, comment, currentUser.getId());
+        boolean result = tranService.approveTran(id, approved, comment);
         return R.OK(result);
     }
 
@@ -241,13 +210,6 @@ public class TranController {
     @PreAuthorize("hasAuthority('tran:invoice')")
     @PostMapping("/invoice")
     public R<Boolean> createInvoice(@RequestBody TTranInvoice invoice) {
-        // 获取当前登录用户
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        TUser currentUser = (TUser) authentication.getPrincipal();
-        
-        invoice.setCreateBy(currentUser.getId());
-        invoice.setEditBy(currentUser.getId());
-        
         boolean result = tranService.createTranInvoice(invoice);
         return R.OK(result);
     }
@@ -270,16 +232,12 @@ public class TranController {
     public R<Boolean> updateInvoiceStatus(
             @PathVariable Integer invoiceId,
             @RequestBody Map<String, String> statusData) {
-        // 获取当前登录用户
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        TUser currentUser = (TUser) authentication.getPrincipal();
-        
         String status = statusData.get("status");
         if (status == null || status.trim().isEmpty()) {
             return R.FAIL("状态不能为空");
         }
         
-        boolean result = tranService.updateTranInvoiceStatus(invoiceId, status, currentUser.getId());
+        boolean result = tranService.updateTranInvoiceStatus(invoiceId, status);
         return R.OK(result);
     }
 
@@ -340,11 +298,7 @@ public class TranController {
     @PreAuthorize("hasAuthority('tran:edit')")
     @PutMapping("/resubmit/{id}")
     public R<Boolean> resubmit(@PathVariable Integer id) {
-        // 获取当前登录用户
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        TUser currentUser = (TUser) authentication.getPrincipal();
-        
-        boolean result = tranService.resubmitTransaction(id, currentUser.getId());
+        boolean result = tranService.resubmitTransaction(id);
         return R.OK(result);
     }
 
@@ -354,11 +308,6 @@ public class TranController {
     @PreAuthorize("hasAuthority('tran:edit')")
     @PostMapping("/payment")
     public R<TPayment> recordPayment(@RequestBody TPayment payment) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication.getPrincipal() instanceof TUser currentUser)) {
-            return R.FAIL("未登录");
-        }
-        payment.setCreateBy(currentUser.getId());
         return R.OK(tranService.recordPayment(payment));
     }
 
@@ -377,10 +326,6 @@ public class TranController {
     @PreAuthorize("hasAuthority('tran:edit')")
     @PostMapping("/payment/{id}/refund")
     public R<TPayment> refund(@PathVariable Integer id) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication.getPrincipal() instanceof TUser currentUser)) {
-            return R.FAIL("未登录");
-        }
-        return R.OK(tranService.refundPayment(id, currentUser.getId()));
+        return R.OK(tranService.refundPayment(id));
     }
 }

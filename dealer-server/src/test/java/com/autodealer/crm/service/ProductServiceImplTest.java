@@ -180,6 +180,9 @@ class ProductServiceImplTest {
 
     @Test
     void testRestock() {
+        when(productMapper.updateStock(1L, 50)).thenReturn(1);
+        when(stockRecordMapper.insert(any())).thenReturn(1);
+
         productService.restock(1L, 50, "Restocking order");
 
         verify(productMapper).updateStock(1L, 50);

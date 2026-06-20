@@ -243,6 +243,7 @@ INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (24,
 INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (25, 'stage', 'PAYMENT', 4, '待收款');
 INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (26, 'stage', 'COMPLETED', 5, '已完成');
 INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (27, 'stage', 'LOST', 6, '丢失关闭');
+INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (66, 'stage', 'CANCELLED', 7, '已取消');
 
 -- Note Way
 INSERT INTO t_dic_value (id, type_code, type_value, `order`, remark) VALUES (28, 'noteWay', '电话', 1, NULL);

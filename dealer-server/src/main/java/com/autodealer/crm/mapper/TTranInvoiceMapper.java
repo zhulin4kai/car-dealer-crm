@@ -2,6 +2,8 @@ package com.autodealer.crm.mapper;
 
 import com.autodealer.crm.model.TTranInvoice;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import java.util.Date;
 import java.util.List;
 
 @Mapper
@@ -17,6 +19,13 @@ public interface TTranInvoiceMapper {
     int updateByPrimaryKeySelective(TTranInvoice record);
 
     int updateByPrimaryKey(TTranInvoice record);
+
+    int updateStatusIfCurrent(@Param("id") Integer id,
+                              @Param("expectedStatus") String expectedStatus,
+                              @Param("newStatus") String newStatus,
+                              @Param("issueTime") Date issueTime,
+                              @Param("editTime") Date editTime,
+                              @Param("editBy") Integer editBy);
     
     /**
      * 根据交易ID查询发票列表

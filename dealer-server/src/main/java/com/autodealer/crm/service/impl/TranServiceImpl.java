@@ -1,6 +1,9 @@
 package com.autodealer.crm.service.impl;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.enums.PaymentMethod;
+import com.autodealer.crm.enums.PaymentType;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.*;
@@ -19,6 +22,9 @@ import java.util.List;
 
 @Service
 public class TranServiceImpl implements TranService {
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
 
     @Resource
     private TTranMapper tranMapper;
@@ -56,24 +62,36 @@ public class TranServiceImpl implements TranService {
 
     @Override
     public TTran getTransactionById(Integer id) {
-        return tranMapper.selectByPrimaryKey(id);
+        return findAccessibleTransaction(id);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Integer createTransaction(TTran tTran, List<TTranProduct> products) {
+        if (tTran == null) {
+            throw new IllegalArgumentException("交易信息不能为空");
+        }
+        Integer operatorId = currentUserProvider.getCurrentUserId();
         Date now = new Date();
+        tTran.setStage(TranStage.QUOTATION);
+        tTran.setCreateBy(operatorId);
         tTran.setCreateTime(now);
         tTran.setTranNo(generateTranNo());
 
-        tranMapper.insertSelective(tTran);
+        if (tranMapper.insertSelective(tTran) != 1 || tTran.getId() == null) {
+            throw new RuntimeException("交易创建失败");
+        }
         Integer tranId = tTran.getId();
 
         if (products != null && !products.isEmpty()) {
             for (TTranProduct product : products) {
+                validateTransactionProduct(product);
                 product.setTranId(tranId);
+                product.setCreateBy(operatorId);
                 product.setCreateTime(now);
-                tranProductMapper.insertSelective(product);
+                if (tranProductMapper.insertSelective(product) != 1) {
+                    throw new RuntimeException("交易商品创建失败: " + product.getProductId());
+                }
 
                 int updateCount = productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
                 if (updateCount == 0) {
@@ -81,6 +99,9 @@ public class TranServiceImpl implements TranService {
                 }
             }
         }
+
+        writeHistory(tranId, TranStage.QUOTATION, tTran.getMoney(),
+                tTran.getExpectedDate(), tTran.getCreateBy());
 
         clearTransactionCache(tranId);
         return tranId;
@@ -93,16 +114,17 @@ public class TranServiceImpl implements TranService {
             return false;
         }
 
-        TTran existing = tranMapper.selectByPrimaryKey(tTran.getId());
+        TTran existing = findAccessibleTransaction(tTran.getId());
         if (existing == null) {
             return false;
         }
 
-        // 仅 QUOTATION 阶段可修改金额
-        if (tTran.getMoney() != null && existing.getStage() != TranStage.QUOTATION) {
-            throw new RuntimeException("仅待报价阶段的交易可以修改金额");
+        if (existing.getStage() != TranStage.QUOTATION) {
+            throw new RuntimeException("仅待报价阶段的交易可以修改");
         }
 
+        tTran.setStage(null);
+        tTran.setEditBy(currentUserProvider.getCurrentUserId());
         tTran.setEditTime(new Date());
         int rows = tranMapper.updateByPrimaryKeySelective(tTran);
 
@@ -115,19 +137,21 @@ public class TranServiceImpl implements TranService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean updateTransactionStage(Integer id, TranStage newStage) {
-        TTran existing = tranMapper.selectByPrimaryKey(id);
-        if (existing == null) {
-            throw new RuntimeException("交易记录不存在");
+    public boolean settleTransaction(Integer tranId, BigDecimal amount) {
+        if (tranId == null || amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("交易 ID 和正数结算金额不能为空");
         }
-
-        int result = tranMapper.updateStageAtomic(id, newStage, existing.getStage(), existing.getEditBy());
-        if (result > 0) {
-            writeHistory(id, newStage.getLabel(), existing.getMoney(), existing.getExpectedDate(), existing.getEditBy());
-            clearTransactionCache(id);
-            return true;
+        requireAccessibleTransaction(tranId);
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        int rows = tranMapper.settleAtomic(tranId, amount, operatorId);
+        if (rows != 1) {
+            throw new RuntimeException("当前交易状态不允许结算");
         }
-        throw new RuntimeException("阶段变更失败，当前状态不允许此操作");
+        TTran tran = tranMapper.selectByPrimaryKey(tranId);
+        writeHistory(tranId, TranStage.PENDING, amount,
+                tran != null ? tran.getExpectedDate() : null, operatorId);
+        clearTransactionCache(tranId);
+        return true;
     }
 
     @Override
@@ -135,6 +159,8 @@ public class TranServiceImpl implements TranService {
         if (remark == null || remark.getTranId() == null) {
             return false;
         }
+        requireAccessibleTransaction(remark.getTranId());
+        remark.setCreateBy(currentUserProvider.getCurrentUserId());
         remark.setCreateTime(new Date());
         int result = tranRemarkMapper.insert(remark);
         if (result > 0) {
@@ -146,6 +172,7 @@ public class TranServiceImpl implements TranService {
 
     @Override
     public List<TTranProduct> getTransactionProducts(Integer tranId) {
+        requireAccessibleTransaction(tranId);
         String cacheKey = Constants.CACHE_KEY_TRAN_PRODUCTS + tranId;
         List<TTranProduct> products = redisManager.get(cacheKey);
         if (products != null) {
@@ -161,6 +188,7 @@ public class TranServiceImpl implements TranService {
 
     @Override
     public List<TTranInvoice> getTransactionInvoices(Integer tranId) {
+        requireAccessibleTransaction(tranId);
         String cacheKey = Constants.CACHE_KEY_TRAN_INVOICES + tranId;
         List<TTranInvoice> invoices = redisManager.get(cacheKey);
         if (invoices != null) {
@@ -176,21 +204,30 @@ public class TranServiceImpl implements TranService {
 
     @Override
     public List<TTranRemark> getTransactionRemarks(Integer tranId) {
+        requireAccessibleTransaction(tranId);
         return tranRemarkMapper.selectByTranId(tranId);
     }
 
     @Override
     public List<TTranProduct> getTransactionProductDetails(Integer tranId) {
+        requireAccessibleTransaction(tranId);
         return tranMapper.selectTranProductsByTranId(tranId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteTransactionProducts(Integer tranId) {
+        TTran tran = requireAccessibleTransaction(tranId);
+        if (tran.getStage() != TranStage.QUOTATION) {
+            throw new RuntimeException("仅待报价阶段可以修改交易商品");
+        }
         List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
         if (products != null && !products.isEmpty()) {
             for (TTranProduct product : products) {
-                productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
+                if (productMapper.updateStock(
+                        product.getProductId().longValue(), product.getQuantity()) != 1) {
+                    throw new RuntimeException("恢复产品库存失败: " + product.getProductId());
+                }
             }
         }
 
@@ -202,10 +239,20 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean addTransactionProducts(Integer tranId, List<TTranProduct> products) {
+        TTran tran = requireAccessibleTransaction(tranId);
+        if (tran.getStage() != TranStage.QUOTATION) {
+            throw new RuntimeException("仅待报价阶段可以修改交易商品");
+        }
+        Integer operatorId = currentUserProvider.getCurrentUserId();
         if (products != null && !products.isEmpty()) {
             for (TTranProduct product : products) {
+                validateTransactionProduct(product);
                 product.setTranId(tranId);
-                tranProductMapper.insertSelective(product);
+                product.setCreateBy(operatorId);
+                product.setCreateTime(new Date());
+                if (tranProductMapper.insertSelective(product) != 1) {
+                    throw new RuntimeException("交易商品创建失败: " + product.getProductId());
+                }
 
                 int updateCount = productMapper.updateStock(product.getProductId().longValue(), -product.getQuantity());
                 if (updateCount == 0) {
@@ -219,7 +266,12 @@ public class TranServiceImpl implements TranService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean approveTran(Integer tranId, Boolean approved, String comment, Integer approveBy) {
+    public boolean approveTran(Integer tranId, Boolean approved, String comment) {
+        if (approved == null || comment == null || comment.isBlank()) {
+            throw new IllegalArgumentException("审批结果和审批意见不能为空");
+        }
+        TTran tran = requireAccessibleTransaction(tranId);
+        Integer approveBy = currentUserProvider.getCurrentUserId();
         Date now = new Date();
 
         // 原子 CAS：仅 PENDING 阶段可审批
@@ -230,9 +282,12 @@ public class TranServiceImpl implements TranService {
             throw new RuntimeException("当前交易状态不允许审批操作");
         }
 
-        TTran tran = tranMapper.selectByPrimaryKey(tranId);
-        writeHistory(tranId, (approved ? TranStage.APPROVED : TranStage.LOST).getLabel(),
-                tran != null ? tran.getMoney() : null, null, approveBy);
+        if (!approved) {
+            restoreTransactionStock(tranId);
+        }
+
+        writeHistory(tranId, approved ? TranStage.APPROVED : TranStage.LOST,
+                tran.getMoney(), tran.getExpectedDate(), approveBy);
 
         TTranApprove approve = new TTranApprove();
         approve.setTranId(tranId);
@@ -243,13 +298,16 @@ public class TranServiceImpl implements TranService {
         approve.setCreateTime(now);
         approve.setCreateBy(approveBy);
 
-        tranApproveMapper.insertSelective(approve);
+        if (tranApproveMapper.insertSelective(approve) != 1) {
+            throw new RuntimeException("审批记录创建失败");
+        }
         clearTransactionCache(tranId);
         return true;
     }
 
     @Override
     public TTranApprove getTranApprove(Integer tranId) {
+        requireAccessibleTransaction(tranId);
         return tranApproveMapper.selectByTranId(tranId);
     }
 
@@ -260,27 +318,25 @@ public class TranServiceImpl implements TranService {
             throw new RuntimeException("发票信息不完整");
         }
 
-        // 原子 CAS：仅 APPROVED 阶段可创建发票
-        int stageResult = tranMapper.updateStageAtomic(invoice.getTranId(),
-                TranStage.PAYMENT, TranStage.APPROVED, invoice.getCreateBy());
-        if (stageResult == 0) {
-            throw new RuntimeException("当前交易状态不允许创建发票");
-        }
-
-        List<TTranInvoice> existingInvoices = tranInvoiceMapper.selectByTranId(invoice.getTranId());
-        if (existingInvoices != null && !existingInvoices.isEmpty()) {
-            throw new RuntimeException("该交易已开具发票，不可重复开票");
-        }
-
-        TTran tran = tranMapper.selectByPrimaryKey(invoice.getTranId());
-        if (tran == null) {
-            throw new RuntimeException("交易记录不存在");
-        }
+        TTran tran = requireAccessibleTransaction(invoice.getTranId());
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        invoice.setCreateBy(operatorId);
+        invoice.setEditBy(operatorId);
         if (invoice.getAmount() == null || tran.getMoney() == null) {
             throw new RuntimeException("发票金额和交易金额不能为空");
         }
         if (invoice.getAmount().compareTo(tran.getMoney()) != 0) {
             throw new RuntimeException("发票金额必须等于交易结算金额");
+        }
+        List<TTranInvoice> existingInvoices = tranInvoiceMapper.selectByTranId(invoice.getTranId());
+        if (existingInvoices != null && !existingInvoices.isEmpty()) {
+            throw new RuntimeException("该交易已开具发票，不可重复开票");
+        }
+
+        int stageResult = tranMapper.updateStageAtomic(invoice.getTranId(),
+                TranStage.PAYMENT, TranStage.APPROVED, invoice.getCreateBy());
+        if (stageResult != 1) {
+            throw new RuntimeException("当前交易状态不允许创建发票");
         }
 
         Date now = new Date();
@@ -290,55 +346,57 @@ public class TranServiceImpl implements TranService {
         invoice.setEditTime(now);
 
         int result = tranInvoiceMapper.insertSelective(invoice);
-        if (result > 0) {
-            writeHistory(invoice.getTranId(), TranStage.PAYMENT.getLabel(),
-                    tran != null ? tran.getMoney() : null, null, invoice.getCreateBy());
-            clearTransactionCache(invoice.getTranId());
-            return true;
+        if (result != 1) {
+            throw new RuntimeException("发票创建失败");
         }
-        return false;
+        writeHistory(invoice.getTranId(), TranStage.PAYMENT,
+                tran.getMoney(), tran.getExpectedDate(), invoice.getCreateBy());
+        clearTransactionCache(invoice.getTranId());
+        return true;
     }
 
     @Override
     public List<TTranInvoice> getTranInvoices(Integer tranId) {
+        requireAccessibleTransaction(tranId);
         return tranInvoiceMapper.selectByTranId(tranId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean updateTranInvoiceStatus(Integer invoiceId, String status, Integer updateBy) {
-        if (status == null || status.trim().isEmpty()) {
-            throw new RuntimeException("发票状态不能为空");
-        }
-
-        Date now = new Date();
-        TTranInvoice invoice = new TTranInvoice();
-        invoice.setId(invoiceId);
-        invoice.setStatus(status);
-        invoice.setEditTime(now);
-        invoice.setEditBy(updateBy);
-
-        if ("ISSUED".equals(status)) {
-            invoice.setIssueTime(now);
-        }
-
-        int result = tranInvoiceMapper.updateByPrimaryKeySelective(invoice);
-        if (result == 0) {
-            return false;
+    public boolean updateTranInvoiceStatus(Integer invoiceId, String status) {
+        if (!"ISSUED".equals(status) && !"VOID".equals(status)) {
+            throw new RuntimeException("不支持的发票状态: " + status);
         }
 
         TTranInvoice currentInvoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
         if (currentInvoice == null) {
-            return false;
+            throw new RuntimeException("发票不存在");
+        }
+        requireAccessibleTransaction(currentInvoice.getTranId());
+        Integer updateBy = currentUserProvider.getCurrentUserId();
+        boolean validTransition = "PENDING".equals(currentInvoice.getStatus())
+                || ("ISSUED".equals(currentInvoice.getStatus()) && "VOID".equals(status));
+        if (!validTransition || currentInvoice.getStatus().equals(status)) {
+            throw new RuntimeException("当前发票状态不允许此操作");
+        }
+
+        Date now = new Date();
+        int result = tranInvoiceMapper.updateStatusIfCurrent(invoiceId, currentInvoice.getStatus(),
+                status, "ISSUED".equals(status) ? now : currentInvoice.getIssueTime(), now, updateBy);
+        if (result != 1) {
+            throw new RuntimeException("发票状态已变更，请刷新后重试");
         }
 
         if ("VOID".equals(status)) {
-            // 发票作废：如果交易已进入 PAYMENT 阶段，回退到 APPROVED
-            TTran currentTran = tranMapper.selectByPrimaryKey(currentInvoice.getTranId());
-            if (currentTran != null && currentTran.getStage() == TranStage.PAYMENT) {
-                tranMapper.updateStageAtomic(currentInvoice.getTranId(),
-                        TranStage.APPROVED, TranStage.PAYMENT, updateBy);
+            int stageRows = tranMapper.updateStageAtomic(currentInvoice.getTranId(),
+                    TranStage.APPROVED, TranStage.PAYMENT, updateBy);
+            if (stageRows != 1) {
+                throw new RuntimeException("交易已进入后续状态，不允许作废发票");
             }
+            TTran tran = tranMapper.selectByPrimaryKey(currentInvoice.getTranId());
+            writeHistory(currentInvoice.getTranId(), TranStage.APPROVED,
+                    tran != null ? tran.getMoney() : null,
+                    tran != null ? tran.getExpectedDate() : null, updateBy);
         }
 
         clearTransactionCache(currentInvoice.getTranId());
@@ -348,36 +406,14 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteTransaction(Integer id) {
-        TTran transaction = tranMapper.selectByPrimaryKey(id);
+        requireAccessibleTransaction(id);
+        TTran transaction = tranMapper.selectByPrimaryKeyForUpdate(id);
         if (transaction == null) {
             return false;
         }
-
-        if (transaction.getStage() != TranStage.QUOTATION) {
-            throw new RuntimeException("只有待报价状态的交易才能删除");
-        }
-
-        // 恢复库存
-        List<TTranProduct> tranProducts = tranProductMapper.selectByTranId(id);
-        if (tranProducts != null && !tranProducts.isEmpty()) {
-            for (TTranProduct product : tranProducts) {
-                productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
-            }
-            tranProductMapper.deleteByTranId(id);
-        }
-
-        // 级联删除关联记录
-        tranRemarkMapper.deleteByTranId(id);
-        tranInvoiceMapper.deleteByTranId(id);
-        tranApproveMapper.deleteByTranId(id);
-        paymentMapper.deleteByTranId(id);
-
-        int result = tranMapper.deleteByPrimaryKey(id);
-        if (result > 0) {
-            clearTransactionCache(id);
-            return true;
-        }
-        return false;
+        requireDeletable(transaction);
+        deleteLockedTransaction(id);
+        return true;
     }
 
     @Override
@@ -390,36 +426,55 @@ public class TranServiceImpl implements TranService {
             throw new RuntimeException("单次批量删除最多支持" + Constants.MAX_BATCH_SIZE + "条记录");
         }
 
-        for (Integer id : ids) {
-            TTran transaction = tranMapper.selectByPrimaryKey(id);
+        List<Integer> lockedIds = ids.stream().distinct().sorted().toList();
+        lockedIds.forEach(this::requireAccessibleTransaction);
+        for (Integer id : lockedIds) {
+            TTran transaction = tranMapper.selectByPrimaryKeyForUpdate(id);
             if (transaction == null) {
-                continue;
+                throw new RuntimeException("交易不存在: " + id);
             }
-            if (transaction.getStage() != TranStage.QUOTATION) {
-                continue;
-            }
-
-            List<TTranProduct> tranProducts = tranProductMapper.selectByTranId(id);
-            if (tranProducts != null && !tranProducts.isEmpty()) {
-                for (TTranProduct product : tranProducts) {
-                    productMapper.updateStock(product.getProductId().longValue(), product.getQuantity());
-                }
-                tranProductMapper.deleteByTranId(id);
-            }
-
-            tranRemarkMapper.deleteByTranId(id);
-            tranInvoiceMapper.deleteByTranId(id);
-            tranApproveMapper.deleteByTranId(id);
-            clearTransactionCache(id);
+            requireDeletable(transaction);
         }
 
-        int result = tranMapper.deleteByIds(ids);
-        return result > 0;
+        for (Integer id : lockedIds) {
+            deleteLockedTransaction(id);
+        }
+        return true;
+    }
+
+    private void requireDeletable(TTran transaction) {
+        if (transaction.getStage() != TranStage.QUOTATION) {
+            throw new RuntimeException("只有待报价状态的交易才能删除: " + transaction.getId());
+        }
+    }
+
+    private void deleteLockedTransaction(Integer id) {
+        List<TTranProduct> products = tranProductMapper.selectByTranId(id);
+        if (products != null) {
+            for (TTranProduct product : products) {
+                int rows = productMapper.updateStock(
+                        product.getProductId().longValue(), product.getQuantity());
+                if (rows != 1) {
+                    throw new RuntimeException("恢复产品库存失败: " + product.getProductId());
+                }
+            }
+        }
+        tranProductMapper.deleteByTranId(id);
+        tranRemarkMapper.deleteByTranId(id);
+        tranInvoiceMapper.deleteByTranId(id);
+        tranApproveMapper.deleteByTranId(id);
+        paymentMapper.deleteByTranId(id);
+        if (tranMapper.deleteByPrimaryKey(id) != 1) {
+            throw new RuntimeException("交易删除失败: " + id);
+        }
+        clearTransactionCache(id);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean resubmitTransaction(Integer tranId, Integer userId) {
+    public boolean resubmitTransaction(Integer tranId) {
+        TTran tran = requireAccessibleTransaction(tranId);
+        Integer userId = currentUserProvider.getCurrentUserId();
         // 原子 CAS：仅 LOST 阶段可重新提交
         int stageResult = tranMapper.updateStageAtomic(tranId,
                 TranStage.QUOTATION, TranStage.LOST, userId);
@@ -427,10 +482,13 @@ public class TranServiceImpl implements TranService {
             throw new RuntimeException("当前交易状态不允许重新提交");
         }
 
+        deductTransactionStock(tranId);
+
         // 清除旧的审批记录
         tranApproveMapper.deleteByTranId(tranId);
 
-        writeHistory(tranId, TranStage.QUOTATION.getLabel(), null, null, userId);
+        writeHistory(tranId, TranStage.QUOTATION,
+                tran.getMoney(), tran.getExpectedDate(), userId);
         clearTransactionCache(tranId);
         return true;
     }
@@ -442,7 +500,7 @@ public class TranServiceImpl implements TranService {
             return false;
         }
 
-        TTran existing = tranMapper.selectByPrimaryKey(tran.getId());
+        TTran existing = findAccessibleTransaction(tran.getId());
         if (existing == null) {
             return false;
         }
@@ -452,7 +510,9 @@ public class TranServiceImpl implements TranService {
             throw new RuntimeException("仅待报价阶段的交易可以修改产品和金额");
         }
 
+        tran.setEditBy(currentUserProvider.getCurrentUserId());
         tran.setEditTime(new Date());
+        tran.setStage(null);
         int rows = tranMapper.updateByPrimaryKeySelective(tran);
         if (rows == 0) {
             return false;
@@ -477,11 +537,7 @@ public class TranServiceImpl implements TranService {
     @Override
     @Deprecated
     public boolean updateInvoiceStatus(Integer id, String status) {
-        TTranInvoice invoice = tranInvoiceMapper.selectByPrimaryKey(id);
-        if (invoice == null) {
-            return false;
-        }
-        return updateTranInvoiceStatus(id, status, invoice.getEditBy());
+        return updateTranInvoiceStatus(id, status);
     }
 
     @Override
@@ -493,41 +549,51 @@ public class TranServiceImpl implements TranService {
         if (payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("支付金额必须大于0");
         }
+        validatePaymentMethod(payment.getPaymentMethod());
+        validatePaymentType(payment.getPaymentType());
 
-        TTran tran = tranMapper.selectByPrimaryKey(payment.getTranId());
+        requireAccessibleTransaction(payment.getTranId());
+        TTran tran = tranMapper.selectByPrimaryKeyForUpdate(payment.getTranId());
         if (tran == null) {
             throw new RuntimeException("交易记录不存在");
         }
+        payment.setCreateBy(currentUserProvider.getCurrentUserId());
         if (tran.getStage() != TranStage.PAYMENT) {
             throw new RuntimeException("当前交易状态不允许收款");
+        }
+        if (tran.getMoney() == null || tran.getMoney().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("交易金额无效，无法收款");
+        }
+
+        List<TPayment> existingPayments = paymentMapper.selectByTranId(payment.getTranId());
+        BigDecimal paidAmount = (existingPayments == null ? List.<TPayment>of() : existingPayments).stream()
+                .filter(existing -> "COMPLETED".equals(existing.getPaymentStatus()))
+                .filter(existing -> !PaymentType.REFUND.name().equals(existing.getPaymentType()))
+                .map(TPayment::getAmount)
+                .filter(amount -> amount != null && amount.compareTo(BigDecimal.ZERO) > 0)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalAfterPayment = paidAmount.add(payment.getAmount());
+        if (totalAfterPayment.compareTo(tran.getMoney()) > 0) {
+            throw new RuntimeException("收款总额不能超过交易金额");
         }
 
         Date now = new Date();
         payment.setPaymentNo(generatePaymentNo());
-        if (payment.getPaymentStatus() == null) {
-            payment.setPaymentStatus("COMPLETED");
-        }
-        if (payment.getPaymentTime() == null && "COMPLETED".equals(payment.getPaymentStatus())) {
-            payment.setPaymentTime(now);
-        }
+        payment.setPaymentStatus("COMPLETED");
+        payment.setPaymentTime(now);
         payment.setCreateTime(now);
 
-        paymentMapper.insertSelective(payment);
+        if (paymentMapper.insertSelective(payment) != 1) {
+            throw new RuntimeException("收款记录创建失败");
+        }
 
-        // 检查是否已收齐：SUM(已到账金额) >= 交易金额
-        if ("COMPLETED".equals(payment.getPaymentStatus())) {
-            List<TPayment> allPayments = paymentMapper.selectByTranId(payment.getTranId());
-            BigDecimal totalPaid = allPayments.stream()
-                    .filter(p -> "COMPLETED".equals(p.getPaymentStatus()))
-                    .map(TPayment::getAmount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            if (totalPaid.compareTo(tran.getMoney()) >= 0) {
-                int rows = tranMapper.updateStageToCompleted(payment.getTranId(), payment.getCreateBy());
-                if (rows > 0) {
-                    writeHistory(payment.getTranId(), "COMPLETED", tran.getMoney(), null, payment.getCreateBy());
-                }
+        if (totalAfterPayment.compareTo(tran.getMoney()) == 0) {
+            int rows = tranMapper.updateStageToCompleted(payment.getTranId(), payment.getCreateBy());
+            if (rows != 1) {
+                throw new RuntimeException("交易完成状态更新失败");
             }
+            writeHistory(payment.getTranId(), TranStage.COMPLETED,
+                    tran.getMoney(), tran.getExpectedDate(), payment.getCreateBy());
         }
 
         clearTransactionCache(payment.getTranId());
@@ -536,7 +602,7 @@ public class TranServiceImpl implements TranService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TPayment refundPayment(Integer paymentId, Integer userId) {
+    public TPayment refundPayment(Integer paymentId) {
         TPayment original = paymentMapper.selectByPrimaryKey(paymentId);
         if (original == null) {
             throw new RuntimeException("支付记录不存在");
@@ -544,45 +610,58 @@ public class TranServiceImpl implements TranService {
         if (!"COMPLETED".equals(original.getPaymentStatus())) {
             throw new RuntimeException("只能对已到账的收款进行退款");
         }
+        if (PaymentType.REFUND.name().equals(original.getPaymentType())) {
+            throw new RuntimeException("退款记录不能再次退款");
+        }
 
-        TTran tran = tranMapper.selectByPrimaryKey(original.getTranId());
-        if (tran == null) {
-            throw new RuntimeException("交易记录不存在");
+        TTran tran = requireAccessibleTransaction(original.getTranId());
+        Integer userId = currentUserProvider.getCurrentUserId();
+        List<TPayment> transactionPayments = paymentMapper.selectByTranId(original.getTranId());
+        List<TPayment> completedPayments = (transactionPayments == null
+                ? List.<TPayment>of() : transactionPayments).stream()
+                .filter(payment -> "COMPLETED".equals(payment.getPaymentStatus()))
+                .filter(payment -> !PaymentType.REFUND.name().equals(payment.getPaymentType()))
+                .toList();
+        if (tran.getStage() != TranStage.COMPLETED
+                || completedPayments.size() != 1
+                || !paymentId.equals(completedPayments.get(0).getId())
+                || original.getAmount().compareTo(tran.getMoney()) != 0) {
+            throw new RuntimeException("当前仅支持单笔全额支付的整单退款");
         }
 
         Date now = new Date();
+
+        int stageRows = tranMapper.updateStageAtomic(original.getTranId(),
+                TranStage.CANCELLED, TranStage.COMPLETED, userId);
+        if (stageRows != 1) {
+            throw new RuntimeException("交易已退款或状态不允许退款");
+        }
+
+        int marked = paymentMapper.markRefundedIfCompleted(paymentId, now, userId);
+        if (marked != 1) {
+            throw new RuntimeException("该收款已退款或状态已变更");
+        }
 
         // 创建退款记录（负金额）
         TPayment refund = new TPayment();
         refund.setTranId(original.getTranId());
         refund.setAmount(original.getAmount().negate());
         refund.setPaymentMethod(original.getPaymentMethod());
-        refund.setPaymentType("REFUND");
+        refund.setPaymentType(PaymentType.REFUND.name());
         refund.setPaymentStatus("COMPLETED");
         refund.setPaymentTime(now);
         refund.setPaymentNo(generatePaymentNo());
         refund.setCreateTime(now);
         refund.setCreateBy(userId);
         refund.setRemark("退款 - 交易取消，原收款ID: " + original.getId());
-        paymentMapper.insertSelective(refund);
-
-        // 标记原收款为已退款
-        original.setPaymentStatus("REFUNDED");
-        original.setEditTime(now);
-        original.setEditBy(userId);
-        paymentMapper.updateByPrimaryKeySelective(original);
-
-        // 恢复库存
-        List<TTranProduct> products = tranProductMapper.selectByTranId(original.getTranId());
-        if (products != null) {
-            for (TTranProduct p : products) {
-                productMapper.updateStock(p.getProductId().longValue(), p.getQuantity());
-            }
+        if (paymentMapper.insertSelective(refund) != 1) {
+            throw new RuntimeException("退款记录创建失败");
         }
 
-        // 回退到 PAYMENT 阶段（从 COMPLETED）
-        tranMapper.updateStageAtomic(original.getTranId(), TranStage.PAYMENT, TranStage.COMPLETED, userId);
-        writeHistory(original.getTranId(), "PAYMENT (退款)", tran.getMoney(), null, userId);
+        restoreTransactionStock(original.getTranId());
+
+        writeHistory(original.getTranId(), TranStage.CANCELLED,
+                tran.getMoney(), tran.getExpectedDate(), userId);
 
         clearTransactionCache(original.getTranId());
         return refund;
@@ -590,18 +669,96 @@ public class TranServiceImpl implements TranService {
 
     @Override
     public List<TPayment> getTransactionPayments(Integer tranId) {
+        requireAccessibleTransaction(tranId);
         return paymentMapper.selectByTranId(tranId);
     }
 
-    private void writeHistory(Integer tranId, String stage, BigDecimal money, Date expectedDate, Integer userId) {
+    private void restoreTransactionStock(Integer tranId) {
+        List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
+        if (products == null) {
+            return;
+        }
+        for (TTranProduct product : products) {
+            if (productMapper.updateStock(
+                    product.getProductId().longValue(), product.getQuantity()) != 1) {
+                throw new RuntimeException("恢复产品库存失败: " + product.getProductId());
+            }
+        }
+    }
+
+    private void deductTransactionStock(Integer tranId) {
+        List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
+        if (products == null) {
+            return;
+        }
+        for (TTranProduct product : products) {
+            if (productMapper.updateStock(
+                    product.getProductId().longValue(), -product.getQuantity()) != 1) {
+                throw new RuntimeException("产品库存不足: " + product.getProductId());
+            }
+        }
+    }
+
+    private void validateTransactionProduct(TTranProduct product) {
+        if (product == null || product.getProductId() == null
+                || product.getQuantity() == null || product.getQuantity() <= 0
+                || product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("交易商品、正数数量和非负价格不能为空");
+        }
+    }
+
+    private TTran findAccessibleTransaction(Integer tranId) {
+        Integer scopeUserId = currentUserProvider.getDataScopeUserId();
+        return scopeUserId == null
+                ? tranMapper.selectByPrimaryKey(tranId)
+                : tranMapper.selectScopedById(tranId, scopeUserId);
+    }
+
+    private TTran requireAccessibleTransaction(Integer tranId) {
+        TTran transaction = findAccessibleTransaction(tranId);
+        if (transaction == null) {
+            throw new RuntimeException("交易不存在或无权访问");
+        }
+        return transaction;
+    }
+
+    private void writeHistory(Integer tranId, TranStage stage, BigDecimal money, Date expectedDate, Integer userId) {
         TTranHistory history = new TTranHistory();
         history.setTranId(tranId);
-        history.setStage(stage);
+        history.setStage(stage.name());
         history.setMoney(money);
         history.setExpectedDate(expectedDate);
         history.setCreateTime(new Date());
         history.setCreateBy(userId);
-        tranHistoryMapper.insert(history);
+        if (tranHistoryMapper.insert(history) != 1) {
+            throw new RuntimeException("交易历史记录创建失败");
+        }
+    }
+
+    private void validatePaymentMethod(String paymentMethod) {
+        if (paymentMethod == null) {
+            throw new IllegalArgumentException("支付方式不能为空");
+        }
+        try {
+            PaymentMethod.valueOf(paymentMethod);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("不支持的支付方式: " + paymentMethod);
+        }
+    }
+
+    private void validatePaymentType(String paymentType) {
+        if (paymentType == null) {
+            throw new IllegalArgumentException("支付类型不能为空");
+        }
+        PaymentType type;
+        try {
+            type = PaymentType.valueOf(paymentType);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("不支持的支付类型: " + paymentType);
+        }
+        if (type == PaymentType.REFUND) {
+            throw new IllegalArgumentException("普通收款不能使用退款类型");
+        }
     }
 
     private String generatePaymentNo() {

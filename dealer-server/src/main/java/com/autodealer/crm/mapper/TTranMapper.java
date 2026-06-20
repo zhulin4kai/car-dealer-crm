@@ -1,5 +1,6 @@
 package com.autodealer.crm.mapper;
 
+import com.autodealer.crm.commons.DataScope;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.model.TTranProduct;
@@ -18,6 +19,11 @@ public interface TTranMapper {
 
     TTran selectByPrimaryKey(Integer id);
 
+    TTran selectByPrimaryKeyForUpdate(Integer id);
+
+    TTran selectScopedById(@Param("id") Integer id,
+                           @Param("dataScopeUserId") Integer dataScopeUserId);
+
     int updateByPrimaryKeySelective(TTran record);
 
     int updateByPrimaryKey(TTran record);
@@ -33,6 +39,7 @@ public interface TTranMapper {
     /**
      * 根据查询条件查询交易列表
      */
+    @DataScope(tableAlias = "t", tableField = "create_by")
     List<TTran> selectByQuery(TranQuery query);
       /**
      * 根据交易ID查询交易产品列表（包含产品名称）
@@ -66,6 +73,10 @@ public interface TTranMapper {
     int updateStageAtomic(@Param("id") Integer id, @Param("newStage") TranStage newStage,
                           @Param("expectedStage") TranStage expectedStage,
                           @Param("editBy") Integer editBy);
+
+    int settleAtomic(@Param("id") Integer id,
+                     @Param("amount") BigDecimal amount,
+                     @Param("editBy") Integer editBy);
 
     /**
      * 原子更新交易阶段为已完成，需验证已收款 >= 交易金额

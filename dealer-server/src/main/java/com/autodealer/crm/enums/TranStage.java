@@ -9,7 +9,8 @@ public enum TranStage {
     APPROVED("已审批"),
     PAYMENT("待收款"),
     COMPLETED("已完成"),
-    LOST("丢失关闭");
+    LOST("丢失关闭"),
+    CANCELLED("已取消");
 
     private final String label;
 

@@ -5,6 +5,7 @@ export const TRAN_STAGE = {
   PAYMENT: 'PAYMENT',
   COMPLETED: 'COMPLETED',
   LOST: 'LOST',
+  CANCELLED: 'CANCELLED',
 } as const
 
 export type TranStage = (typeof TRAN_STAGE)[keyof typeof TRAN_STAGE]
@@ -18,6 +19,7 @@ export const TRAN_STAGE_META = {
   [TRAN_STAGE.PAYMENT]: { type: 'warning', text: '待收款' },
   [TRAN_STAGE.COMPLETED]: { type: 'success', text: '已完成' },
   [TRAN_STAGE.LOST]: { type: 'danger', text: '丢失关闭' },
+  [TRAN_STAGE.CANCELLED]: { type: 'danger', text: '已取消' },
 } as const satisfies Record<TranStage, { type: TranStageTagType; text: string }>
 
 export const TRAN_STAGE_OPTIONS = Object.entries(TRAN_STAGE_META).map(([value, meta]) => ({

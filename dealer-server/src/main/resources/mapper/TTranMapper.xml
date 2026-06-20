@@ -77,6 +77,9 @@
       <if test="createBy != null">
         AND t.create_by = #{createBy}
       </if>
+      <if test="dataScopeUserId != null">
+        AND t.create_by = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
       <if test="productId != null">
         AND tp.product_id = #{productId}
       </if>
@@ -95,6 +98,18 @@
         sum(money)
     from t_tran
     where stage = #{successStage,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectScopedById" resultMap="BaseResultMap">
+    SELECT
+    <include refid="Base_Column_List" />
+    FROM t_tran t
+    LEFT JOIN t_customer c ON t.customer_id = c.id
+    LEFT JOIN t_clue cl ON c.clue_id = cl.id
+    WHERE t.id = #{id,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      AND t.create_by = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </select>
 
   <select id="selectByTotalTranAmount" resultType="java.math.BigDecimal">
@@ -125,6 +140,16 @@
     LEFT JOIN t_customer c ON t.customer_id = c.id
     LEFT JOIN t_clue cl ON c.clue_id = cl.id
     where t.id = #{id,jdbcType=INTEGER}
+  </select>
+
+  <select id="selectByPrimaryKeyForUpdate" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from t_tran t
+    left join t_customer c on t.customer_id = c.id
+    left join t_clue cl on c.clue_id = cl.id
+    where t.id = #{id,jdbcType=INTEGER}
+    for update
   </select>
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TTran" useGeneratedKeys="true">
@@ -338,7 +363,7 @@
     SELECT COUNT(*)
     FROM t_tran
     WHERE customer_id = #{customerId,jdbcType=INTEGER}
-      AND stage NOT IN ('COMPLETED', 'LOST')
+      AND stage NOT IN ('COMPLETED', 'LOST', 'CANCELLED')
   </select>
 
   <!-- 原子更新交易阶段 (CAS: Compare And Swap) -->
@@ -349,6 +374,16 @@
         edit_by = #{editBy,jdbcType=INTEGER}
     WHERE id = #{id,jdbcType=INTEGER}
       AND stage = #{expectedStage,jdbcType=VARCHAR}
+  </update>
+
+  <update id="settleAtomic">
+    UPDATE t_tran
+    SET money = #{amount,jdbcType=DECIMAL},
+        stage = 'PENDING',
+        edit_time = NOW(),
+        edit_by = #{editBy,jdbcType=INTEGER}
+    WHERE id = #{id,jdbcType=INTEGER}
+      AND stage = 'QUOTATION'
   </update>
 
   <!-- 原子完成交易：仅当已收款 >= 交易金额时更新 -->

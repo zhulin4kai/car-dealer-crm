@@ -91,6 +91,12 @@
         WHERE id = #{id}
     </update>
 
+    <update id="markRefundedIfCompleted">
+        UPDATE t_payment
+        SET payment_status = 'REFUNDED', edit_time = #{editTime}, edit_by = #{editBy}
+        WHERE id = #{id} AND payment_status = 'COMPLETED'
+    </update>
+
     <delete id="deleteByPrimaryKey">
         DELETE FROM t_payment WHERE id = #{id}
     </delete>

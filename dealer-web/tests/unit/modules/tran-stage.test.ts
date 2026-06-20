@@ -17,6 +17,7 @@ describe('tran stage model', () => {
       { value: TRAN_STAGE.PAYMENT, label: '待收款' },
       { value: TRAN_STAGE.COMPLETED, label: '已完成' },
       { value: TRAN_STAGE.LOST, label: '丢失关闭' },
+      { value: TRAN_STAGE.CANCELLED, label: '已取消' },
     ])
   })
 
@@ -29,6 +30,8 @@ describe('tran stage model', () => {
   it('maps stage display metadata', () => {
     expect(getTranStageType(TRAN_STAGE.COMPLETED)).toBe('success')
     expect(getTranStageText(TRAN_STAGE.LOST)).toBe('丢失关闭')
+    expect(getTranStageType(TRAN_STAGE.CANCELLED)).toBe('danger')
+    expect(getTranStageText(TRAN_STAGE.CANCELLED)).toBe('已取消')
     expect(getTranStageText('CUSTOM')).toBe('CUSTOM')
   })
 })

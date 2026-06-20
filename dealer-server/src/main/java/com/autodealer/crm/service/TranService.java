@@ -40,14 +40,8 @@ public interface TranService {
      * @return 是否更新成功
      */
     boolean updateTransaction(TTran transaction);
-    
-    /**
-     * 更新交易阶段
-     * @param id 交易ID
-     * @param stage 新阶段
-     * @return 是否更新成功
-     */
-    boolean updateTransactionStage(Integer id, TranStage stage);
+
+    boolean settleTransaction(Integer tranId, java.math.BigDecimal amount);
     
     /**
      * 添加交易跟踪记录
@@ -123,7 +117,7 @@ public interface TranService {
      * @param approveBy 审批人
      * @return 是否审批成功
      */
-    boolean approveTran(Integer tranId, Boolean approved, String comment, Integer approveBy);
+    boolean approveTran(Integer tranId, Boolean approved, String comment);
     
     /**
      * 获取交易审批信息
@@ -152,7 +146,7 @@ public interface TranService {
      * @param updateBy 更新人
      * @return 是否更新成功
      */
-    boolean updateTranInvoiceStatus(Integer invoiceId, String status, Integer updateBy);
+    boolean updateTranInvoiceStatus(Integer invoiceId, String status);
     
     /**
      * 删除交易
@@ -174,7 +168,7 @@ public interface TranService {
      * @param userId 操作人ID
      * @return 是否重新提交成功
      */
-    boolean resubmitTransaction(Integer tranId, Integer userId);
+    boolean resubmitTransaction(Integer tranId);
 
     /**
      * 更新交易及产品信息（在同一事务中）
@@ -192,7 +186,7 @@ public interface TranService {
     /**
      * 退款（交易取消，恢复库存）
      */
-    TPayment refundPayment(Integer paymentId, Integer userId);
+    TPayment refundPayment(Integer paymentId);
 
     /**
      * 获取交易收款记录

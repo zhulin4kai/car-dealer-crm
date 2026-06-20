@@ -135,10 +135,18 @@
     </Card>
 
     <!-- Payment Records -->
-    <Card class="mb-5" v-if="tranDetail.stage === TRAN_STAGE.PAYMENT || tranDetail.stage === TRAN_STAGE.COMPLETED">
+    <Card
+      class="mb-5"
+      v-if="tranDetail.stage === TRAN_STAGE.PAYMENT
+        || tranDetail.stage === TRAN_STAGE.COMPLETED
+        || tranDetail.stage === TRAN_STAGE.CANCELLED"
+    >
       <CardHeader>
         <CardTitle>收款记录</CardTitle>
-        <span class="text-sm text-muted-foreground">
+        <span v-if="tranDetail.stage === TRAN_STAGE.CANCELLED" class="text-sm text-muted-foreground">
+          交易已取消，已退款: &yen;{{ totalRefunded.toFixed(2) }}
+        </span>
+        <span v-else class="text-sm text-muted-foreground">
           已收: &yen;{{ totalPaid.toFixed(2) }} / 应收: &yen;{{ tranDetail.amount }}
           <span v-if="balance > 0" class="text-red-500 ml-2">待收: &yen;{{ balance.toFixed(2) }}</span>
           <span v-else class="text-green-600 ml-2">已收齐</span>
@@ -171,7 +179,7 @@
               <TableCell>{{ pay.paymentTime || pay.createTime }}</TableCell>
               <TableCell>
                 <Button
-                  v-if="pay.paymentStatus === 'COMPLETED' && pay.paymentType !== 'REFUND'"
+                  v-if="canRefundPayment(pay)"
                   variant="destructive"
                   size="sm"
                   @click="handleRefund(pay.id)"
@@ -191,7 +199,14 @@
         <div class="space-y-3">
           <div>
             <Label>收款金额</Label>
-            <Input v-model.number="collectionForm.amount" type="number" placeholder="请输入收款金额" />
+            <Input
+              v-model.number="collectionForm.amount"
+              type="number"
+              :min="0.01"
+              :max="balance"
+              step="0.01"
+              placeholder="请输入收款金额"
+            />
           </div>
           <div>
             <Label>支付方式</Label>
@@ -521,9 +536,26 @@ const totalPaid = computed(() => {
     .reduce((sum, p) => sum + (p.amount || 0), 0)
 })
 
-const balance = computed(() => {
-  return (tranDetail.value.amount || 0) - totalPaid.value
+const totalRefunded = computed(() => {
+  return Math.abs(paymentList.value
+    .filter(p => p.paymentStatus === 'COMPLETED' && p.paymentType === 'REFUND')
+    .reduce((sum, p) => sum + (p.amount || 0), 0))
 })
+
+const balance = computed(() => {
+  return Math.max((tranDetail.value.amount || 0) - totalPaid.value, 0)
+})
+
+const completedReceipts = computed(() => paymentList.value.filter(
+  p => p.paymentStatus === 'COMPLETED' && p.paymentType !== 'REFUND'
+))
+
+const canRefundPayment = (payment) => {
+  return tranDetail.value.stage === TRAN_STAGE.COMPLETED
+    && completedReceipts.value.length === 1
+    && completedReceipts.value[0].id === payment.id
+    && Number(payment.amount) === Number(tranDetail.value.amount)
+}
 
 const getPaymentMethodText = (m) => PAYMENT_METHODS.find(p => p.value === m)?.label || m
 const getPaymentTypeText = (t) => PAYMENT_TYPES.find(p => p.value === t)?.label || t
@@ -550,6 +582,10 @@ const fetchPaymentList = async () => {
 const submitCollection = async () => {
   if (!collectionForm.value.amount || collectionForm.value.amount <= 0) {
     messageTip('请输入有效的收款金额', 'error')
+    return
+  }
+  if (collectionForm.value.amount > balance.value) {
+    messageTip('收款金额不能超过剩余应收金额', 'error')
     return
   }
   if (!collectionForm.value.paymentMethod) {

@@ -454,6 +454,8 @@ VALUES (41, 'appellation', '女士', 3, NULL);
 INSERT INTO `t_dic_value`
 VALUES (42, 'stage', 'COMPLETED', 5, '已完成');
 INSERT INTO `t_dic_value`
+VALUES (66, 'stage', 'CANCELLED', 7, '已取消');
+INSERT INTO `t_dic_value`
 VALUES (43, 'source', '官方网站', 5, NULL);
 INSERT INTO `t_dic_value`
 VALUES (44, 'source', '公众号', 7, NULL);

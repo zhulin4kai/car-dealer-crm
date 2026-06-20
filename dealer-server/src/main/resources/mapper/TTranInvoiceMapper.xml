@@ -237,6 +237,16 @@
     where id = #{id,jdbcType=INTEGER}
   </update>
 
+  <update id="updateStatusIfCurrent">
+    update t_tran_invoice
+    set status = #{newStatus,jdbcType=VARCHAR},
+        issue_time = #{issueTime,jdbcType=TIMESTAMP},
+        edit_time = #{editTime,jdbcType=TIMESTAMP},
+        edit_by = #{editBy,jdbcType=INTEGER}
+    where id = #{id,jdbcType=INTEGER}
+      and status = #{expectedStatus,jdbcType=VARCHAR}
+  </update>
+
   <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TTranInvoice">
     update t_tran_invoice
     set tran_id = #{tranId,jdbcType=INTEGER},
