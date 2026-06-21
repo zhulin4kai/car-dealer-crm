@@ -1,11 +1,14 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.config.security.CurrentUserProvider;
+import com.autodealer.crm.dto.CreateActivityRemarkRequest;
 import com.autodealer.crm.model.TActivityRemark;
 import com.autodealer.crm.query.ActivityRemarkQuery;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.ActivityRemarkService;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,12 +18,17 @@ public class ActivityRemarkController {
     @Resource
     private ActivityRemarkService activityRemarkService;
 
+    @Resource
+    private CurrentUserProvider currentUserProvider;
+
     @PostMapping(value = "/api/activity/remark")
     @PreAuthorize("hasAuthority('activity:add')")
-    public R addActivityRemark(@RequestBody ActivityRemarkQuery activityRemarkQuery) {
-        //axios提交post请求，提交过来的是json数据，使用@RequestBody注解接收
-        int save = activityRemarkService.saveActivityRemark(activityRemarkQuery);
-        return save >= 1 ? R.OK( ) : R.FAIL();
+    public R addActivityRemark(@Valid @RequestBody CreateActivityRemarkRequest req) {
+        ActivityRemarkQuery query = new ActivityRemarkQuery();
+        query.setActivityId(req.getActivityId());
+        query.setNoteContent(req.getNoteContent());
+        int save = activityRemarkService.saveActivityRemark(query);
+        return save >= 1 ? R.OK() : R.FAIL();
     }
 
     @GetMapping(value = "/api/activity/remark")
@@ -38,7 +46,6 @@ public class ActivityRemarkController {
         return R.OK(pageInfo);
     }
 
-
     @GetMapping(value = "/api/activity/remark/{id}")
     @PreAuthorize("hasAuthority('activity:view')")
     public R activityRemarkPage(@PathVariable(value = "id") Integer id) {
@@ -49,15 +56,14 @@ public class ActivityRemarkController {
     @PutMapping(value = "/api/activity/remark")
     @PreAuthorize("hasAuthority('activity:edit')")
     public R editActivityRemark(@RequestBody ActivityRemarkQuery activityRemarkQuery) {
-        //axios提交post请求，提交过来的是json数据，使用@RequestBody注解接收
         int update = activityRemarkService.updateActivityRemark(activityRemarkQuery);
-        return update >= 1 ? R.OK( ) : R.FAIL();
+        return update >= 1 ? R.OK() : R.FAIL();
     }
 
     @DeleteMapping(value = "/api/activity/remark/{id}")
     @PreAuthorize("hasAuthority('activity:delete')")
     public R delActivityRemark(@PathVariable(value = "id") Integer id) {
-        int del =activityRemarkService.delActivityRemarkById(id);
-        return del >= 1 ? R.OK( ) : R.FAIL();
+        int del = activityRemarkService.delActivityRemarkById(id);
+        return del >= 1 ? R.OK() : R.FAIL();
     }
 }

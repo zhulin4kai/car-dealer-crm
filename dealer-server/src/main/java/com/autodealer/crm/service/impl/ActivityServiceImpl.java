@@ -12,6 +12,8 @@ import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.autodealer.crm.exception.BusinessException;
+import com.autodealer.crm.result.CodeEnum;
 
 import java.util.Date;
 import java.util.List;
@@ -104,7 +106,7 @@ public class ActivityServiceImpl implements ActivityService {
         TActivity activity = tActivityMapper.selectDetailByPrimaryKey(
                 id, currentUserProvider.getDataScopeUserId());
         if (activity == null) {
-            throw new RuntimeException("市场活动不存在或无权访问");
+            throw new BusinessException(CodeEnum.NOT_FOUND, "市场活动不存在或无权访问");
         }
         return activity;
     }

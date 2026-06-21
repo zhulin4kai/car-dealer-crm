@@ -2,27 +2,32 @@ package com.autodealer.crm.result;
 
 import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 import com.alibaba.excel.annotation.ExcelProperty;
-import com.autodealer.crm.config.converter.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.Date;
 
+/**
+ * 线索 Excel 导入原始数据 DTO。
+ *
+ * <p>字典和商品相关列保留原始文本，不在此阶段做 ID 转换。
+ * 转换和校验由 {@link com.autodealer.crm.service.ClueImportValidator} 统一完成。
+ */
 @ExcelIgnoreUnannotated
 @Data
-public class ClueExcel {
+public class ClueExcelRaw {
 
     @ExcelProperty(value = "负责人")
-    private Integer ownerId;
+    private String ownerName;
 
     @ExcelProperty(value = "所属活动")
-    private Integer activityId;
+    private String activityName;
 
     @ExcelProperty(value = "姓名")
     private String fullName;
 
-    @ExcelProperty(value = "称呼", converter = AppellationConverter.class)
-    private Integer appellation;
+    @ExcelProperty(value = "称呼")
+    private String appellation;
 
     @ExcelProperty(value = "手机号")
     private String phone;
@@ -48,20 +53,20 @@ public class ClueExcel {
     @ExcelProperty(value = "地址")
     private String address;
 
-    @ExcelProperty(value = "是否贷款", converter = NeedLoanConverter.class)
-    private Integer needLoan;
+    @ExcelProperty(value = "是否贷款")
+    private String needLoan;
 
-    @ExcelProperty(value = "意向状态", converter = IntentionStateConverter.class)
-    private Integer intentionState;
+    @ExcelProperty(value = "意向状态")
+    private String intentionState;
 
-    @ExcelProperty(value = "意向产品", converter = IntentionProductConverter.class)
-    private Integer intentionProduct;
+    @ExcelProperty(value = "意向产品")
+    private String intentionProduct;
 
-    @ExcelProperty(value = "线索状态", converter = StateConverter.class)
-    private Integer state;
+    @ExcelProperty(value = "线索状态")
+    private String state;
 
-    @ExcelProperty(value = "线索来源", converter = SourceConverter.class)
-    private Integer source;
+    @ExcelProperty(value = "线索来源")
+    private String source;
 
     @ExcelProperty(value = "线索描述")
     private String description;

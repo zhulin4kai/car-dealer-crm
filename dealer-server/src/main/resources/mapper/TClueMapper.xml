@@ -96,8 +96,8 @@
   </resultMap>
 
   <sql id="Base_Column_List">
-    id, owner_id, activity_id, full_name, appellation, phone, weixin, qq, email, age, 
-    job, year_income, address, need_loan, intention_state, intention_product, `state`, 
+    id, owner_id, activity_id, full_name, appellation, phone, weixin, qq, email, age,
+    job, year_income, address, need_loan, intention_state, intention_product, `state`,
     `source`, description, next_contact_time, create_time, create_by, edit_time, edit_by
   </sql>
 
@@ -172,7 +172,7 @@
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-    select 
+    select
     <include refid="Base_Column_List" />
     from t_clue
     where id = #{id,jdbcType=INTEGER}
@@ -230,21 +230,21 @@
   </insert>
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TClue" useGeneratedKeys="true">
-    insert into t_clue (owner_id, activity_id, full_name, 
-      appellation, phone, weixin, 
-      qq, email, age, job, 
-      year_income, address, need_loan, 
-      intention_state, intention_product, `state`, 
-      `source`, description, next_contact_time, 
-      create_time, create_by, edit_time, 
+    insert into t_clue (owner_id, activity_id, full_name,
+      appellation, phone, weixin,
+      qq, email, age, job,
+      year_income, address, need_loan,
+      intention_state, intention_product, `state`,
+      `source`, description, next_contact_time,
+      create_time, create_by, edit_time,
       edit_by)
-    values (#{ownerId,jdbcType=INTEGER}, #{activityId,jdbcType=INTEGER}, #{fullName,jdbcType=VARCHAR}, 
-      #{appellation,jdbcType=INTEGER}, #{phone,jdbcType=VARCHAR}, #{weixin,jdbcType=VARCHAR}, 
-      #{qq,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR}, #{age,jdbcType=INTEGER}, #{job,jdbcType=VARCHAR}, 
-      #{yearIncome,jdbcType=DECIMAL}, #{address,jdbcType=VARCHAR}, #{needLoan,jdbcType=INTEGER}, 
-      #{intentionState,jdbcType=INTEGER}, #{intentionProduct,jdbcType=INTEGER}, #{state,jdbcType=INTEGER}, 
-      #{source,jdbcType=INTEGER}, #{description,jdbcType=VARCHAR}, #{nextContactTime,jdbcType=TIMESTAMP}, 
-      #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, #{editTime,jdbcType=TIMESTAMP}, 
+    values (#{ownerId,jdbcType=INTEGER}, #{activityId,jdbcType=INTEGER}, #{fullName,jdbcType=VARCHAR},
+      #{appellation,jdbcType=INTEGER}, #{phone,jdbcType=VARCHAR}, #{weixin,jdbcType=VARCHAR},
+      #{qq,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR}, #{age,jdbcType=INTEGER}, #{job,jdbcType=VARCHAR},
+      #{yearIncome,jdbcType=DECIMAL}, #{address,jdbcType=VARCHAR}, #{needLoan,jdbcType=INTEGER},
+      #{intentionState,jdbcType=INTEGER}, #{intentionProduct,jdbcType=INTEGER}, #{state,jdbcType=INTEGER},
+      #{source,jdbcType=INTEGER}, #{description,jdbcType=VARCHAR}, #{nextContactTime,jdbcType=TIMESTAMP},
+      #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, #{editTime,jdbcType=TIMESTAMP},
       #{editBy,jdbcType=INTEGER})
   </insert>
 
@@ -513,4 +513,12 @@
       AND owner_id = #{dataScopeUserId,jdbcType=INTEGER}
     </if>
   </update>
+
+  <!--批量查询已存在的手机号-->
+  <select id="selectExistingPhones" resultType="java.lang.String">
+    SELECT phone FROM t_clue WHERE phone IN
+    <foreach collection="phones" item="phone" open="(" separator="," close=")">
+      #{phone,jdbcType=VARCHAR}
+    </foreach>
+  </select>
 </mapper>

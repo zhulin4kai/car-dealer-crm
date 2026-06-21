@@ -28,7 +28,7 @@ public interface TClueMapper {
     @DataScope(tableAlias = "tc", tableField = "owner_id")
     List<TClue> selectClueByPage(BaseQuery build);
 
-    void saveClue(List<TClue> tClueList);
+    int saveClue(List<TClue> tClueList);
 
     int selectByCount(String phone);
 
@@ -43,4 +43,9 @@ public interface TClueMapper {
     int updateStateToConverted(@Param("id") Integer id,
                                @Param("editBy") Integer editBy,
                                @Param("dataScopeUserId") Integer dataScopeUserId);
+
+    /**
+     * 批量查询已存在的手机号，用于 Excel 导入时检测数据库重复。
+     */
+    List<String> selectExistingPhones(@Param("phones") List<String> phones);
 }

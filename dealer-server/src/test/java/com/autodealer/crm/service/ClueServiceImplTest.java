@@ -1,8 +1,13 @@
 package com.autodealer.crm.service;
 
 import com.autodealer.crm.config.security.CurrentUserProvider;
+import com.autodealer.crm.audit.OperationAuditRecorder;
+import com.autodealer.crm.mapper.DicMapper;
+import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TClueRemarkMapper;
+import com.autodealer.crm.mapper.TProductMapper;
+import com.autodealer.crm.mapper.TUserMapper;
 import com.autodealer.crm.model.TClue;
 import com.autodealer.crm.query.ClueQuery;
 import com.autodealer.crm.service.impl.ClueServiceImpl;
@@ -13,7 +18,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -35,7 +39,25 @@ class ClueServiceImplTest {
     private TClueRemarkMapper tClueRemarkMapper;
 
     @Mock
+    private DicMapper dicMapper;
+
+    @Mock
+    private TUserMapper tUserMapper;
+
+    @Mock
+    private TActivityMapper tActivityMapper;
+
+    @Mock
+    private TProductMapper tProductMapper;
+
+    @Mock
+    private ClueImportValidator clueImportValidator;
+
+    @Mock
     private CurrentUserProvider currentUserProvider;
+
+    @Mock
+    private OperationAuditRecorder auditRecorder;
 
     @BeforeEach
     void setUp() {
@@ -240,20 +262,9 @@ class ClueServiceImplTest {
     }
 
     // ==================== importExcel ====================
-
-    @Test
-    void importExcel_shouldAcceptInputStreamAndToken() {
-        InputStream inputStream = mock(InputStream.class);
-        assertDoesNotThrow(() -> {
-            try {
-                clueService.importExcel(inputStream);
-            } catch (Exception e) {
-                if (e.getMessage() != null && e.getMessage().contains("token")) {
-                    throw e;
-                }
-            }
-        });
-    }
+    // importExcel 的完整测试由 ClueImportValidatorTest 和集成测试覆盖，
+    // 因为 Service 层依赖 EasyExcel 的 InputStream 解析，
+    // 在纯单元测试中难以 mock 静态方法。
 
     private TClue clue(Integer id) {
         TClue clue = new TClue();
