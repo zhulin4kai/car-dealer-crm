@@ -47,8 +47,8 @@
       </div>
 
       <div class="flex gap-2">
-        <Button @click="add">录入市场活动</Button>
-        <Button variant="destructive" @click="batchDel">批量删除</Button>
+        <Button v-has-permission="PERMISSIONS.activity.add" @click="add">录入市场活动</Button>
+        <Button v-has-permission="PERMISSIONS.activity.delete" variant="destructive" @click="batchDel">批量删除</Button>
       </div>
     </CardContent>
   </Card>
@@ -91,9 +91,9 @@
             <TableCell class="truncate max-w-[180px]">{{ activity.createTime }}</TableCell>
             <TableCell>
               <div class="flex gap-1">
-                <Button size="sm" @click="view(activity.id)">详情</Button>
-                <Button size="sm" variant="secondary" @click="edit(activity.id)">编辑</Button>
-                <Button size="sm" variant="destructive" @click="del(activity.id)">删除</Button>
+                <Button v-has-permission="PERMISSIONS.activity.view" size="sm" @click="view(activity.id)">详情</Button>
+                <Button v-has-permission="PERMISSIONS.activity.edit" size="sm" variant="secondary" @click="edit(activity.id)">编辑</Button>
+                <Button v-has-permission="PERMISSIONS.activity.delete" size="sm" variant="destructive" @click="del(activity.id)">删除</Button>
               </div>
             </TableCell>
           </TableRow>
@@ -167,6 +167,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'

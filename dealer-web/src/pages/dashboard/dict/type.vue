@@ -22,8 +22,8 @@
           </div>
           <div class="flex gap-2">
             <Button @click="handleSearch()">查询</Button>
-            <Button variant="secondary" @click="handleAdd()">新增类型</Button>
-            <Button variant="destructive" @click="handleBatchDelete()" :disabled="!selectedIds.length">批量删除</Button>
+            <Button v-has-permission="PERMISSIONS.dict.type.add" variant="secondary" @click="handleAdd()">新增类型</Button>
+            <Button v-has-permission="PERMISSIONS.dict.type.delete" variant="destructive" @click="handleBatchDelete()" :disabled="!selectedIds.length">批量删除</Button>
           </div>
         </div>
       </CardContent>
@@ -65,8 +65,8 @@
               <TableCell>{{ row.remark }}</TableCell>
               <TableCell>
                 <div class="flex gap-1">
-                  <Button variant="link" size="sm" @click="handleEdit(row)">编辑</Button>
-                  <Button variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+                  <Button v-has-permission="PERMISSIONS.dict.type.edit" variant="link" size="sm" @click="handleEdit(row)">编辑</Button>
+                  <Button v-has-permission="PERMISSIONS.dict.type.delete" variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
                 </div>
               </TableCell>
             </TableRow>
@@ -123,6 +123,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'

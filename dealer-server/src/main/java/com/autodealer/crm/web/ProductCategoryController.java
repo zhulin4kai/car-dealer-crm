@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.dto.CreateProductCategoryRequest;
 import com.autodealer.crm.dto.UpdateProductCategoryRequest;
 import com.autodealer.crm.model.TProductCategory;
@@ -19,7 +21,7 @@ public class ProductCategoryController {
     private ProductCategoryService categoryService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('product:list')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_CATEGORY_LIST + "')")
     public R<PageInfo<TProductCategory>> getCategoryList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
@@ -27,13 +29,13 @@ public class ProductCategoryController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('product:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_CATEGORY_VIEW + "')")
     public R<TProductCategory> getCategoryById(@PathVariable Long id) {
         return R.OK(categoryService.getCategoryById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('product:add')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_CATEGORY_ADD + "')")
     public R<Void> addCategory(@Valid @RequestBody CreateProductCategoryRequest req) {
         TProductCategory category = new TProductCategory();
         category.setName(req.getName());
@@ -46,7 +48,7 @@ public class ProductCategoryController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('product:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_CATEGORY_EDIT + "')")
     public R<Void> updateCategory(@PathVariable Long id, @Valid @RequestBody UpdateProductCategoryRequest req) {
         TProductCategory category = new TProductCategory();
         category.setId(id);
@@ -60,7 +62,7 @@ public class ProductCategoryController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('product:delete')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_CATEGORY_DELETE + "')")
     public R<Void> deleteCategory(@PathVariable Long id) {
         categoryService.deleteCategory(id);
         return R.OK();

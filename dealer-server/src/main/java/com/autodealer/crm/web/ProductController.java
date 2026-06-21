@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.dto.CreateProductRequest;
 import com.autodealer.crm.dto.UpdateProductRequest;
 import com.autodealer.crm.model.TProduct;
@@ -19,7 +21,7 @@ public class ProductController {
     private ProductService productService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('product:list')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_LIST + "')")
     public R<PageInfo<TProduct>> getProductList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
@@ -27,13 +29,13 @@ public class ProductController {
     }
 
     @GetMapping("/{id:[0-9]+}")
-    @PreAuthorize("hasAuthority('product:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_VIEW + "')")
     public R<TProduct> getProductById(@PathVariable Long id) {
         return R.OK(productService.getProductById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('product:add')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_ADD + "')")
     public R<Void> addProduct(@Valid @RequestBody CreateProductRequest req) {
         TProduct product = new TProduct();
         product.setSku(req.getSku());
@@ -49,7 +51,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('product:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_EDIT + "')")
     public R<Void> updateProduct(@PathVariable Long id, @Valid @RequestBody UpdateProductRequest req) {
         TProduct product = new TProduct();
         product.setId(id);
@@ -66,14 +68,14 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('product:delete')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_DELETE + "')")
     public R<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return R.OK();
     }
 
     @GetMapping("/stockalerts")
-    @PreAuthorize("hasAuthority('product:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_VIEW + "')")
     public R<PageInfo<TProduct>> getStockAlerts(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,

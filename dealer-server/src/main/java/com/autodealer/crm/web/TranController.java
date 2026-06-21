@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.dto.*;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.*;
@@ -28,7 +30,7 @@ public class TranController {
     /**
      * 获取交易列表
      */
-    @PreAuthorize("hasAuthority('tran:list')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_LIST + "')")
     @GetMapping("/list")
     public R<PageInfo<TTran>> list(
             TranQuery query,
@@ -40,7 +42,7 @@ public class TranController {
     /**
      * 获取交易详情
      */
-    @PreAuthorize("hasAuthority('tran:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_VIEW + "')")
     @GetMapping("/{id}")
     public R<TTran> detail(@PathVariable Integer id) {
         return R.OK(tranService.getTransactionById(id));
@@ -49,7 +51,7 @@ public class TranController {
     /**
      * 创建交易 — 商品价格由服务端从数据库查询，不接受客户端传入
      */
-    @PreAuthorize("hasAuthority('tran:create')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_CREATE + "')")
     @PostMapping("/create")
     public R<Integer> create(@Valid @RequestBody CreateTranRequest request) {
         TTran tran = new TTran();
@@ -76,7 +78,7 @@ public class TranController {
     /**
      * 更新交易 — 商品价格由服务端从数据库查询，不接受客户端传入
      */
-    @PreAuthorize("hasAuthority('tran:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_EDIT + "')")
     @PutMapping("/update")
     public R<Boolean> update(@Valid @RequestBody UpdateTranRequest request) {
         TTran tran = new TTran();
@@ -107,7 +109,7 @@ public class TranController {
     /**
      * 结算交易 — 金额由服务端根据商品快照计算，不接受客户端传入
      */
-    @PreAuthorize("hasAuthority('tran:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_SETTLE + "')")
     @PutMapping("/settle/{id}")
     public R<Boolean> settle(@PathVariable Integer id) {
         boolean result = tranService.settleTransaction(id);
@@ -117,7 +119,7 @@ public class TranController {
     /**
      * 审批交易
      */
-    @PreAuthorize("hasAuthority('tran:approve')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_APPROVE + "')")
     @PutMapping("/approve/{id}")
     public R<Boolean> approve(
             @PathVariable Integer id,
@@ -129,7 +131,7 @@ public class TranController {
     /**
      * 获取交易审批信息
      */
-    @PreAuthorize("hasAuthority('tran:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_VIEW + "')")
     @GetMapping("/approve/info/{tranId}")
     public R<TTranApprove> getApproveInfo(@PathVariable Integer tranId) {
         TTranApprove approve = tranService.getTranApprove(tranId);
@@ -139,7 +141,7 @@ public class TranController {
     /**
      * 创建发票
      */
-    @PreAuthorize("hasAuthority('tran:invoice')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_INVOICE + "')")
     @PostMapping("/invoice")
     public R<Boolean> createInvoice(@Valid @RequestBody CreateTranInvoiceRequest request) {
         TTranInvoice invoice = new TTranInvoice();
@@ -160,7 +162,7 @@ public class TranController {
     /**
      * 获取交易发票列表
      */
-    @PreAuthorize("hasAuthority('tran:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_VIEW + "')")
     @GetMapping("/invoice/{tranId}")
     public R<List<TTranInvoice>> getInvoiceList(@PathVariable Integer tranId) {
         List<TTranInvoice> invoices = tranService.getTranInvoices(tranId);
@@ -170,7 +172,7 @@ public class TranController {
     /**
      * 更新发票状态
      */
-    @PreAuthorize("hasAuthority('tran:invoice')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_INVOICE + "')")
     @PutMapping("/invoice/{invoiceId}/status")
     public R<Boolean> updateInvoiceStatus(
             @PathVariable Integer invoiceId,
@@ -182,7 +184,7 @@ public class TranController {
     /**
      * 获取交易备注
      */
-    @PreAuthorize("hasAuthority('tran:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_VIEW + "')")
     @GetMapping("/remarks/{tranId}")
     public R<List<TTranRemark>> remarks(@PathVariable Integer tranId) {
         return R.OK(tranService.getTransactionRemarks(tranId));
@@ -191,7 +193,7 @@ public class TranController {
     /**
      * 获取交易产品详情列表
      */
-    @PreAuthorize("hasAuthority('tran:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_VIEW + "')")
     @GetMapping("/products/{id}")
     public R<List<TTranProduct>> getTransactionProducts(@PathVariable Integer id) {
         return R.OK(tranService.getTransactionProductDetails(id));
@@ -200,7 +202,7 @@ public class TranController {
     /**
      * 删除交易
      */
-    @PreAuthorize("hasAuthority('tran:delete')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_DELETE + "')")
     @DeleteMapping("/{id}")
     public R<String> delete(@PathVariable Integer id) {
         boolean result = tranService.deleteTransaction(id);
@@ -214,7 +216,7 @@ public class TranController {
     /**
      * 批量删除交易
      */
-    @PreAuthorize("hasAuthority('tran:delete')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_DELETE + "')")
     @PostMapping("/batch-delete")
     public R<String> batchDelete(@Valid @RequestBody BatchDeleteTranRequest request) {
         boolean result = tranService.batchDeleteTransactions(request.getIds());
@@ -228,7 +230,7 @@ public class TranController {
     /**
      * 重新提交交易（审批拒绝后）
      */
-    @PreAuthorize("hasAuthority('tran:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_RESUBMIT + "')")
     @PutMapping("/resubmit/{id}")
     public R<Boolean> resubmit(@PathVariable Integer id) {
         boolean result = tranService.resubmitTransaction(id);
@@ -238,7 +240,7 @@ public class TranController {
     /**
      * 记录收款
      */
-    @PreAuthorize("hasAuthority('tran:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_PAYMENT + "')")
     @PostMapping("/payment")
     public R<TPayment> recordPayment(@Valid @RequestBody CreatePaymentRequest request) {
         TPayment payment = new TPayment();
@@ -254,7 +256,7 @@ public class TranController {
     /**
      * 获取交易收款记录
      */
-    @PreAuthorize("hasAuthority('tran:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_VIEW + "')")
     @GetMapping("/payment/{tranId}")
     public R<List<TPayment>> getPayments(@PathVariable Integer tranId) {
         return R.OK(tranService.getTransactionPayments(tranId));
@@ -263,7 +265,7 @@ public class TranController {
     /**
      * 退款（交易取消）
      */
-    @PreAuthorize("hasAuthority('tran:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_REFUND + "')")
     @PostMapping("/payment/{id}/refund")
     public R<TPayment> refund(@PathVariable Integer id) {
         return R.OK(tranService.refundPayment(id));

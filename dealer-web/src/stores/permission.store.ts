@@ -14,6 +14,14 @@ export const usePermissionStore = defineStore('permission', () => {
   const menuPermissionList = ref<Permission[]>([])
 
   const hasMenu = computed(() => menuPermissionList.value.length > 0)
+  const firstAccessibleMenuUrl = computed(() => {
+    for (const menu of menuPermissionList.value) {
+      if (menu.url) return menu.url
+      const child = menu.subPermissionList?.find((item) => item.url)
+      if (child?.url) return child.url
+    }
+    return null
+  })
 
   function restorePermissions(): void {
     permissionList.value = readPermissionCodes() ?? []
@@ -44,6 +52,7 @@ export const usePermissionStore = defineStore('permission', () => {
     permissionList,
     menuPermissionList,
     hasMenu,
+    firstAccessibleMenuUrl,
     restorePermissions,
     setPermissionsFromUser,
     loadPermissions,

@@ -27,8 +27,8 @@
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <Button @click="handleSearch">查询</Button>
-            <Button variant="secondary" @click="handleAdd">新增交易</Button>
-            <Button variant="destructive" @click="handleBatchDelete" :disabled="selectedIds.length === 0">批量删除</Button>
+            <Button v-has-permission="PERMISSIONS.tran.create" variant="secondary" @click="handleAdd">新增交易</Button>
+            <Button v-has-permission="PERMISSIONS.tran.delete" variant="destructive" @click="handleBatchDelete" :disabled="selectedIds.length === 0">批量删除</Button>
           </div>
         </div>
       </CardContent>
@@ -84,26 +84,30 @@
                 <TableCell class="truncate max-w-[200px]">{{ row.createTime }}</TableCell>
                 <TableCell>
                   <div class="flex gap-1.5 justify-center flex-wrap">
-                    <Button variant="outline" size="sm" @click="handleView(row)">查看</Button>
+                    <Button v-has-permission="PERMISSIONS.tran.view" variant="outline" size="sm" @click="handleView(row)">查看</Button>
                     <Button
                       v-if="row.stage === TRAN_STAGE.QUOTATION"
+                      v-has-permission="PERMISSIONS.tran.edit"
                       size="sm"
                       @click="handleEdit(row)"
                     >编辑</Button>
                     <Button
                       v-if="row.stage === TRAN_STAGE.PENDING"
+                      v-has-permission="PERMISSIONS.tran.approve"
                       variant="secondary"
                       size="sm"
                       @click="handleApprove(row)"
                     >审批</Button>
                     <Button
                       v-if="row.stage === TRAN_STAGE.APPROVED"
+                      v-has-permission="PERMISSIONS.tran.invoice"
                       variant="outline"
                       size="sm"
                       @click="handleInvoice(row)"
                     >开票</Button>
                     <Button
                       v-if="row.stage === TRAN_STAGE.QUOTATION"
+                      v-has-permission="PERMISSIONS.tran.delete"
                       variant="destructive"
                       size="sm"
                       @click="handleDelete(row.id)"
@@ -216,6 +220,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'

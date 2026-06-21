@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.alibaba.excel.EasyExcel;
 import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
@@ -38,18 +40,18 @@ public class CustomerController {
     }
 
     @GetMapping("/api/customer/list")
-    @PreAuthorize("hasAuthority('customer:list')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_LIST + "')")
     public R<PageInfo<CustomerListResponse>> list(CustomerListQuery query,
             @RequestParam(defaultValue = "1") Integer page, @RequestParam(defaultValue = "10") Integer size) {
         return R.OK(customerService.getCustomerList(query, page, size));
     }
 
     @GetMapping("/api/customer/options")
-    @PreAuthorize("hasAuthority('customer:list')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_LIST + "')")
     public R<List<CustomerOption>> options() { return R.OK(customerService.getCustomerOptions()); }
 
     @GetMapping("/api/customer/{id}")
-    @PreAuthorize("hasAuthority('customer:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_VIEW + "')")
     public R<CustomerDetailResponse> detail(@PathVariable Integer id) {
         CustomerDetailResponse r = customerService.getCustomerById(id);
         if (r == null) throw new BusinessException(CodeEnum.FAIL, "客户不存在");
@@ -57,21 +59,21 @@ public class CustomerController {
     }
 
     @PostMapping("/api/clue/customer")
-    @PreAuthorize("hasAuthority('customer:transfer')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_TRANSFER + "')")
     public R<Void> convertCustomer(@Valid @RequestBody ConvertCustomerRequest request) {
         customerService.convertCustomer(request); return R.OK();
     }
 
     @Deprecated
     @GetMapping("/api/customers")
-    @PreAuthorize("hasAuthority('customer:list')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_LIST + "')")
     public R<PageInfo<CustomerListResponse>> cluePage(@RequestParam(value = "current", required = false) Integer current) {
         if (current == null) current = 1;
         return R.OK(customerService.getCustomerByPage(current));
     }
 
     @GetMapping("/api/exportExcel")
-    @PreAuthorize("hasAuthority('customer:export')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_EXPORT + "')")
     public void exportExcel(HttpServletResponse response,
             @RequestParam(value = "ids", required = false) String ids) throws IOException {
         List<String> idList = parseAndValidateIdList(ids);

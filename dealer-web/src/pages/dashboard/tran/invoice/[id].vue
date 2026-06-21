@@ -149,7 +149,7 @@
 
           <!-- Submit -->
           <div class="pt-2">
-            <Button type="submit" :disabled="isSubmitting || hasInvoiceIssued">
+            <Button v-has-permission="PERMISSIONS.tran.invoice" type="submit" :disabled="isSubmitting || hasInvoiceIssued">
               {{ hasInvoiceIssued ? '已开具发票' : '开具发票' }}
             </Button>
           </div>
@@ -160,6 +160,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'

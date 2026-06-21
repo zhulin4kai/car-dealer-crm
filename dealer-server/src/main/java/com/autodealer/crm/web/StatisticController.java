@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.result.NameValue;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.result.SummaryData;
@@ -20,14 +22,14 @@ public class StatisticController {
     @Resource
     private StatisticService statisticService;
 
-    @PreAuthorize("hasAuthority('statistic:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.STATISTIC_VIEW + "')")
     @GetMapping(value = "/api/summary/data")
     public R<SummaryData> summaryData() {
         SummaryData summaryData = statisticService.loadSummaryData();
         return R.OK(summaryData);
     }
 
-    @PreAuthorize("hasAuthority('statistic:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.STATISTIC_VIEW + "')")
     @GetMapping(value = "/api/saleFunnel/data")
     public R<List<NameValue>> saleFunnelData() {
         /**
@@ -43,7 +45,7 @@ public class StatisticController {
         return R.OK(nameValueList);
     }
 
-    @PreAuthorize("hasAuthority('statistic:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.STATISTIC_VIEW + "')")
     @GetMapping(value = "/api/sourcePie/data")
     public R<List<NameValue>> sourcePieData() {
         /**

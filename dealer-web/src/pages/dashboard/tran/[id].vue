@@ -180,6 +180,7 @@
               <TableCell>
                 <Button
                   v-if="canRefundPayment(pay)"
+                  v-has-permission="PERMISSIONS.tran.refund"
                   variant="destructive"
                   size="sm"
                   @click="handleRefund(pay.id)"
@@ -233,7 +234,7 @@
         </div>
         <div class="flex justify-end gap-3">
           <Button variant="outline" @click="showCollectionDialog = false">取消</Button>
-          <Button @click="submitCollection">确认收款</Button>
+          <Button v-has-permission="PERMISSIONS.tran.payment" @click="submitCollection">确认收款</Button>
         </div>
       </div>
     </div>
@@ -242,21 +243,25 @@
     <div class="flex justify-center gap-5 mt-5">
       <Button variant="outline" @click="goBack">返回</Button>
       <Button
+        v-has-permission="PERMISSIONS.tran.settle"
         variant="secondary"
         @click="handleSettle"
         v-if="tranDetail.stage === 'QUOTATION'"
       >结算</Button>
       <Button
+        v-has-permission="PERMISSIONS.tran.approve"
         variant="secondary"
         @click="handleApprove"
         v-if="tranDetail.stage === TRAN_STAGE.PENDING"
       >审批</Button>
       <Button
+        v-has-permission="PERMISSIONS.tran.invoice"
         variant="outline"
         @click="handleInvoice"
         v-if="tranDetail.stage === TRAN_STAGE.APPROVED"
       >开票</Button>
       <Button
+        v-has-permission="PERMISSIONS.tran.payment"
         variant="secondary"
         @click="showCollectionDialog = true"
         v-if="tranDetail.stage === TRAN_STAGE.PAYMENT"
@@ -266,6 +271,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'

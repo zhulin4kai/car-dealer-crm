@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.dto.CreateProductPromotionRequest;
 import com.autodealer.crm.dto.UpdateProductPromotionRequest;
 import com.autodealer.crm.model.TProductPromotion;
@@ -19,7 +21,7 @@ public class ProductPromotionController {
     private ProductPromotionService promotionService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('product:list')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_LIST + "')")
     public R<PageInfo<TProductPromotion>> getPromotionList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
@@ -27,13 +29,13 @@ public class ProductPromotionController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('product:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_VIEW + "')")
     public R<TProductPromotion> getPromotionById(@PathVariable Long id) {
         return R.OK(promotionService.getPromotionById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('product:add')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_ADD + "')")
     public R<Void> addPromotion(@Valid @RequestBody CreateProductPromotionRequest req) {
         TProductPromotion promotion = new TProductPromotion();
         promotion.setProductId(req.getProductId());
@@ -48,7 +50,7 @@ public class ProductPromotionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('product:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_EDIT + "')")
     public R<Void> updatePromotion(@PathVariable Long id, @Valid @RequestBody UpdateProductPromotionRequest req) {
         TProductPromotion promotion = new TProductPromotion();
         promotion.setId(id);
@@ -64,7 +66,7 @@ public class ProductPromotionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('product:delete')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_DELETE + "')")
     public R<Void> deletePromotion(@PathVariable Long id) {
         promotionService.deletePromotion(id);
         return R.OK();

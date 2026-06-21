@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.dto.RestockRequest;
 import com.autodealer.crm.model.TProductStockRecord;
 import com.autodealer.crm.result.R;
@@ -22,14 +24,14 @@ public class ProductStockController {
     private ProductStockRecordService stockRecordService;
 
     @PostMapping("/restock")
-    @PreAuthorize("hasAuthority('product:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_STOCK_ADJUST + "')")
     public R<Void> restock(@Valid @RequestBody RestockRequest request) {
         productService.restock(request.getProductId(), request.getQuantity(), request.getRemark());
         return R.OK();
     }
 
     @GetMapping("/records/{productId}")
-    @PreAuthorize("hasAuthority('product:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_STOCK_VIEW + "')")
     public R<PageInfo<TProductStockRecord>> getStockRecords(
             @PathVariable Long productId,
             @RequestParam(defaultValue = "1") Integer page,

@@ -10,58 +10,39 @@
     <result column="parent_id" jdbcType="INTEGER" property="parentId" />
     <result column="order_no" jdbcType="INTEGER" property="orderNo" />
     <result column="icon" jdbcType="VARCHAR" property="icon" />
+    <result column="enabled" jdbcType="TINYINT" property="enabled" />
   </resultMap>
   
-  <resultMap id="PermissionResultMap" type="com.autodealer.crm.model.TPermission">
-    <id column="id" jdbcType="INTEGER" property="id" />
-    <result column="name" jdbcType="VARCHAR" property="name" />
-    <result column="code" jdbcType="VARCHAR" property="code" />
-    <result column="url" jdbcType="VARCHAR" property="url" />
-    <result column="type" jdbcType="VARCHAR" property="type" />
-    <result column="parent_id" jdbcType="INTEGER" property="parentId" />
-    <result column="order_no" jdbcType="INTEGER" property="orderNo" />
-    <result column="icon" jdbcType="VARCHAR" property="icon" />
-    <!--一对多关联映射，一个父菜单下有多个子菜单-->
-    <collection property="subPermissionList" ofType="com.autodealer.crm.model.TPermission">
-      <id column="cid" jdbcType="INTEGER" property="id" />
-      <result column="cname" jdbcType="VARCHAR" property="name" />
-      <result column="curl" jdbcType="VARCHAR" property="url" />
-      <result column="cicon" jdbcType="VARCHAR" property="icon" />
-    </collection>
-  </resultMap>
-
   <sql id="Base_Column_List">
-    id, `name`, code, url, `type`, parent_id, order_no, icon
+    id, `name`, code, url, `type`, parent_id, order_no, icon, enabled
   </sql>
 
-  <select id="selectMenuPermissionByUserId" parameterType="java.lang.Integer" resultMap="PermissionResultMap">
-    SELECT
-      tp.*,
-      childTp.id cid, childTp.name cname, childTp.url curl, childTp.icon cicon
-    FROM
-      t_permission tp
-        LEFT JOIN t_permission childTp ON tp.id = childTp.parent_id
-        LEFT JOIN t_role_permission trp ON tp.id = trp.permission_id
-        LEFT JOIN t_role tr ON trp.role_id = tr.id
-        LEFT JOIN t_user_role tur ON tr.id = tur.role_id
-    WHERE
-      tur.user_id = #{userId, jdbcType=INTEGER}
+  <select id="selectMenuPermissionByUserId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    SELECT DISTINCT tp.id, tp.name, tp.code, tp.url, tp.type,
+                    tp.parent_id, tp.order_no, tp.icon, tp.enabled
+    FROM t_permission tp
+      INNER JOIN t_role_permission trp ON tp.id = trp.permission_id
+      INNER JOIN t_role tr ON trp.role_id = tr.id AND tr.enabled = 1
+      INNER JOIN t_user_role tur ON tr.id = tur.role_id
+    WHERE tur.user_id = #{userId, jdbcType=INTEGER}
       AND tp.type = 'menu'
-      and childTp.type = 'menu'
+      AND tp.enabled = 1
+    ORDER BY tp.order_no ASC, tp.id ASC
   </select>
 
 
-  <select id="selectButtonPermissionByUserId" parameterType="java.lang.Integer" resultMap="PermissionResultMap">
-    SELECT
-      tp.*
-    FROM
-      t_permission tp
-        LEFT JOIN t_role_permission trp ON tp.id = trp.permission_id
-        LEFT JOIN t_role tr ON trp.role_id = tr.id
-        LEFT JOIN t_user_role tur ON tr.id = tur.role_id
-    WHERE
-      tur.user_id = #{userId, jdbcType=INTEGER}
+  <select id="selectButtonPermissionByUserId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    SELECT DISTINCT tp.id, tp.name, tp.code, tp.url, tp.type,
+                    tp.parent_id, tp.order_no, tp.icon, tp.enabled
+    FROM t_permission tp
+      INNER JOIN t_role_permission trp ON tp.id = trp.permission_id
+      INNER JOIN t_role tr ON trp.role_id = tr.id AND tr.enabled = 1
+      INNER JOIN t_user_role tur ON tr.id = tur.role_id
+    WHERE tur.user_id = #{userId, jdbcType=INTEGER}
       AND tp.type = 'button'
+      AND tp.enabled = 1
+      AND tp.code IS NOT NULL
+    ORDER BY tp.code ASC
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -76,12 +57,12 @@
     where id = #{id,jdbcType=INTEGER}
   </delete>
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TPermission" useGeneratedKeys="true">
-    insert into t_permission (`name`, code, url, 
-      `type`, parent_id, order_no, 
-      icon)
+    insert into t_permission (`name`, code, url,
+      `type`, parent_id, order_no,
+      icon, enabled)
     values (#{name,jdbcType=VARCHAR}, #{code,jdbcType=VARCHAR}, #{url,jdbcType=VARCHAR}, 
       #{type,jdbcType=VARCHAR}, #{parentId,jdbcType=INTEGER}, #{orderNo,jdbcType=INTEGER}, 
-      #{icon,jdbcType=VARCHAR})
+      #{icon,jdbcType=VARCHAR}, #{enabled,jdbcType=TINYINT})
   </insert>
   <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TPermission" useGeneratedKeys="true">
     insert into t_permission
@@ -107,6 +88,9 @@
       <if test="icon != null">
         icon,
       </if>
+      <if test="enabled != null">
+        enabled,
+      </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="name != null">
@@ -129,6 +113,9 @@
       </if>
       <if test="icon != null">
         #{icon,jdbcType=VARCHAR},
+      </if>
+      <if test="enabled != null">
+        #{enabled,jdbcType=TINYINT},
       </if>
     </trim>
   </insert>
@@ -156,6 +143,9 @@
       <if test="icon != null">
         icon = #{icon,jdbcType=VARCHAR},
       </if>
+      <if test="enabled != null">
+        enabled = #{enabled,jdbcType=TINYINT},
+      </if>
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
@@ -167,7 +157,8 @@
       `type` = #{type,jdbcType=VARCHAR},
       parent_id = #{parentId,jdbcType=INTEGER},
       order_no = #{orderNo,jdbcType=INTEGER},
-      icon = #{icon,jdbcType=VARCHAR}
+      icon = #{icon,jdbcType=VARCHAR},
+      enabled = #{enabled,jdbcType=TINYINT}
     where id = #{id,jdbcType=INTEGER}
   </update>
 </mapper>

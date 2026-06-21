@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.dto.CreateActivityRemarkRequest;
 import com.autodealer.crm.model.TActivityRemark;
@@ -22,7 +24,7 @@ public class ActivityRemarkController {
     private CurrentUserProvider currentUserProvider;
 
     @PostMapping(value = "/api/activity/remark")
-    @PreAuthorize("hasAuthority('activity:add')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.ACTIVITY_ADD + "')")
     public R addActivityRemark(@Valid @RequestBody CreateActivityRemarkRequest req) {
         ActivityRemarkQuery query = new ActivityRemarkQuery();
         query.setActivityId(req.getActivityId());
@@ -32,7 +34,7 @@ public class ActivityRemarkController {
     }
 
     @GetMapping(value = "/api/activity/remark")
-    @PreAuthorize("hasAuthority('activity:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.ACTIVITY_VIEW + "')")
     public R activityRemarkPage(@RequestParam(value = "current", required = false) Integer current,
                                 @RequestParam(value = "activityId") Integer activityId) {
 
@@ -47,21 +49,21 @@ public class ActivityRemarkController {
     }
 
     @GetMapping(value = "/api/activity/remark/{id}")
-    @PreAuthorize("hasAuthority('activity:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.ACTIVITY_VIEW + "')")
     public R activityRemarkPage(@PathVariable(value = "id") Integer id) {
         TActivityRemark tActivityRemark = activityRemarkService.getActivityRemarkById(id);
         return R.OK(tActivityRemark);
     }
 
     @PutMapping(value = "/api/activity/remark")
-    @PreAuthorize("hasAuthority('activity:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.ACTIVITY_EDIT + "')")
     public R editActivityRemark(@RequestBody ActivityRemarkQuery activityRemarkQuery) {
         int update = activityRemarkService.updateActivityRemark(activityRemarkQuery);
         return update >= 1 ? R.OK() : R.FAIL();
     }
 
     @DeleteMapping(value = "/api/activity/remark/{id}")
-    @PreAuthorize("hasAuthority('activity:delete')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.ACTIVITY_DELETE + "')")
     public R delActivityRemark(@PathVariable(value = "id") Integer id) {
         int del = activityRemarkService.delActivityRemarkById(id);
         return del >= 1 ? R.OK() : R.FAIL();

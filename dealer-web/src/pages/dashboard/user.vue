@@ -3,8 +3,8 @@
     <!-- Action buttons -->
     <Card class="mb-5">
       <CardContent class="flex gap-2 pt-6">
-        <Button @click="add" v-hasPermission="'user:add'">添加用户</Button>
-        <Button variant="destructive" @click="batchDel" v-hasPermission="'user:delete'" :disabled="!userIdArray.length">批量删除</Button>
+        <Button @click="add" v-has-permission="PERMISSIONS.user.add">添加用户</Button>
+        <Button variant="destructive" @click="batchDel" v-has-permission="PERMISSIONS.user.status" :disabled="!userIdArray.length">批量删除</Button>
       </CardContent>
     </Card>
 
@@ -45,9 +45,9 @@
               <TableCell class="truncate max-w-[150px]">{{ row.createTime }}</TableCell>
               <TableCell>
                 <div class="flex gap-1">
-                  <Button variant="link" size="sm" @click="view(row.id)" v-hasPermission="'user:view'">详情</Button>
-                  <Button variant="link" size="sm" @click="edit(row.id)" v-hasPermission="'user:edit'">编辑</Button>
-                  <Button variant="destructive" size="sm" @click="del(row.id)" v-hasPermission="'user:delete'">删除</Button>
+                  <Button variant="link" size="sm" @click="view(row.id)" v-has-permission="PERMISSIONS.user.view">详情</Button>
+                  <Button variant="link" size="sm" @click="edit(row.id)" v-has-permission="PERMISSIONS.user.edit">编辑</Button>
+                  <Button variant="destructive" size="sm" @click="del(row.id)" v-has-permission="PERMISSIONS.user.status">删除</Button>
                 </div>
               </TableCell>
             </TableRow>
@@ -238,6 +238,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, computed, onMounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'

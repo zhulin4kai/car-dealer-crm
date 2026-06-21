@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.dto.ImportResult;
 import com.autodealer.crm.model.TClue;
@@ -32,7 +34,7 @@ public class ClueController {
     @Value("${app.import.max-file-size:5242880}")
     private long maxImportFileSize;
 
-    @PreAuthorize(value = "hasAuthority('clue:list')")
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_LIST + "')")
     @GetMapping(value = "/api/clues")
     public R cluePage(
             @RequestParam(value = "current", required = false) Integer current,
@@ -44,7 +46,7 @@ public class ClueController {
         return R.OK(pageInfo);
     }
 
-    @PreAuthorize(value = "hasAuthority('clue:import')")
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_IMPORT + "')")
     @PostMapping(value = "/api/importExcel")
     public ResponseEntity<R<ImportResult>> importExcel(
             @RequestPart("file") MultipartFile file) throws IOException {
@@ -89,13 +91,13 @@ public class ClueController {
     }
 
     @GetMapping(value = "/api/clue/{phone}")
-    @PreAuthorize(value = "hasAuthority('clue:add')")
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_ADD + "')")
     public R checkPhone(@PathVariable(value = "phone") String phone) {
         Boolean check = clueService.checkPhone(phone);
         return check ? R.OK() : R.FAIL();
     }
 
-    @PreAuthorize(value = "hasAuthority('clue:add')")
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_ADD + "')")
     @PostMapping(value = "/api/clue")
     public R addClue(ClueQuery clueQuery) {
         int save = clueService.saveClue(clueQuery);
@@ -103,27 +105,27 @@ public class ClueController {
         return save >= 1 ? R.OK() : R.FAIL();
     }
 
-    @PreAuthorize(value = "hasAuthority('clue:view')")
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_VIEW + "')")
     @GetMapping(value = "/api/clue/detail/{id}")
     public R loadClue(@PathVariable(value = "id") Integer id) {
         TClue tClue = clueService.getClueById(id);
         return R.OK(tClue);
     }
 
-    @PreAuthorize(value = "hasAuthority('clue:edit')")
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_EDIT + "')")
     @PutMapping(value = "/api/clue")
     public R editClue(ClueQuery clueQuery) {
         int update = clueService.updateClue(clueQuery);
 
         return update >= 1 ? R.OK() : R.FAIL();
-    }    @PreAuthorize(value = "hasAuthority('clue:delete')")
+    }    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_DELETE + "')")
     @DeleteMapping(value = "/api/clue/{id}")
     public R delClue(@PathVariable(value = "id") Integer id) {
         int del = clueService.delClueById(id);
         return del >= 1 ? R.OK() : R.FAIL();
     }
 
-    @PreAuthorize(value = "hasAuthority('clue:delete')")
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_DELETE + "')")
     @PostMapping(value = "/api/clue/batch")
     public R batchDelClue(@RequestBody List<Integer> ids) {
         if (ids.size() > Constants.MAX_BATCH_SIZE) {

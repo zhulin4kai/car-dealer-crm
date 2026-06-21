@@ -3,7 +3,7 @@
     <Card>
       <CardContent class="flex gap-2.5 pt-6">
         <Button variant="outline" @click="goBack">返 回</Button>
-        <Button @click="handleAdd">新增促销</Button>
+        <Button v-has-permission="PERMISSIONS.product.promotion.add" @click="handleAdd">新增促销</Button>
       </CardContent>
     </Card>
 
@@ -49,8 +49,8 @@
                 </Badge>
               </TableCell>
               <TableCell class="flex gap-2">
-                <Button variant="outline" size="sm" @click="handleEdit(row)">编辑</Button>
-                <Button variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+                <Button v-has-permission="PERMISSIONS.product.promotion.edit" variant="outline" size="sm" @click="handleEdit(row)">编辑</Button>
+                <Button v-has-permission="PERMISSIONS.product.promotion.delete" variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -135,6 +135,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { onMounted, ref } from 'vue'
 
 import { createPromotion, deletePromotion, getPromotionList, updatePromotion } from '@/modules/product/api/product-api'

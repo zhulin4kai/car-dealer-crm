@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.dto.CreateSystemRequest;
 import com.autodealer.crm.dto.SystemResponse;
 import com.autodealer.crm.dto.ToggleSystemStatusRequest;
@@ -23,7 +25,7 @@ public class SystemController {
     private SystemService systemService;
 
     @GetMapping("/list")
-    @PreAuthorize("hasAuthority('system:list')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.SYSTEM_LIST + "')")
     public R<List<SystemResponse>> getAllList() {
         List<SystemResponse> list = systemService.getAllList().stream()
                 .map(SystemResponse::from)
@@ -32,13 +34,13 @@ public class SystemController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('system:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.SYSTEM_VIEW + "')")
     public R<SystemResponse> getSystemDetail(@PathVariable Integer id) {
         return R.OK(SystemResponse.from(systemService.getById(id)));
     }
 
     @PostMapping("/create")
-    @PreAuthorize("hasAuthority('system:add')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.SYSTEM_ADD + "')")
     public R<Void> createSystem(@Valid @RequestBody CreateSystemRequest req) {
         TSystem system = new TSystem();
         system.setSystemCode(req.getSystemCode());
@@ -61,7 +63,7 @@ public class SystemController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('system:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.SYSTEM_EDIT + "')")
     public R<Void> updateSystem(@PathVariable Integer id, @Valid @RequestBody UpdateSystemRequest req) {
         TSystem system = new TSystem();
         system.setSystemCode(req.getSystemCode());
@@ -83,21 +85,21 @@ public class SystemController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('system:delete')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.SYSTEM_DELETE + "')")
     public R<Void> deleteSystem(@PathVariable Integer id) {
         systemService.delete(id);
         return R.OK();
     }
 
     @DeleteMapping("/batch")
-    @PreAuthorize("hasAuthority('system:delete')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.SYSTEM_DELETE + "')")
     public R<Void> batchDeleteSystems(@RequestBody List<Integer> ids) {
         systemService.batchDelete(ids);
         return R.OK();
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('system:edit')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.SYSTEM_EDIT + "')")
     public R<Void> toggleSystemStatus(@PathVariable Integer id, @Valid @RequestBody ToggleSystemStatusRequest req) {
         systemService.toggleStatus(id, req.getIsopen());
         return R.OK();

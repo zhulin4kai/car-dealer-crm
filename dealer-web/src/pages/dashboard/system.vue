@@ -178,8 +178,8 @@
       <CardContent>
         <!-- Action Bar -->
         <div class="mb-5">
-          <Button @click="handleAdd">新增系统信息</Button>
-          <Button variant="destructive" class="ml-2" @click="handleBatchDelete" :disabled="!selectedIds.length">批量删除</Button>
+          <Button v-has-permission="PERMISSIONS.system.add" @click="handleAdd">新增系统信息</Button>
+          <Button v-has-permission="PERMISSIONS.system.delete" variant="destructive" class="ml-2" @click="handleBatchDelete" :disabled="!selectedIds.length">批量删除</Button>
         </div>
 
         <!-- Data Table -->
@@ -230,8 +230,8 @@
                 </TableCell>
                 <TableCell>
                   <div class="flex gap-1.5 justify-center flex-wrap">
-                    <Button variant="secondary" size="sm" @click="handleEdit(row)">编辑</Button>
-                    <Button variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+                    <Button v-has-permission="PERMISSIONS.system.edit" variant="secondary" size="sm" @click="handleEdit(row)">编辑</Button>
+                    <Button v-has-permission="PERMISSIONS.system.delete" variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -343,6 +343,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'

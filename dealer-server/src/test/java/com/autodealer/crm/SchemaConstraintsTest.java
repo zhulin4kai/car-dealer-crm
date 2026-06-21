@@ -233,8 +233,8 @@ class SchemaConstraintsTest {
     void testOrphanRolePermissionRoleFails() {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
-                "INSERT INTO t_role_permission (id, role_id, permission_id) " +
-                "VALUES (200, 99999, 1)"));
+                "INSERT INTO t_role_permission (role_id, permission_id) " +
+                "SELECT 99999, id FROM t_permission WHERE code = 'activity:list'"));
     }
 
     @Test
@@ -243,8 +243,8 @@ class SchemaConstraintsTest {
     void testOrphanRolePermissionPermissionFails() {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
-                "INSERT INTO t_role_permission (id, role_id, permission_id) " +
-                "VALUES (201, 1, 99999)"));
+                "INSERT INTO t_role_permission (role_id, permission_id) " +
+                "SELECT id, 99999 FROM t_role WHERE role = 'admin'"));
     }
 
     @Test
@@ -253,8 +253,8 @@ class SchemaConstraintsTest {
     void testOrphanUserRoleUserFails() {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
-                "INSERT INTO t_user_role (id, user_id, role_id) " +
-                "VALUES (100, 99999, 1)"));
+                "INSERT INTO t_user_role (user_id, role_id) " +
+                "SELECT 99999, id FROM t_role WHERE role = 'admin'"));
     }
 
     @Test
@@ -263,8 +263,7 @@ class SchemaConstraintsTest {
     void testOrphanUserRoleRoleFails() {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
-                "INSERT INTO t_user_role (id, user_id, role_id) " +
-                "VALUES (101, 1, 99999)"));
+                "INSERT INTO t_user_role (user_id, role_id) VALUES (1, 99999)"));
     }
 
     // ==================== 非空与 CHECK 约束测试 ====================
@@ -320,7 +319,8 @@ class SchemaConstraintsTest {
             "account_no_expired, credentials_no_expired, account_no_locked, account_enabled) " +
             "VALUES (300, 'cascade_user', 'pwd', 'test', '13900139010', 'cascade@test.com', 1, 1, 1, 1)");
         jdbcTemplate.execute(
-            "INSERT INTO t_user_role (id, user_id, role_id) VALUES (300, 300, 1)");
+            "INSERT INTO t_user_role (user_id, role_id) " +
+            "SELECT 300, id FROM t_role WHERE role = 'admin'");
 
         jdbcTemplate.execute("DELETE FROM t_user WHERE id = 300");
 
@@ -336,7 +336,8 @@ class SchemaConstraintsTest {
         jdbcTemplate.execute(
             "INSERT INTO t_role (id, role, role_name) VALUES (10, 'test_role', 'test')");
         jdbcTemplate.execute(
-            "INSERT INTO t_role_permission (id, role_id, permission_id) VALUES (300, 10, 1)");
+            "INSERT INTO t_role_permission (role_id, permission_id) " +
+            "SELECT 10, id FROM t_permission WHERE code = 'activity:list'");
 
         jdbcTemplate.execute("DELETE FROM t_role WHERE id = 10");
 
@@ -372,8 +373,8 @@ class SchemaConstraintsTest {
         jdbcTemplate.queryForObject("SELECT id FROM t_tran WHERE id = 1", Integer.class);
         jdbcTemplate.queryForObject("SELECT id FROM t_product WHERE id = 1", Long.class);
         jdbcTemplate.queryForObject("SELECT id FROM t_user WHERE id = 1", Integer.class);
-        jdbcTemplate.queryForObject("SELECT id FROM t_role WHERE id = 1", Integer.class);
-        jdbcTemplate.queryForObject("SELECT id FROM t_permission WHERE id = 1", Integer.class);
+        jdbcTemplate.queryForObject("SELECT id FROM t_role WHERE role = 'admin'", Integer.class);
+        jdbcTemplate.queryForObject("SELECT id FROM t_permission WHERE code = 'activity:list'", Integer.class);
         jdbcTemplate.queryForObject("SELECT id FROM t_dic_type WHERE id = 1", Integer.class);
         jdbcTemplate.queryForObject("SELECT id FROM t_dic_value WHERE id = 1", Integer.class);
         // 全部能查询到记录说明主键存在且数据初始化成功
@@ -430,5 +431,56 @@ class SchemaConstraintsTest {
         Long productId = jdbcTemplate.queryForObject(
             "SELECT product_id FROM t_tran_product WHERE id = 200", Long.class);
         assertEquals(bigId, productId, "product_id 应支持 BIGINT 范围值: " + bigId);
+    }
+
+    @Test
+    @Order(31)
+    @DisplayName("权限编码必须非空且唯一")
+    void testPermissionCodeRequiredAndUnique() {
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_permission (name, code, type) VALUES ('无编码权限', NULL, 'button')"));
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_permission (name, code, type) VALUES ('重复权限', 'activity:list', 'button')"));
+    }
+
+    @Test
+    @Order(32)
+    @DisplayName("权限类型只能是 menu 或 button")
+    void testPermissionTypeCheck() {
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_permission (name, code, type) VALUES ('非法类型', 'test:invalid-type', 'api')"));
+    }
+
+    @Test
+    @Order(33)
+    @DisplayName("权限父节点必须存在且不能引用自身")
+    void testPermissionParentConstraints() {
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_permission (name, code, type, parent_id) " +
+            "VALUES ('孤儿权限', 'test:orphan', 'menu', 99999)"));
+        jdbcTemplate.execute(
+            "INSERT INTO t_permission (id, name, code, type) VALUES (9998, '自引用权限', 'test:self', 'menu')");
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "UPDATE t_permission SET parent_id = 9998 WHERE id = 9998"));
+    }
+
+    @Test
+    @Order(34)
+    @DisplayName("角色权限复合主键拒绝重复授权")
+    void testDuplicateRolePermissionFails() {
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_role_permission (role_id, permission_id) " +
+            "SELECT r.id, p.id FROM t_role r CROSS JOIN t_permission p " +
+            "WHERE r.role = 'admin' AND p.code = 'activity:list'"));
+    }
+
+    @Test
+    @Order(35)
+    @DisplayName("用户角色复合主键拒绝重复关联")
+    void testDuplicateUserRoleFails() {
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_user_role (user_id, role_id) " +
+            "SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r " +
+            "WHERE u.login_act = 'admin' AND r.role = 'admin'"));
     }
 }

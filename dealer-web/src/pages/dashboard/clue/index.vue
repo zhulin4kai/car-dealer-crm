@@ -2,9 +2,9 @@
   <Card class="mb-5">
     <CardContent>
       <div class="flex gap-2">
-        <Button @click="addClue" v-hasPermission="'clue:add'">录入线索</Button>
-        <Button variant="secondary" @click="importExcel" v-hasPermission="'clue:import'">导入线索(Excel)</Button>
-        <Button variant="destructive" @click="handleBatchDelete" v-hasPermission="'clue:delete'">批量删除</Button>
+        <Button @click="addClue" v-has-permission="PERMISSIONS.clue.add">录入线索</Button>
+        <Button variant="secondary" @click="importExcel" v-has-permission="PERMISSIONS.clue.import">导入线索(Excel)</Button>
+        <Button variant="destructive" @click="handleBatchDelete" v-has-permission="PERMISSIONS.clue.delete">批量删除</Button>
       </div>
     </CardContent>
   </Card>
@@ -66,9 +66,9 @@
               <TableCell class="text-center truncate max-w-[150px]">{{ row.nextContactTime }}</TableCell>
               <TableCell class="text-center">
                 <div class="flex gap-1 justify-center flex-wrap">
-                  <Button size="sm" @click="view(row.id)" v-hasPermission="'clue:view'">详情</Button>
-                  <Button size="sm" variant="secondary" @click="edit(row.id)" v-hasPermission="'clue:edit'">编辑</Button>
-                  <Button size="sm" variant="destructive" @click="del(row.id)" v-hasPermission="'clue:delete'">删除</Button>
+                  <Button size="sm" @click="view(row.id)" v-has-permission="PERMISSIONS.clue.view">详情</Button>
+                  <Button size="sm" variant="secondary" @click="edit(row.id)" v-has-permission="PERMISSIONS.clue.edit">编辑</Button>
+                  <Button size="sm" variant="destructive" @click="del(row.id)" v-has-permission="PERMISSIONS.clue.delete">删除</Button>
                 </div>
               </TableCell>
             </TableRow>
@@ -317,6 +317,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { messageConfirm, messageTip } from '@/shared/utils/legacy-util'
 import {

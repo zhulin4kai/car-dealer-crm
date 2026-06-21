@@ -79,7 +79,7 @@
           </div>
 
           <div class="flex gap-2 pt-2">
-            <Button type="submit" :disabled="isSubmitting">提交审批</Button>
+            <Button v-has-permission="PERMISSIONS.tran.approve" type="submit" :disabled="isSubmitting">提交审批</Button>
             <Button type="button" variant="outline" @click="goBack">返回</Button>
           </div>
         </form>
@@ -89,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'

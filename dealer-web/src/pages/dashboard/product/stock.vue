@@ -89,8 +89,8 @@
               <TableCell>{{ row.minStock }}</TableCell>
               <TableCell>{{ formatDateTime(row.updateTime) }}</TableCell>
               <TableCell class="flex gap-2">
-                <Button variant="outline" size="sm" @click="handleDetail(row)">详情</Button>
-                <Button size="sm" @click="handleRestock(row)">补货</Button>
+                <Button v-has-permission="PERMISSIONS.product.stock.view" variant="outline" size="sm" @click="handleDetail(row)">详情</Button>
+                <Button v-has-permission="PERMISSIONS.product.stock.adjust" size="sm" @click="handleRestock(row)">补货</Button>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -192,6 +192,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted } from 'vue'
 import { messageTip } from '@/shared/utils/legacy-util'
 import { useRouter } from 'vue-router'

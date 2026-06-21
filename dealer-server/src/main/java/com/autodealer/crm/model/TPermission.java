@@ -53,6 +53,11 @@ public class TPermission implements Serializable {
     private String icon;
 
     /**
+     * 是否启用（1启用，0停用）
+     */
+    private Integer enabled;
+
+    /**
      * 一对多关联
      */
     private List<TPermission> subPermissionList;

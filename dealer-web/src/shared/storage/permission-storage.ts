@@ -1,6 +1,8 @@
-const PERMISSION_STORAGE_KEY = 'user_permissions'
+const PERMISSION_STORAGE_KEY = 'user_permissions_v2'
+const LEGACY_PERMISSION_STORAGE_KEY = 'user_permissions'
 
 export function readPermissionCodes(): string[] | null {
+  window.sessionStorage.removeItem(LEGACY_PERMISSION_STORAGE_KEY)
   const cached = window.sessionStorage.getItem(PERMISSION_STORAGE_KEY)
   if (!cached) {
     return null
@@ -20,4 +22,5 @@ export function writePermissionCodes(permissions: string[]): void {
 
 export function clearPermissionCodes(): void {
   window.sessionStorage.removeItem(PERMISSION_STORAGE_KEY)
+  window.sessionStorage.removeItem(LEGACY_PERMISSION_STORAGE_KEY)
 }

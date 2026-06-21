@@ -2,7 +2,7 @@
   <div class="p-5 space-y-5">
     <Card>
       <CardContent class="flex gap-2.5 pt-6">
-        <Button @click="handleAdd">新增产品</Button>
+        <Button v-has-permission="PERMISSIONS.product.add" @click="handleAdd">新增产品</Button>
         <Button variant="secondary" @click="handleCategory">分类管理</Button>
         <Button variant="outline" @click="handlePromotion">促销设置</Button>
         <Button variant="destructive" @click="handleStockAlert">库存预警</Button>
@@ -54,8 +54,8 @@
                 </Badge>
               </TableCell>
               <TableCell class="flex gap-2">
-                <Button variant="secondary" size="sm" @click="handleEdit(row)">编辑</Button>
-                <Button variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+                <Button v-has-permission="PERMISSIONS.product.edit" variant="secondary" size="sm" @click="handleEdit(row)">编辑</Button>
+                <Button v-has-permission="PERMISSIONS.product.delete" variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -164,6 +164,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, reactive, computed } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'

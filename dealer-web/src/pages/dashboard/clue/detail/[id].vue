@@ -5,7 +5,7 @@
       <CardHeader class="border-b bg-muted/50 flex-row justify-between items-center">
         <CardTitle class="text-lg font-semibold">线索详情</CardTitle>
         <div class="flex gap-2">
-          <Button variant="secondary" @click="convertCustomer" v-if="clueDetail.state !== -1">
+          <Button v-if="clueDetail.state !== -1" v-has-permission="PERMISSIONS.customer.transfer" variant="secondary" @click="convertCustomer">
             转换客户
           </Button>
           <Button variant="secondary" @click="handleGoBack">
@@ -278,6 +278,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Form } from 'vee-validate'

@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.dto.CreateClueRemarkRequest;
 import com.autodealer.crm.model.TClueRemark;
 import com.autodealer.crm.query.ClueRemarkQuery;
@@ -18,7 +20,7 @@ public class ClueRemarkController {
     private ClueRemarkService clueRemarkService;
 
     @PostMapping(value = "/api/clue/remark")
-    @PreAuthorize("hasAuthority('clue:add')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CLUE_ADD + "')")
     public R addClueRemark(@Valid @RequestBody CreateClueRemarkRequest req) {
         ClueRemarkQuery query = new ClueRemarkQuery();
         query.setClueId(req.getClueId());
@@ -29,7 +31,7 @@ public class ClueRemarkController {
     }
 
     @GetMapping(value = "/api/clue/remark")
-    @PreAuthorize("hasAuthority('clue:view')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CLUE_VIEW + "')")
     public R clueRemarkPage(@RequestParam(value = "current", required = false) Integer current,
                             @RequestParam(value = "clueId") Integer clueId) {
 

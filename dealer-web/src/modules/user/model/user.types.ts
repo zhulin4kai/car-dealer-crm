@@ -9,9 +9,13 @@ export interface LoginForm {
 export interface Permission {
   id?: number | string
   name?: string
-  code?: string
+  code: string
   url?: string
+  type?: 'menu' | 'button'
+  parentId?: number | string
+  orderNo?: number
   icon?: string
+  enabled?: number
   subPermissionList?: Permission[]
 }
 

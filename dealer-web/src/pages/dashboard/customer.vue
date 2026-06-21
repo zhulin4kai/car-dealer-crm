@@ -1,8 +1,8 @@
 <template>
   <Card class="mb-5">
     <CardContent class="flex gap-2">
-      <Button @click="batchExportExcel">全部导出(Excel)</Button>
-      <Button @click="chooseExportExcel">选择导出(Excel)</Button>
+      <Button v-has-permission="PERMISSIONS.customer.export" @click="batchExportExcel">全部导出(Excel)</Button>
+      <Button v-has-permission="PERMISSIONS.customer.export" @click="chooseExportExcel">选择导出(Excel)</Button>
     </CardContent>
   </Card>
 
@@ -44,7 +44,7 @@
             <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.ownerDO?.name }}</TableCell>
             <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.activityDO?.name }}</TableCell>
             <TableCell class="truncate max-w-[150px]">
-              <Button variant="link" size="sm" class="h-auto p-0" @click="view(row.id)">
+              <Button v-has-permission="PERMISSIONS.customer.view" variant="link" size="sm" class="h-auto p-0" @click="view(row.id)">
                 {{ row.clueDO?.fullName }}
               </Button>
             </TableCell>
@@ -72,6 +72,7 @@
 </template>
 
 <script setup lang="ts">
+import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, computed, onMounted } from 'vue'
 import { env } from '@/shared/config/env'
 import { getToken, messageTip } from '@/shared/utils/legacy-util'

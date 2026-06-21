@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.SystemMonitorService;
 import jakarta.annotation.Resource;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/monitor")
 @CrossOrigin
-@PreAuthorize("hasAuthority('admin')")
+@PreAuthorize("hasAuthority('" + PermissionCodes.MONITOR_VIEW + "')")
 public class SystemMonitorController {
 
     @Resource

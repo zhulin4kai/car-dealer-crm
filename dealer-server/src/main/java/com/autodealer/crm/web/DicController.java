@@ -1,5 +1,7 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.constant.PermissionCodes;
+
 import com.autodealer.crm.dto.CreateDicTypeRequest;
 import com.autodealer.crm.dto.CreateDicValueRequest;
 import com.autodealer.crm.dto.UpdateDicTypeRequest;
@@ -27,6 +29,7 @@ public class DicController {
      * 字典类型
      */
     @GetMapping("/types")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_TYPE_LIST + "')")
     public R getDicTypes(DicQuery query) {
         if (query.getPage() == null) {
             query.setPage(1);
@@ -38,12 +41,13 @@ public class DicController {
     }
 
     @GetMapping("/type/get/{id}")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_TYPE_VIEW + "')")
     public R getDicTypeById(@PathVariable Integer id) {
         return R.OK(dicService.getDicTypeById(id));
     }
 
     @PostMapping("/type/create")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_TYPE_ADD + "')")
     public R addDicType(@Valid @RequestBody CreateDicTypeRequest req) {
         TDicType dicType = new TDicType();
         dicType.setTypeCode(req.getTypeCode());
@@ -53,7 +57,7 @@ public class DicController {
     }
 
     @PutMapping("/type/update/{id}")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_TYPE_EDIT + "')")
     public R updateDicType(@PathVariable Integer id, @Valid @RequestBody UpdateDicTypeRequest req) {
         TDicType dicType = new TDicType();
         dicType.setTypeCode(req.getTypeCode());
@@ -63,13 +67,13 @@ public class DicController {
     }
 
     @DeleteMapping("/type/delete/{id}")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_TYPE_DELETE + "')")
     public R deleteDicType(@PathVariable Integer id) {
         return dicService.deleteDicType(id) ? R.OK() : R.FAIL("删除字典类型失败");
     }
 
     @DeleteMapping("/types/batch")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_TYPE_DELETE + "')")
     public R batchDeleteDicTypes(@RequestBody List<Integer> ids) {
         return dicService.deleteDicTypesByIds(ids) ? R.OK() : R.FAIL("批量删除字典类型失败");
     }
@@ -78,6 +82,7 @@ public class DicController {
      * 字典值
      */
     @GetMapping("/values")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_VALUE_LIST + "')")
     public R getDicValues(DicQuery query) {
         if (query.getPage() == null) {
             query.setPage(1);
@@ -89,12 +94,13 @@ public class DicController {
     }
 
     @GetMapping("/value/get/{id}")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_VALUE_VIEW + "')")
     public R getDicValueById(@PathVariable Integer id) {
         return R.OK(dicService.getDicValueById(id));
     }
 
     @PostMapping("/value/create")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_VALUE_ADD + "')")
     public R addDicValue(@Valid @RequestBody CreateDicValueRequest req) {
         TDicValue dicValue = new TDicValue();
         dicValue.setTypeCode(req.getTypeCode());
@@ -105,7 +111,7 @@ public class DicController {
     }
 
     @PutMapping("/value/update/{id}")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_VALUE_EDIT + "')")
     public R updateDicValue(@PathVariable Integer id, @Valid @RequestBody UpdateDicValueRequest req) {
         TDicValue dicValue = new TDicValue();
         dicValue.setTypeCode(req.getTypeCode());
@@ -116,18 +122,18 @@ public class DicController {
     }
 
     @DeleteMapping("/value/delete/{id}")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_VALUE_DELETE + "')")
     public R deleteDicValue(@PathVariable Integer id) {
         return dicService.deleteDicValue(id) ? R.OK() : R.FAIL("删除字典值失败");
     }
 
     @DeleteMapping("/value/batch")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_VALUE_DELETE + "')")
     public R batchDeleteDicValues(@RequestBody List<Integer> ids) {
         return dicService.deleteDicValuesByIds(ids) ? R.OK() : R.FAIL("批量删除字典值失败");
     }
 
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_CACHE_REFRESH + "')")
     @GetMapping("/clear")
     public R clearCache(@RequestParam(required = false) Boolean forceRefresh) {
         dicService.evictDictionaryCaches();
@@ -140,7 +146,7 @@ public class DicController {
     }
 
     @GetMapping("/refresh")
-    @PreAuthorize("hasAuthority('admin')")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.DICT_CACHE_REFRESH + "')")
     public R refreshDictData(@RequestParam(required = false) String type) {
         if ("type".equals(type)) {
             // 刷新字典类型数据

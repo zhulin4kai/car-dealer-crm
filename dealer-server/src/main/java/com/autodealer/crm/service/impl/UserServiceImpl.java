@@ -38,7 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -95,12 +97,33 @@ public class UserServiceImpl implements UserService {
         List<String> stringRoleList = new ArrayList<>();
         tRoleList.forEach(tRole -> stringRoleList.add(tRole.getRole()));
         tUser.setRoleList(stringRoleList);
-        List<TPermission> menuPermissionList = tPermissionMapper.selectMenuPermissionByUserId(tUser.getId());
-        tUser.setMenuPermissionList(menuPermissionList);
+        List<TPermission> flatMenuPermissions = tPermissionMapper.selectMenuPermissionByUserId(tUser.getId());
+        tUser.setMenuPermissionList(buildMenuTree(flatMenuPermissions));
         List<TPermission> buttonPermissionList = tPermissionMapper.selectButtonPermissionByUserId(tUser.getId());
         List<String> stringPermissionList = new ArrayList<>();
         buttonPermissionList.forEach(tPermission -> stringPermissionList.add(tPermission.getCode()));
         tUser.setPermissionList(stringPermissionList);
+    }
+
+    private List<TPermission> buildMenuTree(List<TPermission> flatMenus) {
+        Map<Integer, TPermission> byId = new LinkedHashMap<>();
+        flatMenus.forEach(permission -> {
+            permission.setSubPermissionList(new ArrayList<>());
+            byId.put(permission.getId(), permission);
+        });
+
+        List<TPermission> roots = new ArrayList<>();
+        flatMenus.forEach(permission -> {
+            if (permission.getParentId() == null) {
+                roots.add(permission);
+                return;
+            }
+            TPermission parent = byId.get(permission.getParentId());
+            if (parent != null) {
+                parent.getSubPermissionList().add(permission);
+            }
+        });
+        return roots;
     }
 
     @Override

@@ -30,6 +30,13 @@ export function installRouterGuards(router: Router): void {
       }
     }
 
+    if (to.meta.permission && !permissionStore.hasPermission(to.meta.permission)) {
+      if (to.path === '/dashboard' && permissionStore.firstAccessibleMenuUrl) {
+        return permissionStore.firstAccessibleMenuUrl
+      }
+      return '/403'
+    }
+
     return true
   })
 }

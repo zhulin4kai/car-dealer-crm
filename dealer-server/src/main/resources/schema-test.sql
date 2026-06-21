@@ -132,30 +132,36 @@ CREATE TABLE IF NOT EXISTS t_dic_value
 CREATE TABLE IF NOT EXISTS t_permission
 (
     id        INTEGER NOT NULL AUTO_INCREMENT,
-    name      VARCHAR(30),
-    code      VARCHAR(30),
-    url       VARCHAR(30),
-    type      VARCHAR(30),
+    name      VARCHAR(64) NOT NULL,
+    code      VARCHAR(64) NOT NULL,
+    url       VARCHAR(255),
+    type      VARCHAR(30) NOT NULL,
     parent_id INTEGER,
     order_no  INTEGER,
     icon      VARCHAR(100),
-    PRIMARY KEY (id)
+    enabled   TINYINT NOT NULL DEFAULT 1,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_permission_code UNIQUE (code),
+    CONSTRAINT chk_permission_type CHECK (type IN ('menu', 'button')),
+    CONSTRAINT chk_permission_parent_self CHECK (parent_id IS NULL OR parent_id <> id),
+    CONSTRAINT fk_permission_parent FOREIGN KEY (parent_id) REFERENCES t_permission(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_role
 (
     id        INTEGER NOT NULL AUTO_INCREMENT,
-    role      VARCHAR(30),
-    role_name VARCHAR(30),
-    PRIMARY KEY (id)
+    role      VARCHAR(64) NOT NULL,
+    role_name VARCHAR(64) NOT NULL,
+    enabled   TINYINT NOT NULL DEFAULT 1,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_role_code UNIQUE (role)
 );
 
 CREATE TABLE IF NOT EXISTS t_role_permission
 (
-    id            INTEGER NOT NULL AUTO_INCREMENT,
-    role_id       INTEGER,
-    permission_id INTEGER,
-    PRIMARY KEY (id),
+    role_id       INTEGER NOT NULL,
+    permission_id INTEGER NOT NULL,
+    PRIMARY KEY (role_id, permission_id),
     CONSTRAINT fk_role_permission_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE CASCADE,
     CONSTRAINT fk_role_permission_permission FOREIGN KEY (permission_id) REFERENCES t_permission(id) ON DELETE CASCADE
 );
@@ -210,10 +216,9 @@ CREATE TABLE IF NOT EXISTS t_user
 
 CREATE TABLE IF NOT EXISTS t_user_role
 (
-    id      INTEGER NOT NULL AUTO_INCREMENT,
-    user_id INTEGER,
-    role_id INTEGER,
-    PRIMARY KEY (id),
+    user_id INTEGER NOT NULL,
+    role_id INTEGER NOT NULL,
+    PRIMARY KEY (user_id, role_id),
     CONSTRAINT fk_user_role_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE CASCADE,
     CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE CASCADE
 );

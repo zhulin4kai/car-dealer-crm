@@ -12,180 +12,223 @@ MERGE INTO t_user (id, login_act, login_pwd, name, phone, email, account_no_expi
 VALUES (3, 'lisi', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '李四', '13800000002', 'lisi@test.com', 1, 1, 1, 1, CURRENT_TIMESTAMP, 1, NULL, NULL, NULL);
 
 -- ==================== Roles ====================
-MERGE INTO t_role (id, role, role_name) KEY(id) VALUES (1, 'admin', '管理员');
-MERGE INTO t_role (id, role, role_name) KEY(id) VALUES (2, 'user', '普通用户');
-MERGE INTO t_role (id, role, role_name) KEY(id) VALUES (3, 'saler', '销售员');
+INSERT INTO `t_role` (`role`, `role_name`, `enabled`) VALUES
+('admin', '系统管理员', 1),
+('sales_consultant', '销售顾问', 1),
+('sales_manager', '销售经理', 1),
+('marketing_specialist', '市场专员', 1),
+('finance_specialist', '财务专员', 1),
+('inventory_specialist', '库存专员', 1);
 
 -- ==================== User Roles ====================
-MERGE INTO t_user_role (id, user_id, role_id) KEY(id) VALUES (1, 1, 1);
-MERGE INTO t_user_role (id, user_id, role_id) KEY(id) VALUES (2, 2, 2);
-MERGE INTO t_user_role (id, user_id, role_id) KEY(id) VALUES (3, 3, 3);
+INSERT INTO t_user_role (user_id, role_id)
+SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r WHERE u.login_act = 'admin' AND r.role = 'admin';
+INSERT INTO t_user_role (user_id, role_id)
+SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r WHERE u.login_act = 'zhangsan' AND r.role = 'sales_consultant';
+INSERT INTO t_user_role (user_id, role_id)
+SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r WHERE u.login_act = 'lisi' AND r.role = 'sales_manager';
 
 -- ==================== Permissions ====================
--- Menu: 市场活动
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (1, '市场活动', NULL, NULL, 'menu', 0, 1, 'OfficeBuilding');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (2, '市场活动', NULL, '/dashboard/activity', 'menu', 1, 1, 'CreditCard');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (3, '市场活动-列表', 'activity:list', NULL, 'button', 2, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (4, '市场活动-录入', 'activity:add', NULL, 'button', 2, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (5, '市场活动-编辑', 'activity:edit', NULL, 'button', 2, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (6, '市场活动-查看', 'activity:view', NULL, 'button', 2, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (7, '市场活动-删除', 'activity:delete', NULL, 'button', 2, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (9, '市场活动-搜索', 'activity:search', NULL, 'button', 2, NULL, NULL);
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`) VALUES
+('仪表盘', 'menu:dashboard', '/dashboard', 'menu', NULL, 0, 'Gauge', 1),
+('市场活动', 'menu:activity', NULL, 'menu', NULL, 1, 'OfficeBuilding', 1),
+('线索管理', 'menu:clue', NULL, 'menu', NULL, 2, 'Magnet', 1),
+('客户管理', 'menu:customer', NULL, 'menu', NULL, 3, 'User', 1),
+('交易管理', 'menu:tran', NULL, 'menu', NULL, 4, 'Wallet', 1),
+('产品管理', 'menu:product', NULL, 'menu', NULL, 5, 'Memo', 1),
+('字典管理', 'menu:dict', NULL, 'menu', NULL, 6, 'Grid', 1),
+('用户管理', 'menu:user', NULL, 'menu', NULL, 7, 'Stamp', 1),
+('系统管理', 'menu:system', NULL, 'menu', NULL, 8, 'Setting', 1);
 
--- Menu: 线索管理
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (10, '线索管理', NULL, NULL, 'menu', 0, 2, 'Magnet');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (12, '线索管理', NULL, '/dashboard/clue', 'menu', 10, 1, 'Paperclip');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (13, '线索管理-列表', 'clue:list', NULL, 'button', 12, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (14, '线索管理-录入', 'clue:add', NULL, 'button', 12, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (15, '线索管理-编辑', 'clue:edit', NULL, 'button', 12, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (16, '线索管理-查看', 'clue:view', NULL, 'button', 12, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (17, '线索管理-删除', 'clue:delete', NULL, 'button', 12, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (18, '线索管理-导入', 'clue:import', NULL, 'button', 12, NULL, NULL);
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动', 'page:activity:list', '/dashboard/activity', 'menu', id, 1, 'CreditCard', 1 FROM `t_permission` WHERE code = 'menu:activity';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '线索管理', 'page:clue:list', '/dashboard/clue', 'menu', id, 1, 'Paperclip', 1 FROM `t_permission` WHERE code = 'menu:clue';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '客户管理', 'page:customer:list', '/dashboard/customer', 'menu', id, 1, 'UserFilled', 1 FROM `t_permission` WHERE code = 'menu:customer';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理', 'page:tran:list', '/dashboard/tran', 'menu', id, 1, 'Coin', 1 FROM `t_permission` WHERE code = 'menu:tran';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '车型商品', 'page:product:list', '/dashboard/product', 'menu', id, 1, 'SetUp', 1 FROM `t_permission` WHERE code = 'menu:product';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商品分类', 'page:product:category', '/dashboard/product/category', 'menu', id, 2, 'ListTree', 1 FROM `t_permission` WHERE code = 'menu:product';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '促销管理', 'page:product:promotion', '/dashboard/product/promotion', 'menu', id, 3, 'BadgePercent', 1 FROM `t_permission` WHERE code = 'menu:product';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '库存预警', 'page:product:stock', '/dashboard/product/stock', 'menu', id, 4, 'Warehouse', 1 FROM `t_permission` WHERE code = 'menu:product';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典类型', 'page:dict:type', '/dashboard/dict/type', 'menu', id, 1, 'Postcard', 1 FROM `t_permission` WHERE code = 'menu:dict';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典数据', 'page:dict:value', '/dashboard/dict/value', 'menu', id, 2, 'DataAnalysis', 1 FROM `t_permission` WHERE code = 'menu:dict';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理', 'page:user:list', '/dashboard/user', 'menu', id, 1, 'UserCog', 1 FROM `t_permission` WHERE code = 'menu:user';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '系统管理', 'page:system:list', '/dashboard/system', 'menu', id, 1, 'Tools', 1 FROM `t_permission` WHERE code = 'menu:system';
 
--- Menu: 客户管理
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (19, '客户管理', NULL, NULL, 'menu', 0, 3, 'User');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (20, '客户管理', NULL, '/dashboard/customer', 'menu', 19, 1, 'UserFilled');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (21, '客户管理-列表', 'customer:list', NULL, 'button', 20, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (22, '客户管理-查看', 'customer:view', NULL, 'button', 20, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (23, '客户管理-导出', 'customer:export', NULL, 'button', 20, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (62, '客户管理-转客户', 'customer:transfer', NULL, 'button', 20, NULL, NULL);
-
--- Menu: 交易管理
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (24, '交易管理', NULL, NULL, 'menu', 0, 4, 'Wallet');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (25, '交易管理', NULL, '/dashboard/tran', 'menu', 24, 1, 'Coin');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (26, '交易管理-列表', 'tran:list', NULL, 'button', 25, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (27, '交易管理-查看', 'tran:view', NULL, 'button', 25, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (2701, '交易管理-创建', 'tran:create', NULL, 'button', 25, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (2702, '交易管理-编辑', 'tran:edit', NULL, 'button', 25, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (2703, '交易管理-删除', 'tran:delete', NULL, 'button', 25, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (2704, '交易管理-审批', 'tran:approve', NULL, 'button', 25, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (2705, '交易管理-发票', 'tran:invoice', NULL, 'button', 25, NULL, NULL);
-
--- Menu: 产品管理
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (28, '产品管理', NULL, NULL, 'menu', 0, 5, 'Memo');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (29, '产品管理', NULL, '/dashboard/product', 'menu', 28, 1, 'SetUp');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (30, '产品管理-列表', 'product:list', NULL, 'button', 29, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (31, '产品管理-录入', 'product:add', NULL, 'button', 29, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (32, '产品管理-编辑', 'product:edit', NULL, 'button', 29, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (33, '产品管理-查看', 'product:view', NULL, 'button', 29, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (34, '产品管理-删除', 'product:delete', NULL, 'button', 29, NULL, NULL);
-
--- Menu: 字典管理
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (35, '字典管理', NULL, NULL, 'menu', 0, 6, 'Grid');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (36, '字典类型', NULL, '/dashboard/dict/type', 'menu', 35, 1, 'Postcard');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (37, '字典类型-列表', 'dict/type:list', NULL, 'button', 36, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (42, '字典数据', '', '/dashboard/dict/value', 'menu', 35, 2, 'DataAnalysis');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (43, '字典数据-列表', 'dict/value:list', NULL, 'button', 42, NULL, NULL);
-
--- Menu: 用户管理
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (48, '用户管理', NULL, NULL, 'menu', 0, 7, 'Stamp');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (49, '用户管理', NULL, '/dashboard/user', 'menu', 48, 1, 'User');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (50, '用户管理-列表', 'user:list', NULL, 'button', 49, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (51, '用户管理-录入', 'user:add', NULL, 'button', 49, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (52, '用户管理-编辑', 'user:edit', NULL, 'button', 49, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (53, '用户管理-查看', 'user:view', NULL, 'button', 49, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (54, '用户管理-删除', 'user:delete', NULL, 'button', 49, NULL, NULL);
-
--- Menu: 系统管理
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (55, '系统管理', NULL, NULL, 'menu', 0, 8, 'Setting');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (56, '系统管理', NULL, '/dashboard/system', 'menu', 55, 1, 'Tools');
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (57, '系统管理-列表', 'system:list', NULL, 'button', 56, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (58, '系统管理-录入', 'system:add', NULL, 'button', 56, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (59, '系统管理-编辑', 'system:edit', NULL, 'button', 56, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (60, '系统管理-查看', 'system:view', NULL, 'button', 56, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (61, '系统管理-删除', 'system:delete', NULL, 'button', 56, NULL, NULL);
-MERGE INTO t_permission (id, name, code, url, type, parent_id, order_no, icon) KEY(id) VALUES (63, '统计报表-查看', 'statistic:view', NULL, 'button', 0, NULL, NULL);
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动-列表', 'activity:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动-录入', 'activity:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动-编辑', 'activity:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动-查看', 'activity:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动-删除', 'activity:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '线索管理-列表', 'clue:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:clue:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '线索管理-录入', 'clue:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:clue:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '线索管理-编辑', 'clue:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:clue:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '线索管理-查看', 'clue:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:clue:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '线索管理-删除', 'clue:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:clue:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '线索管理-导入', 'clue:import', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:clue:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '客户管理-列表', 'customer:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:customer:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '客户管理-查看', 'customer:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:customer:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '客户管理-导出', 'customer:export', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:customer:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '客户管理-转客户', 'customer:transfer', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:customer:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-列表', 'tran:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-查看', 'tran:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-创建', 'tran:create', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-编辑', 'tran:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-删除', 'tran:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-结算', 'tran:settle', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-重新提交', 'tran:resubmit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-审批', 'tran:approve', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-发票', 'tran:invoice', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-收款', 'tran:payment', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-退款', 'tran:refund', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '车型商品-列表', 'product:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '车型商品-查看', 'product:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '车型商品-录入', 'product:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '车型商品-编辑', 'product:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '车型商品-删除', 'product:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商品分类-列表', 'product:category:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:category';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商品分类-查看', 'product:category:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:category';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商品分类-录入', 'product:category:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:category';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商品分类-编辑', 'product:category:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:category';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商品分类-删除', 'product:category:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:category';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '促销管理-列表', 'product:promotion:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '促销管理-查看', 'product:promotion:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '促销管理-录入', 'product:promotion:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '促销管理-编辑', 'product:promotion:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '促销管理-删除', 'product:promotion:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '库存管理-查看', 'product:stock:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:stock';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '库存管理-调整', 'product:stock:adjust', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:stock';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典类型-列表', 'dict:type:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:type';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典类型-查看', 'dict:type:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:type';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典类型-录入', 'dict:type:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:type';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典类型-编辑', 'dict:type:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:type';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典类型-删除', 'dict:type:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:type';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典数据-列表', 'dict:value:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:value';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典数据-查看', 'dict:value:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:value';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典数据-录入', 'dict:value:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:value';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典数据-编辑', 'dict:value:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:value';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典数据-删除', 'dict:value:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:value';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '字典缓存-刷新', 'dict:cache:refresh', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:dict:type';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-列表', 'user:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-查看', 'user:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-录入', 'user:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-编辑', 'user:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-删除', 'user:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-状态', 'user:status', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-角色分配', 'user:role', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-密码重置', 'user:password', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '系统管理-列表', 'system:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '系统管理-查看', 'system:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '系统管理-录入', 'system:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '系统管理-编辑', 'system:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '系统管理-删除', 'system:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '统计报表-查看', 'statistic:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:dashboard';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '系统监控-查看', 'monitor:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:system';
 
 -- ==================== Role Permissions ====================
--- Admin role: all permissions
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (1, 1, 1);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (2, 1, 2);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (3, 1, 3);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (4, 1, 4);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (5, 1, 5);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (6, 1, 6);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (7, 1, 7);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (8, 1, 10);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (9, 1, 12);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (10, 1, 13);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (11, 1, 14);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (12, 1, 15);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (13, 1, 16);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (14, 1, 17);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (15, 1, 19);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (16, 1, 20);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (17, 1, 21);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (18, 1, 22);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (19, 1, 24);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (20, 1, 25);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (21, 1, 26);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (22, 1, 27);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (23, 1, 28);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (24, 1, 29);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (25, 1, 30);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (26, 1, 31);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (27, 1, 32);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (28, 1, 33);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (29, 1, 34);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (30, 1, 35);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (31, 1, 36);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (32, 1, 37);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (33, 1, 42);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (34, 1, 43);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (35, 1, 48);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (36, 1, 49);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (37, 1, 50);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (38, 1, 51);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (39, 1, 52);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (40, 1, 53);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (41, 1, 54);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (42, 1, 55);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (43, 1, 56);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (44, 1, 57);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (45, 1, 58);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (46, 1, 59);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (47, 1, 60);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (48, 1, 61);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (85, 1, 9);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (86, 1, 18);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (87, 1, 23);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (88, 1, 62);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (89, 1, 63);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (90, 1, 2701);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (91, 1, 2702);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (92, 1, 2703);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (93, 1, 2704);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (94, 1, 2705);
+-- 管理员显式拥有当前全部已启用权限；后续新增权限的迁移必须同步补充管理员映射。
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role = 'admin' AND r.enabled = 1 AND p.enabled = 1;
 
--- User role: limited permissions (clue and customer only)
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (50, 2, 10);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (51, 2, 12);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (52, 2, 13);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (53, 2, 14);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (54, 2, 15);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (55, 2, 16);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (56, 2, 17);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (57, 2, 19);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (58, 2, 20);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (59, 2, 21);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (60, 2, 22);
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role = 'sales_consultant' AND p.code IN ('menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:settle', 'tran:resubmit');
 
--- Saler role: clue, customer, tran permissions
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (70, 3, 10);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (71, 3, 12);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (72, 3, 13);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (73, 3, 14);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (74, 3, 15);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (75, 3, 16);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (76, 3, 17);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (77, 3, 19);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (78, 3, 20);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (79, 3, 21);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (80, 3, 22);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (81, 3, 24);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (82, 3, 25);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (83, 3, 26);
-MERGE INTO t_role_permission (id, role_id, permission_id) KEY(id) VALUES (84, 3, 27);
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role = 'sales_manager' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:delete', 'clue:import', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'customer:export', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:delete', 'tran:settle', 'tran:resubmit', 'tran:approve', 'statistic:view');
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role = 'marketing_specialist' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:import', 'statistic:view');
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role = 'finance_specialist' AND p.code IN ('menu:dashboard', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:invoice', 'tran:payment', 'tran:refund', 'statistic:view');
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role = 'inventory_specialist' AND p.code IN ('menu:product', 'page:product:list', 'page:product:category', 'page:product:promotion', 'page:product:stock', 'product:list', 'product:view', 'product:add', 'product:edit', 'product:delete', 'product:category:list', 'product:category:view', 'product:category:add', 'product:category:edit', 'product:category:delete', 'product:promotion:list', 'product:promotion:view', 'product:promotion:add', 'product:promotion:edit', 'product:promotion:delete', 'product:stock:view', 'product:stock:adjust');
 
 -- ==================== Dictionary Types ====================
 MERGE INTO t_dic_type (id, type_code, type_name, remark) KEY(id) VALUES (1, 'sex', '性别', NULL);

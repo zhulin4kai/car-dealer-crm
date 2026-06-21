@@ -15,5 +15,7 @@ public class TRole implements Serializable {
 
     private String roleName;
 
+    private Integer enabled;
+
     private static final long serialVersionUID = 1L;
 }
