@@ -134,6 +134,12 @@
             <artifactId>embedded-redis</artifactId>
             <version>0.7.3</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Jackson Java 8 Date/Time Support -->
@@ -175,6 +181,9 @@
                 <version>3.1.2</version>
                 <configuration>
                     <argLine>@{argLine} -javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/${byte-buddy.version}/byte-buddy-agent-${byte-buddy.version}.jar</argLine>
+                    <systemPropertyVariables>
+                        <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
+                    </systemPropertyVariables>
                     <environmentVariables>
                         <JWT_SECRET>test-secret-key-for-unit-tests-only-2024</JWT_SECRET>
                         <DB_PASSWORD></DB_PASSWORD>

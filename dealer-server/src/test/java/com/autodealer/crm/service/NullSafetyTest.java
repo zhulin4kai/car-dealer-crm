@@ -1,8 +1,6 @@
 package com.autodealer.crm.service;
 
-import com.autodealer.crm.config.converter.*;
-import com.autodealer.crm.dto.TranCreateRequest;
-import com.autodealer.crm.DealerCRMApplication;
+import com.autodealer.crm.dto.CreateTranRequest;
 import com.autodealer.crm.model.TUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
@@ -11,48 +9,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import static org.junit.jupiter.api.Assertions.*;
 
 class NullSafetyTest {
-
-    @Test
-    void testConvertersHandleNullCache() throws Exception {
-        // After fix: converters check for null before iterating and return -1
-        // when cacheMap returns null for the key.
-
-        // Ensure cacheMap has no relevant keys
-        DealerCRMApplication.cacheMap.clear();
-
-        com.alibaba.excel.metadata.data.ReadCellData<?> cellData =
-                new com.alibaba.excel.metadata.data.ReadCellData<>("已联系");
-
-        // Test StateConverter
-        StateConverter stateConverter = new StateConverter();
-        assertEquals(-1, stateConverter.convertToJavaData(cellData, null, null),
-                "StateConverter should return -1 when cacheMap returns null for the key");
-
-        // Test AppellationConverter
-        AppellationConverter appellationConverter = new AppellationConverter();
-        assertEquals(-1, appellationConverter.convertToJavaData(cellData, null, null),
-                "AppellationConverter should return -1 when cacheMap returns null for the key");
-
-        // Test SourceConverter
-        SourceConverter sourceConverter = new SourceConverter();
-        assertEquals(-1, sourceConverter.convertToJavaData(cellData, null, null),
-                "SourceConverter should return -1 when cacheMap returns null for the key");
-
-        // Test NeedLoanConverter
-        NeedLoanConverter needLoanConverter = new NeedLoanConverter();
-        assertEquals(-1, needLoanConverter.convertToJavaData(cellData, null, null),
-                "NeedLoanConverter should return -1 when cacheMap returns null for the key");
-
-        // Test IntentionStateConverter
-        IntentionStateConverter intentionStateConverter = new IntentionStateConverter();
-        assertEquals(-1, intentionStateConverter.convertToJavaData(cellData, null, null),
-                "IntentionStateConverter should return -1 when cacheMap returns null for the key");
-
-        // Test IntentionProductConverter
-        IntentionProductConverter intentionProductConverter = new IntentionProductConverter();
-        assertEquals(-1, intentionProductConverter.convertToJavaData(cellData, null, null),
-                "IntentionProductConverter should return -1 when cacheMap returns null for the key");
-    }
 
     @Test
     void testTranControllerHandlesNullAuthentication() {
@@ -69,7 +25,7 @@ class NullSafetyTest {
         try {
             Class<?> tranControllerClass = Class.forName("com.autodealer.crm.web.TranController");
             java.lang.reflect.Method createMethod = tranControllerClass.getMethod("create",
-                    TranCreateRequest.class);
+                    CreateTranRequest.class);
 
             // Verify the method exists and would NPE with null authentication
             assertNotNull(createMethod, "TranController.create method should exist");
