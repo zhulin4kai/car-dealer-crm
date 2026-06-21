@@ -1,5 +1,6 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.TSystemMapper;
 import com.autodealer.crm.model.TSystem;
@@ -30,6 +31,9 @@ class SystemServiceImplTest {
 
     @Mock
     private RedisManager redisManager;
+
+    @Mock
+    private OperationAuditRecorder auditRecorder;
 
     @Test
     void testGetAllList() {

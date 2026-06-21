@@ -1,6 +1,7 @@
 package com.autodealer.crm.service.impl;
 
-import com.autodealer.crm.manager.RedisManager;
+import com.autodealer.crm.audit.AuditActionEnum;
+import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.mapper.TSystemMapper;
 import com.autodealer.crm.model.TSystem;
 import com.autodealer.crm.service.SystemService;
@@ -18,13 +19,15 @@ public class SystemServiceImpl implements SystemService {
     private TSystemMapper systemMapper;
 
     @Resource
-    private RedisManager redisManager;    @Override
+    private OperationAuditRecorder auditRecorder;
+
+    @Override
     public List<TSystem> getAllList() {
-        // 暂时禁用Redis缓存，直接从数据库获取，避免LocalDateTime序列化问题
         return systemMapper.selectAll();
-    }    @Override
+    }
+
+    @Override
     public TSystem getById(Integer id) {
-        // 暂时禁用Redis缓存，直接从数据库获取，避免LocalDateTime序列化问题
         return systemMapper.selectById(id);
     }
 
@@ -33,7 +36,7 @@ public class SystemServiceImpl implements SystemService {
     public void create(TSystem system) {
         system.setCreateTime(LocalDateTime.now());
         systemMapper.insert(system);
-        clearCache();
+        auditRecorder.record(AuditActionEnum.SYSTEM_CONFIG_UPDATE, String.valueOf(system.getId()));
     }
 
     @Override
@@ -42,31 +45,27 @@ public class SystemServiceImpl implements SystemService {
         system.setId(id);
         system.setEditTime(LocalDateTime.now());
         systemMapper.update(system);
-        clearCache();
+        auditRecorder.record(AuditActionEnum.SYSTEM_CONFIG_UPDATE, String.valueOf(id));
     }
 
     @Override
     @Transactional
     public void delete(Integer id) {
         systemMapper.deleteById(id);
-        clearCache();
+        auditRecorder.record(AuditActionEnum.SYSTEM_CONFIG_UPDATE, String.valueOf(id));
     }
 
     @Override
     @Transactional
     public void batchDelete(List<Integer> ids) {
         systemMapper.batchDelete(ids);
-        clearCache();
+        auditRecorder.record(AuditActionEnum.SYSTEM_CONFIG_UPDATE, ids.toString());
     }
 
     @Override
     @Transactional
     public void toggleStatus(Integer id, String isOpen) {
         systemMapper.updateStatus(id, isOpen);
-        clearCache();
-    }    private void clearCache() {
-        // 暂时禁用缓存清理，因为我们没有使用Redis缓存
-        // redisManager.delete(Constants.REDIS_SYSTEM_LIST_KEY);
-        // redisManager.deletePattern(Constants.REDIS_SYSTEM_DETAIL_KEY + "*");
+        auditRecorder.record(AuditActionEnum.SYSTEM_CONFIG_UPDATE, String.valueOf(id));
     }
 }
