@@ -1,6 +1,6 @@
 -- H2 Database Schema for Testing
 -- Converted from MySQL CarDealerCRM.sql
--- 已合并 V0001 迁移文件的最终结构：唯一约束、外键、CHECK、NOT NULL、value_code、BIGINT 对齐
+-- 与 CarDealerCRM.sql 保持等价约束：唯一约束、外键、CHECK、NOT NULL、value_code、BIGINT 对齐
 
 CREATE TABLE IF NOT EXISTS t_activity
 (
