@@ -3,10 +3,13 @@ package com.autodealer.crm.service;
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.enums.TranStage;
+import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.*;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.query.TranQuery;
+import com.autodealer.crm.result.CodeEnum;
+import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.service.impl.TranServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +52,9 @@ class TranServiceImplTest {
     @Mock
     private CurrentUserProvider currentUserProvider;
 
+    @Mock
+    private OperationAuditRecorder auditRecorder;
+
     @BeforeEach
     void setUp() {
         lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(7);
@@ -85,26 +91,85 @@ class TranServiceImplTest {
     void createTransaction_shouldReturnTranId() {
         TTran tran = newTran(null, TranStage.QUOTATION);
         when(tranMapper.insertSelective(any())).thenAnswer(inv -> { ((TTran)inv.getArgument(0)).setId(1); return 1; });
+        // 模拟数据库商品查询 — 价格来自数据库，不接受客户端传入
+        TProduct dbProduct = new TProduct();
+        dbProduct.setId(1L);
+        dbProduct.setName("测试商品");
+        dbProduct.setPrice(new BigDecimal("569800.00"));
+        dbProduct.setStatus("on_sale");
+        dbProduct.setStock(100);
+        when(productMapper.selectById(1L)).thenReturn(dbProduct);
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
         when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(1);
         TTranProduct p = new TTranProduct();
         p.setProductId(1);
         p.setQuantity(1);
-        p.setPrice(BigDecimal.TEN);
+        // 不设置 price — 服务端从数据库获取
         assertEquals(1, tranService.createTransaction(tran, Collections.singletonList(p)));
+        // 验证落库价格来自数据库
+        assertEquals(new BigDecimal("569800.00"), p.getPrice());
     }
 
     @Test
     void createTransaction_stockInsufficient_shouldThrow() {
         TTran tran = newTran(null, TranStage.QUOTATION);
         when(tranMapper.insertSelective(any())).thenAnswer(inv -> { ((TTran)inv.getArgument(0)).setId(1); return 1; });
+        TProduct dbProduct = new TProduct();
+        dbProduct.setId(1L);
+        dbProduct.setName("测试商品");
+        dbProduct.setPrice(BigDecimal.TEN);
+        dbProduct.setStatus("on_sale");
+        dbProduct.setStock(0);
+        when(productMapper.selectById(1L)).thenReturn(dbProduct);
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
         when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(0);
         TTranProduct p = new TTranProduct();
         p.setProductId(1);
         p.setQuantity(1);
-        p.setPrice(BigDecimal.TEN);
         assertThrows(RuntimeException.class, () -> tranService.createTransaction(tran, Collections.singletonList(p)));
+    }
+
+    @Test
+    void createTransaction_clientPriceIgnored_serverUsesDatabasePrice() {
+        TTran tran = newTran(null, TranStage.QUOTATION);
+        when(tranMapper.insertSelective(any())).thenAnswer(inv -> {
+            TTran inserted = inv.getArgument(0);
+            assertEquals(new BigDecimal("1139600.00"), inserted.getMoney(),
+                    "交易主表插入时必须已经完成服务端金额计算");
+            inserted.setId(1);
+            return 1;
+        });
+        TProduct dbProduct = new TProduct();
+        dbProduct.setId(1L);
+        dbProduct.setName("宝马X5");
+        dbProduct.setPrice(new BigDecimal("569800.00"));
+        dbProduct.setStatus("on_sale");
+        dbProduct.setStock(100);
+        when(productMapper.selectById(1L)).thenReturn(dbProduct);
+        when(tranProductMapper.insertSelective(any())).thenReturn(1);
+        when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(1);
+        TTranProduct p = new TTranProduct();
+        p.setProductId(1);
+        p.setQuantity(2);
+        // 即使客户端尝试设置 price = 1.00，服务端也应忽略并使用数据库价格
+        p.setPrice(BigDecimal.ONE);
+        tranService.createTransaction(tran, Collections.singletonList(p));
+        // 最终落库价格必须等于数据库价格
+        assertEquals(new BigDecimal("569800.00"), p.getPrice());
+        // 交易总金额 = 569800 × 2 = 1139600
+        assertEquals(new BigDecimal("1139600.00"), tran.getMoney());
+    }
+
+    @Test
+    void createTransaction_productNotFound_shouldThrowBusinessException() {
+        TTran tran = newTran(null, TranStage.QUOTATION);
+        when(productMapper.selectById(999L)).thenReturn(null);
+        TTranProduct p = new TTranProduct();
+        p.setProductId(999);
+        p.setQuantity(1);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> tranService.createTransaction(tran, Collections.singletonList(p)));
+        assertEquals(CodeEnum.NOT_FOUND, ex.getCodeEnum());
     }
 
     @Test
@@ -124,13 +189,24 @@ class TranServiceImplTest {
         assertThrows(RuntimeException.class, () -> tranService.updateTransaction(update));
     }
 
+    private TTranProduct newProduct(Integer productId, int quantity, BigDecimal price) {
+        TTranProduct p = new TTranProduct();
+        p.setProductId(productId);
+        p.setQuantity(quantity);
+        p.setPrice(price);
+        return p;
+    }
+
     @Test
     void settleTransaction_shouldUseAtomicCAS() {
         TTran existing = newTran(1, TranStage.QUOTATION);
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        // 服务端计算金额：2 × 45000 = 90000
+        when(tranProductMapper.selectByTranId(1)).thenReturn(
+                List.of(newProduct(1, 2, BigDecimal.valueOf(45000))));
         when(tranMapper.settleAtomic(1, BigDecimal.valueOf(90000), 7)).thenReturn(1);
 
-        assertTrue(tranService.settleTransaction(1, BigDecimal.valueOf(90000)));
+        assertTrue(tranService.settleTransaction(1));
 
         verify(tranHistoryMapper).insert(argThat(history ->
                 history.getTranId().equals(1)
@@ -139,11 +215,67 @@ class TranServiceImplTest {
     }
 
     @Test
+    void settleTransaction_serverSideAmount_matchesProductSnapshot() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        // 多产品合计：3×100 + 2×200 = 700
+        when(tranProductMapper.selectByTranId(1)).thenReturn(
+                List.of(newProduct(1, 3, BigDecimal.valueOf(100)),
+                        newProduct(2, 2, BigDecimal.valueOf(200))));
+        when(tranMapper.settleAtomic(1, BigDecimal.valueOf(700), 7)).thenReturn(1);
+
+        assertTrue(tranService.settleTransaction(1));
+
+        verify(tranMapper).settleAtomic(eq(1), eq(BigDecimal.valueOf(700)), eq(7));
+    }
+
+    @Test
+    void settleTransaction_emptyProducts_shouldThrowBusinessException() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> tranService.settleTransaction(1));
+        assertEquals(CodeEnum.TRAN_NO_PRODUCTS, ex.getCodeEnum());
+    }
+
+    @Test
+    void settleTransaction_zeroPrice_shouldThrowBusinessException() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(
+                List.of(newProduct(1, 1, BigDecimal.ZERO)));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> tranService.settleTransaction(1));
+        assertEquals(CodeEnum.PARAM_ERROR, ex.getCodeEnum());
+    }
+
+    @Test
+    void settleTransaction_casConflict_shouldThrowBusinessException() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(
+                List.of(newProduct(1, 1, BigDecimal.valueOf(100))));
+        // CAS 返回 0，模拟并发冲突
+        when(tranMapper.settleAtomic(eq(1), any(), eq(7))).thenReturn(0);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> tranService.settleTransaction(1));
+        assertEquals(CodeEnum.TRAN_STATE_CONFLICT, ex.getCodeEnum());
+    }
+
+    @Test
     void settleTransaction_wrongStage_shouldThrow() {
-        when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.PENDING));
-        when(tranMapper.settleAtomic(1, BigDecimal.TEN, 7)).thenReturn(0);
-        assertThrows(RuntimeException.class,
-                () -> tranService.settleTransaction(1, BigDecimal.TEN));
+        TTran existing = newTran(1, TranStage.PENDING);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(
+                List.of(newProduct(1, 1, BigDecimal.TEN)));
+        when(tranMapper.settleAtomic(eq(1), any(), eq(7))).thenReturn(0);
+
+        assertThrows(BusinessException.class,
+                () -> tranService.settleTransaction(1));
     }
 
     @Test
@@ -297,8 +429,48 @@ class TranServiceImplTest {
         TTran existing = newTran(1, TranStage.QUOTATION);
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
         when(tranMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
-        when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
         assertTrue(tranService.updateTransactionWithProducts(newTran(1, null), null));
+        verify(tranProductMapper, never()).selectByTranId(anyInt());
+        verify(tranProductMapper, never()).deleteByTranId(anyInt());
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
+    }
+
+    @Test
+    void updateTransactionWithProducts_emptyProducts_shouldRejectWithoutDeletingExistingProducts() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> tranService.updateTransactionWithProducts(newTran(1, null), Collections.emptyList()));
+
+        assertEquals(CodeEnum.PARAM_ERROR, exception.getCodeEnum());
+        verify(tranProductMapper, never()).deleteByTranId(anyInt());
+    }
+
+    @Test
+    void updateTransactionWithProducts_moneyUpdateFailure_shouldThrow() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranMapper.updateByPrimaryKeySelective(any())).thenReturn(1, 0);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
+
+        TProduct dbProduct = new TProduct();
+        dbProduct.setId(1L);
+        dbProduct.setName("测试商品");
+        dbProduct.setPrice(BigDecimal.TEN);
+        dbProduct.setStatus("on_sale");
+        when(productMapper.selectById(1L)).thenReturn(dbProduct);
+        when(tranProductMapper.insertSelective(any())).thenReturn(1);
+        when(productMapper.updateStock(1L, -1)).thenReturn(1);
+
+        TTranProduct product = new TTranProduct();
+        product.setProductId(1);
+        product.setQuantity(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> tranService.updateTransactionWithProducts(newTran(1, null), List.of(product)));
+        assertEquals(CodeEnum.OPERATION_FAILED, exception.getCodeEnum());
     }
 
     @Test

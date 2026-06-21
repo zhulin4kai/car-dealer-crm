@@ -18,14 +18,14 @@ public interface TranService {
      * @return 分页结果
      */
     PageInfo<TTran> getTransactionList(TranQuery query, Integer pageNum, Integer pageSize);
-    
+
     /**
      * 获取交易详情
      * @param id 交易ID
      * @return 交易详情
      */
     TTran getTransactionById(Integer id);
-    
+
     /**
      * 创建新交易
      * @param transaction 交易信息
@@ -33,7 +33,7 @@ public interface TranService {
      * @return 创建的交易ID
      */
     Integer createTransaction(TTran transaction, List<TTranProduct> products);
-    
+
     /**
      * 更新交易信息
      * @param transaction 交易信息
@@ -41,22 +41,22 @@ public interface TranService {
      */
     boolean updateTransaction(TTran transaction);
 
-    boolean settleTransaction(Integer tranId, java.math.BigDecimal amount);
-    
+    boolean settleTransaction(Integer tranId);
+
     /**
      * 添加交易跟踪记录
      * @param remark 跟踪记录
      * @return 是否添加成功
      */
     boolean addTransactionRemark(TTranRemark remark);
-    
+
     /**
      * 获取交易的产品列表
      * @param tranId 交易ID
      * @return 产品列表
      */
     List<TTranProduct> getTransactionProducts(Integer tranId);
-    
+
     /**
      * 获取交易产品详情列表（包含产品名称）
      * @param tranId 交易ID
@@ -64,21 +64,21 @@ public interface TranService {
      */
     List<TTranProduct> getTransactionProductDetails(Integer tranId);
 
-    
+
     /**
      * 创建发票
      * @param invoice 发票信息
      * @return 是否创建成功
      */
     boolean createInvoice(TTranInvoice invoice);
-    
+
     /**
      * 获取交易的发票列表
      * @param tranId 交易ID
      * @return 发票列表
      */
     List<TTranInvoice> getTransactionInvoices(Integer tranId);
-    
+
     /**
      * 更新发票状态
      * @param id 发票ID
@@ -86,21 +86,21 @@ public interface TranService {
      * @return 是否更新成功
      */
     boolean updateInvoiceStatus(Integer id, String status);
-    
+
     /**
      * 获取交易的跟踪记录
      * @param tranId 交易ID
      * @return 跟踪记录列表
      */
     List<TTranRemark> getTransactionRemarks(Integer tranId);
-    
+
     /**
      * 删除交易的所有产品
      * @param tranId 交易ID
      * @return 是否删除成功
      */
     boolean deleteTransactionProducts(Integer tranId);
-    
+
     /**
      * 添加交易产品
      * @param tranId 交易ID
@@ -108,7 +108,7 @@ public interface TranService {
      * @return 是否添加成功
      */
     boolean addTransactionProducts(Integer tranId, List<TTranProduct> products);
-    
+
     /**
      * 审批交易
      * @param tranId 交易ID
@@ -118,21 +118,21 @@ public interface TranService {
      * @return 是否审批成功
      */
     boolean approveTran(Integer tranId, Boolean approved, String comment);
-    
+
     /**
      * 获取交易审批信息
      * @param tranId 交易ID
      * @return 审批信息
      */
     TTranApprove getTranApprove(Integer tranId);
-    
+
     /**
      * 创建发票
      * @param invoice 发票信息
      * @return 是否创建成功
      */
     boolean createTranInvoice(TTranInvoice invoice);
-    
+
     /**
      * 获取交易发票列表
      * @param tranId 交易ID
@@ -147,14 +147,14 @@ public interface TranService {
      * @return 是否更新成功
      */
     boolean updateTranInvoiceStatus(Integer invoiceId, String status);
-    
+
     /**
      * 删除交易
      * @param id 交易ID
      * @return 是否删除成功
      */
     boolean deleteTransaction(Integer id);
-    
+
     /**
      * 批量删除交易
      * @param ids 交易ID列表

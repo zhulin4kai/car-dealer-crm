@@ -1,7 +1,6 @@
 package com.autodealer.crm.web;
 
-import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.dto.TranCreateRequest;
+import com.autodealer.crm.dto.*;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.query.TranQuery;
@@ -9,12 +8,12 @@ import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.TranService;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 交易管理控制器
@@ -25,9 +24,6 @@ public class TranController {
 
     @Resource
     private TranService tranService;
-
-    @Resource
-    private CurrentUserProvider currentUserProvider;
 
     /**
      * 获取交易列表
@@ -51,127 +47,70 @@ public class TranController {
     }
 
     /**
-     * 创建交易
+     * 创建交易 — 商品价格由服务端从数据库查询，不接受客户端传入
      */
     @PreAuthorize("hasAuthority('tran:create')")
     @PostMapping("/create")
-    public R<Integer> create(@RequestBody TranCreateRequest request) {
+    public R<Integer> create(@Valid @RequestBody CreateTranRequest request) {
         TTran tran = new TTran();
         tran.setCustomerId(request.getCustomerId());
-        tran.setMoney(request.getAmount());
         tran.setDescription(request.getDescription());
-        
-        // 处理预计交付日期
-        if (request.getExpectedDeliveryDate() != null && !request.getExpectedDeliveryDate().isEmpty()) {
-            try {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                tran.setExpectedDate(sdf.parse(request.getExpectedDeliveryDate()));
-            } catch (Exception e) {
-                return R.FAIL("日期格式错误");
-            }
+        if (request.getExpectedDeliveryDate() != null) {
+            tran.setExpectedDate(Date.from(
+                    request.getExpectedDeliveryDate().atZone(java.time.ZoneId.systemDefault()).toInstant()));
         }
-        
         tran.setStage(TranStage.QUOTATION);
-        // 从产品详情列表创建交易产品关联
+
         List<TTranProduct> products = request.getProducts().stream()
-            .map(productDetail -> {
-                TTranProduct tranProduct = new TTranProduct();
-                tranProduct.setProductId(productDetail.getProductId());
-                tranProduct.setQuantity(productDetail.getQuantity());
-                tranProduct.setPrice(productDetail.getPrice());
-                return tranProduct;
-            })
-            .toList();
-            
+                .map(item -> {
+                    TTranProduct tranProduct = new TTranProduct();
+                    tranProduct.setProductId(item.getProductId());
+                    tranProduct.setQuantity(item.getQuantity());
+                    return tranProduct;
+                })
+                .toList();
+
         return R.OK(tranService.createTransaction(tran, products));
     }
 
     /**
-     * 更新交易
+     * 更新交易 — 商品价格由服务端从数据库查询，不接受客户端传入
      */
     @PreAuthorize("hasAuthority('tran:edit')")
     @PutMapping("/update")
-    public R<Boolean> update(@RequestBody TranCreateRequest request) {
-        if (request.getId() == null) {
-            return R.FAIL("交易 ID 不能为空");
-        }
-        
+    public R<Boolean> update(@Valid @RequestBody UpdateTranRequest request) {
         TTran tran = new TTran();
         tran.setId(request.getId());
         tran.setCustomerId(request.getCustomerId());
-        tran.setMoney(request.getAmount());
         tran.setDescription(request.getDescription());
-        
-        // 处理预计交付日期
-        if (request.getExpectedDeliveryDate() != null && !request.getExpectedDeliveryDate().isEmpty()) {
-            try {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                tran.setExpectedDate(sdf.parse(request.getExpectedDeliveryDate()));
-            } catch (Exception e) {
-                return R.FAIL("日期格式错误");
-            }
+        if (request.getExpectedDeliveryDate() != null) {
+            tran.setExpectedDate(Date.from(
+                    request.getExpectedDeliveryDate().atZone(java.time.ZoneId.systemDefault()).toInstant()));
         }
-        
-        // 从产品详情列表创建交易产品关联
+
         List<TTranProduct> products = null;
         if (request.getProducts() != null && !request.getProducts().isEmpty()) {
             products = request.getProducts().stream()
-                .map(productDetail -> {
-                    TTranProduct tranProduct = new TTranProduct();
-                    tranProduct.setProductId(productDetail.getProductId());
-                    tranProduct.setQuantity(productDetail.getQuantity());
-                    tranProduct.setPrice(productDetail.getPrice());
-                    return tranProduct;
-                })
-                .toList();
+                    .map(item -> {
+                        TTranProduct tranProduct = new TTranProduct();
+                        tranProduct.setProductId(item.getProductId());
+                        tranProduct.setQuantity(item.getQuantity());
+                        return tranProduct;
+                    })
+                    .toList();
         }
-        
-        // 使用统一事务方法更新交易和产品
+
         boolean result = tranService.updateTransactionWithProducts(tran, products);
         return R.OK(result);
     }
 
     /**
-     * 结算交易 - 计算总金额并更新状态为待审批
-     * 支持前端传递促销后的结算金额
+     * 结算交易 — 金额由服务端根据商品快照计算，不接受客户端传入
      */
     @PreAuthorize("hasAuthority('tran:edit')")
     @PutMapping("/settle/{id}")
-    public R<Boolean> settle(@PathVariable Integer id, @RequestBody(required = false) Map<String, Object> body) {
-        // 获取交易产品列表并计算总金额
-        List<TTranProduct> products = tranService.getTransactionProducts(id);
-        if (products == null || products.isEmpty()) {
-            return R.FAIL("该交易没有产品信息，无法结算");
-        }
-        
-        BigDecimal totalAmount;
-        
-        // 检查是否有前端传递的促销后金额
-        if (body != null && body.containsKey("amount")) {
-            try {
-                Object amountObj = body.get("amount");
-                if (amountObj instanceof Number) {
-                    totalAmount = new BigDecimal(amountObj.toString());
-                } else if (amountObj instanceof String) {
-                    totalAmount = new BigDecimal((String) amountObj);
-                } else {
-                    return R.FAIL("传递的金额格式不正确");
-                }
-                
-                if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
-                    return R.FAIL("结算金额必须大于0");
-                }
-            } catch (NumberFormatException e) {
-                return R.FAIL("传递的金额格式不正确");
-            }
-        } else {
-            // 使用原有逻辑计算总金额（产品原价合计）
-            totalAmount = products.stream()
-                .map(product -> product.getPrice().multiply(new BigDecimal(product.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        }
-        
-        boolean result = tranService.settleTransaction(id, totalAmount);
+    public R<Boolean> settle(@PathVariable Integer id) {
+        boolean result = tranService.settleTransaction(id);
         return R.OK(result);
     }
 
@@ -182,15 +121,8 @@ public class TranController {
     @PutMapping("/approve/{id}")
     public R<Boolean> approve(
             @PathVariable Integer id,
-            @RequestBody Map<String, Object> approveData) {
-        Boolean approved = (Boolean) approveData.get("approved");
-        String comment = (String) approveData.get("comment");
-        
-        if (approved == null || comment == null || comment.trim().isEmpty()) {
-            return R.FAIL("审批结果和审批意见不能为空");
-        }
-        
-        boolean result = tranService.approveTran(id, approved, comment);
+            @Valid @RequestBody ApproveTranRequest request) {
+        boolean result = tranService.approveTran(id, request.getApproved(), request.getComment());
         return R.OK(result);
     }
 
@@ -209,7 +141,18 @@ public class TranController {
      */
     @PreAuthorize("hasAuthority('tran:invoice')")
     @PostMapping("/invoice")
-    public R<Boolean> createInvoice(@RequestBody TTranInvoice invoice) {
+    public R<Boolean> createInvoice(@Valid @RequestBody CreateTranInvoiceRequest request) {
+        TTranInvoice invoice = new TTranInvoice();
+        invoice.setTranId(request.getTranId());
+        invoice.setAmount(request.getAmount());
+        invoice.setType(request.getType());
+        invoice.setTitle(request.getTitle());
+        invoice.setTaxNumber(request.getTaxNumber());
+        invoice.setBankName(request.getBankName());
+        invoice.setBankAccount(request.getBankAccount());
+        invoice.setAddress(request.getAddress());
+        invoice.setPhone(request.getPhone());
+        invoice.setRemark(request.getRemark());
         boolean result = tranService.createTranInvoice(invoice);
         return R.OK(result);
     }
@@ -231,13 +174,8 @@ public class TranController {
     @PutMapping("/invoice/{invoiceId}/status")
     public R<Boolean> updateInvoiceStatus(
             @PathVariable Integer invoiceId,
-            @RequestBody Map<String, String> statusData) {
-        String status = statusData.get("status");
-        if (status == null || status.trim().isEmpty()) {
-            return R.FAIL("状态不能为空");
-        }
-        
-        boolean result = tranService.updateTranInvoiceStatus(invoiceId, status);
+            @Valid @RequestBody UpdateInvoiceStatusRequest request) {
+        boolean result = tranService.updateTranInvoiceStatus(invoiceId, request.getStatus());
         return R.OK(result);
     }
 
@@ -278,13 +216,8 @@ public class TranController {
      */
     @PreAuthorize("hasAuthority('tran:delete')")
     @PostMapping("/batch-delete")
-    public R<String> batchDelete(@RequestBody Map<String, List<Integer>> request) {
-        List<Integer> ids = request.get("ids");
-        if (ids == null || ids.isEmpty()) {
-            return R.FAIL("请选择要删除的交易");
-        }
-        
-        boolean result = tranService.batchDeleteTransactions(ids);
+    public R<String> batchDelete(@Valid @RequestBody BatchDeleteTranRequest request) {
+        boolean result = tranService.batchDeleteTransactions(request.getIds());
         if (result) {
             return R.OK("批量删除成功");
         } else {
@@ -307,7 +240,14 @@ public class TranController {
      */
     @PreAuthorize("hasAuthority('tran:edit')")
     @PostMapping("/payment")
-    public R<TPayment> recordPayment(@RequestBody TPayment payment) {
+    public R<TPayment> recordPayment(@Valid @RequestBody CreatePaymentRequest request) {
+        TPayment payment = new TPayment();
+        payment.setTranId(request.getTranId());
+        payment.setAmount(request.getAmount());
+        payment.setPaymentMethod(request.getPaymentMethod());
+        payment.setPaymentType(request.getPaymentType());
+        payment.setTransactionRef(request.getTransactionRef());
+        payment.setRemark(request.getRemark());
         return R.OK(tranService.recordPayment(payment));
     }
 

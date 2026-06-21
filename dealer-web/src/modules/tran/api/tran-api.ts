@@ -23,10 +23,8 @@ export function updateTran(data: TranForm): Promise<unknown> {
   return httpClient.put('/api/tran/update', data)
 }
 
-export function settleTran(id: EntityId, amount: number | null = null): Promise<unknown> {
-  return amount !== null
-    ? httpClient.put(`/api/tran/settle/${id}`, { amount })
-    : httpClient.put(`/api/tran/settle/${id}`)
+export function settleTran(id: EntityId): Promise<unknown> {
+  return httpClient.put(`/api/tran/settle/${id}`)
 }
 
 export function approveTran(id: EntityId, data: TranForm): Promise<unknown> {

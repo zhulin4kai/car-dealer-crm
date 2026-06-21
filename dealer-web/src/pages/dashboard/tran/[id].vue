@@ -659,7 +659,7 @@ const handleSettle = async () => {
     }
 
     try {
-      const res = await settleTran(route.params.id, settlementAmount)
+      const res = await settleTran(route.params.id)
       if (true) {
         messageTip('结算成功，交易状态已更新为待审批', 'success')
         await fetchTranDetail()
