@@ -15,6 +15,8 @@ public class BaseQuery {
     @JsonIgnore
     private Integer dataScopeUserId;
 
+    @lombok.Builder.Default
     private Integer current = 1;
+    @lombok.Builder.Default
     private Integer pageSize = 10;
 }
