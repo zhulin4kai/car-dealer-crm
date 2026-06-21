@@ -5,6 +5,7 @@ import com.autodealer.crm.mapper.DicMapper;
 import com.autodealer.crm.model.TDicType;
 import com.autodealer.crm.model.TDicValue;
 import com.autodealer.crm.query.DicQuery;
+import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.service.impl.DicServiceImpl;
 import com.github.pagehelper.PageInfo;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,9 @@ class DicServiceImplTest {
 
     @Mock
     private RedisManager redisManager;
+
+    @Mock
+    private OperationAuditRecorder auditRecorder;
 
     @Test
     void testGetDicTypes() {
@@ -91,7 +95,7 @@ class DicServiceImplTest {
         type.setId(1);
         type.setTypeCode("industry");
 
-        when(redisManager.get("dic:type:1")).thenReturn(null);
+        when(redisManager.get("cdrm:dict:type:1")).thenReturn(null);
         when(dicMapper.selectDicTypeById(1)).thenReturn(type);
 
         TDicType result = dicService.getDicTypeById(1);
@@ -100,7 +104,7 @@ class DicServiceImplTest {
         assertEquals(1, result.getId());
         assertEquals("industry", result.getTypeCode());
         verify(dicMapper).selectDicTypeById(1);
-        verify(redisManager).set(eq("dic:type:1"), eq(type), anyLong());
+        verify(redisManager).set(eq("cdrm:dict:type:1"), eq(type), anyLong());
     }
 
     @Test
@@ -109,7 +113,7 @@ class DicServiceImplTest {
         type.setId(1);
         type.setTypeCode("industry");
 
-        when(redisManager.get("dic:type:1")).thenReturn(type);
+        when(redisManager.get("cdrm:dict:type:1")).thenReturn(type);
 
         TDicType result = dicService.getDicTypeById(1);
 
@@ -125,7 +129,7 @@ class DicServiceImplTest {
         value.setTypeCode("industry");
         value.setTypeValue("IT");
 
-        when(redisManager.get("dic:value:1")).thenReturn(null);
+        when(redisManager.get("cdrm:dict:value:1")).thenReturn(null);
         when(dicMapper.selectDicValueById(1)).thenReturn(value);
 
         TDicValue result = dicService.getDicValueById(1);
@@ -143,7 +147,7 @@ class DicServiceImplTest {
         value.setTypeCode("industry");
         value.setTypeValue("IT");
 
-        when(redisManager.get("dic:value:1")).thenReturn(value);
+        when(redisManager.get("cdrm:dict:value:1")).thenReturn(value);
 
         TDicValue result = dicService.getDicValueById(1);
 
@@ -164,9 +168,9 @@ class DicServiceImplTest {
 
         assertTrue(result);
         verify(dicMapper).insertDicType(dicType);
-        verify(redisManager).deletePattern("dic:type:*");
-        verify(redisManager).deletePattern("dic:value:*");
-        verify(redisManager).deletePattern("dic:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:type:*");
+        verify(redisManager).deletePattern("cdrm:dict:value:*");
+        verify(redisManager).deletePattern("cdrm:dict:list:*");
     }
 
     @Test
@@ -228,14 +232,14 @@ class DicServiceImplTest {
         newType.setTypeCode("new_code");
         newType.setTypeName("New Name");
 
-        when(redisManager.get("dic:type:1")).thenReturn(oldType);
+        when(redisManager.get("cdrm:dict:type:1")).thenReturn(oldType);
         when(dicMapper.updateDicType(1, newType)).thenReturn(1);
 
         boolean result = dicService.updateDicType(1, newType);
 
         assertTrue(result);
         verify(dicMapper).updateDicType(1, newType);
-        verify(redisManager, atLeast(1)).deletePattern("dic:type:*");
+        verify(redisManager, atLeast(1)).deletePattern("cdrm:dict:type:*");
     }
 
     @Test
@@ -243,7 +247,7 @@ class DicServiceImplTest {
         TDicType newType = new TDicType();
         newType.setTypeCode("new_code");
 
-        when(redisManager.get("dic:type:999")).thenReturn(null);
+        when(redisManager.get("cdrm:dict:type:999")).thenReturn(null);
         when(dicMapper.selectDicTypeById(999)).thenReturn(null);
 
         boolean result = dicService.updateDicType(999, newType);
@@ -263,7 +267,7 @@ class DicServiceImplTest {
         newValue.setTypeCode("industry");
         newValue.setTypeValue("IT Updated");
 
-        when(redisManager.get("dic:value:1")).thenReturn(oldValue);
+        when(redisManager.get("cdrm:dict:value:1")).thenReturn(oldValue);
         when(dicMapper.updateDicValue(any(TDicValue.class))).thenReturn(1);
 
         boolean result = dicService.updateDicValue(1, newValue);
@@ -277,7 +281,7 @@ class DicServiceImplTest {
         TDicValue newValue = new TDicValue();
         newValue.setTypeCode("industry");
 
-        when(redisManager.get("dic:value:999")).thenReturn(null);
+        when(redisManager.get("cdrm:dict:value:999")).thenReturn(null);
         when(dicMapper.selectDicValueById(999)).thenReturn(null);
 
         boolean result = dicService.updateDicValue(999, newValue);
@@ -302,9 +306,9 @@ class DicServiceImplTest {
         verify(dicMapper).selectRemarkCountByDicValueIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicValuesByIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicType(1);
-        verify(redisManager).deletePattern("dic:type:*");
-        verify(redisManager).deletePattern("dic:value:*");
-        verify(redisManager).deletePattern("dic:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:type:*");
+        verify(redisManager).deletePattern("cdrm:dict:value:*");
+        verify(redisManager).deletePattern("cdrm:dict:list:*");
     }
 
     @Test
@@ -362,9 +366,9 @@ class DicServiceImplTest {
         assertTrue(result);
         verify(dicMapper).deleteRemarksByDicValueId(1);
         verify(dicMapper).deleteDicValue(1);
-        verify(redisManager).deletePattern("dic:type:*");
-        verify(redisManager).deletePattern("dic:value:*");
-        verify(redisManager).deletePattern("dic:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:type:*");
+        verify(redisManager).deletePattern("cdrm:dict:value:*");
+        verify(redisManager).deletePattern("cdrm:dict:list:*");
     }
 
     @Test
@@ -378,12 +382,12 @@ class DicServiceImplTest {
     }
 
     @Test
-    void testClearCache() {
-        dicService.clearCache("dic:*");
+    void testEvictDictionaryCaches() {
+        dicService.evictDictionaryCaches();
 
-        verify(redisManager).deletePattern("dic:type:*");
-        verify(redisManager).deletePattern("dic:value:*");
-        verify(redisManager).deletePattern("dic:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:type:*");
+        verify(redisManager).deletePattern("cdrm:dict:value:*");
+        verify(redisManager).deletePattern("cdrm:dict:list:*");
     }
 
     @Test
@@ -394,7 +398,7 @@ class DicServiceImplTest {
         value.setTypeValue("IT");
         List<TDicValue> values = Collections.singletonList(value);
 
-        when(redisManager.get("dic:values:type:1")).thenReturn(null);
+        when(redisManager.get("cdrm:dict:values:type:1")).thenReturn(null);
         when(dicMapper.selectDicValuesByTypeId(1)).thenReturn(values);
 
         List<TDicValue> result = dicService.getDicValuesByTypeId(1);
@@ -412,7 +416,7 @@ class DicServiceImplTest {
         value.setTypeValue("IT");
         List<TDicValue> cachedValues = Collections.singletonList(value);
 
-        when(redisManager.get("dic:values:type:1")).thenReturn(cachedValues);
+        when(redisManager.get("cdrm:dict:values:type:1")).thenReturn(cachedValues);
 
         List<TDicValue> result = dicService.getDicValuesByTypeId(1);
 
@@ -427,7 +431,7 @@ class DicServiceImplTest {
         type.setId(1);
         type.setTypeCode("industry");
 
-        when(redisManager.get("dic:type:code:industry")).thenReturn(null);
+        when(redisManager.get("cdrm:dict:type:code:industry")).thenReturn(null);
         when(dicMapper.selectDicTypeByCode("industry")).thenReturn(type);
 
         TDicType result = dicService.getDicTypeByCode("industry");
@@ -443,7 +447,7 @@ class DicServiceImplTest {
         type.setId(1);
         type.setTypeCode("industry");
 
-        when(redisManager.get("dic:type:code:industry")).thenReturn(type);
+        when(redisManager.get("cdrm:dict:type:code:industry")).thenReturn(type);
 
         TDicType result = dicService.getDicTypeByCode("industry");
 
@@ -469,9 +473,9 @@ class DicServiceImplTest {
         verify(dicMapper).deleteRemarksByDicValueIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicValuesByIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicTypesByIds(ids);
-        verify(redisManager).deletePattern("dic:type:*");
-        verify(redisManager).deletePattern("dic:value:*");
-        verify(redisManager).deletePattern("dic:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:type:*");
+        verify(redisManager).deletePattern("cdrm:dict:value:*");
+        verify(redisManager).deletePattern("cdrm:dict:list:*");
     }
 
     @Test
@@ -501,9 +505,9 @@ class DicServiceImplTest {
         assertTrue(result);
         verify(dicMapper).deleteRemarksByDicValueIds(ids);
         verify(dicMapper).deleteDicValuesByIds(ids);
-        verify(redisManager).deletePattern("dic:type:*");
-        verify(redisManager).deletePattern("dic:value:*");
-        verify(redisManager).deletePattern("dic:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:type:*");
+        verify(redisManager).deletePattern("cdrm:dict:value:*");
+        verify(redisManager).deletePattern("cdrm:dict:list:*");
     }
 
     @Test
@@ -535,9 +539,9 @@ class DicServiceImplTest {
 
         dicService.refreshTypeCache();
 
-        verify(redisManager).deletePattern("dic:type:*");
-        verify(redisManager).set(eq("dic:type:industry"), eq(type1), eq(24 * 60 * 60L));
-        verify(redisManager).set(eq("dic:type:source"), eq(type2), eq(24 * 60 * 60L));
+        verify(redisManager).deletePattern("cdrm:dict:type:*");
+        verify(redisManager).set(eq("cdrm:dict:type:code:industry"), eq(type1), eq(24 * 60 * 60L));
+        verify(redisManager).set(eq("cdrm:dict:type:code:source"), eq(type2), eq(24 * 60 * 60L));
     }
 
     @Test
@@ -553,8 +557,8 @@ class DicServiceImplTest {
 
         dicService.refreshValueCache();
 
-        verify(redisManager).deletePattern("dic:value:*");
-        verify(redisManager).set(eq("dic:value:industry:1"), eq(value1), eq(24 * 60 * 60L));
-        verify(redisManager).set(eq("dic:value:source:2"), eq(value2), eq(24 * 60 * 60L));
+        verify(redisManager).deletePattern("cdrm:dict:value:*");
+        verify(redisManager).set(eq("cdrm:dict:value:1"), eq(value1), eq(24 * 60 * 60L));
+        verify(redisManager).set(eq("cdrm:dict:value:2"), eq(value2), eq(24 * 60 * 60L));
     }
 }

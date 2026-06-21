@@ -1,10 +1,15 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.dto.CreateDicTypeRequest;
+import com.autodealer.crm.dto.CreateDicValueRequest;
+import com.autodealer.crm.dto.UpdateDicTypeRequest;
+import com.autodealer.crm.dto.UpdateDicValueRequest;
 import com.autodealer.crm.model.TDicType;
 import com.autodealer.crm.model.TDicValue;
 import com.autodealer.crm.query.DicQuery;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.DicService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -39,13 +44,21 @@ public class DicController {
 
     @PostMapping("/type/create")
     @PreAuthorize("hasAuthority('admin')")
-    public R addDicType(@RequestBody TDicType dicType) {
+    public R addDicType(@Valid @RequestBody CreateDicTypeRequest req) {
+        TDicType dicType = new TDicType();
+        dicType.setTypeCode(req.getTypeCode());
+        dicType.setTypeName(req.getTypeName());
+        dicType.setRemark(req.getRemark());
         return dicService.addDicType(dicType) ? R.OK() : R.FAIL("添加字典类型失败");
     }
 
     @PutMapping("/type/update/{id}")
     @PreAuthorize("hasAuthority('admin')")
-    public R updateDicType(@PathVariable Integer id, @RequestBody TDicType dicType) {
+    public R updateDicType(@PathVariable Integer id, @Valid @RequestBody UpdateDicTypeRequest req) {
+        TDicType dicType = new TDicType();
+        dicType.setTypeCode(req.getTypeCode());
+        dicType.setTypeName(req.getTypeName());
+        dicType.setRemark(req.getRemark());
         return dicService.updateDicType(id, dicType) ? R.OK() : R.FAIL("更新字典类型失败");
     }
 
@@ -82,13 +95,23 @@ public class DicController {
 
     @PostMapping("/value/create")
     @PreAuthorize("hasAuthority('admin')")
-    public R addDicValue(@RequestBody TDicValue dicValue) {
+    public R addDicValue(@Valid @RequestBody CreateDicValueRequest req) {
+        TDicValue dicValue = new TDicValue();
+        dicValue.setTypeCode(req.getTypeCode());
+        dicValue.setTypeValue(req.getTypeValue());
+        dicValue.setOrder(req.getOrder());
+        dicValue.setRemark(req.getRemark());
         return dicService.addDicValue(dicValue) ? R.OK() : R.FAIL("添加字典值失败");
     }
 
     @PutMapping("/value/update/{id}")
     @PreAuthorize("hasAuthority('admin')")
-    public R updateDicValue(@PathVariable Integer id, @RequestBody TDicValue dicValue) {
+    public R updateDicValue(@PathVariable Integer id, @Valid @RequestBody UpdateDicValueRequest req) {
+        TDicValue dicValue = new TDicValue();
+        dicValue.setTypeCode(req.getTypeCode());
+        dicValue.setTypeValue(req.getTypeValue());
+        dicValue.setOrder(req.getOrder());
+        dicValue.setRemark(req.getRemark());
         return dicService.updateDicValue(id, dicValue) ? R.OK() : R.FAIL("更新字典值失败");
     }
 
@@ -107,7 +130,7 @@ public class DicController {
     @PreAuthorize("hasAuthority('admin')")
     @GetMapping("/clear")
     public R clearCache(@RequestParam(required = false) Boolean forceRefresh) {
-        dicService.clearCache("*");
+        dicService.evictDictionaryCaches();
         if (Boolean.TRUE.equals(forceRefresh)) {
             // 如果需要强制刷新，则重新加载所有缓存
             dicService.refreshTypeCache();
