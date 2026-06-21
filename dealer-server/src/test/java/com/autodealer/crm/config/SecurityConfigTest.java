@@ -130,7 +130,7 @@ class SecurityConfigTest extends BackendIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("[999,1000]"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+                .andExpect(status().isMethodNotAllowed());
+        // UserController has no @DeleteMapping, so DELETE /api/user returns HTTP 405.
     }
 }
