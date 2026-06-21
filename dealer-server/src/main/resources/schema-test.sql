@@ -1,5 +1,6 @@
 -- H2 Database Schema for Testing
 -- Converted from MySQL CarDealerCRM.sql
+-- 已合并 V0001 迁移文件的最终结构：唯一约束、外键、CHECK、NOT NULL、value_code、BIGINT 对齐
 
 CREATE TABLE IF NOT EXISTS t_activity
 (
@@ -27,7 +28,8 @@ CREATE TABLE IF NOT EXISTS t_activity_remark
     edit_time    TIMESTAMP,
     edit_by      INTEGER,
     deleted      INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_activity_remark_activity FOREIGN KEY (activity_id) REFERENCES t_activity(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS t_clue
@@ -56,7 +58,8 @@ CREATE TABLE IF NOT EXISTS t_clue
     create_by         INTEGER,
     edit_time         TIMESTAMP,
     edit_by           INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT uk_clue_phone UNIQUE (phone)
 );
 
 CREATE TABLE IF NOT EXISTS t_clue_remark
@@ -70,7 +73,8 @@ CREATE TABLE IF NOT EXISTS t_clue_remark
     edit_time    TIMESTAMP,
     edit_by      INTEGER,
     deleted      INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_clue_remark_clue FOREIGN KEY (clue_id) REFERENCES t_clue(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS t_customer
@@ -84,7 +88,8 @@ CREATE TABLE IF NOT EXISTS t_customer
     create_by         INTEGER,
     edit_time         TIMESTAMP,
     edit_by           INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_customer_clue FOREIGN KEY (clue_id) REFERENCES t_clue(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_customer_remark
@@ -98,7 +103,8 @@ CREATE TABLE IF NOT EXISTS t_customer_remark
     edit_time    TIMESTAMP,
     edit_by      INTEGER,
     deleted      INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_customer_remark_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS t_dic_type
@@ -107,7 +113,8 @@ CREATE TABLE IF NOT EXISTS t_dic_type
     type_code VARCHAR(64) NOT NULL,
     type_name VARCHAR(64),
     remark    VARCHAR(128),
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT uk_type_code UNIQUE (type_code)
 );
 
 CREATE TABLE IF NOT EXISTS t_dic_value
@@ -115,9 +122,11 @@ CREATE TABLE IF NOT EXISTS t_dic_value
     id         INTEGER NOT NULL AUTO_INCREMENT,
     type_code  VARCHAR(64),
     type_value VARCHAR(64),
+    value_code VARCHAR(64),
     `order`    INTEGER,
     remark     VARCHAR(64),
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT uk_type_value_code UNIQUE (type_code, value_code)
 );
 
 CREATE TABLE IF NOT EXISTS t_permission
@@ -146,7 +155,9 @@ CREATE TABLE IF NOT EXISTS t_role_permission
     id            INTEGER NOT NULL AUTO_INCREMENT,
     role_id       INTEGER,
     permission_id INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_role_permission_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE CASCADE,
+    CONSTRAINT fk_role_permission_permission FOREIGN KEY (permission_id) REFERENCES t_permission(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS t_system_info
@@ -174,6 +185,39 @@ CREATE TABLE IF NOT EXISTS t_system_info
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS t_user
+(
+    id                     INTEGER NOT NULL AUTO_INCREMENT,
+    login_act              VARCHAR(32),
+    login_pwd              VARCHAR(64),
+    name                   VARCHAR(32),
+    phone                  VARCHAR(18),
+    email                  VARCHAR(64),
+    account_no_expired     INTEGER,
+    credentials_no_expired INTEGER,
+    account_no_locked      INTEGER,
+    account_enabled        INTEGER,
+    create_time            TIMESTAMP,
+    create_by              INTEGER,
+    edit_time              TIMESTAMP,
+    edit_by                INTEGER,
+    last_login_time        TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_user_login_act UNIQUE (login_act),
+    CONSTRAINT uk_user_email UNIQUE (email),
+    CONSTRAINT uk_user_phone UNIQUE (phone)
+);
+
+CREATE TABLE IF NOT EXISTS t_user_role
+(
+    id      INTEGER NOT NULL AUTO_INCREMENT,
+    user_id INTEGER,
+    role_id INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_user_role_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS t_tran
 (
     id                INTEGER NOT NULL AUTO_INCREMENT,
@@ -188,7 +232,8 @@ CREATE TABLE IF NOT EXISTS t_tran
     create_by         INTEGER,
     edit_time         TIMESTAMP,
     edit_by           INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_tran_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_tran_history
@@ -200,32 +245,41 @@ CREATE TABLE IF NOT EXISTS t_tran_history
     expected_date TIMESTAMP,
     create_time   TIMESTAMP,
     create_by     INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_tran_history_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_product
+(
+    id            BIGINT NOT NULL AUTO_INCREMENT,
+    sku           VARCHAR(255) NOT NULL,
+    name          VARCHAR(255) NOT NULL,
+    category_id   BIGINT,
+    specification VARCHAR(255),
+    price         DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    stock         INTEGER NOT NULL DEFAULT 0,
+    min_stock     INTEGER,
+    status        VARCHAR(50) NOT NULL DEFAULT 'off_sale',
+    create_time   TIMESTAMP,
+    update_time   TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sku UNIQUE (sku),
+    CONSTRAINT chk_product_price_nonneg CHECK (price >= 0),
+    CONSTRAINT chk_product_stock_nonneg CHECK (stock >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS t_tran_product
 (
     id          INTEGER NOT NULL AUTO_INCREMENT,
     tran_id     INTEGER NOT NULL,
-    product_id  INTEGER NOT NULL,
+    product_id  BIGINT NOT NULL,
     quantity    INTEGER NOT NULL,
     price       DECIMAL(10, 2) NOT NULL,
     create_time TIMESTAMP,
     create_by   INTEGER,
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE IF NOT EXISTS t_tran_production
-(
-    id              INTEGER NOT NULL AUTO_INCREMENT,
-    tran_product_id INTEGER NOT NULL,
-    status          VARCHAR(20) NOT NULL,
-    description     VARCHAR(255),
-    create_time     TIMESTAMP,
-    create_by       INTEGER,
-    update_time     TIMESTAMP,
-    update_by       INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_tran_product_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_tran_product_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_tran_invoice
@@ -249,21 +303,22 @@ CREATE TABLE IF NOT EXISTS t_tran_invoice
     edit_time    TIMESTAMP,
     edit_by      INTEGER,
     PRIMARY KEY (id),
-    CONSTRAINT uk_invoice_no UNIQUE (invoice_no)
+    CONSTRAINT uk_invoice_no UNIQUE (invoice_no),
+    CONSTRAINT fk_tran_invoice_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS t_operation_log
+CREATE TABLE IF NOT EXISTS t_tran_approve
 (
-    id          INTEGER NOT NULL AUTO_INCREMENT,
-    user_id     INTEGER,
-    user_name   VARCHAR(64),
-    operation   VARCHAR(32) NOT NULL,
-    module      VARCHAR(64),
-    record_id   INTEGER,
-    detail      VARCHAR(512),
-    ip          VARCHAR(64),
-    create_time TIMESTAMP,
-    PRIMARY KEY (id)
+    id              INTEGER NOT NULL AUTO_INCREMENT,
+    tran_id         INTEGER NOT NULL,
+    approve_result  TINYINT NOT NULL,
+    approve_comment VARCHAR(500),
+    approve_time    TIMESTAMP,
+    approve_by      INTEGER,
+    create_time     TIMESTAMP,
+    create_by       INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_tran_approve_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_payment
@@ -283,23 +338,21 @@ CREATE TABLE IF NOT EXISTS t_payment
     edit_time       TIMESTAMP,
     edit_by         INTEGER,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_payment_no (payment_no),
-    INDEX idx_tran_id (tran_id)
+    CONSTRAINT uk_payment_no UNIQUE (payment_no),
+    CONSTRAINT fk_payment_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS t_product
+CREATE TABLE IF NOT EXISTS t_operation_log
 (
-    id            BIGINT NOT NULL AUTO_INCREMENT,
-    sku           VARCHAR(255),
-    name          VARCHAR(255) NOT NULL,
-    category_id   BIGINT,
-    specification VARCHAR(255),
-    price         DECIMAL(10, 2),
-    stock         INTEGER,
-    min_stock     INTEGER,
-    status        VARCHAR(50),
-    create_time   TIMESTAMP,
-    update_time   TIMESTAMP,
+    id          INTEGER NOT NULL AUTO_INCREMENT,
+    user_id     INTEGER,
+    user_name   VARCHAR(64),
+    action_code VARCHAR(32) NOT NULL,
+    module_name VARCHAR(64),
+    resource_id VARCHAR(64),
+    detail      VARCHAR(512),
+    ip          VARCHAR(64),
+    create_time TIMESTAMP,
     PRIMARY KEY (id)
 );
 
@@ -336,55 +389,12 @@ CREATE TABLE IF NOT EXISTS t_product_stock_record
 (
     id          BIGINT NOT NULL AUTO_INCREMENT,
     product_id  BIGINT NOT NULL,
-    quantity    INTEGER,
+    quantity    INTEGER DEFAULT 0,
     type        VARCHAR(50),
     remark      TEXT,
     create_time TIMESTAMP,
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE IF NOT EXISTS t_tran_approve
-(
-    id              INTEGER NOT NULL AUTO_INCREMENT,
-    tran_id         INTEGER NOT NULL,
-    approve_result  TINYINT NOT NULL,
-    approve_comment VARCHAR(500),
-    approve_time    TIMESTAMP,
-    approve_by      INTEGER,
-    create_time     TIMESTAMP,
-    create_by       INTEGER,
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE IF NOT EXISTS t_user
-(
-    id                     INTEGER NOT NULL AUTO_INCREMENT,
-    login_act              VARCHAR(32),
-    login_pwd              VARCHAR(64),
-    name                   VARCHAR(32),
-    phone                  VARCHAR(18),
-    email                  VARCHAR(64),
-    account_no_expired     INTEGER,
-    credentials_no_expired INTEGER,
-    account_no_locked      INTEGER,
-    account_enabled        INTEGER,
-    create_time            TIMESTAMP,
-    create_by              INTEGER,
-    edit_time              TIMESTAMP,
-    edit_by                INTEGER,
-    last_login_time        TIMESTAMP,
     PRIMARY KEY (id),
-    CONSTRAINT uk_user_login_act UNIQUE (login_act),
-    CONSTRAINT uk_user_email UNIQUE (email),
-    CONSTRAINT uk_user_phone UNIQUE (phone)
-);
-
-CREATE TABLE IF NOT EXISTS t_user_role
-(
-    id      INTEGER NOT NULL AUTO_INCREMENT,
-    user_id INTEGER,
-    role_id INTEGER,
-    PRIMARY KEY (id)
+    CONSTRAINT fk_stock_record_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_tran_remark
@@ -398,5 +408,6 @@ CREATE TABLE IF NOT EXISTS t_tran_remark
     edit_time    TIMESTAMP,
     edit_by      INTEGER,
     deleted      INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_tran_remark_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE CASCADE
 );

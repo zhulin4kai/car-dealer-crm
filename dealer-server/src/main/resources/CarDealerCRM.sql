@@ -32,7 +32,7 @@ CREATE TABLE `t_activity`
 -- Records of t_activity
 -- ----------------------------
 INSERT INTO `t_activity` (id, owner_id, name, start_time, end_time, cost, description, create_time, create_by, edit_time, edit_by)
-VALUES 
+VALUES
 (1, 1, '春季汽车展销会', '2025-03-15 09:00:00', '2025-03-17 18:00:00', 50000.00, '春季大型汽车展销活动，展示各品牌新车型', '2025-03-01 10:00:00', 1, '2025-03-10 14:30:00', 1),
 (2, 2, '豪华车试驾体验', '2025-04-01 10:00:00', '2025-04-30 17:00:00', 30000.00, '提供豪华车型免费试驾服务，吸引潜在客户', '2025-03-20 09:15:00', 2, NULL, NULL),
 (3, 1, '夏季购车优惠节', '2025-06-01 09:00:00', '2025-06-30 20:00:00', 80000.00, '夏季购车大优惠，多款车型享受特价和金融方案', '2025-05-15 11:20:00', 1, '2025-05-25 16:45:00', 3),
@@ -71,7 +71,7 @@ CREATE TABLE `t_activity_remark`
 -- Records of t_activity_remark
 -- ----------------------------
 INSERT INTO `t_activity_remark` (id, activity_id, note_content, create_time, create_by, edit_time, edit_by, deleted)
-VALUES 
+VALUES
 (1, 1, '活动场地已确认，位于市中心展览馆A区，面积5000平方米', '2025-03-02 10:30:00', 1, NULL, NULL, 0),
 (2, 1, '已联系15家汽车品牌参展，预计展示车辆超过80台', '2025-03-05 14:15:00', 1, '2025-03-08 09:20:00', 1, 0),
 (3, 1, '媒体宣传方案已制定，包括电视、网络、户外广告投放', '2025-03-08 16:45:00', 2, NULL, NULL, 0),
@@ -148,7 +148,7 @@ CREATE TABLE `t_clue`
 -- Records of t_clue
 -- ----------------------------
 INSERT INTO `t_clue` (id, owner_id, activity_id, full_name, appellation, phone, weixin, qq, email, age, job, year_income, address, need_loan, intention_state, intention_product, state, source, description, next_contact_time, create_time, create_by, edit_time, edit_by)
-VALUES 
+VALUES
 (1, 1, 2, '王杰', 11, '13700000000', 'wx_wangjie', '123456789', 'wangjie@163.com', 32, '软件工程师', 300000.00, '北京市朝阳区建国路88号', 49, 46, 3, 6, 2, '对宝马X5感兴趣，计划近期看车', '2025-06-25 10:00:00', '2025-06-17 09:30:00', 1, '2025-06-18 14:20:00', 1),
 (2, 2, 7, '李娜', 20, '13800000001', 'wx_lina', '987654321', 'lina@gmail.com', 28, '金融分析师', 400000.00, '上海市浦东新区陆家嘴金融中心', 50, 47, 5, 10, 3, '想购买豪华轿车，预算充足', '2025-06-27 15:30:00', '2025-06-16 11:40:00', 2, NULL, NULL),
 (3, 3, 8, '张伟', 18, '13900000002', 'wx_zhangwei', '456789123', 'zhangwei@outlook.com', 35, '企业高管', 600000.00, '广州市天河区珠江新城', 49, 48, 9, 6, 44, '想要购买奔驰E级作为商务用车', '2025-06-23 09:15:00', '2025-06-15 16:20:00', 1, '2025-06-17 10:05:00', 1),
@@ -189,7 +189,7 @@ CREATE TABLE `t_clue_remark`
 -- Records of t_clue_remark
 -- ----------------------------
 INSERT INTO `t_clue_remark` (id, clue_id, note_way, note_content, create_time, create_by, edit_time, edit_by, deleted)
-VALUES 
+VALUES
 (1, 1, 61, '首次电话联系，客户表示对宝马X5很感兴趣，询问了详细配置信息', '2025-06-17 10:30:00', 1, NULL, NULL, 0),
 (2, 1, 62, '通过微信发送了宝马X5的产品资料和价格表', '2025-06-17 15:20:00', 1, NULL, NULL, 0),
 (3, 1, 61, '二次电话跟进，客户考虑中，计划本周末到店看车', '2025-06-18 09:15:00', 1, NULL, NULL, 0),
@@ -245,7 +245,7 @@ CREATE TABLE `t_customer`
 -- Records of t_customer
 -- ----------------------------
 INSERT INTO `t_customer` (id, clue_id, product, description, next_contact_time, create_time, create_by, edit_time, edit_by)
-VALUES 
+VALUES
 (1, 5, 8, '大学教授，购买奥迪Q5，已签约成功，需要跟进交付和后续服务', '2025-06-25 10:00:00', '2025-06-10 14:30:00', 3, '2025-06-15 16:45:00', 1),
 (2, 1, 3, '软件工程师，购买宝马X5，已签约，选择贷款方案，等待提车', '2025-06-30 14:00:00', '2025-06-25 16:15:00', 1, NULL, NULL),
 (3, 7, 4, '律师，购买宝马5系，已付定金，等待银行贷款审批', '2025-07-02 09:30:00', '2025-06-28 10:20:00', 2, '2025-06-29 11:40:00', 2),
@@ -287,7 +287,7 @@ CREATE TABLE `t_customer_remark`
 -- Records of t_customer_remark
 -- ----------------------------
 INSERT INTO `t_customer_remark` (id, customer_id, note_way, note_content, create_by, create_time, edit_time, edit_by, deleted)
-VALUES 
+VALUES
 (1, 1, 61, '客户签约成功，选择奥迪Q5 2.0T豪华版，全款购车', 3, '2025-06-10 14:30:00', NULL, NULL, 0),
 (2, 1, 64, '办理车辆登记手续，客户对服务很满意', 3, '2025-06-12 10:15:00', NULL, NULL, 0),
 (3, 1, 61, '车辆已交付，安排首保时间，客户反馈驾驶体验良好', 1, '2025-06-15 16:45:00', NULL, NULL, 0),
@@ -1042,7 +1042,7 @@ CREATE TABLE `t_tran_product`
 (
     `id`          int            NOT NULL AUTO_INCREMENT COMMENT '主键',
     `tran_id`     int            NOT NULL COMMENT '交易ID',
-    `product_id`  int            NOT NULL COMMENT '产品ID',
+    `product_id`  bigint         NOT NULL COMMENT '产品ID',
     `quantity`    int            NOT NULL COMMENT '数量',
     `price`       decimal(10, 2) NOT NULL COMMENT '单价',
     `create_time` datetime       NULL DEFAULT NULL COMMENT '创建时间',
@@ -1064,30 +1064,6 @@ INSERT INTO `t_tran_product`
 VALUES (1, 5, 8, 2, 65000.00, '2023-11-12 19:32:02', 1);
 INSERT INTO `t_tran_product`
 VALUES (2, 6, 7, 3, 32000.00, '2023-11-12 19:32:02', 1);
-
--- ----------------------------
--- Table structure for t_tran_production
--- ----------------------------
-DROP TABLE IF EXISTS `t_tran_production`;
-CREATE TABLE `t_tran_production`
-(
-    `id`              int          NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `tran_product_id` int          NOT NULL COMMENT '交易产品ID',
-    `status`          varchar(20)  NOT NULL COMMENT '生产状态：PENDING-待生产, IN_PROGRESS-生产中, COMPLETED-已完成',
-    `description`     varchar(255) NULL DEFAULT NULL COMMENT '生产状态描述',
-    `create_time`     datetime     NULL DEFAULT NULL COMMENT '创建时间',
-    `create_by`       int          NULL DEFAULT NULL COMMENT '创建人',
-    `update_time`     datetime     NULL DEFAULT NULL COMMENT '更新时间',
-    `update_by`       int          NULL DEFAULT NULL COMMENT '更新人',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_tran_production_ibfk_1` (`tran_product_id` ASC) USING BTREE,
-    INDEX `t_tran_production_ibfk_2` (`create_by` ASC) USING BTREE,
-    INDEX `t_tran_production_ibfk_3` (`update_by` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 1
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '交易生产状态表'
-  ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for t_tran_invoice
@@ -1450,3 +1426,54 @@ create index t_tran_remark_ibfk_3
 
 create index t_tran_remark_ibfk_4
     on t_tran_remark (edit_by);
+
+-- ----------------------------
+-- Table structure for t_operation_log
+-- ----------------------------
+DROP TABLE IF EXISTS `t_operation_log`;
+CREATE TABLE `t_operation_log`
+(
+    `id`          int          NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `user_id`     int          NULL DEFAULT NULL COMMENT '操作用户ID',
+    `user_name`   varchar(64)  NULL DEFAULT NULL COMMENT '操作用户名',
+    `action_code` varchar(32)  NOT NULL COMMENT '审计动作代码',
+    `module_name` varchar(64)  NULL DEFAULT NULL COMMENT '模块名称',
+    `resource_id` varchar(64)  NULL DEFAULT NULL COMMENT '业务资源ID',
+    `detail`      varchar(512) NULL DEFAULT NULL COMMENT '结构化审计摘要JSON',
+    `ip`          varchar(64)  NULL DEFAULT NULL COMMENT '操作IP',
+    `create_time` datetime     NULL DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = '操作审计日志表'
+  ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Table structure for t_payment
+-- ----------------------------
+DROP TABLE IF EXISTS `t_payment`;
+CREATE TABLE `t_payment`
+(
+    `id`              int            NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `tran_id`         int            NOT NULL COMMENT '交易ID',
+    `payment_no`      varchar(64)    NOT NULL COMMENT '支付流水号',
+    `amount`          decimal(10, 2) NOT NULL DEFAULT 0 COMMENT '支付金额',
+    `payment_method`  varchar(32)    NOT NULL COMMENT '支付方式',
+    `payment_type`    varchar(32)    NOT NULL COMMENT '支付类型',
+    `payment_status`  varchar(32)    NOT NULL DEFAULT 'PENDING' COMMENT '支付状态',
+    `payment_time`    datetime       NULL DEFAULT NULL COMMENT '支付时间',
+    `transaction_ref` varchar(128)   NULL DEFAULT NULL COMMENT '第三方交易参考号',
+    `remark`          varchar(255)   NULL DEFAULT NULL COMMENT '备注',
+    `create_time`     datetime       NULL DEFAULT NULL COMMENT '创建时间',
+    `create_by`       int            NULL DEFAULT NULL COMMENT '创建人',
+    `edit_time`       datetime       NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`         int            NULL DEFAULT NULL COMMENT '编辑人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_payment_no` (`payment_no` ASC) USING BTREE,
+    INDEX `idx_tran_id` (`tran_id` ASC) USING BTREE
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = '支付表'
+  ROW_FORMAT = DYNAMIC;

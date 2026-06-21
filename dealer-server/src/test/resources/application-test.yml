@@ -1,7 +1,8 @@
 spring:
   datasource:
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE;
+    # 每个 Spring 测试上下文使用独立数据库；同一上下文内仍可复用连接和事务。
+    url: jdbc:h2:mem:${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE;
     username: sa
     password: 
     
