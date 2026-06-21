@@ -378,7 +378,7 @@ CREATE TABLE IF NOT EXISTS t_product_category
 CREATE TABLE IF NOT EXISTS t_product_promotion
 (
     id           BIGINT NOT NULL AUTO_INCREMENT,
-    product_id   BIGINT,
+    product_id   BIGINT NOT NULL,
     name         VARCHAR(255) NOT NULL,
     type        VARCHAR(50),
     discount    DECIMAL(10, 2),
@@ -387,7 +387,8 @@ CREATE TABLE IF NOT EXISTS t_product_promotion
     status      VARCHAR(50),
     create_time TIMESTAMP,
     update_time TIMESTAMP,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT fk_product_promotion_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_product_stock_record

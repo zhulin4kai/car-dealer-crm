@@ -432,11 +432,11 @@ MERGE INTO t_tran_remark (id, tran_id, note_way, note_content, create_time, crea
 VALUES (2, 2, 31, '客户到店签约奔驰E级', CURRENT_TIMESTAMP, 2, NULL, NULL, 0);
 
 -- ==================== Product Promotions ====================
-MERGE INTO t_product_promotion (id, name, type, discount, start_time, end_time, status, create_time, update_time) KEY(id)
-VALUES (1, '豪华车型五一促销', 'PERCENTAGE', 0.95, '2025-04-28 00:00:00', '2025-05-05 23:59:59', '进行中', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+MERGE INTO t_product_promotion (id, product_id, name, type, discount, start_time, end_time, status, create_time, update_time) KEY(id)
+VALUES (1, 1, '宝马X5五一促销', 'PERCENTAGE', 0.95, '2025-04-28 00:00:00', '2025-05-05 23:59:59', '进行中', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
-MERGE INTO t_product_promotion (id, name, type, discount, start_time, end_time, status, create_time, update_time) KEY(id)
-VALUES (2, '电动车购车补贴', 'AMOUNT', 20000.00, '2025-05-01 00:00:00', '2025-06-30 23:59:59', '进行中', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+MERGE INTO t_product_promotion (id, product_id, name, type, discount, start_time, end_time, status, create_time, update_time) KEY(id)
+VALUES (2, 5, '特斯拉Model 3购车补贴', 'AMOUNT', 20000.00, '2025-05-01 00:00:00', '2025-06-30 23:59:59', '进行中', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ==================== System Info ====================
 MERGE INTO t_system_info (id, system_code, name, site, logo, title, description, keywords, shortcuticon, tel, weixin, email, address, version, closeMsg, isopen, create_time, create_by, edit_time, edit_by) KEY(id)

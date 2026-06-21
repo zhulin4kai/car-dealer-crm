@@ -228,6 +228,13 @@ class SchemaConstraintsTest {
     }
 
     @Test
+    @DisplayName("不存在的产品不能创建促销")
+    void testOrphanProductPromotionFails() {
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_product_promotion (product_id, name) VALUES (99999, '孤儿促销')"));
+    }
+
+    @Test
     @Order(16)
     @DisplayName("不存在父记录的子记录插入失败 - t_role_permission.role_id")
     void testOrphanRolePermissionRoleFails() {

@@ -38,15 +38,16 @@
     
     <insert id="insert" parameterType="com.autodealer.crm.model.TProductPromotion" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_product_promotion (
-            name, type, discount, start_time, end_time, status, create_time, update_time
+            product_id, name, type, discount, start_time, end_time, status, create_time, update_time
         ) VALUES (
-            #{name}, #{type}, #{discount}, #{startTime}, #{endTime}, #{status}, #{createTime}, #{updateTime}
+            #{productId}, #{name}, #{type}, #{discount}, #{startTime}, #{endTime}, #{status}, #{createTime}, #{updateTime}
         )
     </insert>
     
     <update id="update" parameterType="com.autodealer.crm.model.TProductPromotion">
         UPDATE t_product_promotion
-        SET name = #{name},
+        SET product_id = #{productId},
+            name = #{name},
             type = #{type},
             discount = #{discount},
             start_time = #{startTime},
@@ -60,4 +61,4 @@
         DELETE FROM t_product_promotion
         WHERE id = #{id}
     </delete>
-</mapper> 
+</mapper>

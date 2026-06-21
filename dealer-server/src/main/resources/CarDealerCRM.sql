@@ -1110,6 +1110,7 @@ DROP TABLE IF EXISTS `t_product_promotion`;
 CREATE TABLE `t_product_promotion`
 (
     `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '促销活动的唯一标识符',
+    `product_id`  BIGINT       NOT NULL COMMENT '关联的产品ID',
     `name`        VARCHAR(255) NOT NULL COMMENT '促销名称',
     `type`        VARCHAR(50)    DEFAULT NULL COMMENT '促销类型',
     `discount`    DECIMAL(10, 2) DEFAULT NULL COMMENT '折扣或金额',
@@ -1118,7 +1119,9 @@ CREATE TABLE `t_product_promotion`
     `status`      VARCHAR(50)    DEFAULT NULL COMMENT '促销状态',
     `create_time` DATETIME       DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME       DEFAULT NULL COMMENT '更新时间',
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    KEY `idx_product_promotion_product` (`product_id`),
+    CONSTRAINT `fk_product_promotion_product` FOREIGN KEY (`product_id`) REFERENCES `t_product` (`id`) ON DELETE RESTRICT
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='产品促销表';
 
@@ -1127,11 +1130,11 @@ CREATE TABLE `t_product_promotion`
 -- ----------------------------
 
 INSERT INTO `t_product_promotion`
-(`id`, `name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
+(`id`, `product_id`, `name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
 VALUES
-(1, '六月店庆现车补贴', 'AMOUNT', 12000.00, '2026-06-01 00:00:00', '2026-06-30 23:59:59', '进行中', '2026-05-20 10:00:00', '2026-06-01 09:00:00'),
-(2, '新能源置换补贴', 'AMOUNT', 8000.00, '2026-06-15 00:00:00', '2026-08-31 23:59:59', '进行中', '2026-06-05 14:00:00', '2026-06-15 09:00:00'),
-(3, '暑期金融贴息方案', 'AMOUNT', 6000.00, '2026-07-01 00:00:00', '2026-08-31 23:59:59', '待开始', '2026-06-18 11:00:00', '2026-06-18 11:00:00');
+(1, 1, '宝马X5六月现车补贴', 'AMOUNT', 12000.00, '2026-06-01 00:00:00', '2026-06-30 23:59:59', '进行中', '2026-05-20 10:00:00', '2026-06-01 09:00:00'),
+(2, 11, '雷克萨斯ES新能源置换补贴', 'AMOUNT', 8000.00, '2026-06-15 00:00:00', '2026-08-31 23:59:59', '进行中', '2026-06-05 14:00:00', '2026-06-15 09:00:00'),
+(3, 9, '奔驰E级暑期金融贴息', 'AMOUNT', 6000.00, '2026-07-01 00:00:00', '2026-08-31 23:59:59', '待开始', '2026-06-18 11:00:00', '2026-06-18 11:00:00');
 
 -- ----------------------------
 -- Table structure for t_product_stock_record
