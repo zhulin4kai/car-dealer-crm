@@ -105,6 +105,7 @@ public class DicController {
         TDicValue dicValue = new TDicValue();
         dicValue.setTypeCode(req.getTypeCode());
         dicValue.setTypeValue(req.getTypeValue());
+        dicValue.setValueCode(req.getValueCode());
         dicValue.setOrder(req.getOrder());
         dicValue.setRemark(req.getRemark());
         return dicService.addDicValue(dicValue) ? R.OK() : R.FAIL("添加字典值失败");
@@ -116,6 +117,7 @@ public class DicController {
         TDicValue dicValue = new TDicValue();
         dicValue.setTypeCode(req.getTypeCode());
         dicValue.setTypeValue(req.getTypeValue());
+        dicValue.setValueCode(req.getValueCode());
         dicValue.setOrder(req.getOrder());
         dicValue.setRemark(req.getRemark());
         return dicService.updateDicValue(id, dicValue) ? R.OK() : R.FAIL("更新字典值失败");

@@ -8,10 +8,10 @@ import lombok.EqualsAndHashCode;
 public class TranProductQuery extends BaseQuery {
     private Integer id;
     private Integer tranId;
-    private Integer productId;
+    private Long productId;
     private String productName;
     private Integer quantity;
     private java.math.BigDecimal price;
     private java.util.Date createTime;
     private Integer createBy;
-} 
+}

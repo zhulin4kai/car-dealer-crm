@@ -64,7 +64,7 @@ public class CustomerManager {
         tTran.setCreateBy(operatorId);
         List<TTranProduct> products = new ArrayList<>();
         if (request.getProduct() != null) {
-            TProduct product = productMapper.selectById(request.getProduct().longValue());
+            TProduct product = productMapper.selectById(request.getProduct());
             if (product != null) {
                 TTranProduct tp = new TTranProduct(); tp.setProductId(request.getProduct());
                 int qty = request.getQuantity() != null && request.getQuantity() > 0 ? request.getQuantity() : 1;
@@ -85,8 +85,8 @@ public class CustomerManager {
     private void requireQuantityPositive(Integer quantity) {
         if (quantity != null && quantity <= 0) { throw new BusinessException(CodeEnum.PARAM_ERROR, "购买数量必须大于0"); }
     }
-    private void requireProductExists(Integer productId) {
-        TProduct product = productMapper.selectById(productId.longValue());
+    private void requireProductExists(Long productId) {
+        TProduct product = productMapper.selectById(productId);
         if (product == null) { throw new BusinessException(CodeEnum.FAIL, "选购的产品不存在"); }
     }
 }

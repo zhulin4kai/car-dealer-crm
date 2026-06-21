@@ -24,7 +24,7 @@ public class TCustomer implements Serializable {
     /**
      * 选购产品
      */
-    private Integer product;
+    private Long product;
 
     /**
      * 客户描述

@@ -17,7 +17,7 @@ public class ConvertCustomerRequest {
     @NotNull(message = "线索ID不能为空")
     private Integer clueId;
 
-    private Integer product;
+    private Long product;
 
     @Positive(message = "购买数量必须大于0")
     private Integer quantity = 1;

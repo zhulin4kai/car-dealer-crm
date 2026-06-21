@@ -9,5 +9,5 @@ public class CustomerQuery extends BaseQuery {
 
     private String customerName;
 
-    private Integer productId;
+    private Long productId;
 }

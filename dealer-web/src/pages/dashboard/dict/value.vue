@@ -56,6 +56,7 @@
               <TableHead class="w-[80px]">序号</TableHead>
               <TableHead class="w-[180px]">字典类型</TableHead>
               <TableHead class="w-[180px]">字典值</TableHead>
+              <TableHead class="w-[180px]">业务编码</TableHead>
               <TableHead class="w-[100px]">排序</TableHead>
               <TableHead>备注</TableHead>
               <TableHead class="w-[200px]">操作</TableHead>
@@ -72,6 +73,7 @@
               <TableCell>{{ startIndex(idx) }}</TableCell>
               <TableCell>{{ getDictTypeName(row.typeCode) }}</TableCell>
               <TableCell>{{ row.typeValue }}</TableCell>
+              <TableCell>{{ row.valueCode }}</TableCell>
               <TableCell>{{ row.order }}</TableCell>
               <TableCell>{{ row.remark }}</TableCell>
               <TableCell>
@@ -116,6 +118,11 @@
             <Label>字典值</Label>
             <Input v-model="values.typeValue" placeholder="请输入字典值" />
             <p v-if="errors.typeValue" class="text-sm text-destructive">{{ errors.typeValue }}</p>
+          </div>
+          <div class="space-y-2">
+            <Label>业务编码</Label>
+            <Input v-model="values.valueCode" placeholder="例如：wechat" />
+            <p v-if="errors.valueCode" class="text-sm text-destructive">{{ errors.valueCode }}</p>
           </div>
           <div class="space-y-2">
             <Label>排序</Label>
@@ -192,6 +199,7 @@ const searchForm = reactive({
 const formSchema = toTypedSchema(z.object({
   typeCode: z.string().min(1, '请选择字典类型'),
   typeValue: z.string().min(1, '请输入字典值'),
+  valueCode: z.string().min(1, '请输入业务编码').regex(/^[a-z][a-z0-9_]*$/, '业务编码只能使用小写字母、数字和下划线'),
   order: z.number({ required_error: '请输入排序' }).min(1, '排序最小为1'),
   remark: z.string().optional(),
 }))
@@ -201,6 +209,7 @@ const { handleSubmit, errors, values, resetForm } = useForm({
   initialValues: {
     typeCode: '',
     typeValue: '',
+    valueCode: '',
     order: 1,
     remark: '',
   },
@@ -292,6 +301,7 @@ const handleAdd = () => {
     values: {
       typeCode: '',
       typeValue: '',
+      valueCode: '',
       order: 1,
       remark: '',
     },
@@ -355,6 +365,7 @@ const doSubmit = async (formData: Record<string, unknown>) => {
     const requestData = {
       typeCode: formData.typeCode,
       typeValue: formData.typeValue,
+      valueCode: formData.valueCode,
       order: formData.order,
       remark: formData.remark
     }

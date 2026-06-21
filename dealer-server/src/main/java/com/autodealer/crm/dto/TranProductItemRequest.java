@@ -11,7 +11,7 @@ import lombok.Data;
 public class TranProductItemRequest {
 
     @NotNull(message = "产品ID不能为空")
-    private Integer productId;
+    private Long productId;
 
     @NotNull(message = "数量不能为空")
     @Min(value = 1, message = "数量必须大于0")

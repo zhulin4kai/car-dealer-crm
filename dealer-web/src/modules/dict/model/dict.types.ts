@@ -10,7 +10,10 @@ export interface DictType extends LooseRecord {
 export interface DictValue extends LooseRecord {
   id?: number | string
   typeCode?: string
-  value?: string
+  typeValue?: string
+  valueCode?: string
+  order?: number
+  remark?: string
 }
 
 export type DictQuery = Partial<PageQuery> & LooseRecord

@@ -26,6 +26,11 @@ public class TDicValue implements Serializable {
     private String typeValue;
 
     /**
+     * 稳定业务编码
+     */
+    private String valueCode;
+
+    /**
      * 排序号
      */
     private Integer order;

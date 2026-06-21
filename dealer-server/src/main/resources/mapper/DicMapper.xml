@@ -12,6 +12,7 @@
         <id column="id" property="id"/>
         <result column="type_code" property="typeCode"/>
         <result column="type_value" property="typeValue"/>
+        <result column="value_code" property="valueCode"/>
         <result column="order" property="order"/>
         <result column="remark" property="remark"/>
     </resultMap>
@@ -39,6 +40,7 @@
             dv.id,
             dv.type_code,
             dv.type_value,
+            dv.value_code,
             dv.`order`,
             dv.remark
         FROM t_dic_value dv
@@ -78,6 +80,7 @@
             id,
             type_code,
             type_value,
+            value_code,
             `order`,
             remark
         FROM t_dic_value
@@ -107,6 +110,7 @@
             dv.id,
             dv.type_code,
             dv.type_value,
+            dv.value_code,
             dv.`order`,
             dv.remark
         FROM t_dic_value dv
@@ -138,12 +142,14 @@
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="typeCode != null and typeCode != ''">type_code,</if>
             <if test="typeValue != null and typeValue != ''">type_value,</if>
+            <if test="valueCode != null and valueCode != ''">value_code,</if>
             <if test="order != null">`order`,</if>
             <if test="remark != null and remark != ''">remark,</if>
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
             <if test="typeCode != null and typeCode != ''">#{typeCode},</if>
             <if test="typeValue != null and typeValue != ''">#{typeValue},</if>
+            <if test="valueCode != null and valueCode != ''">#{valueCode},</if>
             <if test="order != null">#{order},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
         </trim>
@@ -164,6 +170,7 @@
         <set>
             <if test="typeCode != null">type_code = #{typeCode},</if>
             <if test="typeValue != null">type_value = #{typeValue},</if>
+            <if test="valueCode != null">value_code = #{valueCode},</if>
             <if test="order != null">`order` = #{order},</if>
             <if test="remark != null">remark = #{remark}</if>
         </set>
@@ -301,4 +308,4 @@
             #{typeCode}
         </foreach>
     </select>
-</mapper> 
+</mapper>

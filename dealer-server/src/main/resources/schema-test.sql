@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS t_customer
 (
     id                INTEGER NOT NULL AUTO_INCREMENT,
     clue_id           INTEGER,
-    product           INTEGER,
+    product           BIGINT,
     description       VARCHAR(255),
     next_contact_time TIMESTAMP,
     create_time       TIMESTAMP,
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS t_dic_value
     id         INTEGER NOT NULL AUTO_INCREMENT,
     type_code  VARCHAR(64),
     type_value VARCHAR(64),
-    value_code VARCHAR(64),
+    value_code VARCHAR(64) NOT NULL,
     `order`    INTEGER,
     remark     VARCHAR(64),
     PRIMARY KEY (id),
@@ -374,6 +374,11 @@ CREATE TABLE IF NOT EXISTS t_product_category
     PRIMARY KEY (id),
     CONSTRAINT uk_category_code UNIQUE (code)
 );
+
+ALTER TABLE t_product
+    ADD CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES t_product_category(id) ON DELETE RESTRICT;
+ALTER TABLE t_customer
+    ADD CONSTRAINT fk_customer_product FOREIGN KEY (product) REFERENCES t_product(id) ON DELETE RESTRICT;
 
 CREATE TABLE IF NOT EXISTS t_product_promotion
 (

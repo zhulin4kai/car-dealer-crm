@@ -36,7 +36,7 @@ public class CustomerListResponse {
 
     private String intentionProductName;
 
-    private Integer product;
+    private Long product;
 
     private String description;
 

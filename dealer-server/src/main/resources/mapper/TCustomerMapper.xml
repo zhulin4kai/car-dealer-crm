@@ -4,7 +4,7 @@
   <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TCustomer">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="clue_id" jdbcType="INTEGER" property="clueId" />
-    <result column="product" jdbcType="INTEGER" property="product" />
+    <result column="product" jdbcType="BIGINT" property="product" />
     <result column="description" jdbcType="VARCHAR" property="description" />
     <result column="next_contact_time" jdbcType="TIMESTAMP" property="nextContactTime" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
@@ -16,7 +16,7 @@
   <resultMap id="CustomerResultMap" type="com.autodealer.crm.model.TCustomer">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="clue_id" jdbcType="INTEGER" property="clueId" />
-    <result column="product" jdbcType="INTEGER" property="product" />
+    <result column="product" jdbcType="BIGINT" property="product" />
     <result column="description" jdbcType="VARCHAR" property="description" />
     <result column="next_contact_time" jdbcType="TIMESTAMP" property="nextContactTime" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
@@ -150,7 +150,7 @@
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TCustomer" useGeneratedKeys="true">
     insert into t_customer (clue_id, product, description, next_contact_time, create_time, create_by, edit_time, edit_by)
-    values (#{clueId,jdbcType=INTEGER}, #{product,jdbcType=INTEGER}, #{description,jdbcType=VARCHAR},
+    values (#{clueId,jdbcType=INTEGER}, #{product,jdbcType=BIGINT}, #{description,jdbcType=VARCHAR},
       #{nextContactTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER},
       #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER})
   </insert>
@@ -169,7 +169,7 @@
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="clueId != null">#{clueId,jdbcType=INTEGER},</if>
-      <if test="product != null">#{product,jdbcType=INTEGER},</if>
+      <if test="product != null">#{product,jdbcType=BIGINT},</if>
       <if test="description != null">#{description,jdbcType=VARCHAR},</if>
       <if test="nextContactTime != null">#{nextContactTime,jdbcType=TIMESTAMP},</if>
       <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
@@ -183,7 +183,7 @@
     update t_customer
     <set>
       <if test="clueId != null">clue_id = #{clueId,jdbcType=INTEGER},</if>
-      <if test="product != null">product = #{product,jdbcType=INTEGER},</if>
+      <if test="product != null">product = #{product,jdbcType=BIGINT},</if>
       <if test="description != null">description = #{description,jdbcType=VARCHAR},</if>
       <if test="nextContactTime != null">next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},</if>
       <if test="createTime != null">create_time = #{createTime,jdbcType=TIMESTAMP},</if>
@@ -195,7 +195,7 @@
   </update>
 
   <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TCustomer">
-    update t_customer set clue_id = #{clueId,jdbcType=INTEGER}, product = #{product,jdbcType=INTEGER},
+    update t_customer set clue_id = #{clueId,jdbcType=INTEGER}, product = #{product,jdbcType=BIGINT},
       description = #{description,jdbcType=VARCHAR}, next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
       create_time = #{createTime,jdbcType=TIMESTAMP}, create_by = #{createBy,jdbcType=INTEGER},
       edit_time = #{editTime,jdbcType=TIMESTAMP}, edit_by = #{editBy,jdbcType=INTEGER}

@@ -61,7 +61,7 @@ class CustomerManagerTest {
     void testConvertCustomerSuccess() {
         ConvertCustomerRequest request = new ConvertCustomerRequest();
         request.setClueId(1);
-        request.setProduct(5);
+        request.setProduct(5L);
         request.setDescription("测试客户");
         request.setNextContactTime(new Date());
 
@@ -119,7 +119,7 @@ class CustomerManagerTest {
     void testConvertCustomerWithProductNotFound() {
         ConvertCustomerRequest request = new ConvertCustomerRequest();
         request.setClueId(1);
-        request.setProduct(999);
+        request.setProduct(999L);
         request.setDescription("测试客户");
 
         when(productMapper.selectById(999L)).thenReturn(null);

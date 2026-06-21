@@ -233,7 +233,7 @@ CREATE TABLE `t_customer`
 (
     `id`                int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，客户ID',
     `clue_id`           int                                                           NULL DEFAULT NULL COMMENT '线索ID',
-    `product`           int                                                           NULL DEFAULT NULL COMMENT '选购产品',
+    `product`           bigint                                                        NULL DEFAULT NULL COMMENT '选购产品ID',
     `description`       varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '客户描述',
     `next_contact_time` datetime                                                      NULL DEFAULT NULL COMMENT '下次联系时间',
     `create_time`       datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
@@ -357,9 +357,11 @@ CREATE TABLE `t_dic_value`
     `id`         int                                                          NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，字典值ID',
     `type_code`  varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '字典类型代码',
     `type_value` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '字典值',
+    `value_code` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '稳定业务编码',
     `order`      int                                                          NULL DEFAULT NULL COMMENT '字典值排序',
     `remark`     varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE KEY `uk_type_value_code` (`type_code`, `value_code`),
     INDEX `t_dic_value_ibfk_1` (`type_code` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 66
@@ -370,134 +372,71 @@ CREATE TABLE `t_dic_value`
 -- ----------------------------
 -- Records of t_dic_value
 -- ----------------------------
-INSERT INTO `t_dic_value`
-VALUES (-1, 'clueState', '已转客户', 0, NULL);
-INSERT INTO `t_dic_value`
-VALUES (1, 'clueState', '虚假线索', 4, NULL);
-INSERT INTO `t_dic_value`
-VALUES (2, 'source', '知乎', 8, NULL);
-INSERT INTO `t_dic_value`
-VALUES (3, 'source', '车展会', 11, NULL);
-INSERT INTO `t_dic_value`
-VALUES (4, 'returnPriority', '最高', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (5, 'appellation', '教授', 5, NULL);
-INSERT INTO `t_dic_value`
-VALUES (6, 'clueState', '将来联系', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (7, 'clueState', '丢失线索', 5, NULL);
-INSERT INTO `t_dic_value`
-VALUES (8, 'returnState', '未启动', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (10, 'clueState', '试图联系', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (11, 'appellation', '博士', 4, NULL);
-INSERT INTO `t_dic_value`
-VALUES (12, 'stage', 'QUOTATION', 1, '待报价');
-INSERT INTO `t_dic_value`
-VALUES (14, 'source', '汽车之家', 14, NULL);
-INSERT INTO `t_dic_value`
-VALUES (15, 'returnPriority', '低', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (16, 'source', '网络广告', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (17, 'source', '视频直播', 9, NULL);
-INSERT INTO `t_dic_value`
-VALUES (18, 'appellation', '先生', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (19, 'returnPriority', '高', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (20, 'appellation', '夫人', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (21, 'stage', 'LOST', 6, '丢失关闭');
-INSERT INTO `t_dic_value`
-VALUES (22, 'source', '地图', 13, NULL);
-INSERT INTO `t_dic_value`
-VALUES (23, 'source', '合作伙伴', 6, NULL);
-INSERT INTO `t_dic_value`
-VALUES (24, 'clueState', '未联系', 6, NULL);
-INSERT INTO `t_dic_value`
-VALUES (25, 'source', '朋友圈', 10, NULL);
-INSERT INTO `t_dic_value`
-VALUES (26, 'returnState', '进行中', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (27, 'clueState', '已联系', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (28, 'returnState', '推迟', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (29, 'returnState', '完成', 4, NULL);
-INSERT INTO `t_dic_value`
-VALUES (30, 'clueState', '需要条件', 7, NULL);
-INSERT INTO `t_dic_value`
-VALUES (32, 'returnState', '等待某人', 5, NULL);
-INSERT INTO `t_dic_value`
-VALUES (33, 'source', '懂车帝', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (34, 'returnPriority', '常规', 5, NULL);
-INSERT INTO `t_dic_value`
-VALUES (35, 'stage', 'APPROVED', 3, '已审批');
-INSERT INTO `t_dic_value`
-VALUES (36, 'source', '易车网', 12, NULL);
-INSERT INTO `t_dic_value`
-VALUES (37, 'stage', 'PENDING', 2, '待审批');
-INSERT INTO `t_dic_value`
-VALUES (38, 'returnPriority', '最低', 4, NULL);
-INSERT INTO `t_dic_value`
-VALUES (39, 'source', '员工介绍', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (40, 'stage', 'PAYMENT', 4, '待收款');
-INSERT INTO `t_dic_value`
-VALUES (41, 'appellation', '女士', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (42, 'stage', 'COMPLETED', 5, '已完成');
-INSERT INTO `t_dic_value`
-VALUES (66, 'stage', 'CANCELLED', 7, '已取消');
-INSERT INTO `t_dic_value`
-VALUES (43, 'source', '官方网站', 5, NULL);
-INSERT INTO `t_dic_value`
-VALUES (44, 'source', '公众号', 7, NULL);
-INSERT INTO `t_dic_value`
-VALUES (45, 'source', '门店参观', 4, NULL);
-INSERT INTO `t_dic_value`
-VALUES (46, 'intentionState', '有意向', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (47, 'intentionState', '无意向', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (48, 'intentionState', '意向不明', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (49, 'needLoan', '需要', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (50, 'needLoan', '不需要', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (51, 'sex', '男', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (52, 'sex', '女', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (53, 'educational', '小学', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (54, 'educational', '初中', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (55, 'educational', '高中', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (56, 'educational', '大学', 4, NULL);
-INSERT INTO `t_dic_value`
-VALUES (57, 'educational', '研究生', 5, NULL);
-INSERT INTO `t_dic_value`
-VALUES (58, 'userState', '正常', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (59, 'userState', '锁定', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (60, 'userState', '禁用', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (61, 'noteWay', '电话', 1, NULL);
-INSERT INTO `t_dic_value`
-VALUES (62, 'noteWay', '微信', 2, NULL);
-INSERT INTO `t_dic_value`
-VALUES (63, 'noteWay', 'QQ', 3, NULL);
-INSERT INTO `t_dic_value`
-VALUES (64, 'noteWay', '面聊', 4, NULL);
-INSERT INTO `t_dic_value`
-VALUES (65, 'noteWay', '其他', 5, NULL);
+INSERT INTO `t_dic_value` (`id`, `type_code`, `type_value`, `value_code`, `order`, `remark`) VALUES
+(-1, 'clueState', '已转客户', 'converted', 0, NULL),
+(1, 'clueState', '虚假线索', 'fake', 4, NULL),
+(2, 'source', '知乎', 'zhihu', 8, NULL),
+(3, 'source', '车展会', 'auto_show', 11, NULL),
+(4, 'returnPriority', '最高', 'highest', 2, NULL),
+(5, 'appellation', '教授', 'professor', 5, NULL),
+(6, 'clueState', '将来联系', 'future_contact', 2, NULL),
+(7, 'clueState', '丢失线索', 'lost', 5, NULL),
+(8, 'returnState', '未启动', 'not_started', 1, NULL),
+(10, 'clueState', '试图联系', 'attempt_contact', 1, NULL),
+(11, 'appellation', '博士', 'doctor', 4, NULL),
+(12, 'stage', 'QUOTATION', 'quotation', 1, '待报价'),
+(14, 'source', '汽车之家', 'autohome', 14, NULL),
+(15, 'returnPriority', '低', 'low', 3, NULL),
+(16, 'source', '网络广告', 'online_ad', 1, NULL),
+(17, 'source', '视频直播', 'live_stream', 9, NULL),
+(18, 'appellation', '先生', 'mr', 1, NULL),
+(19, 'returnPriority', '高', 'high', 1, NULL),
+(20, 'appellation', '夫人', 'mrs', 2, NULL),
+(21, 'stage', 'LOST', 'lost', 6, '丢失关闭'),
+(22, 'source', '地图', 'map', 13, NULL),
+(23, 'source', '合作伙伴', 'partner', 6, NULL),
+(24, 'clueState', '未联系', 'uncontacted', 6, NULL),
+(25, 'source', '朋友圈', 'wechat_moments', 10, NULL),
+(26, 'returnState', '进行中', 'in_progress', 3, NULL),
+(27, 'clueState', '已联系', 'contacted', 3, NULL),
+(28, 'returnState', '推迟', 'deferred', 2, NULL),
+(29, 'returnState', '完成', 'completed', 4, NULL),
+(30, 'clueState', '需要条件', 'conditional', 7, NULL),
+(32, 'returnState', '等待某人', 'waiting', 5, NULL),
+(33, 'source', '懂车帝', 'dongchedi', 2, NULL),
+(34, 'returnPriority', '常规', 'normal', 5, NULL),
+(35, 'stage', 'APPROVED', 'approved', 3, '已审批'),
+(36, 'source', '易车网', 'yiche', 12, NULL),
+(37, 'stage', 'PENDING', 'pending', 2, '待审批'),
+(38, 'returnPriority', '最低', 'lowest', 4, NULL),
+(39, 'source', '员工介绍', 'employee_referral', 3, NULL),
+(40, 'stage', 'PAYMENT', 'payment', 4, '待收款'),
+(41, 'appellation', '女士', 'ms', 3, NULL),
+(42, 'stage', 'COMPLETED', 'completed', 5, '已完成'),
+(66, 'stage', 'CANCELLED', 'cancelled', 7, '已取消'),
+(43, 'source', '官方网站', 'official_website', 5, NULL),
+(44, 'source', '公众号', 'wechat_official', 7, NULL),
+(45, 'source', '门店参观', 'store_visit', 4, NULL),
+(46, 'intentionState', '有意向', 'interested', 1, NULL),
+(47, 'intentionState', '无意向', 'not_interested', 2, NULL),
+(48, 'intentionState', '意向不明', 'unknown', 3, NULL),
+(49, 'needLoan', '需要', 'required', 1, NULL),
+(50, 'needLoan', '不需要', 'not_required', 2, NULL),
+(51, 'sex', '男', 'male', 1, NULL),
+(52, 'sex', '女', 'female', 2, NULL),
+(53, 'educational', '小学', 'primary', 1, NULL),
+(54, 'educational', '初中', 'middle_school', 2, NULL),
+(55, 'educational', '高中', 'high_school', 3, NULL),
+(56, 'educational', '大学', 'university', 4, NULL),
+(57, 'educational', '研究生', 'postgraduate', 5, NULL),
+(58, 'userState', '正常', 'normal', 1, NULL),
+(59, 'userState', '锁定', 'locked', 2, NULL),
+(60, 'userState', '禁用', 'disabled', 3, NULL),
+(61, 'noteWay', '电话', 'phone', 1, NULL),
+(62, 'noteWay', '微信', 'wechat', 2, NULL),
+(63, 'noteWay', 'QQ', 'qq', 3, NULL),
+(64, 'noteWay', '面聊', 'in_person', 4, NULL),
+(65, 'noteWay', '其他', 'other', 5, NULL);
 
 -- ----------------------------
 -- Table structure for t_permission
@@ -1037,17 +976,20 @@ DROP TABLE IF EXISTS `t_product`;
 CREATE TABLE `t_product`
 (
     `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '商品的唯一标识符',
-    `sku`           VARCHAR(255)   DEFAULT NULL COMMENT '商品的库存单位',
+    `sku`           VARCHAR(255) NOT NULL COMMENT '商品的库存单位',
     `name`          VARCHAR(255) NOT NULL COMMENT '商品名称',
   `category_id` BIGINT DEFAULT NULL COMMENT '商品类别ID',
     `specification` VARCHAR(255)   DEFAULT NULL COMMENT '商品规格',
-    `price`         DECIMAL(10, 2) DEFAULT NULL COMMENT '商品价格',
-    `stock`         INT            DEFAULT NULL COMMENT '当前商品库存量',
+    `price`         DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '商品价格',
+    `stock`         INT          NOT NULL DEFAULT 0 COMMENT '当前商品库存量',
     `min_stock`     INT            DEFAULT NULL COMMENT '商品的最低库存警戒值',
-    `status`        VARCHAR(50)    DEFAULT NULL COMMENT '商品状态，如上架、下架等',
+    `status`        VARCHAR(50)  NOT NULL DEFAULT 'off_sale' COMMENT '商品状态，如on_sale、off_sale',
     `create_time`   DATETIME       DEFAULT NULL COMMENT '商品信息的创建时间',
     `update_time`   DATETIME       DEFAULT NULL COMMENT '商品信息的最后更新时间',
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_product_sku` (`sku`),
+    CONSTRAINT `chk_product_price_nonneg` CHECK (`price` >= 0),
+    CONSTRAINT `chk_product_stock_nonneg` CHECK (`stock` >= 0)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='商品表';
 
@@ -1055,18 +997,18 @@ CREATE TABLE `t_product`
 INSERT INTO `t_product`
 (`id`, `sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
 VALUES
-(1, 'BMW-X5-G05-25-30LI', '宝马 X5', 1, '2025款 xDrive30Li 尊享型 M运动套装', 599000.00, 3, 2, '上架', '2025-09-05 10:00:00', '2026-06-18 15:20:00'),
-(2, 'BMW-X3-G48-25-30LI', '宝马 X3', 1, '2025款 xDrive30Li 尊享型', 449900.00, 5, 2, '上架', '2025-11-12 10:00:00', '2026-06-18 15:20:00'),
-(3, 'BMW-325LI-G28-25-M', '宝马 3系', 2, '2025款 325Li M运动曜夜套装', 369900.00, 4, 2, '上架', '2025-08-18 10:00:00', '2026-06-18 15:20:00'),
-(4, 'BMW-530LI-G68-25-L', '宝马 5系', 2, '2025款 530Li 领先型 豪华套装', 485900.00, 2, 2, '上架', '2025-10-09 10:00:00', '2026-06-18 15:20:00'),
-(5, 'AUDI-A4L-B9-25-40', '奥迪 A4L', 2, '2025款 40 TFSI 豪华动感型', 343800.00, 6, 2, '上架', '2025-07-21 10:00:00', '2026-06-18 15:20:00'),
-(6, 'AUDI-Q5L-FY-25-40', '奥迪 Q5L', 1, '2025款 40 TFSI 豪华动感型', 426800.00, 4, 2, '上架', '2025-07-21 10:00:00', '2026-06-18 15:20:00'),
-(7, 'AUDI-A6L-C8-25-45', '奥迪 A6L', 2, '2025款 45 TFSI 臻选动感型', 479900.00, 3, 2, '上架', '2025-09-16 10:00:00', '2026-06-18 15:20:00'),
-(8, 'BENZ-C260L-W206-25', '奔驰 C级', 2, '2025款 C 260 L 运动版', 353300.00, 5, 2, '上架', '2025-08-08 10:00:00', '2026-06-18 15:20:00'),
-(9, 'BENZ-E300L-W214-25', '奔驰 E级', 2, '2025款 E 300 L 豪华型', 529800.00, 2, 2, '上架', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
-(10, 'BENZ-GLC300L-X254-25', '奔驰 GLC', 1, '2025款 GLC 300 L 4MATIC 动感型', 479300.00, 4, 2, '上架', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
-(11, 'LEXUS-ES300H-25-P', '雷克萨斯 ES', 4, '2025款 300h 尊享版', 399900.00, 3, 1, '上架', '2025-12-02 10:00:00', '2026-06-18 15:20:00'),
-(12, 'LEXUS-NX350H-25-C', '雷克萨斯 NX', 4, '2025款 350h 创驰版', 388800.00, 2, 1, '上架', '2025-12-02 10:00:00', '2026-06-18 15:20:00');
+(1, 'BMW-X5-G05-25-30LI', '宝马 X5', 1, '2025款 xDrive30Li 尊享型 M运动套装', 599000.00, 3, 2, 'on_sale', '2025-09-05 10:00:00', '2026-06-18 15:20:00'),
+(2, 'BMW-X3-G48-25-30LI', '宝马 X3', 1, '2025款 xDrive30Li 尊享型', 449900.00, 5, 2, 'on_sale', '2025-11-12 10:00:00', '2026-06-18 15:20:00'),
+(3, 'BMW-325LI-G28-25-M', '宝马 3系', 2, '2025款 325Li M运动曜夜套装', 369900.00, 4, 2, 'on_sale', '2025-08-18 10:00:00', '2026-06-18 15:20:00'),
+(4, 'BMW-530LI-G68-25-L', '宝马 5系', 2, '2025款 530Li 领先型 豪华套装', 485900.00, 2, 2, 'on_sale', '2025-10-09 10:00:00', '2026-06-18 15:20:00'),
+(5, 'AUDI-A4L-B9-25-40', '奥迪 A4L', 2, '2025款 40 TFSI 豪华动感型', 343800.00, 6, 2, 'on_sale', '2025-07-21 10:00:00', '2026-06-18 15:20:00'),
+(6, 'AUDI-Q5L-FY-25-40', '奥迪 Q5L', 1, '2025款 40 TFSI 豪华动感型', 426800.00, 4, 2, 'on_sale', '2025-07-21 10:00:00', '2026-06-18 15:20:00'),
+(7, 'AUDI-A6L-C8-25-45', '奥迪 A6L', 2, '2025款 45 TFSI 臻选动感型', 479900.00, 3, 2, 'on_sale', '2025-09-16 10:00:00', '2026-06-18 15:20:00'),
+(8, 'BENZ-C260L-W206-25', '奔驰 C级', 2, '2025款 C 260 L 运动版', 353300.00, 5, 2, 'on_sale', '2025-08-08 10:00:00', '2026-06-18 15:20:00'),
+(9, 'BENZ-E300L-W214-25', '奔驰 E级', 2, '2025款 E 300 L 豪华型', 529800.00, 2, 2, 'on_sale', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
+(10, 'BENZ-GLC300L-X254-25', '奔驰 GLC', 1, '2025款 GLC 300 L 4MATIC 动感型', 479300.00, 4, 2, 'on_sale', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
+(11, 'LEXUS-ES300H-25-P', '雷克萨斯 ES', 4, '2025款 300h 尊享版', 399900.00, 3, 1, 'on_sale', '2025-12-02 10:00:00', '2026-06-18 15:20:00'),
+(12, 'LEXUS-NX350H-25-C', '雷克萨斯 NX', 4, '2025款 350h 创驰版', 388800.00, 2, 1, 'on_sale', '2025-12-02 10:00:00', '2026-06-18 15:20:00');
 
 -- ----------------------------
 -- Table structure for t_product_category
@@ -1102,6 +1044,11 @@ VALUES
 (3, 'MPV', 'MPV', '多用途乘用车', 3, '启用', '2025-01-06 09:00:00', '2026-06-18 15:00:00'),
 (4, '新能源车', 'NEW_ENERGY', '纯电、插混及油电混动车型', 4, '启用', '2025-01-06 09:00:00', '2026-06-18 15:00:00'),
 (5, '性能车', 'PERFORMANCE', '高性能及个性化车型', 5, '启用', '2025-01-06 09:00:00', '2026-06-18 15:00:00');
+
+ALTER TABLE `t_product`
+    ADD CONSTRAINT `fk_product_category` FOREIGN KEY (`category_id`) REFERENCES `t_product_category` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_customer`
+    ADD CONSTRAINT `fk_customer_product` FOREIGN KEY (`product`) REFERENCES `t_product` (`id`) ON DELETE RESTRICT;
 
 -- ----------------------------
 -- Table structure for t_product_promotion

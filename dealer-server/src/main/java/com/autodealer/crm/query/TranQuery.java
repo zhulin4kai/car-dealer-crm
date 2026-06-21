@@ -50,7 +50,7 @@ public class TranQuery extends BaseQuery {
     private Integer createBy;
     
     /** 产品ID */
-    private Integer productId;
+    private Long productId;
     
     /** 产品名称 */
     private String productName;

@@ -44,7 +44,7 @@ public class CustomerDetailResponse {
 
     private String productName;
 
-    private Integer product;
+    private Long product;
 
     private String description;
 

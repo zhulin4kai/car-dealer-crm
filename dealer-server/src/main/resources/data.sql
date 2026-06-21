@@ -247,72 +247,72 @@ MERGE INTO t_dic_type (id, type_code, type_name, remark) KEY(id) VALUES (13, 'ed
 
 -- ==================== Dictionary Values ====================
 -- Sex
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (1, 'sex', '男', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (2, 'sex', '女', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (1, 'sex', '男', 'male', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (2, 'sex', '女', 'female', 2, NULL);
 
 -- Appellation
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (3, 'appellation', '先生', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (4, 'appellation', '女士', 2, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (5, 'appellation', '教授', 3, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (3, 'appellation', '先生', 'mr', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (4, 'appellation', '女士', 'ms', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (5, 'appellation', '教授', 'professor', 3, NULL);
 
 -- Clue State
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (6, 'clueState', '试图联系', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (7, 'clueState', '将来联系', 2, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (8, 'clueState', '已联系', 3, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (9, 'clueState', '已转客户', 0, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (10, 'clueState', '虚假线索', 4, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (11, 'clueState', '丢失线索', 5, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (6, 'clueState', '试图联系', 'attempt_contact', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (7, 'clueState', '将来联系', 'future_contact', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (8, 'clueState', '已联系', 'contacted', 3, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (9, 'clueState', '已转客户', 'converted', 0, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (10, 'clueState', '虚假线索', 'fake', 4, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (11, 'clueState', '丢失线索', 'lost', 5, NULL);
 
 -- Source
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (12, 'source', '网络广告', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (13, 'source', '懂车帝', 2, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (14, 'source', '员工介绍', 3, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (15, 'source', '门店参观', 4, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (16, 'source', '官方网站', 5, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (12, 'source', '网络广告', 'online_ad', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (13, 'source', '懂车帝', 'dongchedi', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (14, 'source', '员工介绍', 'employee_referral', 3, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (15, 'source', '门店参观', 'store_visit', 4, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (16, 'source', '官方网站', 'official_website', 5, NULL);
 
 -- Intention State
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (17, 'intentionState', '有意向', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (18, 'intentionState', '无意向', 2, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (19, 'intentionState', '意向不明', 3, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (17, 'intentionState', '有意向', 'interested', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (18, 'intentionState', '无意向', 'not_interested', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (19, 'intentionState', '意向不明', 'unknown', 3, NULL);
 
 -- Need Loan
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (20, 'needLoan', '需要', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (21, 'needLoan', '不需要', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (20, 'needLoan', '需要', 'required', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (21, 'needLoan', '不需要', 'not_required', 2, NULL);
 
 -- Stage
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (22, 'stage', 'QUOTATION', 1, '待报价');
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (23, 'stage', 'PENDING', 2, '待审批');
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (24, 'stage', 'APPROVED', 3, '已审批');
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (25, 'stage', 'PAYMENT', 4, '待收款');
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (26, 'stage', 'COMPLETED', 5, '已完成');
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (27, 'stage', 'LOST', 6, '丢失关闭');
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (66, 'stage', 'CANCELLED', 7, '已取消');
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (22, 'stage', 'QUOTATION', 'quotation', 1, '待报价');
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (23, 'stage', 'PENDING', 'pending', 2, '待审批');
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (24, 'stage', 'APPROVED', 'approved', 3, '已审批');
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (25, 'stage', 'PAYMENT', 'payment', 4, '待收款');
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (26, 'stage', 'COMPLETED', 'completed', 5, '已完成');
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (27, 'stage', 'LOST', 'lost', 6, '丢失关闭');
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (66, 'stage', 'CANCELLED', 'cancelled', 7, '已取消');
 
 -- Note Way
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (28, 'noteWay', '电话', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (29, 'noteWay', '微信', 2, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (30, 'noteWay', 'QQ', 3, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (31, 'noteWay', '面聊', 4, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (32, 'noteWay', '其他', 5, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (28, 'noteWay', '电话', 'phone', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (29, 'noteWay', '微信', 'wechat', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (30, 'noteWay', 'QQ', 'qq', 3, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (31, 'noteWay', '面聊', 'in_person', 4, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (32, 'noteWay', '其他', 'other', 5, NULL);
 
 -- User State
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (33, 'userState', '正常', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (34, 'userState', '锁定', 2, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (35, 'userState', '禁用', 3, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (33, 'userState', '正常', 'normal', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (34, 'userState', '锁定', 'locked', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (35, 'userState', '禁用', 'disabled', 3, NULL);
 
 -- Return Priority
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (36, 'returnPriority', '最高', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (37, 'returnPriority', '高', 2, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (38, 'returnPriority', '常规', 3, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (36, 'returnPriority', '最高', 'highest', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (37, 'returnPriority', '高', 'high', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (38, 'returnPriority', '常规', 'normal', 3, NULL);
 
 -- Return State
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (39, 'returnState', '未启动', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (40, 'returnState', '进行中', 2, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (41, 'returnState', '完成', 3, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (39, 'returnState', '未启动', 'not_started', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (40, 'returnState', '进行中', 'in_progress', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (41, 'returnState', '完成', 'completed', 3, NULL);
 
 -- Educational
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (42, 'educational', '大学', 1, NULL);
-MERGE INTO t_dic_value (id, type_code, type_value, `order`, remark) KEY(id) VALUES (43, 'educational', '研究生', 2, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (42, 'educational', '大学', 'university', 1, NULL);
+MERGE INTO t_dic_value (id, type_code, type_value, value_code, `order`, remark) KEY(id) VALUES (43, 'educational', '研究生', 'postgraduate', 2, NULL);
 
 -- ==================== Product Categories ====================
 MERGE INTO t_product_category (id, name, code, description, sort, status, create_time, update_time) KEY(id)

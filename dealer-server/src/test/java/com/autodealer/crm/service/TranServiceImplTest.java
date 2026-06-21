@@ -102,7 +102,7 @@ class TranServiceImplTest {
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
         when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(1);
         TTranProduct p = new TTranProduct();
-        p.setProductId(1);
+        p.setProductId(1L);
         p.setQuantity(1);
         // 不设置 price — 服务端从数据库获取
         assertEquals(1, tranService.createTransaction(tran, Collections.singletonList(p)));
@@ -124,7 +124,7 @@ class TranServiceImplTest {
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
         when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(0);
         TTranProduct p = new TTranProduct();
-        p.setProductId(1);
+        p.setProductId(1L);
         p.setQuantity(1);
         assertThrows(RuntimeException.class, () -> tranService.createTransaction(tran, Collections.singletonList(p)));
     }
@@ -149,7 +149,7 @@ class TranServiceImplTest {
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
         when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(1);
         TTranProduct p = new TTranProduct();
-        p.setProductId(1);
+        p.setProductId(1L);
         p.setQuantity(2);
         // 即使客户端尝试设置 price = 1.00，服务端也应忽略并使用数据库价格
         p.setPrice(BigDecimal.ONE);
@@ -165,7 +165,7 @@ class TranServiceImplTest {
         TTran tran = newTran(null, TranStage.QUOTATION);
         when(productMapper.selectById(999L)).thenReturn(null);
         TTranProduct p = new TTranProduct();
-        p.setProductId(999);
+        p.setProductId(999L);
         p.setQuantity(1);
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> tranService.createTransaction(tran, Collections.singletonList(p)));
@@ -191,7 +191,7 @@ class TranServiceImplTest {
 
     private TTranProduct newProduct(Integer productId, int quantity, BigDecimal price) {
         TTranProduct p = new TTranProduct();
-        p.setProductId(productId);
+        p.setProductId(productId.longValue());
         p.setQuantity(quantity);
         p.setPrice(price);
         return p;
@@ -465,7 +465,7 @@ class TranServiceImplTest {
         when(productMapper.updateStock(1L, -1)).thenReturn(1);
 
         TTranProduct product = new TTranProduct();
-        product.setProductId(1);
+        product.setProductId(1L);
         product.setQuantity(1);
 
         BusinessException exception = assertThrows(BusinessException.class,

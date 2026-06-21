@@ -24,7 +24,7 @@ public class TTranProduct implements Serializable {
     /**
      * 产品ID
      */
-    private Integer productId;
+    private Long productId;
 
     /**
      * 产品名称（关联查询字段）
@@ -52,4 +52,4 @@ public class TTranProduct implements Serializable {
     private Integer createBy;
 
     private static final long serialVersionUID = 1L;
-} 
+}
