@@ -1,6 +1,7 @@
 package com.autodealer.crm.service;
 
 import com.autodealer.crm.dto.ProductSimpleDTO;
+import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TProductStockRecordMapper;
 import com.autodealer.crm.model.TProduct;
@@ -33,6 +34,9 @@ class ProductServiceImplTest {
 
     @Mock
     private TProductStockRecordMapper stockRecordMapper;
+
+    @Mock
+    private OperationAuditRecorder auditRecorder;
 
     private TProduct createSampleProduct(Long id, String name, String status) {
         TProduct product = new TProduct();
