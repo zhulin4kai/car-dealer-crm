@@ -58,13 +58,29 @@ Authorization: Bearer <token>
 
 ### 错误码对照表
 
-| code | 说明 |
-|------|------|
-| 200 | 操作成功 |
-| 500 | 服务器错误/操作失败 |
-| 401 | 未认证/Token失效 |
-| 403 | 无权限访问 |
-| 404 | 资源不存在 |
+所有接口错误均通过 `GlobalExceptionHandler` 统一处理，返回结构化 `R.FAIL` 响应，code 值来源于 `CodeEnum`。
+
+| code | CodeEnum 名称 | 说明 |
+|------|--------------|------|
+| 200 | OK | 操作成功 |
+| 401 | — | 未认证 / Token 失效（Spring Security 拦截） |
+| 403 | — | 无权限访问（Spring Security 拦截） |
+| 404 | NOT_FOUND | 资源不存在 |
+| 409 | DUPLICATE | 数据已存在（唯一约束冲突） |
+| 422 | RESOURCE_IN_USE | 资源被引用，无法操作 |
+| 500 | FAIL | 操作失败（通用业务错误） |
+| 501 | PARAM_ERROR | 请求参数格式有误（校验失败或请求体格式错误） |
+| 506 | SYSTEM_ERROR | 系统异常（未预期的运行时错误） |
+| 507 | TRAN_NO_PRODUCTS | 交易没有产品信息 |
+| 510 | TOKEN_IS_EMPTY | Token 为空 |
+| 511 | TOKEN_IS_ERROR | Token 无效 |
+| 512 | TOKEN_IS_EXPIRED | Token 已过期 |
+| 513 | TOKEN_IS_NONE_MATCH | Token 不匹配 |
+| 520 | ACCESS_DENIED | 没有访问权限 |
+| 521 | DATA_ACCESS_EXCEPTION | 数据访问异常 |
+| 550 | OPERATION_FAILED | 业务操作失败 |
+
+> **P1-3 说明**：所有 Service 层业务异常统一抛出 `BusinessException(CodeEnum, msg)`，由 `GlobalExceptionHandler` 捕获并返回 `R.FAIL(code, msg)` 格式响应。不再使用原始 `RuntimeException`。
 
 ---
 
@@ -151,10 +167,14 @@ Authorization: Bearer <token>
 - **权限**: 需要权限 `user:list`
 - **描述**: 分页查询用户列表
 
-**请求参数**:
+**请求参数**（对应 `UserListQuery` DTO）:
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | current | Integer | 否 | 当前页码，默认1 |
+| loginAct | String | 否 | 登录账号（模糊查询） |
+| name | String | 否 | 用户姓名（模糊查询） |
+| phone | String | 否 | 手机号（模糊查询） |
+| email | String | 否 | 邮箱（模糊查询） |
 
 **响应示例**:
 ```json
@@ -223,30 +243,43 @@ Authorization: Bearer <token>
 - **权限**: 需要权限 `user:add`
 - **描述**: 创建新用户
 
+**请求体**（对应 `CreateUserRequest` DTO）:
+```json
+{
+  "loginAct": "user001",
+  "loginPwd": "123456",
+  "name": "张三",
+  "phone": "13800138000",
+  "email": "zhangsan@example.com"
+}
+```
+
 **请求参数**:
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
-| loginAct | String | 是 | 登录账号 |
-| loginPwd | String | 是 | 登录密码 |
-| name | String | 是 | 用户姓名 |
-| phone | String | 否 | 用户手机 |
-| email | String | 否 | 用户邮箱 |
-| accountNoExpired | Integer | 否 | 账户是否未过期（0已过期 1正常） |
-| credentialsNoExpired | Integer | 否 | 密码是否未过期（0已过期 1正常） |
-| accountNoLocked | Integer | 否 | 账号是否未锁定（0已锁定 1正常） |
-| accountEnabled | Integer | 否 | 账号是否启用（0禁用 1启用） |
-
-**请求示例**:
-```json
-loginAct=user001&loginPwd=123456&name=张三&phone=13800138000&email=zhangsan@example.com
-```
+| loginAct | String | 是 | 登录账号（1-32位） |
+| loginPwd | String | 是 | 登录密码（6-16位） |
+| name | String | 是 | 用户姓名（1-32位） |
+| phone | String | 是 | 手机号 |
+| email | String | 是 | 邮箱 |
 
 **响应示例**:
 ```json
 {
   "code": 200,
   "msg": "success",
-  "data": null
+  "data": {
+    "id": 10,
+    "loginAct": "user001",
+    "name": "张三",
+    "phone": "13800138000",
+    "email": "zhangsan@example.com",
+    "accountNoExpired": 1,
+    "credentialsNoExpired": 1,
+    "accountNoLocked": 1,
+    "accountEnabled": 1,
+    "createTime": "2024-01-15 10:30:00"
+  }
 }
 ```
 
@@ -256,22 +289,52 @@ loginAct=user001&loginPwd=123456&name=张三&phone=13800138000&email=zhangsan@ex
 - **权限**: 需要权限 `user:edit`
 - **描述**: 更新用户信息
 
-**请求参数**: 同新增用户
+**请求体**（对应 `UpdateUserRequest` DTO）:
+```json
+{
+  "id": 1,
+  "loginAct": "user001",
+  "name": "张三（已修改）",
+  "phone": "13800138000",
+  "email": "zhangsan@example.com"
+}
+```
+
+**请求参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | Integer | 是 | 用户ID |
+| loginAct | String | 是 | 登录账号（1-32位） |
+| name | String | 是 | 用户姓名（1-32位） |
+| phone | String | 是 | 手机号 |
+| email | String | 是 | 邮箱 |
 
 **响应示例**:
 ```json
 {
   "code": 200,
   "msg": "success",
-  "data": null
+  "data": {
+    "id": 1,
+    "loginAct": "user001",
+    "name": "张三（已修改）",
+    "phone": "13800138000",
+    "email": "zhangsan@example.com",
+    "accountNoExpired": 1,
+    "credentialsNoExpired": 1,
+    "accountNoLocked": 1,
+    "accountEnabled": 1,
+    "createTime": "2024-01-01 00:00:00",
+    "editTime": "2024-01-15 11:00:00"
+  }
 }
 ```
 
-### 2.5 删除用户
-- **URL**: `/api/user/{id}`
-- **Method**: DELETE
-- **权限**: 需要权限 `user:delete`
-- **描述**: 删除指定用户
+### 2.5 禁用用户
+- **URL**: `/api/user/{id}/disable`
+- **Method**: PUT
+- **权限**: 需要权限 `user:edit`
+- **描述**: 禁用指定用户（将 accountEnabled 设为 0）
 
 **路径参数**:
 | 参数名 | 类型 | 必填 | 说明 |
@@ -287,16 +350,149 @@ loginAct=user001&loginPwd=123456&name=张三&phone=13800138000&email=zhangsan@ex
 }
 ```
 
-### 2.6 批量删除用户
-- **URL**: `/api/user`
-- **Method**: DELETE
-- **权限**: 需要权限 `user:delete`
-- **描述**: 批量删除用户
+### 2.6 启用用户
+- **URL**: `/api/user/{id}/enable`
+- **Method**: PUT
+- **权限**: 需要权限 `user:edit`
+- **描述**: 启用指定用户（将 accountEnabled 设为 1）
 
-**请求体**:
+**路径参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | Integer | 是 | 用户ID |
+
+**响应示例**:
 ```json
-[1, 2, 3]
+{
+  "code": 200,
+  "msg": "success",
+  "data": null
+}
 ```
+
+### 2.7 锁定用户
+- **URL**: `/api/user/{id}/lock`
+- **Method**: PUT
+- **权限**: 需要权限 `user:edit`
+- **描述**: 锁定指定用户（将 accountNoLocked 设为 0）
+
+**路径参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | Integer | 是 | 用户ID |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": null
+}
+```
+
+### 2.8 解锁用户
+- **URL**: `/api/user/{id}/unlock`
+- **Method**: PUT
+- **权限**: 需要权限 `user:edit`
+- **描述**: 解锁指定用户（将 accountNoLocked 设为 1）
+
+**路径参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | Integer | 是 | 用户ID |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": null
+}
+```
+
+### 2.9 批量禁用用户
+- **URL**: `/api/users/batch-disable`
+- **Method**: PUT
+- **权限**: 需要权限 `user:delete`
+- **描述**: 批量禁用指定用户（替代原 DELETE 删除操作，改为逻辑禁用）
+
+**请求体**（对应 `BatchDisableUsersRequest` DTO）:
+```json
+{
+  "ids": [1, 2, 3]
+}
+```
+
+**请求参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| ids | List\<Integer\> | 是 | 用户ID列表，不能为空 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": null
+}
+```
+
+> **P1-5 变更说明**：原 `DELETE /api/user/{id}` 和 `DELETE /api/user`（批量）已移除。用户不再物理删除，改为通过禁用/启用管理生命周期。
+
+### 2.10 分配用户角色
+- **URL**: `/api/user/{id}/roles`
+- **Method**: PUT
+- **权限**: 需要权限 `user:edit`
+- **描述**: 为指定用户分配角色
+
+**路径参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | Integer | 是 | 用户ID |
+
+**请求体**（对应 `AssignUserRolesRequest` DTO）:
+```json
+{
+  "roleIds": [1, 2, 3]
+}
+```
+
+**请求参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| roleIds | List\<Integer\> | 否 | 角色ID列表（空列表表示清除所有角色） |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": null
+}
+```
+
+### 2.11 修改用户密码
+- **URL**: `/api/user/{id}/password`
+- **Method**: PUT
+- **权限**: 需要权限 `user:edit`
+- **描述**: 修改指定用户的登录密码
+
+**路径参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | Integer | 是 | 用户ID |
+
+**请求体**（对应 `ChangePasswordRequest` DTO）:
+```json
+{
+  "newPassword": "newpass123"
+}
+```
+
+**请求参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| newPassword | String | 是 | 新密码（6-16位） |
 
 **响应示例**:
 ```json
@@ -2993,7 +3189,7 @@ name=春节促销活动&startTime=2024-01-01 00:00:00&endTime=2024-02-01 00:00:0
 | user:view | 用户详情查看 |
 | user:add | 用户新增 |
 | user:edit | 用户编辑 |
-| user:delete | 用户删除 |
+| user:delete | 用户批量禁用（原删除权限，现用于 `PUT /api/users/batch-disable`） |
 | clue:list | 线索列表查看 |
 | clue:view | 线索详情查看 |
 | clue:add | 线索新增 |
@@ -3034,3 +3230,44 @@ name=春节促销活动&startTime=2024-01-01 00:00:00&endTime=2024-02-01 00:00:0
 | product_category | 商品分类表 |
 | product_promotion | 商品促销表 |
 | product_stock_record | 库存变动记录表 |
+
+### E. P1 批次变更说明
+
+#### P1-2：请求体 DTO 规范化
+
+所有 `@RequestBody` 接口方法已改为使用专用 DTO 类，不再直接接收实体类型或裸集合。涉及 6 个模块共 12 个 DTO：
+
+| 模块 | DTO |
+|------|-----|
+| 用户 | `CreateUserRequest`, `UpdateUserRequest`, `BatchDisableUsersRequest`, `AssignUserRolesRequest`, `ChangePasswordRequest` |
+| 字典 | `CreateDicTypeRequest`, `UpdateDicTypeRequest`, `CreateDicValueRequest`, `UpdateDicValueRequest` |
+| 系统 | `CreateSystemRequest`, `UpdateSystemRequest`, `ToggleSystemStatusRequest` |
+| 商品 | `CreateProductRequest`, `UpdateProductRequest` |
+| 分类 | `CreateProductCategoryRequest`, `UpdateProductCategoryRequest` |
+| 促销 | `CreateProductPromotionRequest`, `UpdateProductPromotionRequest` |
+
+> 所有 DTO 均使用 `jakarta.validation` 注解进行参数校验，校验失败返回 code 501 (`PARAM_ERROR`)。
+
+#### P1-3：统一异常处理
+
+- 所有 Service 方法统一抛出 `BusinessException(CodeEnum, msg)`，替代原有的 `RuntimeException`。
+- `GlobalExceptionHandler` 捕获所有异常类型并返回结构化 `R.FAIL` 响应。
+- 新增业务错误码：`DUPLICATE(409)`, `NOT_FOUND(404)`, `RESOURCE_IN_USE(422)`, `OPERATION_FAILED(550)`。
+
+#### P1-4：审计日志集成
+
+7 个 Service 实现类共增加 29 个审计调用点，覆盖核心业务操作的创建、更新、删除（禁用）等变更场景。审计日志记录操作人、操作类型和关键业务标识。
+
+#### P1-5：用户模块端点变更
+
+| 变更类型 | 端点 | 说明 |
+|----------|------|------|
+| 已移除 | `DELETE /api/user/{id}` | 单个用户物理删除 |
+| 已移除 | `DELETE /api/user` | 批量物理删除（裸 `List<Integer>` 请求体） |
+| 新增 | `PUT /api/users/batch-disable` | 批量逻辑禁用，使用 `BatchDisableUsersRequest` DTO |
+| 新增 | `PUT /api/user/{id}/roles` | 分配用户角色 |
+| 新增 | `PUT /api/user/{id}/password` | 修改用户密码 |
+| 已有 | `PUT /api/user/{id}/disable` | 禁用单个用户 |
+| 已有 | `PUT /api/user/{id}/enable` | 启用单个用户 |
+| 已有 | `PUT /api/user/{id}/lock` | 锁定单个用户 |
+| 已有 | `PUT /api/user/{id}/unlock` | 解锁单个用户 |
