@@ -6,38 +6,38 @@
         <id column="id" property="id" />
         <result column="user_id" property="userId" />
         <result column="user_name" property="userName" />
-        <result column="operation" property="operation" />
-        <result column="module" property="module" />
-        <result column="record_id" property="recordId" />
+        <result column="action_code" property="actionCode" />
+        <result column="module_name" property="moduleName" />
+        <result column="resource_id" property="resourceId" />
         <result column="detail" property="detail" />
         <result column="ip" property="ip" />
         <result column="create_time" property="createTime" />
     </resultMap>
 
     <insert id="insert" parameterType="com.autodealer.crm.model.TOperationLog" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO t_operation_log (user_id, user_name, operation, module, record_id, detail, ip, create_time)
-        VALUES (#{userId}, #{userName}, #{operation}, #{module}, #{recordId}, #{detail}, #{ip}, #{createTime})
+        INSERT INTO t_operation_log (user_id, user_name, action_code, module_name, resource_id, detail, ip, create_time)
+        VALUES (#{userId}, #{userName}, #{actionCode}, #{moduleName}, #{resourceId}, #{detail}, #{ip}, #{createTime})
     </insert>
 
     <select id="selectByModule" resultMap="BaseResultMap">
-        SELECT id, user_id, user_name, operation, module, record_id, detail, ip, create_time
+        SELECT id, user_id, user_name, action_code, module_name, resource_id, detail, ip, create_time
         FROM t_operation_log
-        WHERE module = #{module}
-        ORDER BY create_time DESC
+        WHERE module_name = #{module}
+        ORDER BY create_time DESC, id DESC
         LIMIT #{offset}, #{limit}
     </select>
 
     <select id="selectCountByModule" resultType="java.lang.Integer">
         SELECT COUNT(*)
         FROM t_operation_log
-        WHERE module = #{module}
+        WHERE module_name = #{module}
     </select>
 
     <select id="selectByUserId" resultMap="BaseResultMap">
-        SELECT id, user_id, user_name, operation, module, record_id, detail, ip, create_time
+        SELECT id, user_id, user_name, action_code, module_name, resource_id, detail, ip, create_time
         FROM t_operation_log
         WHERE user_id = #{userId}
-        ORDER BY create_time DESC
+        ORDER BY create_time DESC, id DESC
         LIMIT #{offset}, #{limit}
     </select>
 

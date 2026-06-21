@@ -13,9 +13,9 @@ public class TOperationLog implements Serializable {
     private Integer id;
     private Integer userId;
     private String userName;
-    private String operation;
-    private String module;
-    private Integer recordId;
+    private String actionCode;
+    private String moduleName;
+    private String resourceId;
     private String detail;
     private String ip;
     private Date createTime;
