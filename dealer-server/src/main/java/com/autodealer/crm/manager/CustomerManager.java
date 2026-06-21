@@ -1,18 +1,22 @@
 package com.autodealer.crm.manager;
 
-import com.autodealer.crm.enums.TranStage;
+import com.autodealer.crm.audit.AuditActionEnum;
+import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
+import com.autodealer.crm.dto.ConvertCustomerRequest;
+import com.autodealer.crm.enums.TranStage;
+import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.model.TCustomer;
-import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.model.TProduct;
+import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.model.TTranProduct;
-import com.autodealer.crm.query.CustomerQuery;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.TranService;
-import jakarta.annotation.Resource;
-import org.springframework.beans.BeanUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,74 +27,66 @@ import java.util.List;
 
 @Component
 public class CustomerManager {
+    private static final Logger log = LoggerFactory.getLogger(CustomerManager.class);
 
-    @Resource
-    private TCustomerMapper tCustomerMapper;
+    private final TCustomerMapper tCustomerMapper;
+    private final TClueMapper tClueMapper;
+    private final TProductMapper productMapper;
+    private final TranService tranService;
+    private final CurrentUserProvider currentUserProvider;
+    private final OperationAuditRecorder auditRecorder;
 
-    @Resource
-    private TClueMapper tClueMapper;
-
-    @Resource
-    private TProductMapper productMapper;
-
-    @Resource
-    private TranService tranService;
-
-    @Resource
-    private CurrentUserProvider currentUserProvider;
+    public CustomerManager(TCustomerMapper tCustomerMapper, TClueMapper tClueMapper,
+                           TProductMapper productMapper, TranService tranService,
+                           CurrentUserProvider currentUserProvider, OperationAuditRecorder auditRecorder) {
+        this.tCustomerMapper = tCustomerMapper; this.tClueMapper = tClueMapper;
+        this.productMapper = productMapper; this.tranService = tranService;
+        this.currentUserProvider = currentUserProvider; this.auditRecorder = auditRecorder;
+    }
 
     @Transactional(rollbackFor = Exception.class)
-    public Boolean convertCustomer(CustomerQuery customerQuery, Integer operatorId) {
-        // 1、原子性更新线索状态为已转客户，防止并发重复转换
-        int updateCount = tClueMapper.updateStateToConverted(
-                customerQuery.getClueId(), operatorId, currentUserProvider.getDataScopeUserId());
-        if (updateCount == 0) {
-            throw new RuntimeException("该线索已经转过客户，不能再转了.");
-        }
-
-        // 2、向客户表插入一条数据
+    public void convertCustomer(ConvertCustomerRequest request) {
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        Integer dataScopeUserId = currentUserProvider.getDataScopeUserId();
+        requireClueExists(request.getClueId()); requireQuantityPositive(request.getQuantity());
+        if (request.getProduct() != null) { requireProductExists(request.getProduct()); }
+        int updateCount = tClueMapper.updateStateToConverted(request.getClueId(), operatorId, dataScopeUserId);
+        if (updateCount == 0) { throw new BusinessException(CodeEnum.FAIL, "该线索已经转过客户或您无权限操作"); }
         TCustomer tCustomer = new TCustomer();
-
-        // 把 CustomerQuery 对象里面的属性数据复制到 TCustomer 对象里面去(复制要求：两个对象的属性名相同，属性类型要相同，这样才能复制)
-        BeanUtils.copyProperties(customerQuery, tCustomer);
-        tCustomer.setCreateTime(new Date());
-        tCustomer.setCreateBy(operatorId); //创建人
-
+        tCustomer.setClueId(request.getClueId()); tCustomer.setProduct(request.getProduct());
+        tCustomer.setDescription(request.getDescription()); tCustomer.setNextContactTime(request.getNextContactTime());
+        tCustomer.setCreateTime(new Date()); tCustomer.setCreateBy(operatorId);
         int insert = tCustomerMapper.insertSelective(tCustomer);
-
-        // 3、客户转换成功后，创建交易记录
-        if (insert >= 1) {
-            // 构造 TTran 对象
-            TTran tTran = new TTran();
-            tTran.setCustomerId(tCustomer.getId());
-            tTran.setStage(TranStage.QUOTATION);
-            tTran.setDescription(customerQuery.getDescription());
-            tTran.setNextContactTime(customerQuery.getNextContactTime());
-            tTran.setCreateBy(operatorId);
-
-            // 根据用户所选的产品，构造 TTranProduct 列表
-            List<TTranProduct> products = new ArrayList<>();
-            if (customerQuery.getProduct() != null) {
-                // 使用 ProductMapper 获取产品信息
-                TProduct product = productMapper.selectById(customerQuery.getProduct().longValue());
-                
-                if (product != null) {
-                    TTranProduct tranProduct = new TTranProduct();
-                    tranProduct.setProductId(customerQuery.getProduct());
-                    // 使用用户指定的数量，默认为 1
-                    int quantity = customerQuery.getQuantity() != null && customerQuery.getQuantity() > 0 
-                        ? customerQuery.getQuantity() : 1;
-                    tranProduct.setQuantity(quantity);
-                    tranProduct.setPrice(product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO);
-                    tranProduct.setCreateBy(operatorId);
-                    products.add(tranProduct);
-                }
+        if (insert < 1) { throw new BusinessException(CodeEnum.FAIL, "客户记录插入失败"); }
+        TTran tTran = new TTran();
+        tTran.setCustomerId(tCustomer.getId()); tTran.setStage(TranStage.QUOTATION);
+        tTran.setDescription(request.getDescription()); tTran.setNextContactTime(request.getNextContactTime());
+        tTran.setCreateBy(operatorId);
+        List<TTranProduct> products = new ArrayList<>();
+        if (request.getProduct() != null) {
+            TProduct product = productMapper.selectById(request.getProduct().longValue());
+            if (product != null) {
+                TTranProduct tp = new TTranProduct(); tp.setProductId(request.getProduct());
+                int qty = request.getQuantity() != null && request.getQuantity() > 0 ? request.getQuantity() : 1;
+                tp.setQuantity(qty); tp.setPrice(product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO);
+                tp.setCreateBy(operatorId); products.add(tp);
             }
-
-            // 调用 createTransaction 方法插入交易数据
-            tranService.createTransaction(tTran, products);
         }
+        tranService.createTransaction(tTran, products);
+        auditRecorder.record(AuditActionEnum.CUSTOMER_CONVERT, String.valueOf(tCustomer.getId()),
+                "SUCCESS", "{\"clueId\":" + request.getClueId() + ",\"operatorId\":" + operatorId + "}");
+        log.info("event=customer_convert result=success clueId={} customerId={} operatorId={}",
+                request.getClueId(), tCustomer.getId(), operatorId);
+    }
 
-        return insert >= 1;
+    private void requireClueExists(Integer clueId) {
+        if (clueId == null) { throw new BusinessException(CodeEnum.PARAM_ERROR, "线索ID不能为空"); }
+    }
+    private void requireQuantityPositive(Integer quantity) {
+        if (quantity != null && quantity <= 0) { throw new BusinessException(CodeEnum.PARAM_ERROR, "购买数量必须大于0"); }
+    }
+    private void requireProductExists(Integer productId) {
+        TProduct product = productMapper.selectById(productId.longValue());
+        if (product == null) { throw new BusinessException(CodeEnum.FAIL, "选购的产品不存在"); }
     }
 }

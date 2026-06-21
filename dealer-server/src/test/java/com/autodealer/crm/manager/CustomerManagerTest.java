@@ -1,13 +1,15 @@
 package com.autodealer.crm.manager;
 
+import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
+import com.autodealer.crm.dto.ConvertCustomerRequest;
+import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.model.TTran;
-import com.autodealer.crm.query.CustomerQuery;
 import com.autodealer.crm.service.TranService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -45,33 +48,35 @@ class CustomerManagerTest {
     @Mock
     private CurrentUserProvider currentUserProvider;
 
+    @Mock
+    private OperationAuditRecorder auditRecorder;
+
     @BeforeEach
     void setUp() {
+        lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(10);
         lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(10);
     }
 
     @Test
     void testConvertCustomerSuccess() {
-        CustomerQuery query = new CustomerQuery();
-        query.setClueId(1);
-        query.setCreateBy(10);
-        query.setProduct(5);
-        query.setDescription("测试客户");
-        query.setNextContactTime(new Date());
+        ConvertCustomerRequest request = new ConvertCustomerRequest();
+        request.setClueId(1);
+        request.setProduct(5);
+        request.setDescription("测试客户");
+        request.setNextContactTime(new Date());
 
         TProduct product = new TProduct();
         product.setId(5L);
         product.setName("比亚迪e2");
         product.setPrice(new BigDecimal("100000"));
 
-        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1); // 原子性更新成功
+        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
         when(productMapper.selectById(5L)).thenReturn(product);
         when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
-        Boolean result = customerManager.convertCustomer(query, 10);
+        assertDoesNotThrow(() -> customerManager.convertCustomer(request));
 
-        assertTrue(result);
         verify(tClueMapper).updateStateToConverted(1, 10, 10);
         verify(tCustomerMapper).insertSelective(any(TCustomer.class));
         verify(tranService).createTransaction(any(TTran.class), anyList());
@@ -79,71 +84,58 @@ class CustomerManagerTest {
 
     @Test
     void testConvertCustomerAlreadyConverted() {
-        CustomerQuery query = new CustomerQuery();
-        query.setClueId(1);
-        query.setCreateBy(10);
+        ConvertCustomerRequest request = new ConvertCustomerRequest();
+        request.setClueId(1);
 
-        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(0); // 已经转过客户，返回0
+        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(0);
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            customerManager.convertCustomer(query, 10);
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            customerManager.convertCustomer(request);
         });
 
-        assertTrue(exception.getMessage().contains("已经转过客户"));
+        assertEquals(com.autodealer.crm.result.CodeEnum.FAIL, exception.getCodeEnum());
         verify(tClueMapper).updateStateToConverted(1, 10, 10);
         verify(tCustomerMapper, never()).insertSelective(any());
     }
 
     @Test
     void testConvertCustomerWithNullProduct() {
-        CustomerQuery query = new CustomerQuery();
-        query.setClueId(1);
-        query.setCreateBy(10);
-        query.setProduct(null);
-        query.setDescription("测试客户");
+        ConvertCustomerRequest request = new ConvertCustomerRequest();
+        request.setClueId(1);
+        request.setProduct(null);
+        request.setDescription("测试客户");
 
         when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
         when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
-        Boolean result = customerManager.convertCustomer(query, 10);
+        assertDoesNotThrow(() -> customerManager.convertCustomer(request));
 
-        assertTrue(result);
         verify(tCustomerMapper).insertSelective(any(TCustomer.class));
-        verify(tranService).createTransaction(any(TTran.class), argThat(products -> products.isEmpty()));
+        verify(tranService).createTransaction(any(TTran.class), argThat(products -> ((List<?>) products).isEmpty()));
     }
 
     @Test
     void testConvertCustomerWithProductNotFound() {
-        CustomerQuery query = new CustomerQuery();
-        query.setClueId(1);
-        query.setCreateBy(10);
-        query.setProduct(999);
-        query.setDescription("测试客户");
+        ConvertCustomerRequest request = new ConvertCustomerRequest();
+        request.setClueId(1);
+        request.setProduct(999);
+        request.setDescription("测试客户");
 
-        when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
-        when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
         when(productMapper.selectById(999L)).thenReturn(null);
-        when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
-        Boolean result = customerManager.convertCustomer(query, 10);
-
-        assertTrue(result);
-        verify(tranService).createTransaction(any(TTran.class), argThat(products -> products.isEmpty()));
+        assertThrows(BusinessException.class, () -> customerManager.convertCustomer(request));
     }
 
     @Test
     void testConvertCustomerInsertFails() {
-        CustomerQuery query = new CustomerQuery();
-        query.setClueId(1);
-        query.setCreateBy(10);
+        ConvertCustomerRequest request = new ConvertCustomerRequest();
+        request.setClueId(1);
 
         when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(0);
 
-        Boolean result = customerManager.convertCustomer(query, 10);
-
-        assertFalse(result);
+        assertThrows(BusinessException.class, () -> customerManager.convertCustomer(request));
         verify(tranService, never()).createTransaction(any(), anyList());
     }
 }

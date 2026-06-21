@@ -23,7 +23,6 @@
     <result column="create_by" jdbcType="INTEGER" property="createBy" />
     <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
-    <!--一对一关联线索-->
     <association property="clueDO" javaType="com.autodealer.crm.model.TClue">
       <id column="clueId" jdbcType="INTEGER" property="id" />
       <result column="full_name" jdbcType="VARCHAR" property="fullName" />
@@ -71,16 +70,12 @@
   </resultMap>
 
   <sql id="Base_Column_List">
-    id, clue_id, product, description, next_contact_time, create_time, create_by, edit_time, 
-    edit_by
+    id, clue_id, product, description, next_contact_time, create_time, create_by, edit_time, edit_by
   </sql>
 
   <select id="selectCustomerPage" parameterType="java.lang.Integer" resultMap="CustomerResultMap">
-    select
-      tct.*,
-      tc.id clueId, tc.full_name, tc.phone, tc.weixin,
-      tu1.id ownerId, tu1.name ownerName,
-      ta.id activityId, ta.name activityName,
+    select tct.*, tc.id clueId, tc.full_name, tc.phone, tc.weixin,
+      tu1.id ownerId, tu1.name ownerName, ta.id activityId, ta.name activityName,
       tdv.id appellationId, tdv.type_value appellationName,
       tdv2.id needLoanId, tdv2.type_value needLoanName,
       tdv3.id intentionStateId, tdv3.type_value intentionStateName,
@@ -88,22 +83,19 @@
       tdv5.id sourceId, tdv5.type_value sourceName,
       tp.id intentionProductId, tp.name intentionProductName
     from t_customer tct left join t_clue tc on tct.clue_id = tc.id
-                        left join t_user tu1 on tc.owner_id = tu1.id
-                        left join t_activity ta on tc.activity_id = ta.id
-                        left join t_dic_value tdv on tc.appellation = tdv.id
-                        left join t_dic_value tdv2 on tc.need_loan = tdv2.id
-                        left join t_dic_value tdv3 on tc.intention_state = tdv3.id
-                        left join t_dic_value tdv4 on tc.state = tdv4.id
-                        left join t_dic_value tdv5 on tc.source = tdv5.id
-                        left join t_product tp on tct.product = tp.id
+      left join t_user tu1 on tc.owner_id = tu1.id
+      left join t_activity ta on tc.activity_id = ta.id
+      left join t_dic_value tdv on tc.appellation = tdv.id
+      left join t_dic_value tdv2 on tc.need_loan = tdv2.id
+      left join t_dic_value tdv3 on tc.intention_state = tdv3.id
+      left join t_dic_value tdv4 on tc.state = tdv4.id
+      left join t_dic_value tdv5 on tc.source = tdv5.id
+      left join t_product tp on tct.product = tp.id
   </select>
 
-  <select id="selectCustomerByExcel" parameterType="java.util.List" resultMap="CustomerResultMap">
-    select
-      tct.*,
-      tc.id clueId, tc.full_name, tc.phone, tc.weixin, tc.qq, tc.email, tc.age, tc.job, tc.year_income, tc.address,
-      tu1.id ownerId, tu1.name ownerName,
-      ta.id activityId, ta.name activityName,
+  <select id="selectCustomerByExcel" resultMap="CustomerResultMap">
+    select tct.*, tc.id clueId, tc.full_name, tc.phone, tc.weixin, tc.qq, tc.email, tc.age, tc.job, tc.year_income, tc.address,
+      tu1.id ownerId, tu1.name ownerName, ta.id activityId, ta.name activityName,
       tdv.id appellationId, tdv.type_value appellationName,
       tdv2.id needLoanId, tdv2.type_value needLoanName,
       tdv3.id intentionStateId, tdv3.type_value intentionStateName,
@@ -111,20 +103,32 @@
       tdv5.id sourceId, tdv5.type_value sourceName,
       tp.id intentionProductId, tp.name intentionProductName
     from t_customer tct left join t_clue tc on tct.clue_id = tc.id
-                        left join t_user tu1 on tc.owner_id = tu1.id
-                        left join t_activity ta on tc.activity_id = ta.id
-                        left join t_dic_value tdv on tc.appellation = tdv.id
-                        left join t_dic_value tdv2 on tc.need_loan = tdv2.id
-                        left join t_dic_value tdv3 on tc.intention_state = tdv3.id
-                        left join t_dic_value tdv4 on tc.state = tdv4.id
-                        left join t_dic_value tdv5 on tc.source = tdv5.id
-                        left join t_product tp on tct.product = tp.id
+      left join t_user tu1 on tc.owner_id = tu1.id
+      left join t_activity ta on tc.activity_id = ta.id
+      left join t_dic_value tdv on tc.appellation = tdv.id
+      left join t_dic_value tdv2 on tc.need_loan = tdv2.id
+      left join t_dic_value tdv3 on tc.intention_state = tdv3.id
+      left join t_dic_value tdv4 on tc.state = tdv4.id
+      left join t_dic_value tdv5 on tc.source = tdv5.id
+      left join t_product tp on tct.product = tp.id
     <where>
       <if test="idList != null and idList.size() > 0">
         and tct.id in
-        <foreach collection="idList" item="id" open="(" close=")" separator=",">
-          #{id}
-        </foreach>
+        <foreach collection="idList" item="id" open="(" close=")" separator=",">#{id}</foreach>
+      </if>
+      <if test="dataScopeUserId != null">
+        and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
+    </where>
+    <if test="maxRows != null">limit #{maxRows}</if>
+  </select>
+
+  <select id="countCustomerByExcel" resultType="int">
+    select count(0) from t_customer tct left join t_clue tc on tct.clue_id = tc.id
+    <where>
+      <if test="idList != null and idList.size() > 0">
+        and tct.id in
+        <foreach collection="idList" item="id" open="(" close=")" separator=",">#{id}</foreach>
       </if>
       <if test="dataScopeUserId != null">
         and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
@@ -133,142 +137,80 @@
   </select>
 
   <select id="selectByCount" resultType="java.lang.Integer">
-    select
-        count(0)
-    from t_customer
+    select count(0) from t_customer
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-    select 
-    <include refid="Base_Column_List" />
-    from t_customer
-    where id = #{id,jdbcType=INTEGER}
+    select <include refid="Base_Column_List" /> from t_customer where id = #{id,jdbcType=INTEGER}
   </select>
 
   <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
-    delete from t_customer
-    where id = #{id,jdbcType=INTEGER}
+    delete from t_customer where id = #{id,jdbcType=INTEGER}
   </delete>
+
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TCustomer" useGeneratedKeys="true">
-    insert into t_customer (clue_id, product, description, 
-      next_contact_time, create_time, create_by, 
-      edit_time, edit_by)
-    values (#{clueId,jdbcType=INTEGER}, #{product,jdbcType=INTEGER}, #{description,jdbcType=VARCHAR}, 
-      #{nextContactTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, 
+    insert into t_customer (clue_id, product, description, next_contact_time, create_time, create_by, edit_time, edit_by)
+    values (#{clueId,jdbcType=INTEGER}, #{product,jdbcType=INTEGER}, #{description,jdbcType=VARCHAR},
+      #{nextContactTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER},
       #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER})
   </insert>
+
   <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TCustomer" useGeneratedKeys="true">
     insert into t_customer
     <trim prefix="(" suffix=")" suffixOverrides=",">
-      <if test="clueId != null">
-        clue_id,
-      </if>
-      <if test="product != null">
-        product,
-      </if>
-      <if test="description != null">
-        description,
-      </if>
-      <if test="nextContactTime != null">
-        next_contact_time,
-      </if>
-      <if test="createTime != null">
-        create_time,
-      </if>
-      <if test="createBy != null">
-        create_by,
-      </if>
-      <if test="editTime != null">
-        edit_time,
-      </if>
-      <if test="editBy != null">
-        edit_by,
-      </if>
+      <if test="clueId != null">clue_id,</if>
+      <if test="product != null">product,</if>
+      <if test="description != null">description,</if>
+      <if test="nextContactTime != null">next_contact_time,</if>
+      <if test="createTime != null">create_time,</if>
+      <if test="createBy != null">create_by,</if>
+      <if test="editTime != null">edit_time,</if>
+      <if test="editBy != null">edit_by,</if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
-      <if test="clueId != null">
-        #{clueId,jdbcType=INTEGER},
-      </if>
-      <if test="product != null">
-        #{product,jdbcType=INTEGER},
-      </if>
-      <if test="description != null">
-        #{description,jdbcType=VARCHAR},
-      </if>
-      <if test="nextContactTime != null">
-        #{nextContactTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="createTime != null">
-        #{createTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="createBy != null">
-        #{createBy,jdbcType=INTEGER},
-      </if>
-      <if test="editTime != null">
-        #{editTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="editBy != null">
-        #{editBy,jdbcType=INTEGER},
-      </if>
+      <if test="clueId != null">#{clueId,jdbcType=INTEGER},</if>
+      <if test="product != null">#{product,jdbcType=INTEGER},</if>
+      <if test="description != null">#{description,jdbcType=VARCHAR},</if>
+      <if test="nextContactTime != null">#{nextContactTime,jdbcType=TIMESTAMP},</if>
+      <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+      <if test="createBy != null">#{createBy,jdbcType=INTEGER},</if>
+      <if test="editTime != null">#{editTime,jdbcType=TIMESTAMP},</if>
+      <if test="editBy != null">#{editBy,jdbcType=INTEGER},</if>
     </trim>
   </insert>
+
   <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TCustomer">
     update t_customer
     <set>
-      <if test="clueId != null">
-        clue_id = #{clueId,jdbcType=INTEGER},
-      </if>
-      <if test="product != null">
-        product = #{product,jdbcType=INTEGER},
-      </if>
-      <if test="description != null">
-        description = #{description,jdbcType=VARCHAR},
-      </if>
-      <if test="nextContactTime != null">
-        next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="createTime != null">
-        create_time = #{createTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="createBy != null">
-        create_by = #{createBy,jdbcType=INTEGER},
-      </if>
-      <if test="editTime != null">
-        edit_time = #{editTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="editBy != null">
-        edit_by = #{editBy,jdbcType=INTEGER},
-      </if>
+      <if test="clueId != null">clue_id = #{clueId,jdbcType=INTEGER},</if>
+      <if test="product != null">product = #{product,jdbcType=INTEGER},</if>
+      <if test="description != null">description = #{description,jdbcType=VARCHAR},</if>
+      <if test="nextContactTime != null">next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},</if>
+      <if test="createTime != null">create_time = #{createTime,jdbcType=TIMESTAMP},</if>
+      <if test="createBy != null">create_by = #{createBy,jdbcType=INTEGER},</if>
+      <if test="editTime != null">edit_time = #{editTime,jdbcType=TIMESTAMP},</if>
+      <if test="editBy != null">edit_by = #{editBy,jdbcType=INTEGER},</if>
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
+
   <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TCustomer">
-    update t_customer
-    set clue_id = #{clueId,jdbcType=INTEGER},
-      product = #{product,jdbcType=INTEGER},
-      description = #{description,jdbcType=VARCHAR},
-      next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
-      create_time = #{createTime,jdbcType=TIMESTAMP},
-      create_by = #{createBy,jdbcType=INTEGER},
-      edit_time = #{editTime,jdbcType=TIMESTAMP},
-      edit_by = #{editBy,jdbcType=INTEGER}
+    update t_customer set clue_id = #{clueId,jdbcType=INTEGER}, product = #{product,jdbcType=INTEGER},
+      description = #{description,jdbcType=VARCHAR}, next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
+      create_time = #{createTime,jdbcType=TIMESTAMP}, create_by = #{createBy,jdbcType=INTEGER},
+      edit_time = #{editTime,jdbcType=TIMESTAMP}, edit_by = #{editBy,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
 
-  <!-- 客户选项结果映射 -->
   <resultMap id="CustomerOptionResultMap" type="com.autodealer.crm.dto.CustomerOption">
     <result column="customer_id" jdbcType="INTEGER" property="customerId" />
     <result column="customer_name" jdbcType="VARCHAR" property="customerName" />
     <result column="clue_id" jdbcType="INTEGER" property="clueId" />
   </resultMap>
 
-  <!-- 查询客户列表（包含线索名称） -->
-  <select id="selectByQuery" parameterType="com.autodealer.crm.query.CustomerQuery" resultMap="CustomerResultMap">
-    select
-      tct.*,
-      tc.id clueId, tc.full_name, tc.phone, tc.weixin,
-      tu1.id ownerId, tu1.name ownerName,
-      ta.id activityId, ta.name activityName,
+  <select id="selectByQuery" parameterType="com.autodealer.crm.query.CustomerListQuery" resultMap="CustomerResultMap">
+    select tct.*, tc.id clueId, tc.full_name, tc.phone, tc.weixin,
+      tu1.id ownerId, tu1.name ownerName, ta.id activityId, ta.name activityName,
       tdv.id appellationId, tdv.type_value appellationName,
       tdv2.id needLoanId, tdv2.type_value needLoanName,
       tdv3.id intentionStateId, tdv3.type_value intentionStateName,
@@ -276,56 +218,37 @@
       tdv5.id sourceId, tdv5.type_value sourceName,
       tp.id intentionProductId, tp.name intentionProductName
     from t_customer tct left join t_clue tc on tct.clue_id = tc.id
-                        left join t_user tu1 on tc.owner_id = tu1.id
-                        left join t_activity ta on tc.activity_id = ta.id
-                        left join t_dic_value tdv on tc.appellation = tdv.id
-                        left join t_dic_value tdv2 on tc.need_loan = tdv2.id
-                        left join t_dic_value tdv3 on tc.intention_state = tdv3.id
-                        left join t_dic_value tdv4 on tc.state = tdv4.id
-                        left join t_dic_value tdv5 on tc.source = tdv5.id
-                        left join t_product tp on tct.product = tp.id
+      left join t_user tu1 on tc.owner_id = tu1.id
+      left join t_activity ta on tc.activity_id = ta.id
+      left join t_dic_value tdv on tc.appellation = tdv.id
+      left join t_dic_value tdv2 on tc.need_loan = tdv2.id
+      left join t_dic_value tdv3 on tc.intention_state = tdv3.id
+      left join t_dic_value tdv4 on tc.state = tdv4.id
+      left join t_dic_value tdv5 on tc.source = tdv5.id
+      left join t_product tp on tct.product = tp.id
     <where>
       <if test="customerName != null and customerName != ''">
         and tc.full_name like concat('%', #{customerName}, '%')
       </if>
-      <if test="productId != null">
-        and tct.product = #{productId}
-      </if>
-      <if test="createBy != null">
-        and tct.create_by = #{createBy}
-      </if>
-      <if test="dataScopeUserId != null">
-        and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
-      </if>
+      <if test="productId != null">and tct.product = #{productId}</if>
+      <if test="dataScopeUserId != null">and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
     </where>
   </select>
 
-  <!-- 获取所有客户选项（用于下拉选择，去重） -->
   <select id="selectCustomerOptions" resultMap="CustomerOptionResultMap">
-    select DISTINCT
-      tct.id as customer_id,
-      tc.full_name as customer_name,
-      tc.id as clue_id
-    from t_customer tct 
-    left join t_clue tc on tct.clue_id = tc.id
+    select DISTINCT tct.id as customer_id, tc.full_name as customer_name, tc.id as clue_id
+    from t_customer tct left join t_clue tc on tct.clue_id = tc.id
     where tc.full_name is not null and tc.full_name != ''
-    <if test="dataScopeUserId != null">
-      and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
-    </if>
+    <if test="dataScopeUserId != null">and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
     order by tc.full_name
   </select>
 
   <select id="selectScopedById" resultMap="CustomerResultMap">
-    select
-      tct.*,
-      tc.id clueId, tc.full_name, tc.phone, tc.weixin,
+    select tct.*, tc.id clueId, tc.full_name, tc.phone, tc.weixin,
       tu1.id ownerId, tu1.name ownerName
-    from t_customer tct
-    left join t_clue tc on tct.clue_id = tc.id
-    left join t_user tu1 on tc.owner_id = tu1.id
+    from t_customer tct left join t_clue tc on tct.clue_id = tc.id
+      left join t_user tu1 on tc.owner_id = tu1.id
     where tct.id = #{id,jdbcType=INTEGER}
-    <if test="dataScopeUserId != null">
-      and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
-    </if>
+    <if test="dataScopeUserId != null">and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
   </select>
 </mapper>
