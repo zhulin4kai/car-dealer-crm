@@ -13,7 +13,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -111,7 +110,7 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("login -> create -> list -> delete: POST /api/user with JSON body inserts a new user that shows up in the list, then DELETE removes it")
+    @DisplayName("login -> create -> list -> disable: POST /api/user with JSON body inserts a new user that shows up in the list, then PUT disable sets accountEnabled=0")
     void createThenListThenDeletePersistsToH2() throws Exception {
         String token = loginAsAdmin();
         int newId = TEST_ID_BASE + 1;
@@ -140,9 +139,9 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
                     .andExpect(jsonPath("$.code").value(200))
                     .andExpect(jsonPath("$.data.list[?(@.loginAct == '" + newLoginAct + "')]").exists());
 
-            // Real DELETE /api/user/{id} removes the row from H2; the next
-            // GET returns $.data = null (service returns null for missing id).
-            mockMvc.perform(delete("/api/user/" + newId)
+            // Real PUT /api/user/{id}/disable sets accountEnabled=0 in H2;
+            // the next GET returns $.data.accountEnabled=0 (record still exists).
+            mockMvc.perform(put("/api/user/" + newId + "/disable")
                             .header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200));
@@ -151,10 +150,7 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
                             .header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
-                    .andExpect(jsonPath("$.data").isEmpty());
-
-            // From here on, do NOT clean up again — the row is already gone.
-            newId = -1;
+                    .andExpect(jsonPath("$.data.accountEnabled").value(0));
         } finally {
             if (newId > 0) {
                 jdbcTemplate.update("DELETE FROM t_user WHERE id = ?", newId);
@@ -208,9 +204,7 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
         } finally {
             Integer createdId = findUserIdByLoginAct(token, newLoginAct);
             if (createdId != null) {
-                mockMvc.perform(delete("/api/user/" + createdId)
-                                .header(HttpHeaders.AUTHORIZATION, token))
-                        .andExpect(status().isOk());
+                jdbcTemplate.update("DELETE FROM t_user WHERE id = ?", createdId);
             }
         }
     }
@@ -298,10 +292,8 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
                   "loginAct": "should_fail",
                   "loginPwd": "abcdef",
                   "name": "应该失败",
-                  "accountNoExpired": 1,
-                  "credentialsNoExpired": 1,
-                  "accountNoLocked": 1,
-                  "accountEnabled": 1
+                  "phone": "13800138000",
+                  "email": "should_fail@example.com"
                 }
                 """;
 
@@ -309,7 +301,7 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, zhangsanToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk())                 // handler writes 200 with error body
+                .andExpect(status().isForbidden())            // GlobalExceptionHandler returns HTTP 403 with error body
                 .andExpect(jsonPath("$.code").value(520))
                 .andExpect(jsonPath("$.msg").value("\u6ca1\u6709\u8bbf\u95ee\u6743\u9650"))
                 .andReturn();
@@ -334,8 +326,8 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("login -> batch delete: real H2 inserts of two test-owned users, then DELETE /api/user raw array removes them, then GET shows $.data=null for each")
-    void batchDeleteWithRealRowsPersistsToH2() throws Exception {
+    @DisplayName("login -> batch disable: real H2 inserts of two test-owned users, then PUT /api/users/batch-disable sets accountEnabled=0, then GET shows disabled for each")
+    void batchDisableWithRealRowsPersistsToH2() throws Exception {
         String token = loginAsAdmin();
         int idA = TEST_ID_BASE + 11;
         int idB = TEST_ID_BASE + 12;
@@ -355,31 +347,27 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.name").value("批量B"));
 
-            // Real batch DELETE with raw JSON array.
-            String body = "[" + idA + "," + idB + "]";
-            mockMvc.perform(delete("/api/user")
+            // Real batch disable with JSON object body.
+            String body = "{\"ids\":[" + idA + "," + idB + "]}";
+            mockMvc.perform(put("/api/users/batch-disable")
                             .header(HttpHeaders.AUTHORIZATION, token)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200));
 
-            // After the batch delete, the SQL row is gone: GET returns
-            // $.code=200 with $.data empty (service returns null for missing id).
+            // After the batch disable, the rows still exist with
+            // accountEnabled=0: GET returns $.code=200 with $.data.accountEnabled=0.
             mockMvc.perform(get("/api/user/" + idA)
                             .header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
-                    .andExpect(jsonPath("$.data").isEmpty());
+                    .andExpect(jsonPath("$.data.accountEnabled").value(0));
             mockMvc.perform(get("/api/user/" + idB)
                             .header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
-                    .andExpect(jsonPath("$.data").isEmpty());
-
-            // The rows are gone — do not clean up again.
-            idA = -1;
-            idB = -1;
+                    .andExpect(jsonPath("$.data.accountEnabled").value(0));
         } finally {
             if (idA > 0) jdbcTemplate.update("DELETE FROM t_user WHERE id = ?", idA);
             if (idB > 0) jdbcTemplate.update("DELETE FROM t_user WHERE id = ?", idB);

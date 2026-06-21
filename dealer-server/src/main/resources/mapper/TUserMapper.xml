@@ -18,7 +18,6 @@
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
     <result column="last_login_time" jdbcType="TIMESTAMP" property="lastLoginTime" />
   </resultMap>
-
   <resultMap id="UserResultMap" type="com.autodealer.crm.model.TUser">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="login_act" jdbcType="VARCHAR" property="loginAct" />
@@ -35,250 +34,139 @@
     <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
     <result column="last_login_time" jdbcType="TIMESTAMP" property="lastLoginTime" />
-    <!--一对一关联-->
     <association property="createByDO" javaType="com.autodealer.crm.model.TUser">
       <id column="createById" jdbcType="INTEGER" property="id" />
       <result column="createByName" jdbcType="VARCHAR" property="name" />
     </association>
-
-    <!--一对一关联-->
     <association property="editByDO" javaType="com.autodealer.crm.model.TUser">
       <id column="editById" jdbcType="INTEGER" property="id" />
       <result column="editByName" jdbcType="VARCHAR" property="name" />
     </association>
   </resultMap>
-
   <sql id="Base_Column_List">
-    id, login_act, login_pwd, `name`, phone, email, account_no_expired, credentials_no_expired, 
+    id, login_act, login_pwd, `name`, phone, email, account_no_expired, credentials_no_expired,
     account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time
   </sql>
-
   <select id="selectByLoginAct" parameterType="java.lang.String" resultMap="BaseResultMap">
-    select
-    <include refid="Base_Column_List" />
-    from t_user
-    where login_act = #{username, jdbcType=VARCHAR}
+    select <include refid="Base_Column_List" /> from t_user where login_act = #{username, jdbcType=VARCHAR}
   </select>
-
   <select id="selectUserByPage" resultMap="BaseResultMap">
-    select
-    <include refid="Base_Column_List" />
-    from t_user tu
+    select <include refid="Base_Column_List" /> from t_user tu
     <where>
-      <if test="dataScopeUserId != null">
-        tu.id = #{dataScopeUserId, jdbcType=INTEGER}
-      </if>
+      <if test="dataScopeUserId != null"> tu.id = #{dataScopeUserId, jdbcType=INTEGER} </if>
+      <if test="loginAct != null and loginAct != ''"> and tu.login_act like concat('%', #{loginAct}, '%') </if>
+      <if test="name != null and name != ''"> and tu.name like concat('%', #{name}, '%') </if>
+      <if test="phone != null and phone != ''"> and tu.phone like concat('%', #{phone}, '%') </if>
+      <if test="email != null and email != ''"> and tu.email like concat('%', #{email}, '%') </if>
     </where>
   </select>
-
   <select id="selectAuthUserById" parameterType="java.lang.Integer" resultMap="UserResultMap">
-    select
-        tu.*,
-        tu2.id createById, tu2.name createByName,
-        tu3.id editById, tu3.name editByName
-    from t_user tu left join t_user tu2 on tu.create_by = tu2.id
-                left join t_user tu3 on tu.edit_by = tu3.id
+    select tu.*, tu2.id createById, tu2.name createByName, tu3.id editById, tu3.name editByName
+    from t_user tu left join t_user tu2 on tu.create_by = tu2.id left join t_user tu3 on tu.edit_by = tu3.id
     where tu.id = #{id, jdbcType=INTEGER}
   </select>
-
-  <select id="selectByOwner" resultMap="BaseResultMap">
-    select
-        id, name
-    from t_user
-  </select>
-
+  <select id="selectByOwner" resultMap="BaseResultMap"> select id, name from t_user </select>
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-    select 
-    <include refid="Base_Column_List" />
-    from t_user
-    where id = #{id, jdbcType=INTEGER}
+    select <include refid="Base_Column_List" /> from t_user where id = #{id, jdbcType=INTEGER}
   </select>
-
-  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
-    delete from t_user
-    where id = #{id, jdbcType=INTEGER}
-  </delete>
-
+  <select id="selectByPhone" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List" /> from t_user where phone = #{phone, jdbcType=VARCHAR}
+  </select>
+  <select id="selectByEmail" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List" /> from t_user where email = #{email, jdbcType=VARCHAR}
+  </select>
+  <select id="selectByLoginActExcludeId" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List" /> from t_user
+    where login_act = #{loginAct, jdbcType=VARCHAR} and id != #{excludeId, jdbcType=INTEGER}
+  </select>
+  <select id="selectByPhoneExcludeId" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List" /> from t_user
+    where phone = #{phone, jdbcType=VARCHAR} and id != #{excludeId, jdbcType=INTEGER}
+  </select>
+  <select id="selectByEmailExcludeId" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List" /> from t_user
+    where email = #{email, jdbcType=VARCHAR} and id != #{excludeId, jdbcType=INTEGER}
+  </select>
+  <select id="countAdminUsers" resultType="int">
+    select count(distinct tu.id) from t_user tu
+    inner join t_user_role tur on tu.id = tur.user_id inner join t_role tr on tur.role_id = tr.id
+    where tr.role = 'admin' and tu.account_enabled = 1
+  </select>
+  <select id="countBusinessReferences" parameterType="java.lang.Integer" resultType="int">
+    select (select count(*) from t_activity where owner_id = #{userId, jdbcType=INTEGER})
+    + (select count(*) from t_clue where owner_id = #{userId, jdbcType=INTEGER})
+    + (select count(*) from t_customer where create_by = #{userId, jdbcType=INTEGER})
+    + (select count(*) from t_tran where create_by = #{userId, jdbcType=INTEGER})
+  </select>
+  <select id="selectRolesByUserId" parameterType="java.lang.Integer" resultType="com.autodealer.crm.model.TRole">
+    select tr.id, tr.role, tr.role_name from t_role tr
+    inner join t_user_role tur on tr.id = tur.role_id where tur.user_id = #{userId, jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer"> delete from t_user where id = #{id, jdbcType=INTEGER} </delete>
   <delete id="deleteByIds" parameterType="java.util.List">
-    delete from t_user
-    where id in
-    <foreach collection="ids" item="id" open="(" close=")" separator=",">
-      #{id, jdbcType=INTEGER}
-    </foreach>
+    delete from t_user where id in <foreach collection="ids" item="id" open="(" close=")" separator=","> #{id, jdbcType=INTEGER} </foreach>
   </delete>
-
-  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TUser" useGeneratedKeys="true">
-    insert into t_user (login_act, login_pwd, `name`, 
-      phone, email, account_no_expired, 
-      credentials_no_expired, account_no_locked, 
-      account_enabled, create_time, create_by, 
-      edit_time, edit_by, last_login_time
-      )
-    values (#{loginAct,jdbcType=VARCHAR}, #{loginPwd,jdbcType=VARCHAR}, #{name,jdbcType=VARCHAR}, 
-      #{phone,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR}, #{accountNoExpired,jdbcType=INTEGER}, 
-      #{credentialsNoExpired,jdbcType=INTEGER}, #{accountNoLocked,jdbcType=INTEGER}, 
-      #{accountEnabled,jdbcType=INTEGER}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, 
-      #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER}, #{lastLoginTime,jdbcType=TIMESTAMP}
-      )
+  <update id="disableById"> update t_user set account_enabled = 0, edit_time = CURRENT_TIMESTAMP where id = #{id, jdbcType=INTEGER} </update>
+  <update id="disableByIds">
+    update t_user set account_enabled = 0, edit_time = CURRENT_TIMESTAMP
+    where id in <foreach collection="ids" item="id" open="(" close=")" separator=","> #{id, jdbcType=INTEGER} </foreach>
+  </update>
+  <update id="enableById"> update t_user set account_enabled = 1, account_no_locked = 1, edit_time = CURRENT_TIMESTAMP where id = #{id, jdbcType=INTEGER} </update>
+  <update id="lockById"> update t_user set account_no_locked = 0, edit_time = CURRENT_TIMESTAMP where id = #{id, jdbcType=INTEGER} </update>
+  <update id="unlockById"> update t_user set account_no_locked = 1, edit_time = CURRENT_TIMESTAMP where id = #{id, jdbcType=INTEGER} </update>
+  <update id="updatePassword"> update t_user set login_pwd = #{encodedPassword, jdbcType=VARCHAR}, edit_time = CURRENT_TIMESTAMP where id = #{id, jdbcType=INTEGER} </update>
+  <delete id="deleteUserRoles"> delete from t_user_role where user_id = #{userId, jdbcType=INTEGER} </delete>
+  <insert id="insertUserRoles">
+    insert into t_user_role (user_id, role_id) values
+    <foreach collection="roleIds" item="roleId" separator=","> (#{userId, jdbcType=INTEGER}, #{roleId, jdbcType=INTEGER}) </foreach>
   </insert>
-
+  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TUser" useGeneratedKeys="true">
+    insert into t_user (login_act, login_pwd, `name`, phone, email, account_no_expired, credentials_no_expired,
+      account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time)
+    values (#{loginAct}, #{loginPwd}, #{name}, #{phone}, #{email}, #{accountNoExpired}, #{credentialsNoExpired},
+      #{accountNoLocked}, #{accountEnabled}, #{createTime}, #{createBy}, #{editTime}, #{editBy}, #{lastLoginTime})
+  </insert>
   <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TUser" useGeneratedKeys="true">
     insert into t_user
     <trim prefix="(" suffix=")" suffixOverrides=",">
-      <if test="loginAct != null">
-        login_act,
-      </if>
-      <if test="loginPwd != null">
-        login_pwd,
-      </if>
-      <if test="name != null">
-        `name`,
-      </if>
-      <if test="phone != null">
-        phone,
-      </if>
-      <if test="email != null">
-        email,
-      </if>
-      <if test="accountNoExpired != null">
-        account_no_expired,
-      </if>
-      <if test="credentialsNoExpired != null">
-        credentials_no_expired,
-      </if>
-      <if test="accountNoLocked != null">
-        account_no_locked,
-      </if>
-      <if test="accountEnabled != null">
-        account_enabled,
-      </if>
-      <if test="createTime != null">
-        create_time,
-      </if>
-      <if test="createBy != null">
-        create_by,
-      </if>
-      <if test="editTime != null">
-        edit_time,
-      </if>
-      <if test="editBy != null">
-        edit_by,
-      </if>
-      <if test="lastLoginTime != null">
-        last_login_time,
-      </if>
+      <if test="loginAct != null"> login_act, </if> <if test="loginPwd != null"> login_pwd, </if>
+      <if test="name != null"> `name`, </if> <if test="phone != null"> phone, </if> <if test="email != null"> email, </if>
+      <if test="accountNoExpired != null"> account_no_expired, </if> <if test="credentialsNoExpired != null"> credentials_no_expired, </if>
+      <if test="accountNoLocked != null"> account_no_locked, </if> <if test="accountEnabled != null"> account_enabled, </if>
+      <if test="createTime != null"> create_time, </if> <if test="createBy != null"> create_by, </if>
+      <if test="editTime != null"> edit_time, </if> <if test="editBy != null"> edit_by, </if>
+      <if test="lastLoginTime != null"> last_login_time, </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
-      <if test="loginAct != null">
-        #{loginAct,jdbcType=VARCHAR},
-      </if>
-      <if test="loginPwd != null">
-        #{loginPwd,jdbcType=VARCHAR},
-      </if>
-      <if test="name != null">
-        #{name,jdbcType=VARCHAR},
-      </if>
-      <if test="phone != null">
-        #{phone,jdbcType=VARCHAR},
-      </if>
-      <if test="email != null">
-        #{email,jdbcType=VARCHAR},
-      </if>
-      <if test="accountNoExpired != null">
-        #{accountNoExpired,jdbcType=INTEGER},
-      </if>
-      <if test="credentialsNoExpired != null">
-        #{credentialsNoExpired,jdbcType=INTEGER},
-      </if>
-      <if test="accountNoLocked != null">
-        #{accountNoLocked,jdbcType=INTEGER},
-      </if>
-      <if test="accountEnabled != null">
-        #{accountEnabled,jdbcType=INTEGER},
-      </if>
-      <if test="createTime != null">
-        #{createTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="createBy != null">
-        #{createBy,jdbcType=INTEGER},
-      </if>
-      <if test="editTime != null">
-        #{editTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="editBy != null">
-        #{editBy,jdbcType=INTEGER},
-      </if>
-      <if test="lastLoginTime != null">
-        #{lastLoginTime,jdbcType=TIMESTAMP},
-      </if>
+      <if test="loginAct != null"> #{loginAct}, </if> <if test="loginPwd != null"> #{loginPwd}, </if>
+      <if test="name != null"> #{name}, </if> <if test="phone != null"> #{phone}, </if> <if test="email != null"> #{email}, </if>
+      <if test="accountNoExpired != null"> #{accountNoExpired}, </if> <if test="credentialsNoExpired != null"> #{credentialsNoExpired}, </if>
+      <if test="accountNoLocked != null"> #{accountNoLocked}, </if> <if test="accountEnabled != null"> #{accountEnabled}, </if>
+      <if test="createTime != null"> #{createTime}, </if> <if test="createBy != null"> #{createBy}, </if>
+      <if test="editTime != null"> #{editTime}, </if> <if test="editBy != null"> #{editBy}, </if>
+      <if test="lastLoginTime != null"> #{lastLoginTime}, </if>
     </trim>
   </insert>
-
   <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TUser">
     update t_user
     <set>
-      <if test="loginAct != null">
-        login_act = #{loginAct,jdbcType=VARCHAR},
-      </if>
-      <if test="loginPwd != null and loginPwd != ''">
-        login_pwd = #{loginPwd,jdbcType=VARCHAR},
-      </if>
-      <if test="name != null">
-        `name` = #{name,jdbcType=VARCHAR},
-      </if>
-      <if test="phone != null">
-        phone = #{phone,jdbcType=VARCHAR},
-      </if>
-      <if test="email != null">
-        email = #{email,jdbcType=VARCHAR},
-      </if>
-      <if test="accountNoExpired != null">
-        account_no_expired = #{accountNoExpired,jdbcType=INTEGER},
-      </if>
-      <if test="credentialsNoExpired != null">
-        credentials_no_expired = #{credentialsNoExpired,jdbcType=INTEGER},
-      </if>
-      <if test="accountNoLocked != null">
-        account_no_locked = #{accountNoLocked,jdbcType=INTEGER},
-      </if>
-      <if test="accountEnabled != null">
-        account_enabled = #{accountEnabled,jdbcType=INTEGER},
-      </if>
-      <if test="createTime != null">
-        create_time = #{createTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="createBy != null">
-        create_by = #{createBy,jdbcType=INTEGER},
-      </if>
-      <if test="editTime != null">
-        edit_time = #{editTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="editBy != null">
-        edit_by = #{editBy,jdbcType=INTEGER},
-      </if>
-      <if test="lastLoginTime != null">
-        last_login_time = #{lastLoginTime,jdbcType=TIMESTAMP},
-      </if>
+      <if test="loginAct != null"> login_act = #{loginAct}, </if> <if test="loginPwd != null and loginPwd != ''"> login_pwd = #{loginPwd}, </if>
+      <if test="name != null"> `name` = #{name}, </if> <if test="phone != null"> phone = #{phone}, </if> <if test="email != null"> email = #{email}, </if>
+      <if test="accountNoExpired != null"> account_no_expired = #{accountNoExpired}, </if>
+      <if test="credentialsNoExpired != null"> credentials_no_expired = #{credentialsNoExpired}, </if>
+      <if test="accountNoLocked != null"> account_no_locked = #{accountNoLocked}, </if>
+      <if test="accountEnabled != null"> account_enabled = #{accountEnabled}, </if>
+      <if test="createTime != null"> create_time = #{createTime}, </if> <if test="createBy != null"> create_by = #{createBy}, </if>
+      <if test="editTime != null"> edit_time = #{editTime}, </if> <if test="editBy != null"> edit_by = #{editBy}, </if>
+      <if test="lastLoginTime != null"> last_login_time = #{lastLoginTime}, </if>
     </set>
-    where id = #{id,jdbcType=INTEGER}
+    where id = #{id}
   </update>
-
   <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TUser">
-    update t_user
-    set login_act = #{loginAct,jdbcType=VARCHAR},
-      login_pwd = #{loginPwd,jdbcType=VARCHAR},
-      `name` = #{name,jdbcType=VARCHAR},
-      phone = #{phone,jdbcType=VARCHAR},
-      email = #{email,jdbcType=VARCHAR},
-      account_no_expired = #{accountNoExpired,jdbcType=INTEGER},
-      credentials_no_expired = #{credentialsNoExpired,jdbcType=INTEGER},
-      account_no_locked = #{accountNoLocked,jdbcType=INTEGER},
-      account_enabled = #{accountEnabled,jdbcType=INTEGER},
-      create_time = #{createTime,jdbcType=TIMESTAMP},
-      create_by = #{createBy,jdbcType=INTEGER},
-      edit_time = #{editTime,jdbcType=TIMESTAMP},
-      edit_by = #{editBy,jdbcType=INTEGER},
-      last_login_time = #{lastLoginTime,jdbcType=TIMESTAMP}
-    where id = #{id,jdbcType=INTEGER}
+    update t_user set login_act = #{loginAct}, login_pwd = #{loginPwd}, `name` = #{name}, phone = #{phone},
+    email = #{email}, account_no_expired = #{accountNoExpired}, credentials_no_expired = #{credentialsNoExpired},
+    account_no_locked = #{accountNoLocked}, account_enabled = #{accountEnabled}, create_time = #{createTime},
+    create_by = #{createBy}, edit_time = #{editTime}, edit_by = #{editBy}, last_login_time = #{lastLoginTime}
+    where id = #{id}
   </update>
 </mapper>

@@ -1,28 +1,22 @@
 package com.autodealer.crm.service;
-
+import com.autodealer.crm.dto.*;
 import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.query.UserQuery;
 import com.github.pagehelper.PageInfo;
 import org.springframework.security.core.userdetails.UserDetailsService;
-
 import java.util.List;
-
-
 public interface UserService extends UserDetailsService {
-
-    PageInfo<TUser> getUserByPage(Integer current);
-
+    PageInfo<UserDetailResponse> getUserByPage(UserListQuery query);
     TUser getLoginUserById(Integer id);
-
-    TUser getUserById(Integer id);
-
-    int saveUser(UserQuery userQuery);
-
-    int updateUser(UserQuery userQuery);
-
-    int delUserById(Integer id);
-
-    int batchDelUserIds(List<Integer> ids);
-
+    UserDetailResponse getUserById(Integer id);
+    UserDetailResponse createUser(CreateUserRequest request);
+    UserDetailResponse updateUser(UpdateUserRequest request);
+    void disableUser(Integer id);
+    void enableUser(Integer id);
+    void lockUser(Integer id);
+    void unlockUser(Integer id);
+    void batchDisableUsers(List<Integer> ids);
+    void assignRoles(AssignUserRolesRequest request);
+    void changePassword(ChangePasswordRequest request);
     List<TUser> getOwnerList();
+    UserDetailResponse toDetailResponse(TUser tUser);
 }

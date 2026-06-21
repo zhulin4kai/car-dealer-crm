@@ -1,114 +1,130 @@
 package com.autodealer.crm.web;
 
+import com.autodealer.crm.dto.AssignUserRolesRequest;
+import com.autodealer.crm.dto.BatchDisableUsersRequest;
+import com.autodealer.crm.dto.ChangePasswordRequest;
+import com.autodealer.crm.dto.CreateUserRequest;
+import com.autodealer.crm.dto.UpdateUserRequest;
+import com.autodealer.crm.dto.UserDetailResponse;
+import com.autodealer.crm.dto.UserListQuery;
 import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.query.UserQuery;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.UserService;
 import com.github.pagehelper.PageInfo;
-import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 @RestController
 public class UserController {
 
-    @Resource
-    private UserService userService;
+    private final UserService userService;
 
-    /**
-     * 获取登录人信息
-     *
-     * @param authentication
-     * @return
-     */
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
     @GetMapping(value = "/api/login/info")
-    public R loginInfo(Authentication authentication) {
-        TUser tUser = (TUser)authentication.getPrincipal();
+    public R<TUser> loginInfo(Authentication authentication) {
+        TUser tUser = (TUser) authentication.getPrincipal();
         TUser loginUser = userService.getLoginUserById(tUser.getId());
         return R.OK(loginUser);
     }
 
-    /**
-     * 免登录
-     *
-     * @return
-     */
     @GetMapping(value = "/api/login/free")
-    public R freeLogin() {
+    public R<Void> freeLogin() {
         return R.OK();
     }
 
-    /**
-     * 用户列表分页查询
-     *
-     * @param current
-     * @return
-     */
     @PreAuthorize(value = "hasAuthority('user:list')")
     @GetMapping(value = "/api/users")
-    public R userPage(@RequestParam(value = "current", required = false) Integer current) {
-        //required = false 表示参数可以传，也可以不传；
-        //required = true 表示参数必须要传，不传会报错；
-        if (current == null) {
-            current = 1;
+    public R<PageInfo<UserDetailResponse>> userPage(UserListQuery query) {
+        if (query.getCurrent() == null) {
+            query.setCurrent(1);
         }
-        PageInfo<TUser> pageInfo = userService.getUserByPage(current);
+        PageInfo<UserDetailResponse> pageInfo = userService.getUserByPage(query);
         return R.OK(pageInfo);
     }
 
     @PreAuthorize(value = "hasAuthority('user:view')")
     @GetMapping(value = "/api/user/{id}")
-    public R userDetail(@PathVariable(value = "id") Integer id) {
-        TUser tUser = userService.getUserById(id);
-        return R.OK(tUser);
+    public R<UserDetailResponse> userDetail(@PathVariable(value = "id") Integer id) {
+        UserDetailResponse response = userService.getUserById(id);
+        return R.OK(response);
     }
 
-    /**
-     * 新增用户
-     *
-     * @param userQuery
-     * @return
-     */
     @PreAuthorize(value = "hasAuthority('user:add')")
     @PostMapping(value = "/api/user")
-    public R addUser(@RequestBody UserQuery userQuery) {
-        int save = userService.saveUser(userQuery);
-        return save >= 1 ? R.OK() : R.FAIL();
+    public R<UserDetailResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        UserDetailResponse response = userService.createUser(request);
+        return R.OK(response);
     }
 
-    /**
-     * 编辑用户
-     *
-     * @param userQuery
-     * @return
-     */
     @PreAuthorize(value = "hasAuthority('user:edit')")
     @PutMapping(value = "/api/user")
-    public R editUser(@RequestBody UserQuery userQuery) {
-        int update = userService.updateUser(userQuery);
-        return update >= 1 ? R.OK() : R.FAIL();
+    public R<UserDetailResponse> updateUser(@Valid @RequestBody UpdateUserRequest request) {
+        UserDetailResponse response = userService.updateUser(request);
+        return R.OK(response);
+    }
+
+    @PreAuthorize(value = "hasAuthority('user:edit')")
+    @PutMapping(value = "/api/user/{id}/disable")
+    public R<Void> disableUser(@PathVariable(value = "id") Integer id) {
+        userService.disableUser(id);
+        return R.OK();
+    }
+
+    @PreAuthorize(value = "hasAuthority('user:edit')")
+    @PutMapping(value = "/api/user/{id}/enable")
+    public R<Void> enableUser(@PathVariable(value = "id") Integer id) {
+        userService.enableUser(id);
+        return R.OK();
+    }
+
+    @PreAuthorize(value = "hasAuthority('user:edit')")
+    @PutMapping(value = "/api/user/{id}/lock")
+    public R<Void> lockUser(@PathVariable(value = "id") Integer id) {
+        userService.lockUser(id);
+        return R.OK();
+    }
+
+    @PreAuthorize(value = "hasAuthority('user:edit')")
+    @PutMapping(value = "/api/user/{id}/unlock")
+    public R<Void> unlockUser(@PathVariable(value = "id") Integer id) {
+        userService.unlockUser(id);
+        return R.OK();
     }
 
     @PreAuthorize(value = "hasAuthority('user:delete')")
-    @DeleteMapping(value = "/api/user/{id}")
-    public R delUser(@PathVariable(value = "id") Integer id) {
-        int del = userService.delUserById(id);
-        return del >= 1 ? R.OK() : R.FAIL();
+    @PutMapping(value = "/api/users/batch-disable")
+    public R<Void> batchDisableUsers(@Valid @RequestBody BatchDisableUsersRequest request) {
+        userService.batchDisableUsers(request.getIds());
+        return R.OK();
     }
 
-    @PreAuthorize(value = "hasAuthority('user:delete')")
-    @DeleteMapping(value = "/api/user")
-    public R batchDelUser(@RequestBody List<Integer> ids) {
-        int batchDel = userService.batchDelUserIds(ids);
-        return batchDel >= 0 ? R.OK() : R.FAIL();
+    @PreAuthorize(value = "hasAuthority('user:edit')")
+    @PutMapping(value = "/api/user/{id}/roles")
+    public R<Void> assignRoles(@PathVariable(value = "id") Integer id,
+                               @Valid @RequestBody AssignUserRolesRequest request) {
+        request.setUserId(id);
+        userService.assignRoles(request);
+        return R.OK();
+    }
+
+    @PreAuthorize(value = "hasAuthority('user:edit')")
+    @PutMapping(value = "/api/user/{id}/password")
+    public R<Void> changePassword(@PathVariable(value = "id") Integer id,
+                                  @Valid @RequestBody ChangePasswordRequest request) {
+        request.setUserId(id);
+        userService.changePassword(request);
+        return R.OK();
     }
 
     @GetMapping(value = "/api/owner")
-    public R owner() {
+    public R<List<TUser>> owner() {
         List<TUser> ownerList = userService.getOwnerList();
         return R.OK(ownerList);
     }

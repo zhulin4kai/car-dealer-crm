@@ -1,4 +1,4 @@
-import type { LooseRecord } from '@/shared/types/common'
+import type { EntityId } from '@/shared/types/id'
 
 export interface LoginForm {
   loginAct: string
@@ -6,7 +6,7 @@ export interface LoginForm {
   rememberMe: boolean
 }
 
-export interface Permission extends LooseRecord {
+export interface Permission {
   id?: number | string
   name?: string
   code?: string
@@ -15,13 +15,59 @@ export interface Permission extends LooseRecord {
   subPermissionList?: Permission[]
 }
 
-export interface User extends LooseRecord {
+export interface User {
   id?: number | string
-  name?: string
   loginAct?: string
+  name?: string
+  phone?: string
+  email?: string
+  accountNoExpired?: number
+  credentialsNoExpired?: number
+  accountNoLocked?: number
+  accountEnabled?: number
+  createTime?: string
+  createBy?: number
+  editTime?: string
+  editBy?: number
+  lastLoginTime?: string
+  roleList?: string[]
   permissionList?: string[]
   menuPermissionList?: Permission[]
+  createByDO?: { id?: number; name?: string }
+  editByDO?: { id?: number; name?: string }
 }
 
-export type UserQuery = LooseRecord
-export type UserForm = LooseRecord
+export interface CreateUserRequest {
+  loginAct: string
+  loginPwd: string
+  name: string
+  phone: string
+  email: string
+}
+
+export interface UpdateUserRequest {
+  id: number
+  loginAct: string
+  name: string
+  phone: string
+  email: string
+}
+
+export interface ChangePasswordRequest {
+  userId: number
+  newPassword: string
+}
+
+export interface AssignUserRolesRequest {
+  userId: number
+  roleIds: number[]
+}
+
+export interface UserListQuery {
+  current?: number
+  pageSize?: number
+  loginAct?: string
+  name?: string
+  phone?: string
+  email?: string
+}

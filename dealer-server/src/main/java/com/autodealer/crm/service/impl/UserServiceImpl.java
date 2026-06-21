@@ -1,7 +1,17 @@
 package com.autodealer.crm.service.impl;
 
 import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.PaginationConstants;
+import com.autodealer.crm.constant.RedisKeys;
+import com.autodealer.crm.dto.AssignUserRolesRequest;
+import com.autodealer.crm.dto.ChangePasswordRequest;
+import com.autodealer.crm.dto.CreateUserRequest;
+import com.autodealer.crm.dto.UpdateUserRequest;
+import com.autodealer.crm.dto.UserDetailResponse;
+import com.autodealer.crm.dto.UserListQuery;
+import com.autodealer.crm.audit.AuditActionEnum;
+import com.autodealer.crm.audit.OperationAuditRecorder;
+import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.TPermissionMapper;
 import com.autodealer.crm.mapper.TRoleMapper;
@@ -9,63 +19,64 @@ import com.autodealer.crm.mapper.TUserMapper;
 import com.autodealer.crm.model.TPermission;
 import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.query.BaseQuery;
-import com.autodealer.crm.query.UserQuery;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.UserService;
 import com.autodealer.crm.util.CacheUtils;
+import com.autodealer.crm.util.UserConverter;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
-import org.springframework.beans.BeanUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
 
-    @Resource
-    private TUserMapper tUserMapper;
+    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
+    private static final int BUILTIN_ADMIN_ID = 1;
+    private static final int MIN_PASSWORD_LENGTH = 6;
+    private static final int MAX_PASSWORD_LENGTH = 16;
 
-    @Resource
-    private PasswordEncoder passwordEncoder;
+    private final TUserMapper tUserMapper;
+    private final PasswordEncoder passwordEncoder;
+    private final TRoleMapper tRoleMapper;
+    private final TPermissionMapper tPermissionMapper;
+    private final RedisManager redisManager;
+    private final CurrentUserProvider currentUserProvider;
+    private final OperationAuditRecorder auditRecorder;
 
-    @Resource
-    private TRoleMapper tRoleMapper;
+    public UserServiceImpl(TUserMapper tUserMapper, PasswordEncoder passwordEncoder,
+                           TRoleMapper tRoleMapper, TPermissionMapper tPermissionMapper,
+                           RedisManager redisManager, CurrentUserProvider currentUserProvider,
+                           OperationAuditRecorder auditRecorder) {
+        this.tUserMapper = tUserMapper;
+        this.passwordEncoder = passwordEncoder;
+        this.tRoleMapper = tRoleMapper;
+        this.tPermissionMapper = tPermissionMapper;
+        this.redisManager = redisManager;
+        this.currentUserProvider = currentUserProvider;
+        this.auditRecorder = auditRecorder;
+    }
 
-    @Resource
-    private RedisManager redisManager;
-
-    @Resource
-    private TPermissionMapper tPermissionMapper;
-
-    @Resource
-    private CurrentUserProvider currentUserProvider;
-
-    /**
-     * 登录查询
-     *
-     * @param username
-     * @return
-     * @throws UsernameNotFoundException
-     */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-
         TUser tUser = tUserMapper.selectByLoginAct(username);
         if (tUser == null) {
             throw new UsernameNotFoundException("登录账号不存在");
         }
-
         loadLoginPermissions(tUser);
-
         return tUser;
     }
 
@@ -75,129 +86,297 @@ public class UserServiceImpl implements UserService {
         if (tUser == null) {
             return null;
         }
-
         loadLoginPermissions(tUser);
         return tUser;
     }
 
     private void loadLoginPermissions(TUser tUser) {
-        //查询一下当前用户的角色
         List<TRole> tRoleList = tRoleMapper.selectByUserId(tUser.getId());
-        //字符串的角色列表
         List<String> stringRoleList = new ArrayList<>();
-        tRoleList.forEach(tRole -> {
-            stringRoleList.add(tRole.getRole());
-        });
-        tUser.setRoleList(stringRoleList); //设置用户的角色
-
-        //查询一下该用户有哪些菜单权限
+        tRoleList.forEach(tRole -> stringRoleList.add(tRole.getRole()));
+        tUser.setRoleList(stringRoleList);
         List<TPermission> menuPermissionList = tPermissionMapper.selectMenuPermissionByUserId(tUser.getId());
         tUser.setMenuPermissionList(menuPermissionList);
-
-        //查询一下该用户有哪些功能权限
         List<TPermission> buttonPermissionList = tPermissionMapper.selectButtonPermissionByUserId(tUser.getId());
         List<String> stringPermissionList = new ArrayList<>();
-        buttonPermissionList.forEach(tPermission -> {
-            stringPermissionList.add(tPermission.getCode());//权限标识符
-        });
-        tUser.setPermissionList(stringPermissionList);//设置用户的权限标识符
+        buttonPermissionList.forEach(tPermission -> stringPermissionList.add(tPermission.getCode()));
+        tUser.setPermissionList(stringPermissionList);
     }
 
     @Override
-    public PageInfo<TUser> getUserByPage(Integer current) {
-        // 1.设置PageHelper
-        PageHelper.startPage(current, Constants.PAGE_SIZE);
-        // 2.查询
-        List<TUser> list = tUserMapper.selectUserByPage(BaseQuery.builder().build());
-        // 3.封装分页数据到PageInfo
-        PageInfo<TUser> info = new PageInfo<>(list);
-        return info;
+    public PageInfo<UserDetailResponse> getUserByPage(UserListQuery query) {
+        PageHelper.startPage(query.getCurrent(), PaginationConstants.DEFAULT_PAGE_SIZE);
+        List<TUser> list = tUserMapper.selectUserByPage(query);
+        PageInfo<TUser> rawInfo = new PageInfo<>(list);
+        List<UserDetailResponse> responseList = list.stream()
+                .map(UserConverter::toDetailResponse).collect(Collectors.toList());
+        PageInfo<UserDetailResponse> result = new PageInfo<>();
+        result.setList(responseList);
+        result.setTotal(rawInfo.getTotal());
+        result.setPageNum(rawInfo.getPageNum());
+        result.setPageSize(rawInfo.getPageSize());
+        result.setPages(rawInfo.getPages());
+        return result;
     }
 
     @Override
-    public TUser getUserById(Integer id) {
+    public UserDetailResponse getUserById(Integer id) {
         requireUserAccess(id);
-        return tUserMapper.selectAuthUserById(id);
+        TUser tUser = tUserMapper.selectAuthUserById(id);
+        if (tUser == null) return null;
+        return UserConverter.toDetailResponse(tUser);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     @Override
-    public int saveUser(UserQuery userQuery) {
-
-        TUser tUser = new TUser();
-
-        //把UserQuery对象里面的属性数据复制到TUser对象里面去(复制要求：两个对象的属性名相同，属性类型要相同，这样才能复制)
-        BeanUtils.copyProperties(userQuery, tUser);
-
-        tUser.setLoginPwd(passwordEncoder.encode(userQuery.getLoginPwd())); //密码加密
-        tUser.setCreateTime(new Date()); //创建时间
-
-        tUser.setCreateBy(currentUserProvider.getCurrentUserId()); //创建人
-
-        return tUserMapper.insertSelective(tUser);
-    }
-
     @Transactional(rollbackFor = Exception.class)
-    @Override
-    public int updateUser(UserQuery userQuery) {
-        requireUserAccess(userQuery.getId());
-        TUser tUser = new TUser();
-
-        //把UserQuery对象里面的属性数据复制到TUser对象里面去(复制要求：两个对象的属性名相同，属性类型要相同，这样才能复制)
-        BeanUtils.copyProperties(userQuery, tUser);
-
-        if (StringUtils.hasText(userQuery.getLoginPwd())) {
-            tUser.setLoginPwd(passwordEncoder.encode(userQuery.getLoginPwd())); //密码加密
+    public UserDetailResponse createUser(CreateUserRequest request) {
+        validatePasswordLength(request.getLoginPwd());
+        if (tUserMapper.selectByLoginAct(request.getLoginAct()) != null) {
+            throw new BusinessException(CodeEnum.FAIL, "登录账号已存在");
         }
-
-        tUser.setEditTime(new Date()); //编辑时间
-
-        tUser.setEditBy(currentUserProvider.getCurrentUserId()); //编辑人
-
-        return tUserMapper.updateByPrimaryKeySelective(tUser);
+        if (tUserMapper.selectByPhone(request.getPhone()) != null) {
+            throw new BusinessException(CodeEnum.FAIL, "手机号已存在");
+        }
+        if (tUserMapper.selectByEmail(request.getEmail()) != null) {
+            throw new BusinessException(CodeEnum.FAIL, "邮箱已存在");
+        }
+        TUser tUser = new TUser();
+        tUser.setLoginAct(request.getLoginAct());
+        tUser.setLoginPwd(passwordEncoder.encode(request.getLoginPwd()));
+        tUser.setName(request.getName());
+        tUser.setPhone(request.getPhone());
+        tUser.setEmail(request.getEmail());
+        tUser.setAccountNoExpired(1);
+        tUser.setCredentialsNoExpired(1);
+        tUser.setAccountNoLocked(1);
+        tUser.setAccountEnabled(1);
+        tUser.setCreateTime(new Date());
+        tUser.setCreateBy(currentUserProvider.getCurrentUserId());
+        try {
+            int rows = tUserMapper.insertSelective(tUser);
+            if (rows != 1) throw new BusinessException(CodeEnum.FAIL, "创建用户失败");
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(CodeEnum.FAIL, "用户信息重复");
+        }
+        clearOwnerListCache();
+        log.info("event=user_create result=success userId={} loginAct={} operatorId={}",
+                tUser.getId(), request.getLoginAct(), currentUserProvider.getCurrentUserId());
+        auditRecorder.record(AuditActionEnum.USER_CREATE, String.valueOf(tUser.getId()));
+        return toDetailResponse(tUser);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     @Override
-    public int delUserById(Integer id) {
+    @Transactional(rollbackFor = Exception.class)
+    public UserDetailResponse updateUser(UpdateUserRequest request) {
+        requireUserAccess(request.getId());
+        TUser existingUser = tUserMapper.selectByPrimaryKey(request.getId());
+        if (existingUser == null) throw new BusinessException(CodeEnum.FAIL, "用户不存在");
+        validateUniquenessForUpdate(request.getId(), request.getLoginAct(), request.getPhone(), request.getEmail());
+        TUser tUser = new TUser();
+        tUser.setId(request.getId());
+        tUser.setLoginAct(request.getLoginAct());
+        tUser.setName(request.getName());
+        tUser.setPhone(request.getPhone());
+        tUser.setEmail(request.getEmail());
+        tUser.setEditTime(new Date());
+        tUser.setEditBy(currentUserProvider.getCurrentUserId());
+        try {
+            int rows = tUserMapper.updateByPrimaryKeySelective(tUser);
+            if (rows != 1) throw new BusinessException(CodeEnum.FAIL, "用户更新失败");
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(CodeEnum.FAIL, "用户信息重复");
+        }
+        clearOwnerListCache();
+        log.info("event=user_update result=success userId={} operatorId={}",
+                request.getId(), currentUserProvider.getCurrentUserId());
+        auditRecorder.record(AuditActionEnum.USER_UPDATE, String.valueOf(request.getId()));
+        TUser updatedUser = tUserMapper.selectAuthUserById(request.getId());
+        return UserConverter.toDetailResponse(updatedUser);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void disableUser(Integer id) {
+        validateNotSelfOperation(id, "不能禁用当前登录账号");
         requireUserAccess(id);
-        return tUserMapper.deleteByPrimaryKey(id);
+        TUser targetUser = tUserMapper.selectByPrimaryKey(id);
+        if (targetUser == null) throw new BusinessException(CodeEnum.FAIL, "用户不存在");
+        if (targetUser.getAccountEnabled() == 0) return;
+        if (id == BUILTIN_ADMIN_ID) throw new BusinessException(CodeEnum.ACCESS_DENIED, "内置管理员不能被禁用");
+        validateNotLastAdmin(id);
+        if (tUserMapper.countBusinessReferences(id) > 0) {
+            throw new BusinessException(CodeEnum.FAIL, "用户仍被业务引用，无法禁用");
+        }
+        if (tUserMapper.disableById(id) != 1) throw new BusinessException(CodeEnum.FAIL, "禁用操作失败");
+        invalidateUserSession(id);
+        clearOwnerListCache();
+        log.info("event=user_disable result=success userId={} operatorId={}",
+                id, currentUserProvider.getCurrentUserId());
+        auditRecorder.record(AuditActionEnum.USER_STATUS_CHANGE, String.valueOf(id));
     }
 
-    @Transactional(rollbackFor = Exception.class)
     @Override
-    public int batchDelUserIds(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return 0;
-        }
+    @Transactional(rollbackFor = Exception.class)
+    public void enableUser(Integer id) {
+        requireUserAccess(id);
+        if (tUserMapper.selectByPrimaryKey(id) == null) throw new BusinessException(CodeEnum.FAIL, "用户不存在");
+        if (tUserMapper.enableById(id) != 1) throw new BusinessException(CodeEnum.FAIL, "启用操作失败");
+        clearOwnerListCache();
+        log.info("event=user_enable result=success userId={} operatorId={}",
+                id, currentUserProvider.getCurrentUserId());
+        auditRecorder.record(AuditActionEnum.USER_STATUS_CHANGE, String.valueOf(id));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void lockUser(Integer id) {
+        validateNotSelfOperation(id, "不能锁定当前登录账号");
+        requireUserAccess(id);
+        if (tUserMapper.selectByPrimaryKey(id) == null) throw new BusinessException(CodeEnum.FAIL, "用户不存在");
+        if (tUserMapper.lockById(id) != 1) throw new BusinessException(CodeEnum.FAIL, "锁定操作失败");
+        invalidateUserSession(id);
+        clearOwnerListCache();
+        auditRecorder.record(AuditActionEnum.USER_STATUS_CHANGE, String.valueOf(id));
+        log.info("event=user_lock result=success userId={} operatorId={}",
+                id, currentUserProvider.getCurrentUserId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unlockUser(Integer id) {
+        requireUserAccess(id);
+        if (tUserMapper.selectByPrimaryKey(id) == null) throw new BusinessException(CodeEnum.FAIL, "用户不存在");
+        if (tUserMapper.unlockById(id) != 1) throw new BusinessException(CodeEnum.FAIL, "解锁操作失败");
+        clearOwnerListCache();
+        auditRecorder.record(AuditActionEnum.USER_STATUS_CHANGE, String.valueOf(id));
+        log.info("event=user_unlock result=success userId={} operatorId={}",
+                id, currentUserProvider.getCurrentUserId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchDisableUsers(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return;
         List<Integer> distinctIds = ids.stream().distinct().sorted().toList();
-        distinctIds.forEach(this::requireUserAccess);
-        return tUserMapper.deleteByIds(distinctIds);
+        for (Integer id : distinctIds) {
+            validateNotSelfOperation(id, "不能禁用当前登录账号");
+            requireUserAccess(id);
+        }
+        if (distinctIds.contains(BUILTIN_ADMIN_ID)) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "内置管理员不能被禁用");
+        }
+        for (Integer id : distinctIds) validateNotLastAdmin(id);
+        int totalRefs = 0;
+        for (Integer id : distinctIds) totalRefs += tUserMapper.countBusinessReferences(id);
+        if (totalRefs > 0) throw new BusinessException(CodeEnum.FAIL, "所选用户中存在被业务引用的账号，无法禁用");
+        if (tUserMapper.disableByIds(distinctIds) != distinctIds.size()) {
+            throw new BusinessException(CodeEnum.FAIL, "批量禁用操作失败");
+        }
+        for (Integer id : distinctIds) invalidateUserSession(id);
+        clearOwnerListCache();
+        log.info("event=user_batch_disable result=success count={} operatorId={}",
+                distinctIds.size(), currentUserProvider.getCurrentUserId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void assignRoles(AssignUserRolesRequest request) {
+        requireUserAccess(request.getUserId());
+        if (tUserMapper.selectByPrimaryKey(request.getUserId()) == null) {
+            throw new BusinessException(CodeEnum.FAIL, "用户不存在");
+        }
+        List<Integer> roleIds = request.getRoleIds() != null ? request.getRoleIds() : Collections.emptyList();
+        tUserMapper.deleteUserRoles(request.getUserId());
+        if (!roleIds.isEmpty()) {
+            if (tUserMapper.insertUserRoles(request.getUserId(), roleIds) != roleIds.size()) {
+                throw new BusinessException(CodeEnum.FAIL, "角色分配失败");
+            }
+        }
+        clearOwnerListCache();
+        log.info("event=user_role_assign result=success userId={} roleIds={} operatorId={}",
+                request.getUserId(), roleIds, currentUserProvider.getCurrentUserId());
+        auditRecorder.record(AuditActionEnum.USER_STATUS_CHANGE, String.valueOf(request.getUserId()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void changePassword(ChangePasswordRequest request) {
+        requireUserAccess(request.getUserId());
+        validatePasswordLength(request.getNewPassword());
+        if (tUserMapper.selectByPrimaryKey(request.getUserId()) == null) {
+            throw new BusinessException(CodeEnum.FAIL, "用户不存在");
+        }
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        if (tUserMapper.updatePassword(request.getUserId(), encodedPassword) != 1) {
+            throw new BusinessException(CodeEnum.FAIL, "密码修改失败");
+        }
+        invalidateUserSession(request.getUserId());
+        log.info("event=user_password_change result=success userId={} operatorId={}",
+                request.getUserId(), currentUserProvider.getCurrentUserId());
+        auditRecorder.record(AuditActionEnum.USER_STATUS_CHANGE, String.valueOf(request.getUserId()));
     }
 
     @Override
     public List<TUser> getOwnerList() {
-        //1、从redis查询
-        //2、redis查不到，就从数据库查询，并且把数据放入redis（1小时过期）
-        return CacheUtils.getCacheData(() -> {
-            //生产，从缓存redis查询数据
-            return (List<TUser>)redisManager.getList(Constants.REDIS_OWNER_KEY);
-        },
-        () -> {
-            //生产，从mysql查询数据
-            return (List<TUser>)tUserMapper.selectByOwner();
-        },
-        (t) -> {
-            //消费，把数据放入缓存redis
-            redisManager.setList(Constants.REDIS_OWNER_KEY, t);
+        return CacheUtils.getCacheData(
+                () -> (List<TUser>) redisManager.getList(RedisKeys.ownerList()),
+                () -> (List<TUser>) tUserMapper.selectByOwner(),
+                (t) -> redisManager.setList(RedisKeys.ownerList(), t));
+    }
+
+    @Override
+    public UserDetailResponse toDetailResponse(TUser tUser) {
+        return UserConverter.toDetailResponse(tUser);
+    }
+
+    private void validatePasswordLength(String password) {
+        if (password == null || password.length() < MIN_PASSWORD_LENGTH || password.length() > MAX_PASSWORD_LENGTH) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR,
+                    "密码长度必须为" + MIN_PASSWORD_LENGTH + "-" + MAX_PASSWORD_LENGTH + "位");
         }
-       );
+    }
+
+    private void validateUniquenessForUpdate(Integer userId, String loginAct, String phone, String email) {
+        if (tUserMapper.selectByLoginActExcludeId(loginAct, userId) != null)
+            throw new BusinessException(CodeEnum.FAIL, "登录账号已存在");
+        if (tUserMapper.selectByPhoneExcludeId(phone, userId) != null)
+            throw new BusinessException(CodeEnum.FAIL, "手机号已存在");
+        if (tUserMapper.selectByEmailExcludeId(email, userId) != null)
+            throw new BusinessException(CodeEnum.FAIL, "邮箱已存在");
+    }
+
+    private void validateNotSelfOperation(Integer targetUserId, String message) {
+        Integer currentUserId = currentUserProvider.getCurrentUserId();
+        if (currentUserId != null && currentUserId.equals(targetUserId)) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, message);
+        }
+    }
+
+    private void validateNotLastAdmin(Integer targetUserId) {
+        TUser targetUser = tUserMapper.selectByPrimaryKey(targetUserId);
+        if (targetUser == null) return;
+        List<TRole> userRoles = tRoleMapper.selectByUserId(targetUserId);
+        if (userRoles.stream().anyMatch(r -> "admin".equals(r.getRole()))) {
+            if (tUserMapper.countAdminUsers() <= 1) {
+                throw new BusinessException(CodeEnum.ACCESS_DENIED, "该用户是最后一个有效管理员，不能禁用");
+            }
+        }
     }
 
     private void requireUserAccess(Integer targetUserId) {
         Integer scopeUserId = currentUserProvider.getDataScopeUserId();
         if (scopeUserId != null && !scopeUserId.equals(targetUserId)) {
-            throw new RuntimeException("用户不存在或无权访问");
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "无权操作该用户");
         }
+    }
+
+    private void invalidateUserSession(Integer userId) {
+        try { redisManager.delete(RedisKeys.userLogin(userId)); }
+        catch (Exception e) { log.warn("event=user_session_invalidate result=failed userId={}", userId, e); }
+    }
+
+    private void clearOwnerListCache() {
+        try { redisManager.delete(RedisKeys.ownerList()); }
+        catch (Exception e) { log.warn("event=owner_list_cache_clear result=failed", e); }
     }
 }

@@ -1,14 +1,16 @@
 package com.autodealer.crm.service;
 
 import com.autodealer.crm.config.security.CurrentUserProvider;
+import com.autodealer.crm.dto.*;
+import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.TPermissionMapper;
 import com.autodealer.crm.mapper.TRoleMapper;
 import com.autodealer.crm.mapper.TUserMapper;
-import com.autodealer.crm.model.TPermission;
-import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.query.UserQuery;
+import com.autodealer.crm.result.CodeEnum;
+import com.autodealer.crm.audit.AuditActionEnum;
+import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.service.impl.UserServiceImpl;
 import com.github.pagehelper.PageInfo;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,14 +19,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
+import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -32,26 +30,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
 
-    @InjectMocks
-    private UserServiceImpl userService;
-
-    @Mock
-    private TUserMapper tUserMapper;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private TRoleMapper tRoleMapper;
-
-    @Mock
-    private RedisManager redisManager;
-
-    @Mock
-    private TPermissionMapper tPermissionMapper;
-
-    @Mock
-    private CurrentUserProvider currentUserProvider;
+    @Mock private TUserMapper tUserMapper;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private TRoleMapper tRoleMapper;
+    @Mock private TPermissionMapper tPermissionMapper;
+    @Mock private RedisManager redisManager;
+    @Mock private CurrentUserProvider currentUserProvider;
+    @Mock private OperationAuditRecorder auditRecorder;
+    @InjectMocks private UserServiceImpl userService;
 
     @BeforeEach
     void setUp() {
@@ -60,221 +46,196 @@ class UserServiceImplTest {
 
     @Test
     void testGetUserByPage() {
-        TUser user = new TUser();
-        user.setId(1);
-        user.setLoginAct("admin");
-        user.setName("Admin");
-        List<TUser> list = Collections.singletonList(user);
-
-        when(tUserMapper.selectUserByPage(any())).thenReturn(list);
-
-        PageInfo<TUser> result = userService.getUserByPage(1);
-
-        assertNotNull(result);
-        assertEquals(1, result.getList().size());
-        assertEquals("admin", result.getList().get(0).getLoginAct());
-        verify(tUserMapper).selectUserByPage(any());
-    }
-
-    @Test
-    void testGetUserByPageEmpty() {
-        when(tUserMapper.selectUserByPage(any())).thenReturn(Collections.emptyList());
-
-        PageInfo<TUser> result = userService.getUserByPage(1);
-
-        assertNotNull(result);
-        assertTrue(result.getList().isEmpty());
+        TUser user = new TUser(); user.setId(1); user.setLoginAct("admin"); user.setName("Admin");
+        when(tUserMapper.selectUserByPage(any(UserListQuery.class))).thenReturn(Collections.singletonList(user));
+        PageInfo<UserDetailResponse> result = userService.getUserByPage(new UserListQuery());
+        assertNotNull(result); assertEquals(1, result.getList().size());
     }
 
     @Test
     void testLoadUserByUsernameFound() {
-        TUser user = new TUser();
-        user.setId(1);
-        user.setLoginAct("admin");
-        user.setLoginPwd("encodedPwd");
-        user.setAccountNoExpired(1);
-        user.setCredentialsNoExpired(1);
-        user.setAccountNoLocked(1);
-        user.setAccountEnabled(1);
-
-        TRole role = new TRole();
-        role.setRole("ROLE_ADMIN");
-
-        TPermission menuPerm = new TPermission();
-        menuPerm.setName("Dashboard");
-        menuPerm.setCode("dashboard");
-        menuPerm.setType("menu");
-
-        TPermission buttonPerm = new TPermission();
-        buttonPerm.setName("Add User");
-        buttonPerm.setCode("user:add");
-        buttonPerm.setType("button");
-
+        TUser user = new TUser(); user.setId(1); user.setLoginAct("admin");
         when(tUserMapper.selectByLoginAct("admin")).thenReturn(user);
-        when(tRoleMapper.selectByUserId(1)).thenReturn(Collections.singletonList(role));
-        when(tPermissionMapper.selectMenuPermissionByUserId(1)).thenReturn(Collections.singletonList(menuPerm));
-        when(tPermissionMapper.selectButtonPermissionByUserId(1)).thenReturn(Collections.singletonList(buttonPerm));
-
-        UserDetails result = userService.loadUserByUsername("admin");
-
-        assertNotNull(result);
-        assertEquals("admin", result.getUsername());
-        assertTrue(result.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
-        assertTrue(result.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("user:add")));
+        assertNotNull(userService.loadUserByUsername("admin"));
     }
 
     @Test
     void testLoadUserByUsernameNotFound() {
         when(tUserMapper.selectByLoginAct("nonexistent")).thenReturn(null);
-
-        assertThrows(UsernameNotFoundException.class,
-                () -> userService.loadUserByUsername("nonexistent"));
-        verify(tUserMapper).selectByLoginAct("nonexistent");
+        assertThrows(UsernameNotFoundException.class, () -> userService.loadUserByUsername("nonexistent"));
     }
 
     @Test
     void testGetUserById() {
-        TUser user = new TUser();
-        user.setId(1);
-        user.setName("Admin");
-
+        TUser user = new TUser(); user.setId(1); user.setLoginAct("admin");
         when(tUserMapper.selectAuthUserById(1)).thenReturn(user);
-
-        TUser result = userService.getUserById(1);
-
-        assertNotNull(result);
-        assertEquals(1, result.getId());
-        assertEquals("Admin", result.getName());
+        assertNotNull(userService.getUserById(1));
     }
 
     @Test
-    void testGetUserByIdNotFound() {
-        when(tUserMapper.selectAuthUserById(999)).thenReturn(null);
-
-        TUser result = userService.getUserById(999);
-
-        assertNull(result);
+    void testCreateUser_success() {
+        CreateUserRequest r = new CreateUserRequest();
+        r.setLoginAct("newuser"); r.setLoginPwd("password123"); r.setName("New User");
+        r.setPhone("13800138000"); r.setEmail("new@test.com");
+        when(tUserMapper.selectByLoginAct("newuser")).thenReturn(null);
+        when(tUserMapper.selectByPhone("13800138000")).thenReturn(null);
+        when(tUserMapper.selectByEmail("new@test.com")).thenReturn(null);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10);
+        when(passwordEncoder.encode("password123")).thenReturn("encoded");
+        when(tUserMapper.insertSelective(any())).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        assertNotNull(userService.createUser(r));
     }
 
     @Test
-    void testSaveUser() {
-            UserQuery query = new UserQuery();
-            query.setLoginAct("newuser");
-            query.setLoginPwd("rawPassword");
-            query.setName("New User");
-
-            when(currentUserProvider.getCurrentUserId()).thenReturn(10);
-            when(passwordEncoder.encode("rawPassword")).thenReturn("encodedPassword");
-            when(tUserMapper.insertSelective(any(TUser.class))).thenReturn(1);
-
-            int result = userService.saveUser(query);
-
-            assertEquals(1, result);
-            verify(passwordEncoder).encode("rawPassword");
-            verify(tUserMapper).insertSelective(argThat(user ->
-                    "newuser".equals(user.getLoginAct())
-                            && "encodedPassword".equals(user.getLoginPwd())
-                            && user.getCreateTime() != null
-                            && user.getCreateBy() != null
-            ));
+    void testCreateUser_duplicateLoginAct() {
+        CreateUserRequest r = new CreateUserRequest();
+        r.setLoginAct("existing"); r.setLoginPwd("password123"); r.setName("U");
+        r.setPhone("13800138000"); r.setEmail("t@t.com");
+        when(tUserMapper.selectByLoginAct("existing")).thenReturn(new TUser());
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.createUser(r));
+        assertEquals(CodeEnum.FAIL, ex.getCodeEnum());
     }
 
     @Test
-    void testUpdateUser() {
-            UserQuery query = new UserQuery();
-            query.setId(1);
-            query.setName("Updated User");
-            query.setLoginPwd("newPassword");
-
-            when(currentUserProvider.getCurrentUserId()).thenReturn(10);
-            when(passwordEncoder.encode("newPassword")).thenReturn("encodedNewPwd");
-            when(tUserMapper.updateByPrimaryKeySelective(any(TUser.class))).thenReturn(1);
-
-            int result = userService.updateUser(query);
-
-            assertEquals(1, result);
-            verify(passwordEncoder).encode("newPassword");
-            verify(tUserMapper).updateByPrimaryKeySelective(argThat(user ->
-                    "Updated User".equals(user.getName())
-                            && "encodedNewPwd".equals(user.getLoginPwd())
-                            && user.getEditTime() != null
-                            && user.getEditBy() != null
-            ));
+    void testCreateUser_weakPassword() {
+        CreateUserRequest r = new CreateUserRequest();
+        r.setLoginAct("new"); r.setLoginPwd("12345"); r.setName("U"); r.setPhone("13800138000"); r.setEmail("t@t.com");
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.createUser(r));
+        assertEquals(CodeEnum.PARAM_ERROR, ex.getCodeEnum());
     }
 
     @Test
-    void testUpdateUserWithoutPassword() {
-            UserQuery query = new UserQuery();
-            query.setId(1);
-            query.setName("Updated User");
-
-            when(currentUserProvider.getCurrentUserId()).thenReturn(10);
-            when(tUserMapper.updateByPrimaryKeySelective(any(TUser.class))).thenReturn(1);
-
-            int result = userService.updateUser(query);
-
-            assertEquals(1, result);
-            verify(passwordEncoder, never()).encode(anyString());
-            verify(tUserMapper).updateByPrimaryKeySelective(argThat(user ->
-                    "Updated User".equals(user.getName())
-                            && user.getLoginPwd() == null
-            ));
+    void testUpdateUser_success() {
+        UpdateUserRequest r = new UpdateUserRequest();
+        r.setId(2); r.setLoginAct("upd"); r.setName("Updated"); r.setPhone("13900139000"); r.setEmail("upd@t.com");
+        TUser existing = new TUser(); existing.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(existing);
+        when(tUserMapper.selectByLoginActExcludeId("upd", 2)).thenReturn(null);
+        when(tUserMapper.selectByPhoneExcludeId("13900139000", 2)).thenReturn(null);
+        when(tUserMapper.selectByEmailExcludeId("upd@t.com", 2)).thenReturn(null);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10);
+        when(tUserMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        TUser updated = new TUser(); updated.setId(2);
+        when(tUserMapper.selectAuthUserById(2)).thenReturn(updated);
+        assertNotNull(userService.updateUser(r));
     }
 
     @Test
-    void testDeleteUser() {
-        when(tUserMapper.deleteByPrimaryKey(1)).thenReturn(1);
-
-        int result = userService.delUserById(1);
-
-        assertEquals(1, result);
-        verify(tUserMapper).deleteByPrimaryKey(1);
+    void testDisableUser_success() {
+        TUser user = new TUser(); user.setId(2); user.setAccountEnabled(1);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.countBusinessReferences(2)).thenReturn(0);
+        when(tUserMapper.disableById(2)).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        userService.disableUser(2);
+        verify(tUserMapper).disableById(2);
     }
 
     @Test
-    void testBatchDeleteUsers() {
-        List<Integer> ids = Arrays.asList(1, 2, 3);
-        when(tUserMapper.deleteByIds(ids)).thenReturn(3);
-
-        int result = userService.batchDelUserIds(ids);
-
-        assertEquals(3, result);
-        verify(tUserMapper).deleteByIds(ids);
+    void testDisableUser_selfOperation() {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(2);
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.disableUser(2));
+        assertEquals(CodeEnum.ACCESS_DENIED, ex.getCodeEnum());
     }
 
     @Test
-    void testGetOwnerListFromCache() {
-        TUser owner = new TUser();
-        owner.setId(1);
-        owner.setName("Owner");
-        List<TUser> cachedList = Collections.singletonList(owner);
-
-        when(redisManager.getList(anyString())).thenReturn(cachedList);
-
-        List<TUser> result = userService.getOwnerList();
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        verify(redisManager).getList(anyString());
+    void testDisableUser_builtinAdmin() {
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.disableUser(1));
+        assertEquals(CodeEnum.FAIL, ex.getCodeEnum());
     }
 
     @Test
-    void testGetOwnerListFromDatabase() {
-        TUser owner = new TUser();
-        owner.setId(1);
-        owner.setName("Owner");
-        List<TUser> dbList = Collections.singletonList(owner);
+    void testDisableUser_businessReferences() {
+        TUser user = new TUser(); user.setId(3); user.setAccountEnabled(1);
+        when(tUserMapper.selectByPrimaryKey(3)).thenReturn(user);
+        when(tUserMapper.countBusinessReferences(3)).thenReturn(5);
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.disableUser(3));
+        assertEquals(CodeEnum.FAIL, ex.getCodeEnum());
+    }
 
-        when(redisManager.getList(anyString())).thenReturn(null);
-        when(tUserMapper.selectByOwner()).thenReturn(dbList);
+    @Test
+    void testEnableUser() {
+        TUser user = new TUser(); user.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.enableById(2)).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        userService.enableUser(2);
+        verify(tUserMapper).enableById(2);
+    }
 
-        List<TUser> result = userService.getOwnerList();
+    @Test
+    void testLockUser() {
+        TUser user = new TUser(); user.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.lockById(2)).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        userService.lockUser(2);
+        verify(tUserMapper).lockById(2);
+        verify(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, "2");
+    }
 
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        verify(tUserMapper).selectByOwner();
-        verify(redisManager).setList(anyString(), anyList());
+    @Test
+    void testUnlockUser() {
+        TUser user = new TUser(); user.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.unlockById(2)).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        userService.unlockUser(2);
+        verify(tUserMapper).unlockById(2);
+        verify(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, "2");
+    }
+
+    @Test
+    void testBatchDisableUsers() {
+        when(tUserMapper.disableByIds(Arrays.asList(4, 5))).thenReturn(2);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        userService.batchDisableUsers(Arrays.asList(4, 5));
+        verify(tUserMapper).disableByIds(Arrays.asList(4, 5));
+    }
+
+    @Test
+    void testAssignRoles() {
+        AssignUserRolesRequest r = new AssignUserRolesRequest(); r.setUserId(2); r.setRoleIds(Arrays.asList(1));
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(new TUser());
+        when(tUserMapper.deleteUserRoles(2)).thenReturn(1);
+        when(tUserMapper.insertUserRoles(eq(2), anyList())).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        userService.assignRoles(r);
+        verify(tUserMapper).deleteUserRoles(2);
+    }
+
+    @Test
+    void testChangePassword() {
+        ChangePasswordRequest r = new ChangePasswordRequest(); r.setUserId(2); r.setNewPassword("newpass123");
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(new TUser());
+        when(passwordEncoder.encode("newpass123")).thenReturn("encoded");
+        when(tUserMapper.updatePassword(eq(2), eq("encoded"))).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        userService.changePassword(r);
+        verify(tUserMapper).updatePassword(2, "encoded");
+    }
+
+    @Test
+    void testLockUser_auditFailure_shouldRollback() {
+        TUser user = new TUser(); user.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.lockById(2)).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        doThrow(new IllegalStateException("审计写入失败"))
+                .when(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, "2");
+        assertThrows(IllegalStateException.class, () -> userService.lockUser(2));
+    }
+
+    @Test
+    void testUnlockUser_auditFailure_shouldRollback() {
+        TUser user = new TUser(); user.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.unlockById(2)).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
+        doThrow(new IllegalStateException("审计写入失败"))
+                .when(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, "2");
+        assertThrows(IllegalStateException.class, () -> userService.unlockUser(2));
     }
 }

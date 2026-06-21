@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -169,34 +170,49 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
                         + actualKeys);
     }
 
-    // ==================== Batch delete parameter shape ====================
+    // ==================== Batch disable parameter shape ====================
 
     @Test
-    @DisplayName("DELETE /api/user batch delete MUST accept a JSON array body, not a wrapped object")
-    void batchDeleteUserAcceptsJsonArray() throws Exception {
+    @DisplayName("PUT /api/users/batch-disable MUST accept a BatchDisableUsersRequest JSON object body with ids array")
+    void batchDisableUserAcceptsJsonObject() throws Exception {
         String token = loginAsAdmin();
 
-        // Spec is plain array. Use non-seed IDs (999, 1000) so we verify the
-        // endpoint contract without actually deleting the seeded users that
-        // other integration tests in the same shared H2 DB depend on.
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .delete("/api/user")
-                        .header(HttpHeaders.AUTHORIZATION, token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("[999,1000]"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+        // Insert temporary test users with non-seed IDs so we can verify the
+        // endpoint contract without affecting seeded users other tests depend on.
+        jdbcTemplate.update(
+                "INSERT INTO t_user (id, login_act, login_pwd, name, account_no_expired, "
+                        + "credentials_no_expired, account_no_locked, account_enabled, create_time, create_by) "
+                        + "VALUES (?, ?, ?, ?, 1, 1, 1, 1, CURRENT_TIMESTAMP, 1)",
+                999, "_test_cross_999",
+                "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", "_test_cross_999");
+        jdbcTemplate.update(
+                "INSERT INTO t_user (id, login_act, login_pwd, name, account_no_expired, "
+                        + "credentials_no_expired, account_no_locked, account_enabled, create_time, create_by) "
+                        + "VALUES (?, ?, ?, ?, 1, 1, 1, 1, CURRENT_TIMESTAMP, 1)",
+                1000, "_test_cross_1000",
+                "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", "_test_cross_1000");
 
-        // Sanity: send a malformed object body and ensure the server rejects it (4xx or contract fail).
-        MvcResult bad = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .delete("/api/user")
-                        .header(HttpHeaders.AUTHORIZATION, token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ids\":[999,1000]}"))
-                .andReturn();
-        JsonNode body = objectMapper.readTree(bad.getResponse().getContentAsString());
-        assertFalse(body.path("code").asInt(0) == 200,
-                "Backend must NOT silently accept {\"ids\":[...]} for DELETE /api/user batch delete");
+        try {
+            // Spec is {"ids":[...]}. The endpoint should return code 200 on success.
+            mockMvc.perform(put("/api/users/batch-disable")
+                            .header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"ids\":[999,1000]}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(200));
+
+            // Sanity: send a raw JSON array (old format) and ensure the server rejects it.
+            MvcResult bad = mockMvc.perform(put("/api/users/batch-disable")
+                            .header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("[999,1000]"))
+                    .andReturn();
+            JsonNode body = objectMapper.readTree(bad.getResponse().getContentAsString());
+            assertFalse(body.path("code").asInt(0) == 200,
+                    "Backend must NOT silently accept a raw JSON array [999,1000] for PUT /api/users/batch-disable");
+        } finally {
+            jdbcTemplate.update("DELETE FROM t_user WHERE id IN (999, 1000)");
+        }
     }
 
     // ==================== Helpers ====================

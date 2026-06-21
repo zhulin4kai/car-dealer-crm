@@ -446,36 +446,36 @@ const loadUserDetail = (id) => {
 }
 
 const del = (id) => {
-  messageConfirm("您确定要删除该数据吗？").then(() => {
-    doDelete("/api/user/" + id, {}).then(resp => {
+  messageConfirm("您确定要禁用该账号吗？").then(() => {
+    doPut(`/api/user/${id}/disable`, {}).then(resp => {
       if (true) {
-        messageTip("删除成功", "success")
+        messageTip("禁用成功", "success")
         getData(currentPage.value)
       } else {
-        messageTip("删除失败，原因：" + '请求失败', "error")
+        messageTip("禁用失败，原因：" + '请求失败', "error")
       }
     })
   }).catch(() => {
-    messageTip("取消删除", "warning")
+    messageTip("取消禁用", "warning")
   })
 }
 
 const batchDel = () => {
   if (userIdArray.value.length <= 0) {
-    messageTip("请选择要删除的数据", "warning")
+    messageTip("请选择要禁用的数据", "warning")
     return
   }
-  messageConfirm("您确定要删除这些数据吗？").then(() => {
-    doDelete("/api/user", userIdArray.value).then(resp => {
+  messageConfirm("您确定要禁用这些账号吗？").then(() => {
+    doPut("/api/users/batch-disable", { ids: userIdArray.value }).then(resp => {
       if (true) {
-        messageTip("批量删除成功", "success")
+        messageTip("批量禁用成功", "success")
         getData(currentPage.value)
       } else {
-        messageTip("批量删除失败，原因：" + '请求失败', "error")
+        messageTip("批量禁用失败，原因：" + '请求失败', "error")
       }
     })
   }).catch(() => {
-    messageTip("取消批量删除", "warning")
+    messageTip("取消批量禁用", "warning")
   })
 }
 

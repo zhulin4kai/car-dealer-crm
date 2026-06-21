@@ -16,7 +16,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -30,8 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * never actually executed the security chain or the SQL.
  *
  * <p>Setup strategy: tests own the rows they insert. {@code @AfterEach}
- * issues a real batch DELETE to the controller, so the test exercises both
- * the controller path and the SQL.
+ * issues a JDBC DELETE to clean up test rows, since the DELETE endpoint
+ * has been replaced by PUT disable (which only sets accountEnabled=0).
  *
  * <p>JSON body contract: UserController.addUser and editUser have
  * {@code @RequestBody}, so the frontend's axios JSON bodies are accepted.
@@ -52,23 +51,15 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     }
 
     @AfterEach
-    void cleanupTestUsers() throws Exception {
+    void cleanupTestUsers() {
         if (createdTestIds.isEmpty()) {
             return;
         }
-        // The batch delete endpoint accepts a raw JSON array; we send it
-        // verbatim and let the real Mapper delete the rows.
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < createdTestIds.size(); i++) {
-            if (i > 0) sb.append(",");
-            sb.append(createdTestIds.get(i));
+        // Use JDBC DELETE for cleanup since the DELETE /api/user endpoint
+        // has been replaced by PUT disable (which only sets accountEnabled=0).
+        for (int id : createdTestIds) {
+            jdbcTemplate.update("DELETE FROM t_user WHERE id = ?", id);
         }
-        sb.append("]");
-        mockMvc.perform(delete("/api/user")
-                        .header(HttpHeaders.AUTHORIZATION, adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(sb.toString()))
-                .andExpect(status().isOk());
         createdTestIds.clear();
     }
 
@@ -104,7 +95,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     void zhangsanListUsers_isPermissionDenied() throws Exception {
         mockMvc.perform(get("/api/users")
                         .header(HttpHeaders.AUTHORIZATION, zhangsanToken))
-                .andExpect(status().isOk())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(520))
                 .andExpect(jsonPath("$.msg").value("\u6ca1\u6709\u8bbf\u95ee\u6743\u9650"));
     }
@@ -249,12 +240,12 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("admin can DELETE /api/user/{id} -> real H2 DELETE -> GET returns null data")
-    void adminDeleteUser_removesFromH2() throws Exception {
+    @DisplayName("admin can PUT /api/user/{id}/disable -> real H2 UPDATE -> GET returns accountEnabled=0")
+    void adminDisableUser_setsAccountEnabledZero() throws Exception {
         int newId = nextTestId();
-        insertTestUser(newId, "test_user_" + newId, "待删除");
+        insertTestUser(newId, "test_user_" + newId, "待禁用");
 
-        mockMvc.perform(delete("/api/user/" + newId)
+        mockMvc.perform(put("/api/user/" + newId + "/disable")
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
@@ -263,21 +254,21 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data").isEmpty());
+                .andExpect(jsonPath("$.data.accountEnabled").value(0));
     }
 
     // ==================== Batch ====================
 
     @Test
-    @DisplayName("admin can batch DELETE /api/user with a raw JSON array; the real SQL deletes both rows")
-    void adminBatchDelete_persistsToH2() throws Exception {
+    @DisplayName("admin can PUT /api/users/batch-disable with JSON body; the real SQL disables both users (accountEnabled=0)")
+    void adminBatchDisable_persistsToH2() throws Exception {
         int idA = nextTestId();
         int idB = nextTestId();
         insertTestUser(idA, "test_user_" + idA, "批量A");
         insertTestUser(idB, "test_user_" + idB, "批量B");
 
-        String body = "[" + idA + "," + idB + "]";
-        mockMvc.perform(delete("/api/user")
+        String body = "{\"ids\":[" + idA + "," + idB + "]}";
+        mockMvc.perform(put("/api/users/batch-disable")
                         .header(HttpHeaders.AUTHORIZATION, adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -287,24 +278,24 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
         mockMvc.perform(get("/api/user/" + idA)
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isEmpty());
+                .andExpect(jsonPath("$.data.accountEnabled").value(0));
 
         mockMvc.perform(get("/api/user/" + idB)
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isEmpty());
+                .andExpect(jsonPath("$.data.accountEnabled").value(0));
     }
 
     @Test
-    @DisplayName("zhangsan (no user:delete permission) is rejected from batch DELETE with 520")
-    void zhangsanBatchDelete_isPermissionDenied() throws Exception {
-        // The auth check fires before the SQL, so no row is actually deleted.
+    @DisplayName("zhangsan (no user:delete permission) is rejected from PUT /api/users/batch-disable with 520")
+    void zhangsanBatchDisable_isPermissionDenied() throws Exception {
+        // The auth check fires before the SQL, so no row is actually disabled.
         // We assert the rejection contract, not the SQL effect.
-        mockMvc.perform(delete("/api/user")
+        mockMvc.perform(put("/api/users/batch-disable")
                         .header(HttpHeaders.AUTHORIZATION, zhangsanToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("[9999, 9998]"))
-                .andExpect(status().isOk())
+                        .content("{\"ids\":[9999, 9998]}"))
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(520))
                 .andExpect(jsonPath("$.msg").value("\u6ca1\u6709\u8bbf\u95ee\u6743\u9650"));
     }
