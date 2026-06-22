@@ -1,5 +1,5 @@
 ---
-description: MariaDB/MySQL Schema、MyBatis Mapper XML、SQL 安全、并发写入和数据迁移规范。
+description: MariaDB/MySQL Schema、MyBatis Mapper XML、SQL 安全、并发写入和初始化数据规范。
 globs: "dealer-server/src/**/*"
 ---
 
@@ -59,10 +59,10 @@ globs: "dealer-server/src/**/*"
 2. 优先采用可向前兼容的“新增、回填、切换、清理”步骤，禁止直接破坏旧代码读取。
 3. 提供历史数据回填和校验 SQL，明确失败后的回滚或继续策略。
 4. 同步生产 Schema、测试 H2 Schema、初始化数据、Model、Mapper XML 和测试数据。
-5. 删除字段、索引或旧 code 前必须确认所有代码和数据已完成迁移。
+5. 删除字段、索引或旧 code 前必须确认所有代码和初始化数据已同步更新。
 
 ## 验证
 
 - Mapper 变更至少运行对应 Mapper/Service 测试；方言相关 SQL 必须验证 MariaDB/MySQL 兼容性。
 - 约束和并发变更必须覆盖正常写入、重复写入、非法状态和影响行数为 `0`。
-- 迁移完成后必须核对总行数、空值、重复值、孤儿关联及关键金额汇总。
+- Schema 调整后必须核对总行数、空值、重复值、孤儿关联及关键金额汇总。
