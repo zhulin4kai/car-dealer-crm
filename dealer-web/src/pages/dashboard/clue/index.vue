@@ -319,13 +319,13 @@
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, reactive, onMounted, computed, watch } from 'vue'
-import { messageConfirm, messageTip } from '@/shared/utils/legacy-util'
+import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import {
   batchDeleteCluesByIds,
   getCurrentClues,
   importExcelAPI,
   delClueById,
-  checkPhoneIsExist,
+  isCluePhoneAvailable,
   getLoginInfo,
   getClueDetail,
   addClue as addClueAPI,
@@ -360,16 +360,7 @@ import { Label } from '@/components/ui/label'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
 // 原有的线索列表相关数据 (严禁修改)
-const clueList = ref([{
-  ownerDO: {},
-  activityDO: {},
-  appellationDO: {},
-  needLoanDO: {},
-  intentionStateDO: {},
-  intentionProductDO: {},
-  stateDO: {},
-  sourceDO: {}
-}])
+const clueList = ref<Clue[]>([])
 
 const pageSize = ref(10)
 const total = ref(0)
@@ -385,15 +376,15 @@ const dialogTitle = ref('录入线索')
 const clueQuery = reactive<Record<string, unknown>>({})
 
 // 加载动态数据
-const activityOptions = ref<Activity[]>([{}])
-const productOptions = ref<Product[]>([{}])
+const activityOptions = ref<Activity[]>([])
+const productOptions = ref<Product[]>([])
 // 加载字典数据
-const ownerOptions = ref<User[]>([{}])
-const appellationOptions = ref<DictValue[]>([{}])
-const needLoanOptions = ref<DictValue[]>([{}])
-const intentionStateOptions = ref<DictValue[]>([{}])
-const clueStateOptions = ref<DictValue[]>([{}])
-const sourceOptions = ref<DictValue[]>([{}])
+const ownerOptions = ref<User[]>([])
+const appellationOptions = ref<DictValue[]>([])
+const needLoanOptions = ref<DictValue[]>([])
+const intentionStateOptions = ref<DictValue[]>([])
+const clueStateOptions = ref<DictValue[]>([])
+const sourceOptions = ref<DictValue[]>([])
 
 // 线索表单校验规则 (zod，含 checkPhone 自定义验证器 → zod refine)
 const clueSchema = toTypedSchema(z.object({
@@ -404,11 +395,7 @@ const clueSchema = toTypedSchema(z.object({
       if (!v) return true
       // 如果是编辑模式且手机号未变化，跳过验证
       if (clueQuery.id > 0 && clueQuery.phone === v) return true
-      try {
-        await checkPhoneIsExist(v)
-      } catch { /* ignore */ }
-      // 原代码 if(false) 条件永远不成立，始终验证通过
-      return true
+      return isCluePhoneAvailable(v)
     }, { message: '该手机号录入过了，不能再录入' }),
   fullName: z.string()
     .refine(v => !v || v.length >= 2, { message: '姓名至少2个汉字' })
@@ -494,11 +481,9 @@ const startIndex = (index: number) => {
 // 原有的方法 (严禁修改 getData)
 const getData = (current: number) => {
   getCurrentClues(current).then((resp: PageResult<Clue>) => {
-    if (true) {
-      clueList.value = resp.list
-      pageSize.value = resp.pageSize
-      total.value = resp.total
-    }
+    clueList.value = resp.list
+    pageSize.value = resp.pageSize
+    total.value = resp.total
   })
   currentPage.value = current
 }
@@ -525,24 +510,14 @@ const uploadFile = () => {
   let formData = new FormData()
   formData.append('file', selectedFile)
   importExcelAPI(formData).then((resp: unknown) => {
-    if (true) {
-      messageTip("导入成功", "success")
-      // 清除已上传的文件
-      if (fileInputRef.value) {
-        fileInputRef.value.value = ''
-      }
-      selectedFile = null
-      // 重新加载页面
-      getData(currentPage.value)
-      importExcelDialogVisible.value = false
-    } else {
-      messageTip("导入失败", "error")
+    messageTip("导入成功", "success")
+    if (fileInputRef.value) {
+      fileInputRef.value.value = ''
     }
+    selectedFile = null
+    getData(currentPage.value)
+    importExcelDialogVisible.value = false
   })
-}
-
-const handleSelectionChange = (selection: Clue[]) => {
-  selectedIds.value = selection.map(item => item.id)
 }
 
 // 批量删除（替换 ElMessage/ElMessageBox 直接调用）
@@ -554,21 +529,17 @@ const handleBatchDelete = async () => {
 
   try {
     await messageConfirm('确定要删除选中的线索吗?')
+  } catch {
+    messageTip('已取消删除', 'info')
+    return
+  }
 
-    const res = await batchDeleteCluesByIds(selectedIds.value)
-    if (true) {
-      messageTip('批量删除成功', 'success')
-      getData(currentPage.value)
-    } else {
-      messageTip('批量删除失败', 'error')
-      getData(currentPage.value)
-    }
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message !== 'cancel') {
-      messageTip('请求失败，请检查网络或重试', 'error')
-    } else {
-      messageTip('已取消删除', 'info')
-    }
+  try {
+    await batchDeleteCluesByIds(selectedIds.value)
+    messageTip('批量删除成功', 'success')
+    getData(currentPage.value)
+  } catch (error) {
+    messageTip('请求失败，请检查网络或重试', 'error')
   }
 }
 
@@ -584,12 +555,8 @@ const view = (id: number | string) => {
 const del = (id: number | string) => {
   messageConfirm("您确定要删除该数据吗？").then(() => {
     delClueById(id).then((resp: unknown) => {
-      if (true) {
-        messageTip("删除成功", "success")
-        getData(currentPage.value)
-      } else {
-        messageTip("删除失败，原因：" + '请求失败', "error")
-      }
+      messageTip("删除成功", "success")
+      getData(currentPage.value)
     })
   }).catch(() => {
     messageTip("取消删除", "warning")
@@ -642,36 +609,30 @@ const loadActivityAndProduct = async () => {
     endTime: '',
   }
   const activityRes = await getActivityList(param)
-  if (true) {
-    activityOptions.value = (activityRes as PageResult<Activity>).list
-  }
+  activityOptions.value = (activityRes as PageResult<Activity>).list
   const productRes = await getProductList({
       page: 1,
       size: 100
   })
-  if (true) {
-    productOptions.value = (productRes as PageResult<Product>).list
-  }
+  productOptions.value = (productRes as PageResult<Product>).list
 }
 
 const loadDicValue = async (typeCode: string) => {
   await getDictValueList({typeCode}).then((resp: PageResult<DictValue>) => {
-    if (true) {
-      if (typeCode === 'appellation') {
-        appellationOptions.value = resp.list
-      } else if (typeCode === 'needLoan') {
-        needLoanOptions.value = resp.list
-      } else if (typeCode === 'intentionState') {
-        intentionStateOptions.value = resp.list
-      } else if (typeCode === 'clueState') {
-        clueStateOptions.value = resp.list
-      } else if (typeCode === 'source') {
-        sourceOptions.value = resp.list
-      } else if (typeCode === 'activity') {
-        activityOptions.value = resp.list
-      } else if (typeCode === 'product') {
-        productOptions.value = resp.list
-      }
+    if (typeCode === 'appellation') {
+      appellationOptions.value = resp.list
+    } else if (typeCode === 'needLoan') {
+      needLoanOptions.value = resp.list
+    } else if (typeCode === 'intentionState') {
+      intentionStateOptions.value = resp.list
+    } else if (typeCode === 'clueState') {
+      clueStateOptions.value = resp.list
+    } else if (typeCode === 'source') {
+      sourceOptions.value = resp.list
+    } else if (typeCode === 'activity') {
+      activityOptions.value = resp.list
+    } else if (typeCode === 'product') {
+      productOptions.value = resp.list
     }
   })
 }
@@ -679,9 +640,7 @@ const loadDicValue = async (typeCode: string) => {
 // 加载负责人 (严禁修改)
 const loadOwner = () => {
   getOwnerList().then((resp: User[]) => {
-    if (true) {
-      ownerOptions.value = resp
-    }
+    ownerOptions.value = resp
   })
 }
 
@@ -698,30 +657,28 @@ const loadLoginUser = () => {
 const loadClue = (id: number | string) => {
   if (id) {
     getClueDetail(id).then((resp: Clue) => {
-      if (true) {
-        Object.assign(clueQuery, resp)
-        setValues({
-          phone: resp.phone ?? '',
-          fullName: resp.fullName ?? '',
-          qq: String(resp.qq ?? ''),
-          email: resp.email ?? '',
-          age: String(resp.age ?? ''),
-          yearIncome: String(resp.yearIncome ?? ''),
-          description: resp.description ?? '',
-          ownerId: String(resp.ownerId ?? ''),
-          activityId: String(resp.activityId ?? ''),
-          appellation: String(resp.appellation ?? ''),
-          weixin: resp.weixin ?? '',
-          job: resp.job ?? '',
-          address: resp.address ?? '',
-          needLoan: String(resp.needLoan ?? ''),
-          intentionState: String(resp.intentionState ?? ''),
-          intentionProduct: String(resp.intentionProduct ?? ''),
-          state: String(resp.state ?? ''),
-          source: String(resp.source ?? ''),
-          nextContactTime: resp.nextContactTime ?? '',
-        })
-      }
+      Object.assign(clueQuery, resp)
+      setValues({
+        phone: resp.phone ?? '',
+        fullName: resp.fullName ?? '',
+        qq: String(resp.qq ?? ''),
+        email: resp.email ?? '',
+        age: String(resp.age ?? ''),
+        yearIncome: String(resp.yearIncome ?? ''),
+        description: resp.description ?? '',
+        ownerId: String(resp.ownerId ?? ''),
+        activityId: String(resp.activityId ?? ''),
+        appellation: String(resp.appellation ?? ''),
+        weixin: resp.weixin ?? '',
+        job: resp.job ?? '',
+        address: resp.address ?? '',
+        needLoan: String(resp.needLoan ?? ''),
+        intentionState: String(resp.intentionState ?? ''),
+        intentionProduct: String(resp.intentionProduct ?? ''),
+        state: String(resp.state ?? ''),
+        source: String(resp.source ?? ''),
+        nextContactTime: resp.nextContactTime ?? '',
+      })
     })
   }
 }
@@ -741,23 +698,15 @@ const onSubmitClue = handleSubmit(() => {
   }
   if (clueQuery.id > 0) {
     updateClue(formData).then((resp: unknown) => {
-      if (true) {
-        messageTip("编辑成功", "success")
-        clueDialogVisible.value = false
-        getData(currentPage.value)
-      } else {
-        messageTip("编辑失败", "error")
-      }
+      messageTip("编辑成功", "success")
+      clueDialogVisible.value = false
+      getData(currentPage.value)
     })
   } else {
     addClueAPI(formData).then((resp: unknown) => {
-      if (true) {
-        messageTip("录入成功", "success")
-        clueDialogVisible.value = false
-        getData(currentPage.value)
-      } else {
-        messageTip("录入失败", "error")
-      }
+      messageTip("录入成功", "success")
+      clueDialogVisible.value = false
+      getData(currentPage.value)
     })
   }
 })

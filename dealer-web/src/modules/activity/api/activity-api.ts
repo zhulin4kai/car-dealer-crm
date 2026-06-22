@@ -2,7 +2,7 @@ import { httpClient } from '@/shared/api/http-client'
 import type { PageResult } from '@/shared/api/api-types'
 import type { SelectOption } from '@/shared/types/common'
 import type { EntityId } from '@/shared/types/id'
-import type { Activity, ActivityForm, ActivityQuery } from '@/modules/activity/model/activity.types'
+import type { Activity, ActivityForm, ActivityQuery, ActivityRemark } from '@/modules/activity/model/activity.types'
 
 export function fetchActivityPage(params: ActivityQuery): Promise<PageResult<Activity>> {
   return httpClient.get<PageResult<Activity>>('/api/activitys', { params })
@@ -30,6 +30,20 @@ export function createActivity(formData: ActivityForm): Promise<unknown> {
 
 export function updateActivity(formData: ActivityForm): Promise<unknown> {
   return httpClient.put('/api/activity', formData)
+}
+
+export function createActivityRemark(activityId: EntityId, noteContent: string): Promise<unknown> {
+  return httpClient.post('/api/activity/remark', { activityId, noteContent })
+}
+
+export function fetchActivityRemarkPage(current: number, activityId: EntityId): Promise<PageResult<ActivityRemark>> {
+  return httpClient.get<PageResult<ActivityRemark>>('/api/activity/remark', {
+    params: { current, activityId },
+  })
+}
+
+export function deleteActivityRemark(id: EntityId): Promise<unknown> {
+  return httpClient.delete(`/api/activity/remark/${id}`)
 }
 
 export const getActivityList = fetchActivityPage

@@ -2,6 +2,7 @@ import { httpClient } from '@/shared/api/http-client'
 import type { PageResult } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
 import type { Clue, ClueForm, ClueRemark } from '@/modules/clue/model/clue.types'
+import type { User } from '@/modules/user/model/user.types'
 
 export function batchDeleteCluesByIds(ids: EntityId[]): Promise<unknown> {
   return httpClient.post('/api/clue/batch', ids)
@@ -19,12 +20,17 @@ export function delClueById(id: EntityId): Promise<unknown> {
   return httpClient.delete(`/api/clue/${id}`)
 }
 
-export function checkPhoneIsExist(phone: string): Promise<unknown> {
-  return httpClient.get(`/api/clue/${phone}`)
+export async function isCluePhoneAvailable(phone: string): Promise<boolean> {
+  try {
+    await httpClient.get(`/api/clue/${phone}`)
+    return true
+  } catch {
+    return false
+  }
 }
 
-export function getLoginInfo(): Promise<unknown> {
-  return httpClient.get('/api/login/info')
+export function getLoginInfo(): Promise<User> {
+  return httpClient.get<User>('/api/login/info')
 }
 
 export function fetchClueDetail(id: EntityId): Promise<Clue> {

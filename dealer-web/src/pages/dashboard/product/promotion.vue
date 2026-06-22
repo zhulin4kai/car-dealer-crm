@@ -72,6 +72,17 @@
         </DialogHeader>
         <form class="space-y-4" @submit.prevent="handleSubmit">
           <div class="space-y-2">
+            <Label>商品</Label>
+            <Select v-model="promotionForm.productId">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择商品" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in productOptions" :key="item.value" :value="item.value">{{ item.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="space-y-2">
             <Label>促销名称</Label>
             <Input v-model="promotionForm.name" />
           </div>
@@ -126,8 +137,8 @@
           </div>
         </form>
         <DialogFooter>
-          <Button variant="outline" @click="dialogVisible = false">取消</Button>
-          <Button @click="handleSubmit">确定</Button>
+          <Button variant="outline" @click="dialogVisible = false" :disabled="submitting">取消</Button>
+          <Button @click="handleSubmit" :disabled="submitting">{{ submitting ? '提交中...' : '确定' }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -137,9 +148,23 @@
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-import { createPromotion, deletePromotion, getPromotionList, updatePromotion } from '@/modules/product/api/product-api'
-import type { ProductForm, ProductPromotion } from '@/modules/product/model/product.types'
+import {
+  createPromotion,
+  deletePromotion,
+  fetchPromotionDetail,
+  fetchProductPage,
+  getPromotionList,
+  updatePromotion,
+} from '@/modules/product/api/product-api'
+import type { ProductPromotion } from '@/modules/product/model/product.types'
+import {
+  toCreatePromotionRequest,
+  toUpdatePromotionRequest,
+  type PromotionFormValues,
+} from '@/modules/product/model/product.types'
+import { toLocalDateTimeInput, fromLocalDateTimeInput } from '@/shared/datetime/local-date'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
@@ -180,6 +205,7 @@ import {
 
 defineOptions({ name: 'ProductPromotionView' })
 
+const router = useRouter()
 const promotionList = ref<ProductPromotion[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -187,7 +213,18 @@ const total = ref(0)
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
-const promotionForm = ref<ProductForm>({ name: '', type: '折扣', discount: 0, startTime: '', endTime: '', status: '未开始' })
+const submitting = ref(false)
+const productOptions = ref<{ value: string; label: string }[]>([])
+
+const promotionForm = ref<PromotionFormValues>({
+  productId: '',
+  name: '',
+  type: '折扣',
+  discount: 0,
+  startTime: '',
+  endTime: '',
+  status: '未开始',
+})
 
 interface BadgeStyle {
   variant: 'default' | 'secondary' | 'destructive' | 'outline'
@@ -212,16 +249,21 @@ function getStatusTag(status: string): BadgeStyle {
   return map[status] ?? { variant: 'outline', badgeClass: '' }
 }
 
-function formatDateTime(dateTimeStr: string): string {
+function formatDateTime(dateTimeStr?: string): string {
   if (!dateTimeStr) return ''
-  const date = new Date(dateTimeStr)
-  const year = String(date.getFullYear())
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-  return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds
+  return dateTimeStr.replace('T', ' ').split('.')[0] ?? ''
+}
+
+async function loadProductOptions(): Promise<void> {
+  try {
+    const res = await fetchProductPage({ page: 1, size: 100 })
+    productOptions.value = res.list.filter(p => p.id !== null && p.id !== undefined).map(p => ({
+      value: String(p.id),
+      label: `${p.sku ?? ''} ${p.name ?? ''}`.trim(),
+    }))
+  } catch {
+    messageTip('加载商品选项失败', 'error')
+  }
 }
 
 async function loadPromotions(): Promise<void> {
@@ -239,41 +281,122 @@ async function loadPromotions(): Promise<void> {
 
 function handleAdd(): void {
   dialogType.value = 'add'
-  promotionForm.value = { name: '', type: '折扣', discount: 0, startTime: '', endTime: '', status: '未开始' }
+  promotionForm.value = {
+    productId: '',
+    name: '',
+    type: '折扣',
+    discount: 0,
+    startTime: '',
+    endTime: '',
+    status: '未开始',
+  }
   dialogVisible.value = true
 }
 
-function handleEdit(row: ProductPromotion): void {
+async function handleEdit(row: ProductPromotion): Promise<void> {
   dialogType.value = 'edit'
-  promotionForm.value = { ...row }
-  dialogVisible.value = true
+  try {
+    const detail = await fetchPromotionDetail(row.id)
+    promotionForm.value = {
+      productId: String(detail.productId ?? ''),
+      name: detail.name ?? '',
+      type: detail.type ?? '折扣',
+      discount: Number(detail.discount ?? 0),
+      startTime: toLocalDateTimeInput(detail.startTime),
+      endTime: toLocalDateTimeInput(detail.endTime),
+      status: detail.status ?? '未开始',
+    }
+    dialogVisible.value = true
+  } catch {
+    messageTip('加载促销详情失败', 'error')
+  }
 }
 
 async function handleDelete(row: ProductPromotion): Promise<void> {
   try {
     await messageConfirm('确认删除该促销活动？')
-    if (row.id === undefined) return
+  } catch {
+    messageTip('取消删除', 'warning')
+    return
+  }
+  try {
     await deletePromotion(row.id)
     messageTip('删除成功', 'success')
     await loadPromotions()
-  } catch (error) {
-    if (error !== 'cancel') messageTip('删除失败', 'error')
+  } catch {
+    messageTip('删除失败', 'error')
   }
 }
 
+function validateForm(): string | null {
+  if (!promotionForm.value.productId) {
+    return '请选择商品'
+  }
+  if (!promotionForm.value.name.trim()) {
+    return '请输入促销名称'
+  }
+  if (!promotionForm.value.startTime || !promotionForm.value.endTime) {
+    return '请选择开始和结束时间'
+  }
+  const start = fromLocalDateTimeInput(promotionForm.value.startTime)
+  const end = fromLocalDateTimeInput(promotionForm.value.endTime)
+  if (!start || !end) {
+    return '时间格式有误'
+  }
+  if (start >= end) {
+    return '结束时间必须晚于开始时间'
+  }
+  if (promotionForm.value.discount < 0) {
+    return '折扣/金额不能为负'
+  }
+  if (promotionForm.value.type === '折扣' && promotionForm.value.discount > 10) {
+    return '折扣不能超过10'
+  }
+  return null
+}
+
 async function handleSubmit(): Promise<void> {
+  if (submitting.value) return
+  const error = validateForm()
+  if (error) {
+    messageTip(error, 'warning')
+    return
+  }
+  submitting.value = true
   try {
+    const start = fromLocalDateTimeInput(promotionForm.value.startTime)
+    const end = fromLocalDateTimeInput(promotionForm.value.endTime)
+    if (!start || !end) {
+      messageTip('时间格式有误', 'error')
+      return
+    }
+    const valuesWithTime: PromotionFormValues = {
+      ...promotionForm.value,
+      startTime: start,
+      endTime: end,
+    }
     if (dialogType.value === 'add') {
-      await createPromotion(promotionForm.value)
+      await createPromotion(toCreatePromotionRequest(valuesWithTime))
       messageTip('新增成功', 'success')
-    } else if (promotionForm.value.id !== undefined) {
-      await updatePromotion(String(promotionForm.value.id), promotionForm.value)
+    } else {
+      const editingId = promotionList.value.find(p => p.productId === promotionForm.value.productId)?.id
+      if (editingId === undefined) {
+        messageTip('无法确定编辑目标', 'error')
+        return
+      }
+      await updatePromotion(editingId, toUpdatePromotionRequest(valuesWithTime))
       messageTip('编辑成功', 'success')
     }
     dialogVisible.value = false
-    await loadPromotions()
+    try {
+      await loadPromotions()
+    } catch {
+      messageTip('操作已成功，但列表刷新失败', 'warning')
+    }
   } catch {
     messageTip('操作失败', 'error')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -283,8 +406,15 @@ function handleCurrentChange(val: number): void {
 }
 
 function goBack(): void {
-  window.history.length > 1 ? window.history.back() : (window.location.href = '/dashboard/product')
+  if (window.history.length > 1) {
+    window.history.back()
+  } else {
+    router.push('/dashboard/product')
+  }
 }
 
-onMounted(() => { void loadPromotions() })
+onMounted(() => {
+  void loadProductOptions()
+  void loadPromotions()
+})
 </script>

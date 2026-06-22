@@ -114,8 +114,8 @@
           </div>
         </form>
         <DialogFooter>
-          <Button variant="outline" @click="dialogVisible = false">取消</Button>
-          <Button @click="onFormSubmit">确定</Button>
+          <Button variant="outline" @click="dialogVisible = false" :disabled="submitting">取消</Button>
+          <Button @click="onFormSubmit" :disabled="submitting">{{ submitting ? '提交中...' : '确定' }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -128,10 +128,12 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
-import { getDictTypeList, createDictType, updateDictType, deleteDictType, batchDeleteDictTypes, clearCache } from '@/modules/dict/api/dict-api'
-import type { DictType } from '@/modules/dict/model/dict.types'
-import { messageConfirm } from '@/shared/utils/legacy-util'
-import { messageTip } from '@/shared/utils/feedback'
+import { getDictTypeList, createDictType, updateDictType, deleteDictType, batchDeleteDictTypes } from '@/modules/dict/api/dict-api'
+import type { DictQuery, DictType } from '@/modules/dict/model/dict.types'
+import type { PageResult } from '@/shared/api/api-types'
+import { useLatestRequest } from '@/shared/composables/use-latest-request'
+import type { EntityId } from '@/shared/types/id'
+import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -143,11 +145,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
-const loading = ref(false)
+const { run: runDictTypeQuery, loading } = useLatestRequest<PageResult<DictType>>()
+const submitting = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
-const tableData = ref([])
-const selectedIds = ref([])
+const tableData = ref<DictType[]>([])
+const selectedIds = ref<EntityId[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -180,58 +183,51 @@ const allSelected = computed(() =>
 
 const toggleSelectAll = (checked: boolean) => {
   if (checked) {
-    selectedIds.value = tableData.value.map(data => data.id)
+    selectedIds.value = tableData.value.map(data => data.id).filter((id): id is EntityId => id !== undefined)
   } else {
     selectedIds.value = []
   }
 }
 
 const toggleRowSelection = (row: DictType, checked: boolean) => {
-  if (checked) {
+  if (checked && row.id !== undefined) {
     if (!selectedIds.value.includes(row.id)) {
       selectedIds.value.push(row.id)
     }
   } else {
-    selectedIds.value = selectedIds.value.filter((id: number | string) => id !== row.id)
+    selectedIds.value = selectedIds.value.filter((id: EntityId) => id !== row.id)
   }
 }
 
-// 加载数据
+function buildDictTypeQuery(): DictQuery {
+  const params: DictQuery = {
+    page: currentPage.value,
+    size: pageSize.value,
+  }
+  if (searchForm.typeCode.trim()) {
+    params.typeCode = searchForm.typeCode.trim()
+  }
+  if (searchForm.typeName.trim()) {
+    params.typeName = searchForm.typeName.trim()
+  }
+  return params
+}
+
 const loadData = async () => {
-  loading.value = true
   try {
-    const params = {
-      page: currentPage.value,
-      size: pageSize.value,
-      ...searchForm
-    }
-    const res = await getDictTypeList(params)
-    if (true) {
-      // 对数据按照id升序排序
-      tableData.value = res.list.sort((a, b) => a.id - b.id)
-      total.value = res.total
-    }
-  } catch (error) {
-    console.error('获取字典类型列表失败:', error)
+    const res = await runDictTypeQuery(signal => getDictTypeList(buildDictTypeQuery(), signal))
+    if (!res) return
+    tableData.value = [...res.list].sort((a, b) => Number(a.id ?? 0) - Number(b.id ?? 0))
+    total.value = res.total
+    selectedIds.value = []
+  } catch {
     messageTip('获取数据失败', 'error')
-  } finally {
-    loading.value = false
   }
 }
 
-// 搜索
-const handleSearch = async () => {
-  try {
-    loading.value = true
-    const res = await getDictTypeList(searchForm)
-    if (true) {
-      tableData.value = res.list
-    }
-  } catch (error) {
-    console.error('获取字典类型列表失败:', error)
-  } finally {
-    loading.value = false
-  }
+function handleSearch() {
+  currentPage.value = 1
+  void loadData()
 }
 
 // 新增
@@ -248,98 +244,87 @@ const handleAdd = () => {
 }
 
 // 编辑
-const handleEdit = (row) => {
+const handleEdit = (row: DictType) => {
   isEdit.value = true
   Object.assign(values, row)
   dialogVisible.value = true
 }
 
 // 删除
-const handleDelete = async (row) => {
+const handleDelete = async (row: DictType) => {
   try {
     await messageConfirm('确认删除该字典类型吗？')
-    const res = await deleteDictType(row.id)
-    if (true) {
-      messageTip('删除成功', 'success')
-      loadData()
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      messageTip('删除失败', 'error')
-    }
+  } catch {
+    messageTip('取消删除', 'warning')
+    return
+  }
+  try {
+    await deleteDictType(row.id!)
+    messageTip('删除成功', 'success')
+    await loadData()
+  } catch {
+    messageTip('删除失败', 'error')
   }
 }
 
-// 批量删除
 const handleBatchDelete = async () => {
   if (!selectedIds.value.length) return
   try {
     await messageConfirm(`确认删除选中的 ${selectedIds.value.length} 条数据吗？`)
-    const res = await batchDeleteDictTypes(selectedIds.value)
-    if (true) {
-      messageTip('批量删除成功', 'success')
-      loadData()
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      messageTip('批量删除失败', 'error')
-    }
+  } catch {
+    messageTip('取消批量删除', 'warning')
+    return
+  }
+  try {
+    await batchDeleteDictTypes(selectedIds.value)
+    messageTip('批量删除成功', 'success')
+    await loadData()
+  } catch {
+    messageTip('批量删除失败', 'error')
   }
 }
 
-// 提交表单
 const doSubmit = async (formData: Record<string, unknown>) => {
+  if (submitting.value) return
+  submitting.value = true
   try {
-    // 2. 准备请求数据
     const requestData = {
       typeCode: formData.typeCode,
       typeName: formData.typeName,
-      remark: formData.remark
+      remark: formData.remark,
     }
-
-    // 3. 根据编辑状态选择API并调用
-    let res
     if (isEdit.value) {
-      res = await updateDictType(values.id, requestData)
+      await updateDictType(values.id, requestData)
+      messageTip('更新成功', 'success')
     } else {
-      res = await createDictType(requestData)
+      await createDictType(requestData)
+      messageTip('创建成功', 'success')
     }
-
-    console.log(res)
-
-    // 4. 处理响应结果
-    if (true) {
-      messageTip(isEdit.value ? '更新成功' : '创建成功', 'success')
-      dialogVisible.value = false
-      loadData()
-    } else {
-      messageTip('请求失败' || (isEdit.value ? '更新失败' : '创建失败'), 'error')
+    dialogVisible.value = false
+    try {
+      await loadData()
+    } catch {
+      messageTip('操作已成功，但列表刷新失败', 'warning')
     }
-  } catch (error) {
-    console.error('提交字典类型失败:', error)
+  } catch {
     messageTip(isEdit.value ? '更新失败' : '创建失败', 'error')
+  } finally {
+    submitting.value = false
   }
 }
 
 const onFormSubmit = handleSubmit(doSubmit)
 
-// 选择变化
-const handleSelectionChange = (selection) => {
-  selectedIds.value = selection.map(item => item.id)
-}
-
-// 分页变化
-const handleCurrentChange = (val) => {
+function handleCurrentChange(val: number) {
   currentPage.value = val
-  loadData()
+  void loadData()
 }
 
-// 计算序号起始值
-const startIndex = (index) => {
+function startIndex(index: number) {
   return (currentPage.value - 1) * pageSize.value + index + 1
 }
 
 onMounted(() => {
-  loadData()
+  void loadData()
 })
 </script>

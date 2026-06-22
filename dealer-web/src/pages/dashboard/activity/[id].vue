@@ -133,7 +133,6 @@
               <TableCell class="text-center">{{ remark.editByDO?.name }}</TableCell>
               <TableCell class="text-center">
                 <div class="flex justify-center gap-1">
-                  <Button variant="link" size="sm" @click="editRemark(remark.id)">编辑</Button>
                   <Button variant="link" size="sm" class="text-destructive" @click="del(remark.id)">删除</Button>
                 </div>
               </TableCell>
@@ -157,9 +156,14 @@ import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
 import { Pencil, RotateCw, Loader2 } from '@lucide/vue'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
-import { doDelete, doGet, doPost } from '@/shared/api/http-client'
-import type { Activity } from '@/modules/activity/model/activity.types'
-import type { ClueRemark } from '@/modules/clue/model/clue.types'
+import {
+  createActivityRemark,
+  deleteActivityRemark,
+  fetchActivityById,
+  fetchActivityRemarkPage,
+} from '@/modules/activity/api/activity-api'
+import type { Activity, ActivityRemark } from '@/modules/activity/model/activity.types'
+import { toRouteId } from '@/shared/types/id'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -180,7 +184,7 @@ const activityDetail = ref<Activity>({
 })
 
 // 活动备注的列表对象
-const activityRemarkList = ref<ClueRemark[]>([])
+const activityRemarkList = ref<ActivityRemark[]>([])
 
 // 分页
 const pageSize = ref(10)
@@ -211,68 +215,49 @@ const goBack = () => {
   router.go(-1)
 }
 
-// 加载市场活动详情 (严禁修改)
 const loadActivityDetail = async () => {
-  const id = route.params.id
+  const id = toRouteId(route.params.id)
+  if (!id) return
   try {
-    const resp = await doGet("/api/activity/" + id, {})
-    if (true) {
-      activityDetail.value = resp
-      if (!activityDetail.value.ownerDO) {
-        activityDetail.value.ownerDO = {}
-      }
-      if (!activityDetail.value.createByDO) {
-        activityDetail.value.createByDO = {}
-      }
-      if (!activityDetail.value.editByDO) {
-        activityDetail.value.editByDO = {}
-      }
+    activityDetail.value = await fetchActivityById(id)
+    if (!activityDetail.value.ownerDO) {
+      activityDetail.value.ownerDO = {}
+    }
+    if (!activityDetail.value.createByDO) {
+      activityDetail.value.createByDO = {}
+    }
+    if (!activityDetail.value.editByDO) {
+      activityDetail.value.editByDO = {}
     }
   } catch (error) {
-    console.error('加载活动详情失败:', error)
     messageTip("加载活动详情失败", "error")
   }
 }
 
-// 提交活动备注 (严禁修改 API 调用)
 const onSubmitRemark = handleSubmit(async (formData) => {
   submitting.value = true
   try {
-    const resp = await doPost("/api/activity/remark", {
-      activityId: activityDetail.value.id,
-      noteContent: formData.noteContent
-    })
-    if (true) {
-      messageTip("提交成功", "success")
-      // 重新加载数据而不是刷新整个页面
-      await loadActivityRemarkList(1)
-      // 清空表单
-      resetRemarkForm()
-    } else {
-      messageTip("提交失败", "error")
-    }
+    if (!activityDetail.value.id) throw new Error('活动ID不存在')
+    await createActivityRemark(activityDetail.value.id, formData.noteContent)
+    messageTip("提交成功", "success")
+    await loadActivityRemarkList(1)
+    resetRemarkForm()
   } catch (error) {
-    console.error('提交活动备注失败:', error)
     messageTip("提交失败", "error")
   } finally {
     submitting.value = false
   }
 })
 
-// 查询活动备注列表数据 (严禁修改)
 const loadActivityRemarkList = async (current: number) => {
+  const activityId = toRouteId(route.params.id)
+  if (!activityId) return
   try {
-    const resp = await doGet("/api/activity/remark", {
-      current: current,
-      activityId: route.params.id
-    })
-    if (true) {
-      activityRemarkList.value = resp.list || []
-      pageSize.value = resp.pageSize || 10
-      total.value = resp.total || 0
-    }
+    const resp = await fetchActivityRemarkPage(current, activityId)
+    activityRemarkList.value = resp.list || []
+    pageSize.value = resp.pageSize || 10
+    total.value = resp.total || 0
   } catch (error) {
-    console.error('加载备注列表失败:', error)
     messageTip("加载备注列表失败", "error")
   }
 }
@@ -282,31 +267,20 @@ const toPage = (current: number) => {
   loadActivityRemarkList(current)
 }
 
-// 编辑备注记录 (待实现)
-const editRemark = (id: number | string) => {
-  messageTip("编辑功能待实现", "info")
-}
-
-// 删除活动备注 (严禁修改 API 调用)
 const del = async (id: number | string) => {
   try {
     await messageConfirm("您确定要删除该数据吗？")
+  } catch {
+    messageTip("取消删除", "info")
+    return
+  }
 
-    const resp = await doDelete("/api/activity/remark/" + id, {})
-    if (true) {
-      messageTip("删除成功", "success")
-      // 重新加载数据
-      await loadActivityRemarkList(1)
-    } else {
-      messageTip("删除失败，原因：" + '请求失败', "error")
-    }
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message !== 'cancel') {
-      console.error('删除备注失败:', error)
-      messageTip("删除失败", "error")
-    } else {
-      messageTip("取消删除", "info")
-    }
+  try {
+    await deleteActivityRemark(id)
+    messageTip("删除成功", "success")
+    await loadActivityRemarkList(1)
+  } catch (error) {
+    messageTip("删除失败", "error")
   }
 }
 

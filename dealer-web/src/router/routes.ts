@@ -57,6 +57,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '客户管理', activeMenu: '/dashboard/customer', permission: PERMISSIONS.customer.list },
       },
       {
+        path: 'customer/:id',
+        name: 'customer-detail',
+        component: () => import('@/pages/dashboard/customer/[id].vue'),
+        meta: { requiresAuth: true, title: '客户详情', activeMenu: '/dashboard/customer', permission: PERMISSIONS.customer.view },
+      },
+      {
         path: 'product',
         name: 'product',
         component: () => import('@/pages/dashboard/product/index.vue'),

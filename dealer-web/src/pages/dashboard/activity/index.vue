@@ -278,13 +278,11 @@ const getData = async (current: number) => {
 
   try {
     const res = await getActivityList(params)
-    if (true) {
-      activityList.value = res.list
-      pageSize.value = res.pageSize
-      total.value = res.total
-    }
+    activityList.value = res.list
+    pageSize.value = res.pageSize
+    total.value = res.total
   } catch (error) {
-    console.error('获取活动列表失败:', error)
+    // ignore
   }
   currentPage.value = current
 }
@@ -298,11 +296,9 @@ const toPage = (current: number) => {
 const loadOwner = async () => {
   try {
     const res = await getOwnerList()
-    if (true) {
-      ownerOptions.value = res
-    }
+    ownerOptions.value = res
   } catch (error) {
-    console.error('获取负责人列表失败:', error)
+    // ignore
   }
 }
 
@@ -350,17 +346,17 @@ const batchDel = async () => {
 
   try {
     await messageConfirm('确定要删除选中的活动吗?')
+  } catch {
+    messageTip('已取消删除', 'info')
+    return
+  }
+
+  try {
     const res = await batchDeleteActivities(selectedActivityIds.value)
-    if (true) {
-      messageTip('删除成功', 'success')
-      getData(1)
-    }
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message !== 'cancel') {
-      messageTip('请求失败，请检查网络或重试', 'error')
-    } else {
-      messageTip('已取消删除', 'info')
-    }
+    messageTip('删除成功', 'success')
+    getData(1)
+  } catch (error) {
+    messageTip('请求失败，请检查网络或重试', 'error')
   }
 }
 
@@ -368,17 +364,17 @@ const batchDel = async () => {
 const del = async (id: number | string) => {
   try {
     await messageConfirm('确定要删除该活动吗?')
+  } catch {
+    messageTip('已取消删除', 'info')
+    return
+  }
+
+  try {
     const res = await deleteActivity(id)
-    if (true) {
-      messageTip('删除成功', 'success')
-      getData(currentPage.value)
-    }
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message !== 'cancel') {
-      messageTip('请求失败，请检查网络或重试', 'error')
-    } else {
-      messageTip('已取消删除', 'info')
-    }
+    messageTip('删除成功', 'success')
+    getData(currentPage.value)
+  } catch (error) {
+    messageTip('请求失败，请检查网络或重试', 'error')
   }
 }
 
@@ -386,19 +382,16 @@ const del = async (id: number | string) => {
 const loadActivityForEdit = async (id: number | string) => {
   try {
     const res = await getActivityById(id)
-    if (true) {
-      editingId.value = res.id
-      setValues({
-        ownerId: String(res.ownerId ?? ''),
-        name: res.name ?? '',
-        startTime: res.startTime ?? '',
-        endTime: res.endTime ?? '',
-        cost: String(res.cost ?? ''),
-        description: res.description ?? '',
-      })
-    }
+    editingId.value = res.id
+    setValues({
+      ownerId: String(res.ownerId ?? ''),
+      name: res.name ?? '',
+      startTime: res.startTime ?? '',
+      endTime: res.endTime ?? '',
+      cost: String(res.cost ?? ''),
+      description: res.description ?? '',
+    })
   } catch (error) {
-    console.error('获取活动详情失败:', error)
     messageTip('获取活动详情失败', 'error')
   }
 }
@@ -416,29 +409,17 @@ const onSubmitForm = handleSubmit(async (formData) => {
       fd.append('id', editingId.value)
     }
 
-    let res
     if (isEditing.value) {
-      res = await updateActivity(fd)
-      if (true) {
-        messageTip('编辑成功', 'success')
-      } else {
-        messageTip('编辑失败', 'error')
-      }
+      await updateActivity(fd)
+      messageTip('编辑成功', 'success')
     } else {
-      res = await createActivity(fd)
-      if (true) {
-        messageTip('提交成功', 'success')
-      } else {
-        messageTip('提交失败', 'error')
-      }
+      await createActivity(fd)
+      messageTip('提交成功', 'success')
     }
 
-    if (true) {
-      activityDialogVisible.value = false
-      getData(1)
-    }
+    activityDialogVisible.value = false
+    getData(1)
   } catch (error) {
-    console.error('提交失败:', error)
     messageTip('提交失败，请检查网络或重试', 'error')
   }
 })

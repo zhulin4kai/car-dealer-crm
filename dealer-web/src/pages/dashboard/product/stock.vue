@@ -194,7 +194,7 @@
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted } from 'vue'
-import { messageTip } from '@/shared/utils/legacy-util'
+import { messageTip } from '@/shared/utils/feedback'
 import { useRouter } from 'vue-router'
 import { MessageSquare, RefreshCw } from '@lucide/vue'
 import {
@@ -203,6 +203,9 @@ import {
   getStockRecords,
   getCategoryList
 } from '@/modules/product/api/product-api'
+import type { StockAlert, StockRecord, RestockRequest } from '@/modules/product/model/product.types'
+import { useLatestRequest } from '@/shared/composables/use-latest-request'
+import type { PageResult } from '@/shared/api/api-types'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
 import { Button } from '@/components/ui/button'
@@ -241,172 +244,157 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 
+interface CategoryOption {
+  value: string
+  label: string
+}
+
+const ALL_CATEGORY_ID = '__ALL_CATEGORIES__'
 const router = useRouter()
-const stockAlertList = ref([])
+const stockAlertList = ref<StockAlert[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const loading = ref(false)
 const restockLoading = ref(false)
 const restockDialogVisible = ref(false)
-const currentProduct = ref(null)
-const restockForm = ref({
-  productId: null,
+const currentProduct = ref<StockAlert | null>(null)
+const restockForm = ref<RestockRequest>({
+  productId: 0,
   quantity: 1,
-  remark: ''
+  remark: '',
 })
 const filterForm = ref({
   sku: '',
   name: '',
-    categoryId: null as number | null,
+  categoryId: ALL_CATEGORY_ID,
 })
-const categoryOptions = ref([])
+const categoryOptions = ref<CategoryOption[]>([])
 const detailDialogVisible = ref(false)
-const stockRecords = ref([])
+const stockRecords = ref<StockRecord[]>([])
 
-// 加载分类选项
-const loadCategoryOptions = async () => {
+const { run: runStockAlerts, cancel: cancelStockAlerts, loading } = useLatestRequest<PageResult<StockAlert>>()
+
+function buildStockAlertQuery() {
+  const params: Record<string, unknown> = {
+    page: currentPage.value,
+    size: pageSize.value,
+  }
+  if (filterForm.value.sku.trim()) {
+    params.sku = filterForm.value.sku.trim()
+  }
+  if (filterForm.value.name.trim()) {
+    params.name = filterForm.value.name.trim()
+  }
+  if (filterForm.value.categoryId !== ALL_CATEGORY_ID) {
+    params.categoryId = filterForm.value.categoryId
+  }
+  return params
+}
+
+async function loadCategoryOptions() {
   try {
-    const res = await getCategoryList({
-      page: 1,
-      size: 100
-    })
-
-    // 添加"全部"选项
-    const options = [{ value: '', label: '全部' }]
-
-    if (res.data && res && res.list) {
-      const categoryList = res.list.map(item => ({
-        value: item.id,
-        label: item.name
-      }))
-      categoryOptions.value = [...options, ...categoryList]
-    } else {
-      categoryOptions.value = options
-    }
-  } catch (error) {
-    categoryOptions.value = [{ value: '', label: '全部' }]
+    const res = await getCategoryList({ page: 1, size: 100 })
+    const options: CategoryOption[] = [{ value: ALL_CATEGORY_ID, label: '全部' }]
+    const categoryList = res.list.filter(item => item.id !== null && item.id !== undefined).map(item => ({
+      value: String(item.id),
+      label: item.name ?? '',
+    }))
+    categoryOptions.value = [...options, ...categoryList]
+  } catch {
+    categoryOptions.value = [{ value: ALL_CATEGORY_ID, label: '全部' }]
     messageTip('加载分类选项失败', 'error')
   }
 }
 
-// 加载库存预警列表
-const loadStockAlerts = async () => {
-  loading.value = true
-  try {
-    const params = {
-      page: currentPage.value,
-      size: pageSize.value
-    }
-
-    // 添加筛选条件
-    if (filterForm.value.sku && filterForm.value.sku.trim() !== '') {
-      params.sku = filterForm.value.sku.trim()
-    }
-    if (filterForm.value.name && filterForm.value.name.trim() !== '') {
-      params.name = filterForm.value.name.trim()
-    }
-    if (filterForm.value.categoryId) {
-      params.categoryId = filterForm.value.categoryId
-    }
-
-    const res = await getStockAlerts(params)
-
-    if (res.data && res) {
-      stockAlertList.value = res.list || []
-      total.value = res.total || 0
-    }
-  } catch (error) {
-    messageTip('加载库存预警失败', 'error')
-  } finally {
-    loading.value = false
+async function loadStockAlerts() {
+  const query = buildStockAlertQuery()
+  const result = await runStockAlerts(signal => getStockAlerts(query, signal))
+  if (result) {
+    stockAlertList.value = result.list ?? []
+    total.value = result.total ?? 0
+    pageSize.value = result.pageSize ?? pageSize.value
   }
 }
 
-// 格式化日期时间
-const formatDateTime = (dateTimeStr) => {
-  if (!dateTimeStr) return '';
-  const date = new Date(dateTimeStr);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+function formatDateTime(dateTimeStr?: string) {
+  if (!dateTimeStr) return ''
+  return dateTimeStr.replace('T', ' ').split('.')[0] ?? ''
 }
 
-// 处理搜索
-const handleSearch = () => {
+function handleSearch() {
   currentPage.value = 1
-  loadStockAlerts()
+  void loadStockAlerts()
 }
 
-// 处理重置
-const handleReset = () => {
+function handleReset() {
   filterForm.value = {
     sku: '',
     name: '',
-  categoryId: null as number | null,
+    categoryId: ALL_CATEGORY_ID,
   }
   currentPage.value = 1
-  loadStockAlerts()
+  void loadStockAlerts()
 }
 
-// 处理补货
-const handleRestock = (row) => {
+function handleRestock(row: StockAlert) {
   currentProduct.value = row
   restockForm.value = {
     productId: row.id,
     quantity: 1,
-    remark: ''
+    remark: '',
   }
   restockDialogVisible.value = true
 }
 
-// 处理补货提交
-const handleRestockSubmit = async () => {
+async function handleRestockSubmit() {
   if (!restockForm.value.quantity || restockForm.value.quantity <= 0) {
     messageTip('补货数量必须大于0', 'warning')
     return
   }
 
+  if (restockLoading.value) return
   restockLoading.value = true
   try {
     await restockProduct(restockForm.value)
     messageTip('补货成功', 'success')
     restockDialogVisible.value = false
-    loadStockAlerts()
-  } catch (error) {
+    try {
+      await loadStockAlerts()
+    } catch {
+      messageTip('补货已成功，但列表刷新失败', 'warning')
+    }
+  } catch {
     messageTip('补货失败', 'error')
   } finally {
     restockLoading.value = false
   }
 }
 
-// 处理详情
-const handleDetail = async (row) => {
+async function handleDetail(row: StockAlert) {
   try {
     const res = await getStockRecords(row.id, { page: 1, size: 100 })
-    stockRecords.value = res.list || []
+    stockRecords.value = res.list ?? []
     detailDialogVisible.value = true
-  } catch (error) {
+  } catch {
     messageTip('加载库存变动记录失败', 'error')
   }
 }
 
-// 处理分页
-const handleCurrentChange = (val) => {
+function handleCurrentChange(val: number) {
   currentPage.value = val
-  loadStockAlerts()
+  void loadStockAlerts()
 }
 
-const goBack = () => {
-  window.history.length > 1 ? window.history.back() : window.location.href = '/dashboard/product'
+function goBack() {
+  if (window.history.length > 1) {
+    window.history.back()
+  } else {
+    router.push('/dashboard/product')
+  }
 }
 
 onMounted(() => {
-  loadCategoryOptions()
-  loadStockAlerts()
+  void loadCategoryOptions()
+  void loadStockAlerts()
 })
 </script>

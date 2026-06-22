@@ -3,8 +3,8 @@ import type { PageResult } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
 import type { DictForm, DictQuery, DictType, DictValue } from '@/modules/dict/model/dict.types'
 
-export function fetchDictTypePage(params: DictQuery): Promise<PageResult<DictType>> {
-  return httpClient.get<PageResult<DictType>>('/api/dict/types', { params })
+export function fetchDictTypePage(params: DictQuery, signal?: AbortSignal): Promise<PageResult<DictType>> {
+  return httpClient.get<PageResult<DictType>>('/api/dict/types', { params, signal })
 }
 
 export function fetchDictTypeDetail(id: EntityId): Promise<DictType> {
@@ -27,8 +27,8 @@ export function batchDeleteDictTypes(ids: EntityId[]): Promise<unknown> {
   return httpClient.delete('/api/dict/types/batch', ids)
 }
 
-export function fetchDictValuePage(params: DictQuery): Promise<PageResult<DictValue>> {
-  return httpClient.get<PageResult<DictValue>>('/api/dict/values', { params })
+export function fetchDictValuePage(params: DictQuery, signal?: AbortSignal): Promise<PageResult<DictValue>> {
+  return httpClient.get<PageResult<DictValue>>('/api/dict/values', { params, signal })
 }
 
 export function fetchDictValueDetail(id: EntityId): Promise<DictValue> {

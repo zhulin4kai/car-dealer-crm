@@ -75,3 +75,31 @@ export interface UserListQuery {
   phone?: string
   email?: string
 }
+
+export interface UserFormValues {
+  loginAct: string
+  loginPwd: string
+  name: string
+  phone: string
+  email: string
+}
+
+export function toCreateUserRequest(values: UserFormValues): CreateUserRequest {
+  return {
+    loginAct: values.loginAct,
+    loginPwd: values.loginPwd,
+    name: values.name,
+    phone: values.phone,
+    email: values.email,
+  }
+}
+
+export function toUpdateUserRequest(values: UserFormValues, id: number): UpdateUserRequest {
+  return {
+    id,
+    loginAct: values.loginAct,
+    name: values.name,
+    phone: values.phone,
+    email: values.email,
+  }
+}

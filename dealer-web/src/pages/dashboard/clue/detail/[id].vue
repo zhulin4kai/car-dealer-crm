@@ -191,7 +191,6 @@
               <TableHead class="w-[100px] text-center">跟踪人</TableHead>
               <TableHead class="w-[160px] text-center">编辑时间</TableHead>
               <TableHead class="w-[100px] text-center">编辑人</TableHead>
-              <TableHead class="w-[120px] text-center">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -205,12 +204,6 @@
               <TableCell class="text-center">{{ remark.createByDO?.name }}</TableCell>
               <TableCell class="text-center">{{ remark.editTime }}</TableCell>
               <TableCell class="text-center">{{ remark.editByDO?.name }}</TableCell>
-              <TableCell class="text-center">
-                <div class="flex justify-center gap-1">
-                  <Button variant="link" size="sm" @click="editRemark(remark.id)">编辑</Button>
-                  <Button variant="link" size="sm" class="text-destructive" @click="delRemark(remark.id)">删除</Button>
-                </div>
-              </TableCell>
             </TableRow>
           </TableBody>
         </Table>
@@ -285,14 +278,13 @@ import { Form } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
 import { Pencil, RotateCw, Loader2 } from '@lucide/vue'
-import { messageTip } from '@/shared/utils/legacy-util'
+import { messageTip } from '@/shared/utils/feedback'
 import { getClueDetail, addClueRemark, getClueRemarkList, convertClueToCustomer } from '@/modules/clue/api/clue-api'
 import { getDictValueList } from '@/modules/dict/api/dict-api'
 import { getProductList } from '@/modules/product/api/product-api'
 import type { Clue, ClueRemark } from '@/modules/clue/model/clue.types'
 import type { DictValue } from '@/modules/dict/model/dict.types'
 import type { Product } from '@/modules/product/model/product.types'
-import type { PageResult } from '@/shared/api/api-types'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -380,12 +372,8 @@ const remarkResetKey = ref(0)
 const loadClueDetail = async () => {
   const id = route.params.id
   try {
-    const resp = await getClueDetail(id)
-    if (true) {
-      clueDetail.value = resp as Clue
-    }
+    clueDetail.value = await getClueDetail(id)
   } catch (error) {
-    console.error('加载线索详情失败:', error)
     messageTip("加载线索详情失败", "error")
   }
 }
@@ -395,22 +383,15 @@ const onSubmitRemark = async (payload: Record<string, Record<string, unknown>>) 
   const formData = payload.values
   submitting.value = true
   try {
-    const resp = await addClueRemark(
+    await addClueRemark(
       clueDetail.value.id,
       formData.noteContent,
       formData.noteWay
     )
-    if (true) {
-      messageTip("提交成功", "success")
-      // 重新加载数据而不是刷新整个页面
-      await loadClueRemarkList(1)
-      // 清空表单
-      remarkResetKey.value++
-    } else {
-      messageTip("提交失败", "error")
-    }
+    messageTip("提交成功", "success")
+    await loadClueRemarkList(1)
+    remarkResetKey.value++
   } catch (error) {
-    console.error('提交跟踪记录失败:', error)
     messageTip("提交失败", "error")
   } finally {
     submitting.value = false
@@ -421,13 +402,10 @@ const onSubmitRemark = async (payload: Record<string, Record<string, unknown>>) 
 const loadDicValue = async (typeCode: string) => {
   try {
     const resp = await getDictValueList({typeCode})
-    if (true) {
-      if (typeCode === 'noteWay') {
-        noteWayOptions.value = (resp as PageResult<DictValue>).list
-      }
+    if (typeCode === 'noteWay') {
+      noteWayOptions.value = resp.list
     }
   } catch (error) {
-    console.error('加载字典数据失败:', error)
     messageTip("加载字典数据失败", "error")
   }
 }
@@ -436,13 +414,10 @@ const loadDicValue = async (typeCode: string) => {
 const loadClueRemarkList = async (current: number) => {
   try {
     const resp = await getClueRemarkList(current, route.params.id)
-    if (true) {
-      clueRemarkList.value = (resp as PageResult<ClueRemark>).list || []
-      pageSize.value = (resp as PageResult<ClueRemark>).pageSize || 10
-      total.value = (resp as PageResult<ClueRemark>).total || 0
-    }
+    clueRemarkList.value = resp.list || []
+    pageSize.value = resp.pageSize || 10
+    total.value = resp.total || 0
   } catch (error) {
-    console.error('加载跟踪记录列表失败:', error)
     messageTip("加载跟踪记录列表失败", "error")
   }
 }
@@ -472,22 +447,16 @@ const onSubmitConvert = async (payload: Record<string, Record<string, unknown>>)
   const formData = payload.values
   converting.value = true
   try {
-    const resp = await convertClueToCustomer(
+    await convertClueToCustomer(
       clueDetail.value.id,
       formData.product,
       formData.description,
       formData.nextContactTime
     )
-    if (true) {
-      messageTip("转换成功", "success")
-      convertCustomerDialogVisible.value = false
-      // 重新加载线索详情以更新状态
-      await loadClueDetail()
-    } else {
-      messageTip("转换失败", "error")
-    }
+    messageTip("转换成功", "success")
+    convertCustomerDialogVisible.value = false
+    await loadClueDetail()
   } catch (error) {
-    console.error('转换客户失败:', error)
     messageTip("转换失败", "error")
   } finally {
     converting.value = false
@@ -496,24 +465,11 @@ const onSubmitConvert = async (payload: Record<string, Record<string, unknown>>)
 
 const ProductList = async () => {
   try {
-    const resp = await getProductList()
-    if (true) {
-      productOptions.value = (resp as PageResult<Product>).list || []
-    }
+    const resp = await getProductList({ page: 1, size: 100 })
+    productOptions.value = resp.list || []
   } catch (error) {
-    console.error('加载意向产品列表失败:', error)
     messageTip("加载意向产品列表失败", "error")
   }
-}
-
-// 编辑跟踪记录 (待实现)
-const editRemark = (id: number | string) => {
-  messageTip("编辑功能待实现", "info")
-}
-
-// 删除跟踪记录 (待实现)
-const delRemark = (id: number | string) => {
-  messageTip("删除功能待实现", "info")
 }
 
 // 使用 router 返回上一页

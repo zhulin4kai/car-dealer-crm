@@ -1,14 +1,14 @@
-import type { PageQuery } from '@/shared/api/api-types'
-import type { LooseRecord } from '@/shared/types/common'
+import type { EntityId } from '@/shared/types/id'
 
-export interface DictType extends LooseRecord {
-  id?: number | string
+export interface DictType {
+  id?: EntityId
   typeCode?: string
   typeName?: string
+  remark?: string
 }
 
-export interface DictValue extends LooseRecord {
-  id?: number | string
+export interface DictValue {
+  id?: EntityId
   typeCode?: string
   typeValue?: string
   valueCode?: string
@@ -16,5 +16,26 @@ export interface DictValue extends LooseRecord {
   remark?: string
 }
 
-export type DictQuery = Partial<PageQuery> & LooseRecord
-export type DictForm = LooseRecord
+export interface DictQuery {
+  page?: number
+  size?: number
+  typeCode?: string
+  typeName?: string
+  typeValue?: string
+}
+
+export interface DictTypeForm {
+  typeCode: string
+  typeName: string
+  remark?: string
+}
+
+export interface DictValueForm {
+  typeCode: string
+  typeValue: string
+  valueCode: string
+  order: number
+  remark?: string
+}
+
+export type DictForm = DictTypeForm | DictValueForm

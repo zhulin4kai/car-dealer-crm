@@ -41,21 +41,21 @@
               />
             </TableCell>
             <TableCell>{{ startIndex(index) }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.ownerDO?.name }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.activityDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.ownerName }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.activityName }}</TableCell>
             <TableCell class="truncate max-w-[150px]">
-              <Button v-has-permission="PERMISSIONS.customer.view" variant="link" size="sm" class="h-auto p-0" @click="view(row.id)">
-                {{ row.clueDO?.fullName }}
+              <Button v-has-permission="PERMISSIONS.customer.view" variant="link" size="sm" class="h-auto p-0" @click="handleView(row)">
+                {{ row.customerName }}
               </Button>
             </TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.appellationDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.phone }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.weixin }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.needLoanDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.intentionStateDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.stateDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.sourceDO?.typeValue }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ row.clueDO?.intentionProductDO?.name }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.appellationName }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.phone }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.weixin }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.needLoanName }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.intentionStateName }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.stateName }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.sourceName }}</TableCell>
+            <TableCell class="truncate max-w-[150px]">{{ row.intentionProductName }}</TableCell>
             <TableCell class="truncate max-w-[150px]">{{ row.nextContactTime }}</TableCell>
           </TableRow>
         </TableBody>
@@ -74,9 +74,10 @@
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, computed, onMounted } from 'vue'
-import { env } from '@/shared/config/env'
-import { getToken, messageTip } from '@/shared/utils/legacy-util'
-import { getCustomerList } from '@/modules/customer/api/customer-api'
+import { useRouter } from 'vue-router'
+import { messageTip } from '@/shared/utils/feedback'
+import { saveBlob } from '@/shared/utils/browser-download'
+import { getCustomerList, exportCustomers } from '@/modules/customer/api/customer-api'
 import type { Customer } from '@/modules/customer/model/customer.types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -84,95 +85,87 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 
-// 响应式数据
-const customerList = ref([{
-  clueDO: {},
-}])
+const customerList = ref<Customer[]>([])
 const pageSize = ref(10)
 const total = ref(0)
-const customerIdArray = ref([])
 const currentPage = ref(1)
 const selectedIds = ref<(number | string)[]>([])
+const exporting = ref(false)
+const router = useRouter()
 
-// 计算是否全选
 const isAllSelected = computed(() => {
   return customerList.value.length > 0 && selectedIds.value.length === customerList.value.length
 })
 
-// 全选/取消全选
 function toggleAllSelection(checked: boolean) {
   if (checked) {
     selectedIds.value = customerList.value.map((row: Customer) => row.id)
   } else {
     selectedIds.value = []
   }
-  customerIdArray.value = [...selectedIds.value]
 }
 
-// 单行选择切换
 function toggleRowSelection(row: Customer, checked: boolean) {
   if (checked) {
     selectedIds.value = [...selectedIds.value, row.id]
   } else {
     selectedIds.value = selectedIds.value.filter((id: number | string) => id !== row.id)
   }
-  customerIdArray.value = [...selectedIds.value]
 }
 
-// 计算序号起始值
-const startIndex = (index) => {
+function handleView(row: Customer): void {
+  void router.push({ name: 'customer-detail', params: { id: String(row.id) } })
+}
+
+const startIndex = (index: number) => {
   return (currentPage.value - 1) * pageSize.value + index + 1
 }
 
-// 获取客户分页列表数据
-const getData = async (current) => {
+const getData = async (current: number) => {
   try {
     const resp = await getCustomerList({ current })
-    if (true) {
-      customerList.value = resp.list
-      pageSize.value = resp.pageSize
-      total.value = resp.total
-      selectedIds.value = []
-      customerIdArray.value = []
-    }
-  } catch (error) {
+    customerList.value = resp.list
+    pageSize.value = resp.pageSize ?? 10
+    total.value = resp.total
+    selectedIds.value = []
+  } catch {
     messageTip('获取客户列表失败', 'error')
   }
 }
 
-// 分页函数
-const page = (number) => {
+const page = (number: number) => {
   getData(number)
   currentPage.value = number
 }
 
-// 导出 Excel
-const exportExcel = (ids) => {
-  const token = getToken()
-  const iframe = document.createElement("iframe")
-  iframe.src = ids
-    ? `${env.apiBaseUrl}/api/exportExcel?Authorization=${token}&ids=${ids}`
-    : `${env.apiBaseUrl}/api/exportExcel?Authorization=${token}`
-  iframe.style.display = "none"
-  document.body.appendChild(iframe)
-}
-
-// 批量导出
-const batchExportExcel = () => {
-  exportExcel(null)
-}
-
-// 选择导出
-const chooseExportExcel = () => {
-  if (customerIdArray.value.length <= 0) {
-    messageTip("请选择要导出的数据", "warning")
+async function handleExport(ids?: (number | string)[]): Promise<void> {
+  if (exporting.value) {
     return
   }
-  const ids = customerIdArray.value.join(",")
-  exportExcel(ids)
+  exporting.value = true
+  try {
+    const { blob, filename } = await exportCustomers(ids)
+    saveBlob(blob, filename)
+    messageTip('导出成功', 'success')
+  } catch {
+    messageTip('导出失败', 'error')
+  } finally {
+    exporting.value = false
+  }
 }
 
-// 组件挂载时加载数据
+function batchExportExcel() {
+  void handleExport()
+}
+
+function chooseExportExcel() {
+  if (selectedIds.value.length <= 0) {
+    messageTip('请选择要导出的数据', 'warning')
+    return
+  }
+  void handleExport(selectedIds.value)
+}
+
 onMounted(() => {
   getData(1)
 })
