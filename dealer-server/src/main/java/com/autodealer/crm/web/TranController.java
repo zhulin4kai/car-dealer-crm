@@ -107,13 +107,26 @@ public class TranController {
     }
 
     /**
-     * 结算交易 — 金额由服务端根据商品快照计算，不接受客户端传入
+     * 结算预览（只读）
      */
     @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_SETTLE + "')")
-    @PutMapping("/settle/{id}")
-    public R<Boolean> settle(@PathVariable Integer id) {
-        boolean result = tranService.settleTransaction(id);
-        return R.OK(result);
+    @PostMapping("/{id}/settlement-preview")
+    public R<SettlementPreviewResponse> settlementPreview(
+            @PathVariable Integer id,
+            @Valid @RequestBody SettlementPreviewRequest request) {
+        SettlementPreviewResponse preview = tranService.getSettlementPreview(id, request.getPromotionId());
+        return R.OK(preview);
+    }
+
+    /**
+     * 结算交易（带 CAS 版本控制）
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_SETTLE + "')")
+    @PutMapping("/{id}/settle")
+    public R<SettlementPreviewResponse> settle(
+            @PathVariable Integer id,
+            @Valid @RequestBody SettleRequest request) {
+        return R.OK(tranService.settleTransaction(id, request));
     }
 
     /**

@@ -237,6 +237,11 @@ CREATE TABLE IF NOT EXISTS t_tran
     create_by         INTEGER,
     edit_time         TIMESTAMP,
     edit_by           INTEGER,
+    version           INTEGER NOT NULL DEFAULT 0,
+    promotion_id      BIGINT,
+    original_amount   DECIMAL(10, 2),
+    discount_amount   DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    promotion_snapshot TEXT,
     PRIMARY KEY (id),
     CONSTRAINT fk_tran_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT
 );

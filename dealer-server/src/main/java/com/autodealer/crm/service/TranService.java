@@ -1,5 +1,7 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.dto.SettlementPreviewResponse;
+import com.autodealer.crm.dto.SettleRequest;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.query.TranQuery;
@@ -41,7 +43,7 @@ public interface TranService {
      */
     boolean updateTransaction(TTran transaction);
 
-    boolean settleTransaction(Integer tranId);
+    SettlementPreviewResponse settleTransaction(Integer tranId, SettleRequest request);
 
     /**
      * 添加交易跟踪记录
@@ -192,4 +194,6 @@ public interface TranService {
      * 获取交易收款记录
      */
     List<TPayment> getTransactionPayments(Integer tranId);
+
+    SettlementPreviewResponse getSettlementPreview(Integer tranId, Long promotionId);
 }

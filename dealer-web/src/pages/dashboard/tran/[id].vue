@@ -68,7 +68,7 @@
           <div class="text-base font-bold mb-4">促销选择</div>
           <div class="space-y-4">
             <div class="space-y-2">
-              <Label>促销活动</Label>
+              <Label>促销活动（可选）</Label>
               <Select v-model="promotionForm.selectedPromotion" @update:model-value="onPromotionChange">
                 <SelectTrigger class="w-full">
                   <SelectValue placeholder="请选择促销活动（可选）" />
@@ -80,18 +80,14 @@
                 </SelectContent>
               </Select>
             </div>
-
-            <!-- Promotion Effect Preview -->
-            <div v-if="selectedPromotionInfo" class="space-y-2">
-              <Label>促销效果</Label>
-              <div class="p-4 bg-background border rounded-md">
-                <div class="flex flex-col gap-2">
-                  <span class="text-muted-foreground line-through">原价：&yen;{{ originalTotalAmount.toFixed(2) }}</span>
-                  <span class="text-green-600 font-bold">{{ getDiscountDescription() }}</span>
-                  <span class="text-lg font-bold text-yellow-600">结算价：&yen;{{ finalAmount.toFixed(2) }}</span>
-                </div>
-              </div>
+            <div v-if="previewLoading" class="text-sm text-muted-foreground">计算中...</div>
+            <div v-else-if="previewError" class="text-sm text-red-500">{{ previewError }}</div>
+            <div v-else-if="previewData" class="p-3 bg-background border rounded-md space-y-1 text-sm">
+              <div>原价：¥{{ previewData.originalAmount.toFixed(2) }}</div>
+              <div v-if="previewData.discountAmount > 0" class="text-green-600">优惠：-¥{{ previewData.discountAmount.toFixed(2) }}</div>
+              <div class="text-lg font-bold text-yellow-600">结算价：¥{{ previewData.finalAmount.toFixed(2) }}</div>
             </div>
+            <p class="text-xs text-muted-foreground">结算金额由服务端按当前商品与促销规则计算。</p>
           </div>
         </div>
       </CardContent>
@@ -246,6 +242,7 @@
         v-has-permission="PERMISSIONS.tran.settle"
         variant="secondary"
         @click="handleSettle"
+        :disabled="previewLoading || !previewData"
         v-if="tranDetail.stage === 'QUOTATION'"
       >结算</Button>
       <Button
@@ -275,9 +272,17 @@ import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
-import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran, getTranPayments, recordPayment, refundPayment } from '@/modules/tran/api/tran-api'
+import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran, fetchSettlementPreview, getTranPayments, recordPayment, refundPayment } from '@/modules/tran/api/tran-api'
+import type {
+  SettlementPreviewResponse,
+  TPayment,
+  TranInvoice,
+  TranProduct,
+} from '@/modules/tran/model/tran.types'
 import { TRAN_STAGE, getTranStageText, getTranStageType, normalizeTranStage } from '@/modules/tran/model/tran-stage'
 import { getPromotionList } from '@/modules/product/api/product-api'
+import type { ProductPromotion } from '@/modules/product/model/product.types'
+import type { EntityId } from '@/shared/types/id'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -290,7 +295,19 @@ import { Input } from '@/components/ui/input'
 const route = useRoute()
 const router = useRouter()
 
-const tranDetail = ref({
+interface TranDetailView {
+  tranNo: string
+  customerName: string
+  amount: number
+  stage: string
+  createTime: string
+  updateTime: string
+  expectedDeliveryDate: string
+  description: string
+  products: TranProduct[]
+}
+
+const tranDetail = ref<TranDetailView>({
   tranNo: '',
   customerName: '',
   amount: 0,
@@ -302,12 +319,12 @@ const tranDetail = ref({
   products: []
 })
 
-const invoiceList = ref([])
+const invoiceList = ref<TranInvoice[]>([])
 
 // Promotion data
-const promotionList = ref([])
+const promotionList = ref<ProductPromotion[]>([])
 const promotionForm = ref({
-  selectedPromotion: null
+  selectedPromotion: null as EntityId | null,
 })
 
 // Computed properties
@@ -320,36 +337,25 @@ const selectedPromotionInfo = computed(() => {
   return promotionList.value.find(p => p.id === promotionForm.value.selectedPromotion)
 })
 
-const originalTotalAmount = computed(() => {
-  if (!tranDetail.value.products) return 0
-  const total = tranDetail.value.products.reduce((total, product) => {
-    return total + (product.price * product.quantity)
-  }, 0)
-  return Number(total.toFixed(2))
-})
+const previewLoading = ref(false)
+const previewData = ref<SettlementPreviewResponse | null>(null)
+const previewError = ref<string | null>(null)
 
-const finalAmount = computed(() => {
-  const original = originalTotalAmount.value
-  if (!selectedPromotionInfo.value) return original
-
-  const promotion = selectedPromotionInfo.value
-  let discountedAmount = original
-  const promotionType = promotion.type?.toLowerCase() || ''
-
-  if (promotionType === 'percentage' || promotionType === '折扣') {
-    let discountRate = promotion.discount
-    if (discountRate > 1) {
-      discountRate = discountRate / 100
-    }
-    discountedAmount = original * discountRate
-  } else if (promotionType === 'amount' || promotionType === '满减' || promotionType === '直降') {
-    discountedAmount = original - promotion.discount
-  } else {
-    discountedAmount = original
+async function onPromotionChange(): Promise<void> {
+  previewError.value = null
+  previewData.value = null
+  previewLoading.value = true
+  try {
+    previewData.value = await fetchSettlementPreview(route.params.id as string, {
+      promotionId: promotionForm.value.selectedPromotion ?? undefined,
+    })
+  } catch {
+    previewError.value = '促销预览失败'
+    previewData.value = null
+  } finally {
+    previewLoading.value = false
   }
-  const result = Math.max(0, Number(discountedAmount.toFixed(2)))
-  return result
-})
+}
 
 const invoiceStatusMap = {
   'PENDING': { type: 'warning', text: '待开具' },
@@ -414,36 +420,6 @@ const getPromotionText = (promotion) => {
   }
 }
 
-const getDiscountDescription = () => {
-  if (!selectedPromotionInfo.value) return ''
-
-  const promotion = selectedPromotionInfo.value
-  const original = originalTotalAmount.value
-  const final = finalAmount.value
-  const discount = original - final
-
-  const promotionType = promotion.type?.toLowerCase() || ''
-
-  if (promotionType === 'percentage' || promotionType === '折扣') {
-    let discountRate = promotion.discount
-    if (discountRate > 1) {
-      return `${discountRate}折优惠，优惠¥${discount.toFixed(2)}`
-    } else {
-      return `${(discountRate * 100)}折优惠，优惠¥${discount.toFixed(2)}`
-    }
-  } else if (promotionType === 'amount' || promotionType === '满减') {
-    return `满减优惠，减免¥${discount.toFixed(2)}`
-  } else if (promotionType === '直降') {
-    return `直降优惠，减免¥${discount.toFixed(2)}`
-  } else {
-    return `优惠减免¥${discount.toFixed(2)}`
-  }
-}
-
-const onPromotionChange = () => {
-  // Hook for promotion selection change
-}
-
 // Fetch promotion list
 const fetchPromotionList = async () => {
   try {
@@ -451,11 +427,9 @@ const fetchPromotionList = async () => {
       page: 1,
       size: 1000
     })
-    if (true) {
-      promotionList.value = res.list || []
-    }
-  } catch (error) {
-    console.error('获取促销列表失败:', error)
+    promotionList.value = res.list || []
+  } catch {
+    messageTip('获取促销列表失败', 'error')
   }
 }
 
@@ -463,25 +437,19 @@ const fetchPromotionList = async () => {
 const fetchTranDetail = async () => {
   try {
     const res = await getTranDetail(route.params.id)
-    if (true) {
-      const data = res
-      tranDetail.value = {
-        tranNo: data.tranNo || '',
-        customerName: data.customerName || '',
-        amount: data.money || data.amount || 0,
-        stage: normalizeTranStage(data.stage),
-        createTime: data.createTime || '',
-        updateTime: data.editTime || data.updateTime || '',
-        expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
-        description: data.description || '',
-        products: data.products || []
-      }
-      console.log('处理后的交易详情:', tranDetail.value)
-    } else {
-      messageTip('请求失败', 'error')
+    const data = res
+    tranDetail.value = {
+      tranNo: data.tranNo || '',
+      customerName: data.customerName || '',
+      amount: data.money || 0,
+      stage: normalizeTranStage(data.stage),
+      createTime: data.createTime || '',
+      updateTime: data.editTime || '',
+      expectedDeliveryDate: data.expectedDate || '',
+      description: data.description || '',
+      products: data.products || []
     }
-  } catch (error) {
-    console.error('获取交易详情失败:', error)
+  } catch {
     messageTip('获取交易详情失败', 'error')
   }
 }
@@ -490,11 +458,9 @@ const fetchTranDetail = async () => {
 const fetchProducts = async () => {
   try {
     const res = await getTranProducts(route.params.id)
-    if (true) {
-      tranDetail.value.products = res
-    }
-  } catch (error) {
-    console.error('获取产品详情失败:', error)
+    tranDetail.value.products = res
+  } catch {
+    messageTip('获取产品详情失败', 'error')
   }
 }
 
@@ -502,16 +468,14 @@ const fetchProducts = async () => {
 const fetchInvoiceInfo = async () => {
   try {
     const res = await getTranInvoiceList(route.params.id)
-    if (true) {
-      invoiceList.value = res || []
-    }
-  } catch (error) {
-    console.error('获取发票信息失败:', error)
+    invoiceList.value = res || []
+  } catch {
+    messageTip('获取发票信息失败', 'error')
   }
 }
 
 // Payment
-const paymentList = ref([])
+const paymentList = ref<TPayment[]>([])
 const showCollectionDialog = ref(false)
 const collectionForm = ref({
   amount: 0,
@@ -580,8 +544,8 @@ const fetchPaymentList = async () => {
   try {
     const res = await getTranPayments(route.params.id)
     paymentList.value = res || []
-  } catch (error) {
-    console.error('获取收款记录失败:', error)
+  } catch {
+    messageTip('获取收款记录失败', 'error')
   }
 }
 
@@ -641,46 +605,36 @@ const handleEdit = () => {
 
 // Settle transaction
 const handleSettle = async () => {
+  if (!tranDetail.value.products || tranDetail.value.products.length === 0) {
+    messageTip('该交易没有产品信息，无法结算', 'error')
+    return
+  }
+  const preview = previewData.value
+  if (!preview) {
+    messageTip('请先获取有效的服务端结算预览', 'warning')
+    return
+  }
+  const desc = `确认结算该交易吗？\n结算金额：¥${preview.finalAmount.toFixed(2)}`
   try {
-    if (!tranDetail.value.products || tranDetail.value.products.length === 0) {
-      messageTip('该交易没有产品信息，无法结算', 'error')
-      return
-    }
-
-    const settlementAmount = finalAmount.value
-    const originalAmount = originalTotalAmount.value
-
-    let confirmMessage = `确认结算该交易吗？`
-
-    if (selectedPromotionInfo.value) {
-      confirmMessage += `\n原价：¥${originalAmount.toFixed(2)}\n${getDiscountDescription()}\n最终结算金额：¥${settlementAmount.toFixed(2)}`
-    } else {
-      confirmMessage += `\n结算金额：¥${settlementAmount.toFixed(2)}`
-    }
-
-    const confirmResult = await messageConfirm(confirmMessage).catch(() => false)
-
-    if (!confirmResult) {
-      return
-    }
-
-    try {
-      const res = await settleTran(route.params.id)
-      if (true) {
-        messageTip('结算成功，交易状态已更新为待审批', 'success')
-        await fetchTranDetail()
-        goBack()
-      } else {
-        console.error('结算失败响应：', res.data)
-        messageTip('请求失败', 'error')
-      }
-    } catch (error) {
-      console.error('结算API调用失败：', error)
-      messageTip('结算失败：' + (error.message || '网络错误'), 'error')
-    }
-  } catch (error) {
-    console.error('结算失败:', error)
-    messageTip('结算失败', 'error')
+    const res = await messageConfirm(desc)
+    if (!res) return
+  } catch {
+    return
+  }
+  try {
+    await settleTran(route.params.id as string, {
+      promotionId: preview.promotionId ?? undefined,
+      expectedVersion: preview.transactionVersion,
+      pricingFingerprint: preview.pricingFingerprint,
+    })
+    messageTip('结算成功，交易状态已更新为待审批', 'success')
+    previewData.value = null
+    previewError.value = null
+    await fetchTranDetail()
+    goBack()
+  } catch {
+    messageTip('结算失败，请重新获取促销预览', 'error')
+    previewData.value = null
   }
 }
 
@@ -697,11 +651,14 @@ const handleInvoice = () => {
 // Watch route params change
 watch(() => route.params.id, async (newId) => {
     if (newId) {
-    await fetchTranDetail()
-    await fetchProducts()
-    await fetchInvoiceInfo()
-    await fetchPaymentList()
-    await fetchPromotionList()
+    await Promise.all([
+      fetchTranDetail(),
+      fetchProducts(),
+      fetchInvoiceInfo(),
+      fetchPaymentList(),
+      fetchPromotionList(),
+    ])
+    await onPromotionChange()
   }
 })
 
@@ -711,10 +668,13 @@ onMounted(async () => {
     return
   }
 
-  await fetchTranDetail()
-  await fetchProducts()
-  await fetchInvoiceInfo()
-  await fetchPaymentList()
-  await fetchPromotionList()
+  await Promise.all([
+    fetchTranDetail(),
+    fetchProducts(),
+    fetchInvoiceInfo(),
+    fetchPaymentList(),
+    fetchPromotionList(),
+  ])
+  await onPromotionChange()
 })
 </script>

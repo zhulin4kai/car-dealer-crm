@@ -16,6 +16,11 @@
     <result column="create_by" jdbcType="INTEGER" property="createBy" />
     <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
+    <result column="version" jdbcType="INTEGER" property="version" />
+    <result column="promotion_id" jdbcType="BIGINT" property="promotionId" />
+    <result column="original_amount" jdbcType="DECIMAL" property="originalAmount" />
+    <result column="discount_amount" jdbcType="DECIMAL" property="discountAmount" />
+    <result column="promotion_snapshot" jdbcType="VARCHAR" property="promotionSnapshot" />
   </resultMap>
 
   <resultMap id="TranProductResultMap" type="com.autodealer.crm.model.TTranProduct">
@@ -30,12 +35,12 @@
   </resultMap>
 
   <sql id="Base_Column_List">
-    t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time, 
-    t.create_time, t.create_by, t.edit_time, t.edit_by
+    t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time,
+    t.create_time, t.create_by, t.edit_time, t.edit_by, t.version, t.promotion_id, t.original_amount, t.discount_amount, t.promotion_snapshot
   </sql>
 
   <select id="selectByQuery" parameterType="com.autodealer.crm.query.TranQuery" resultMap="BaseResultMap">
-    SELECT DISTINCT 
+    SELECT DISTINCT
     <include refid="Base_Column_List" />
     FROM t_tran t
     LEFT JOIN t_customer c ON t.customer_id = c.id
@@ -133,9 +138,9 @@
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-    select 
-    t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time, 
-    t.create_time, t.create_by, t.edit_time, t.edit_by
+    select
+    t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time,
+    t.create_time, t.create_by, t.edit_time, t.edit_by, t.version, t.promotion_id, t.original_amount, t.discount_amount, t.promotion_snapshot
     from t_tran t
     LEFT JOIN t_customer c ON t.customer_id = c.id
     LEFT JOIN t_clue cl ON c.clue_id = cl.id
@@ -153,13 +158,13 @@
   </select>
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TTran" useGeneratedKeys="true">
-    insert into t_tran (tran_no, customer_id, money, 
-      expected_date, stage, description, 
-      next_contact_time, create_time, create_by, 
+    insert into t_tran (tran_no, customer_id, money,
+      expected_date, stage, description,
+      next_contact_time, create_time, create_by,
       edit_time, edit_by)
-    values (#{tranNo,jdbcType=VARCHAR}, #{customerId,jdbcType=INTEGER}, #{money,jdbcType=DECIMAL}, 
+    values (#{tranNo,jdbcType=VARCHAR}, #{customerId,jdbcType=INTEGER}, #{money,jdbcType=DECIMAL},
       #{expectedDate,jdbcType=TIMESTAMP}, #{stage,jdbcType=VARCHAR}, #{description,jdbcType=VARCHAR},
-      #{nextContactTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, 
+      #{nextContactTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER},
       #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER})
   </insert>
 
@@ -294,7 +299,7 @@
   </update>
 
   <select id="selectTranProductsByTranId" parameterType="java.lang.Integer" resultMap="TranProductResultMap">
-    SELECT 
+    SELECT
       tp.id,
       tp.tran_id,
       tp.product_id,
@@ -310,7 +315,7 @@
   </select>
   <!-- 联合查询：获取交易详情和审批信息 -->
   <select id="selectTranWithApproveByTranId" parameterType="java.lang.Integer" resultType="java.util.Map">
-    SELECT 
+    SELECT
       t.id as tran_id,
       t.tran_no,
       t.customer_id,
@@ -370,6 +375,7 @@
   <update id="updateStageAtomic">
     UPDATE t_tran
     SET stage = #{newStage,jdbcType=VARCHAR},
+        version = version + 1,
         edit_time = NOW(),
         edit_by = #{editBy,jdbcType=INTEGER}
     WHERE id = #{id,jdbcType=INTEGER}
@@ -379,17 +385,34 @@
   <update id="settleAtomic">
     UPDATE t_tran
     SET money = #{amount,jdbcType=DECIMAL},
+        original_amount = #{originalAmount,jdbcType=DECIMAL},
+        discount_amount = #{discountAmount,jdbcType=DECIMAL},
+        promotion_id = #{promotionId,jdbcType=BIGINT},
+        promotion_snapshot = #{promotionSnapshot,jdbcType=VARCHAR},
         stage = 'PENDING',
+        version = version + 1,
         edit_time = NOW(),
         edit_by = #{editBy,jdbcType=INTEGER}
     WHERE id = #{id,jdbcType=INTEGER}
       AND stage = 'QUOTATION'
+      AND version = #{expectedVersion,jdbcType=INTEGER}
+  </update>
+
+  <update id="incrementVersion">
+    UPDATE t_tran
+    SET version = version + 1,
+        edit_time = NOW(),
+        edit_by = #{editBy,jdbcType=INTEGER}
+    WHERE id = #{id,jdbcType=INTEGER}
+      AND stage = 'QUOTATION'
+      AND version = #{expectedVersion,jdbcType=INTEGER}
   </update>
 
   <!-- 原子完成交易：仅当已收款 >= 交易金额时更新 -->
   <update id="updateStageToCompleted">
     UPDATE t_tran
     SET stage = 'COMPLETED',
+        version = version + 1,
         edit_time = NOW(),
         edit_by = #{editBy,jdbcType=INTEGER}
     WHERE id = #{id,jdbcType=INTEGER}

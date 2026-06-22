@@ -77,5 +77,15 @@ public class TTran implements Serializable {
      */
     private Integer editBy;
 
+    private Integer version;
+
+    private Long promotionId;
+
+    private BigDecimal originalAmount;
+
+    private BigDecimal discountAmount;
+
+    private String promotionSnapshot;
+
     private static final long serialVersionUID = 1L;
 }

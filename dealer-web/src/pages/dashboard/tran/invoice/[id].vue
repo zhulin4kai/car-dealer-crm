@@ -54,7 +54,41 @@
 
         <!-- Invoice Form -->
         <div class="text-base font-bold my-5 pl-2.5 border-l-4 border-primary">发票信息</div>
-        <form class="mt-8 max-w-[600px] space-y-4" @submit.prevent="onSubmit">
+
+        <!-- Existing invoice list -->
+        <div v-if="invoiceList.length > 0" class="mb-5 space-y-3">
+          <div v-for="invoice in invoiceList" :key="invoice.id" class="p-4 border rounded-md space-y-2">
+            <div class="flex justify-between items-center">
+              <Badge :variant="getInvoiceStatusVariant(invoice.status)">{{ getInvoiceStatusText(invoice.status) }}</Badge>
+              <div class="flex gap-2">
+                <Button
+                  v-if="invoice.status === 'PENDING'"
+                  v-has-permission="PERMISSIONS.tran.invoice"
+                  size="sm"
+                  :disabled="invoiceLoading"
+                  @click="markAsIssued(invoice)"
+                >标记已开具</Button>
+                <Button
+                  v-if="invoice.status === 'PENDING' || invoice.status === 'ISSUED'"
+                  v-has-permission="PERMISSIONS.tran.invoice"
+                  variant="destructive"
+                  size="sm"
+                  :disabled="invoiceLoading"
+                  @click="voidInvoice(invoice)"
+                >作废</Button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div>发票编号：{{ invoice.invoiceNo }}</div>
+              <div>金额：&yen;{{ invoice.amount }}</div>
+              <div>类型：{{ getInvoiceTypeText(invoice.type) }}</div>
+              <div>备注：{{ invoice.remark }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Create form (only when no existing invoice) -->
+        <form v-if="invoiceList.length === 0" class="mt-8 max-w-[600px] space-y-4" @submit.prevent="onSubmit">
           <!-- Invoice Type -->
           <div class="space-y-2">
             <Label>发票类型</Label>
@@ -149,8 +183,8 @@
 
           <!-- Submit -->
           <div class="pt-2">
-            <Button v-has-permission="PERMISSIONS.tran.invoice" type="submit" :disabled="isSubmitting || hasInvoiceIssued">
-              {{ hasInvoiceIssued ? '已开具发票' : '开具发票' }}
+            <Button v-has-permission="PERMISSIONS.tran.invoice" type="submit" :disabled="isSubmitting">
+              {{ isSubmitting ? '提交中...' : '开具发票' }}
             </Button>
           </div>
         </form>
@@ -253,9 +287,8 @@ const { handleSubmit, errors, values, isSubmitting, setValues } = useForm({
 let tranId = null
 
 // Check if invoice has been issued (one invoice per transaction)
-const hasInvoiceIssued = computed(() => {
-  return invoiceList.value.some(invoice => invoice.status === 'ISSUED')
-})
+const hasAnyInvoice = computed(() => invoiceList.value.length > 0)
+const invoiceLoading = ref(false)
 
 // Invoice type mapping
 const getInvoiceTypeText = (type) => {
@@ -273,49 +306,47 @@ const invoiceStatusMap = {
   'VOID': { type: 'danger', text: '已作废' }
 }
 
-const getInvoiceStatusType = (status) => invoiceStatusMap[status]?.type || ''
-const getInvoiceStatusText = (status) => invoiceStatusMap[status]?.text || status
+const getInvoiceStatusType = (status: string) => invoiceStatusMap[status]?.type || ''
+const getInvoiceStatusText = (status: string) => invoiceStatusMap[status]?.text || status
+const getInvoiceStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  const map: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    PENDING: 'secondary',
+    ISSUED: 'default',
+    VOID: 'destructive',
+  }
+  return map[status] || 'outline'
+}
 
 // Fetch transaction detail
 const fetchTranDetail = async () => {
+  const id = route.params.id as string
+  if (!id) return
   try {
-    console.log('获取交易详情，ID:', route.params.id)
-    const res = await getTranDetail(route.params.id)
-    console.log('交易详情响应:', res)
-    if (true) {
-      const data = res
-      tranDetail.value = {
-        tranNo: data.tranNo || '',
-        customerName: data.customerName || '',
-        amount: data.money || data.amount || 0,
-        stage: normalizeTranStage(data.stage),
-        createTime: data.createTime || '',
-        updateTime: data.editTime || data.updateTime || '',
-        expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
-        description: data.description || '',
-        products: data.products || []
-      }
-
-      // Set invoice amount to transaction amount
-      tranId = parseInt(route.params.id)
-      setValues({
-        type: 'VAT_NORMAL',
-        title: '',
-        taxNumber: '',
-        bankName: '',
-        bankAccount: '',
-        address: '',
-        phone: '',
-        amount: tranDetail.value.amount,
-        remark: '',
-      })
-
-      console.log('处理后的交易详情:', tranDetail.value)
-    } else {
-      messageTip('请求失败', 'error')
+    const data = await getTranDetail(id)
+    tranDetail.value = {
+      tranNo: data.tranNo || '',
+      customerName: data.customerName || '',
+      amount: data.money || data.amount || 0,
+      stage: normalizeTranStage(data.stage),
+      createTime: data.createTime || '',
+      updateTime: data.editTime || data.updateTime || '',
+      expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
+      description: data.description || '',
+      products: data.products || [],
     }
-  } catch (error) {
-    console.error('获取交易详情失败:', error)
+    tranId = Number(id)
+    setValues({
+      type: 'VAT_NORMAL',
+      title: '',
+      taxNumber: '',
+      bankName: '',
+      bankAccount: '',
+      address: '',
+      phone: '',
+      amount: tranDetail.value.amount,
+      remark: '',
+    })
+  } catch {
     messageTip('获取交易详情失败', 'error')
   }
 }
@@ -323,93 +354,92 @@ const fetchTranDetail = async () => {
 // Fetch product details
 const fetchProducts = async () => {
   try {
-    const res = await getTranProducts(route.params.id)
-    console.log('交易产品详情:', res)
-    if (true) {
-      tranDetail.value.products = res
-    }
-  } catch (error) {
-    console.error('获取产品详情失败:', error)
+    const res = await getTranProducts(route.params.id as string)
+    tranDetail.value.products = res
+  } catch {
+    // Non-critical, leave existing products
   }
 }
 
 // Fetch invoice list
 const fetchInvoiceList = async () => {
   try {
-    const res = await getTranInvoiceList(route.params.id)
-    if (true) {
-      invoiceList.value = res || []
-    }
-  } catch (error) {
-    console.error('获取发票列表失败:', error)
+    const res = await getTranInvoiceList(route.params.id as string)
+    invoiceList.value = res || []
+  } catch {
+    // Non-critical
   }
 }
 
 // Submit invoice form
 const onSubmit = handleSubmit(async () => {
-  // Check if invoice has been issued
-  if (hasInvoiceIssued.value) {
-    messageTip('该交易已开具发票，不能重复开票', 'warning')
+  if (hasAnyInvoice.value) {
+    messageTip('该交易已有发票，不能重复开票', 'warning')
     return
   }
-
   try {
-    const invoiceData = {
-      tranId,
-      ...values,
+    await createInvoice({ tranId, ...values })
+    messageTip('发票创建成功', 'success')
+    try {
+      await Promise.all([fetchInvoiceList(), fetchTranDetail()])
+    } catch {
+      messageTip('发票已创建，但刷新失败', 'warning')
     }
-    const res = await createInvoice(invoiceData)
-    if (true) {
-      messageTip('发票创建成功', 'success')
-      await fetchInvoiceList()
-      await fetchTranDetail()
-    } else {
-      messageTip('请求失败', 'error')
-    }
-  } catch (error) {
-    console.error('发票创建失败:', error)
+  } catch {
     messageTip('发票创建失败', 'error')
   }
 })
 
 // Mark invoice as issued
-const markAsIssued = async (invoice) => {
+const markAsIssued = async (invoice: { id: number | string }) => {
+  try {
+    await messageConfirm('确认将该发票标记为已开具吗？')
+  } catch {
+    return
+  }
+  invoiceLoading.value = true
   try {
     await updateInvoiceStatus(invoice.id, 'ISSUED')
-    if (true) {
-      messageTip('开票完成', 'success')
-      await fetchInvoiceList()
-      await fetchTranDetail()
-    } else {
-      messageTip('请求失败', 'error')
-    }
-  } catch (error) {
-    console.error('发票状态更新失败:', error)
+    messageTip('开票完成', 'success')
+    await Promise.all([fetchInvoiceList(), fetchTranDetail()])
+  } catch {
     messageTip('发票状态更新失败', 'error')
+  } finally {
+    invoiceLoading.value = false
+  }
+}
+
+// Void invoice
+const voidInvoice = async (invoice: { id: number | string }) => {
+  try {
+    await messageConfirm('确认作废该发票吗？作废后不可恢复')
+  } catch {
+    return
+  }
+  invoiceLoading.value = true
+  try {
+    await updateInvoiceStatus(invoice.id, 'VOID')
+    messageTip('发票已作废', 'success')
+    await Promise.all([fetchInvoiceList(), fetchTranDetail()])
+  } catch {
+    messageTip('发票作废失败', 'error')
+  } finally {
+    invoiceLoading.value = false
   }
 }
 
 // Watch route params
 watch(() => route.params.id, async (newId) => {
   if (newId) {
-    await fetchTranDetail()
-    await fetchProducts()
-    await fetchInvoiceList()
+    await Promise.all([fetchTranDetail(), fetchProducts(), fetchInvoiceList()])
   }
 })
 
 onMounted(async () => {
-  console.log('TranInvoiceView mounted')
-  console.log('route.params:', route.params)
-  console.log('route.params.id:', route.params.id)
-
   if (!route.params.id) {
     messageTip('缺少交易ID参数', 'error')
     return
   }
-
-  await fetchTranDetail()
-  await fetchProducts()
-  await fetchInvoiceList()
+  await Promise.all([fetchTranDetail(), fetchProducts(), fetchInvoiceList()])
 })
 </script>

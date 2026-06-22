@@ -98,6 +98,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { messageTip } from '@/shared/utils/feedback'
 import { getTranDetail, getTranProducts, approveTran } from '@/modules/tran/api/tran-api'
 import { TRAN_STAGE, normalizeTranStage } from '@/modules/tran/model/tran-stage'
+import type { TranProduct } from '@/modules/tran/model/tran.types'
+import { toRouteId } from '@/shared/types/id'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -110,7 +112,19 @@ import { Label } from '@/components/ui/label'
 const route = useRoute()
 const router = useRouter()
 
-const tranDetail = ref({
+interface ApprovalTranView {
+  tranNo: string
+  customerName: string
+  amount: number
+  stage: string
+  createTime: string
+  updateTime: string
+  expectedDeliveryDate: string
+  description: string
+  products: TranProduct[]
+}
+
+const tranDetail = ref<ApprovalTranView>({
   tranNo: '',
   customerName: '',
   amount: 0,
@@ -138,62 +152,50 @@ const { handleSubmit, errors, values, isSubmitting } = useForm({
 
 // Fetch transaction detail
 const fetchTranDetail = async () => {
+  const id = toRouteId(route.params.id)
+  if (!id) return
   try {
-    console.log('获取交易详情，ID:', route.params.id)
-    const res = await getTranDetail(route.params.id)
-    console.log('交易详情响应:', res)
-    if (true) {
-      const data = res
-      tranDetail.value = {
-        tranNo: data.tranNo || '',
-        customerName: data.customerName || '',
-        amount: data.money || data.amount || 0,
-        stage: normalizeTranStage(data.stage),
-        createTime: data.createTime || '',
-        updateTime: data.editTime || data.updateTime || '',
-        expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
-        description: data.description || '',
-        products: data.products || []
-      }
-      console.log('处理后的交易详情:', tranDetail.value)
-    } else {
-      messageTip('请求失败', 'error')
+    const data = await getTranDetail(id)
+    tranDetail.value = {
+      tranNo: data.tranNo || '',
+      customerName: data.customerName || '',
+      amount: data.money || 0,
+      stage: normalizeTranStage(data.stage),
+      createTime: data.createTime || '',
+      updateTime: data.editTime || '',
+      expectedDeliveryDate: data.expectedDate || '',
+      description: data.description || '',
+      products: data.products || []
     }
-  } catch (error) {
-    console.error('获取交易详情失败:', error)
+  } catch {
     messageTip('获取交易详情失败', 'error')
   }
 }
 
 // Fetch product details
 const fetchProducts = async () => {
+  const id = toRouteId(route.params.id)
+  if (!id) return
   try {
-    const res = await getTranProducts(route.params.id)
-    console.log('交易产品详情:', res)
-    if (true) {
-      tranDetail.value.products = res
-    }
-  } catch (error) {
-    console.error('获取产品详情失败:', error)
+    tranDetail.value.products = await getTranProducts(id)
+  } catch {
+    messageTip('获取产品详情失败', 'error')
   }
 }
 
 // Submit approval
 const onSubmit = handleSubmit(async () => {
+  const id = toRouteId(route.params.id)
+  if (!id) return
   try {
     const approveData = {
       approved: values.approved === 'true',
       comment: values.comment,
     }
-    const res = await approveTran(route.params.id, approveData)
-    if (true) {
-      messageTip('审批提交成功', 'success')
-      goBack()
-    } else {
-      messageTip('请求失败', 'error')
-    }
-  } catch (error) {
-    console.error('审批提交失败:', error)
+    await approveTran(id, approveData)
+    messageTip('审批提交成功', 'success')
+    goBack()
+  } catch {
     messageTip('审批提交失败', 'error')
   }
 })
@@ -212,10 +214,6 @@ watch(() => route.params.id, async (newId) => {
 })
 
 onMounted(async () => {
-  console.log('TranApproveView mounted')
-  console.log('route.params:', route.params)
-  console.log('route.params.id:', route.params.id)
-
   if (!route.params.id) {
     messageTip('缺少交易ID参数', 'error')
     return

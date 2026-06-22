@@ -11,6 +11,8 @@ import com.autodealer.crm.query.TranQuery;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.service.impl.TranServiceImpl;
+import com.autodealer.crm.dto.SettleRequest;
+import com.autodealer.crm.dto.SettlementPreviewResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,12 +56,15 @@ class TranServiceImplTest {
 
     @Mock
     private OperationAuditRecorder auditRecorder;
+    @Mock
+    private ProductPromotionService promotionService;
 
     @BeforeEach
     void setUp() {
         lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(7);
         lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
         lenient().when(tranHistoryMapper.insert(any())).thenReturn(1);
+        lenient().when(tranMapper.incrementVersion(anyInt(), anyInt(), anyInt())).thenReturn(1);
     }
 
     private TTran newTran(Integer id, TranStage stage) {
@@ -68,7 +73,23 @@ class TranServiceImplTest {
         t.setMoney(BigDecimal.valueOf(100000));
         t.setStage(stage);
         t.setCreateBy(1);
+        t.setVersion(0);
         return t;
+    }
+
+    private SettleRequest requestFromPreview(Integer tranId) {
+        SettlementPreviewResponse preview = tranService.getSettlementPreview(tranId, null);
+        SettleRequest request = new SettleRequest();
+        request.setExpectedVersion(preview.getTransactionVersion());
+        request.setPricingFingerprint(preview.getPricingFingerprint());
+        return request;
+    }
+
+    private SettleRequest arbitrarySettleRequest() {
+        SettleRequest request = new SettleRequest();
+        request.setExpectedVersion(0);
+        request.setPricingFingerprint("stale");
+        return request;
     }
 
     @Test
@@ -204,14 +225,15 @@ class TranServiceImplTest {
         // 服务端计算金额：2 × 45000 = 90000
         when(tranProductMapper.selectByTranId(1)).thenReturn(
                 List.of(newProduct(1, 2, BigDecimal.valueOf(45000))));
-        when(tranMapper.settleAtomic(1, BigDecimal.valueOf(90000), 7)).thenReturn(1);
+        when(tranMapper.settleAtomic(eq(1), any(), any(), any(), isNull(), isNull(), eq(0), eq(7))).thenReturn(1);
 
-        assertTrue(tranService.settleTransaction(1));
+        SettlementPreviewResponse settled = tranService.settleTransaction(1, requestFromPreview(1));
+        assertEquals(1, settled.getTransactionVersion());
 
         verify(tranHistoryMapper).insert(argThat(history ->
                 history.getTranId().equals(1)
                         && TranStage.PENDING.name().equals(history.getStage())
-                        && BigDecimal.valueOf(90000).equals(history.getMoney())));
+                        && BigDecimal.valueOf(90000).compareTo(history.getMoney()) == 0));
     }
 
     @Test
@@ -222,11 +244,12 @@ class TranServiceImplTest {
         when(tranProductMapper.selectByTranId(1)).thenReturn(
                 List.of(newProduct(1, 3, BigDecimal.valueOf(100)),
                         newProduct(2, 2, BigDecimal.valueOf(200))));
-        when(tranMapper.settleAtomic(1, BigDecimal.valueOf(700), 7)).thenReturn(1);
+        when(tranMapper.settleAtomic(eq(1), any(), any(), any(), isNull(), isNull(), eq(0), eq(7))).thenReturn(1);
 
-        assertTrue(tranService.settleTransaction(1));
+        SettlementPreviewResponse settled = tranService.settleTransaction(1, requestFromPreview(1));
+        assertEquals(new BigDecimal("700.00"), settled.getFinalAmount());
 
-        verify(tranMapper).settleAtomic(eq(1), eq(BigDecimal.valueOf(700)), eq(7));
+        verify(tranMapper).settleAtomic(eq(1), eq(new BigDecimal("700.00")), any(), eq(BigDecimal.ZERO), isNull(), isNull(), eq(0), eq(7));
     }
 
     @Test
@@ -236,7 +259,7 @@ class TranServiceImplTest {
         when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> tranService.settleTransaction(1));
+                () -> tranService.settleTransaction(1, arbitrarySettleRequest()));
         assertEquals(CodeEnum.TRAN_NO_PRODUCTS, ex.getCodeEnum());
     }
 
@@ -248,7 +271,7 @@ class TranServiceImplTest {
                 List.of(newProduct(1, 1, BigDecimal.ZERO)));
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> tranService.settleTransaction(1));
+                () -> tranService.settleTransaction(1, arbitrarySettleRequest()));
         assertEquals(CodeEnum.PARAM_ERROR, ex.getCodeEnum());
     }
 
@@ -259,10 +282,10 @@ class TranServiceImplTest {
         when(tranProductMapper.selectByTranId(1)).thenReturn(
                 List.of(newProduct(1, 1, BigDecimal.valueOf(100))));
         // CAS 返回 0，模拟并发冲突
-        when(tranMapper.settleAtomic(eq(1), any(), eq(7))).thenReturn(0);
+        when(tranMapper.settleAtomic(eq(1), any(), any(), any(), isNull(), isNull(), eq(0), eq(7))).thenReturn(0);
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> tranService.settleTransaction(1));
+                () -> tranService.settleTransaction(1, requestFromPreview(1)));
         assertEquals(CodeEnum.TRAN_STATE_CONFLICT, ex.getCodeEnum());
     }
 
@@ -270,12 +293,8 @@ class TranServiceImplTest {
     void settleTransaction_wrongStage_shouldThrow() {
         TTran existing = newTran(1, TranStage.PENDING);
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
-        when(tranProductMapper.selectByTranId(1)).thenReturn(
-                List.of(newProduct(1, 1, BigDecimal.TEN)));
-        when(tranMapper.settleAtomic(eq(1), any(), eq(7))).thenReturn(0);
-
         assertThrows(BusinessException.class,
-                () -> tranService.settleTransaction(1));
+                () -> tranService.settleTransaction(1, arbitrarySettleRequest()));
     }
 
     @Test

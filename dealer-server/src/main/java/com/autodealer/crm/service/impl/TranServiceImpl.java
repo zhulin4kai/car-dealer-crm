@@ -20,9 +20,19 @@ import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
+import com.autodealer.crm.dto.SettlementPreviewResponse;
+import com.autodealer.crm.dto.SettleRequest;
+import com.autodealer.crm.service.ProductPromotionService;
+import com.autodealer.crm.util.JSONUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -60,6 +70,9 @@ public class TranServiceImpl implements TranService {
 
     @Resource
     private OperationAuditRecorder auditRecorder;
+
+    @Resource
+    private ProductPromotionService promotionService;
 
     @Override
     public PageInfo<TTran> getTransactionList(TranQuery query, Integer pageNum, Integer pageSize) {
@@ -172,6 +185,12 @@ public class TranServiceImpl implements TranService {
         int rows = tranMapper.updateByPrimaryKeySelective(tTran);
 
         if (rows > 0) {
+            int versionRows = tranMapper.incrementVersion(
+                    tTran.getId(), existing.getVersion() == null ? 0 : existing.getVersion(),
+                    currentUserProvider.getCurrentUserId());
+            if (versionRows != 1) {
+                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易已被其他用户修改");
+            }
             clearTransactionCache(tTran.getId());
             return true;
         }
@@ -180,49 +199,202 @@ public class TranServiceImpl implements TranService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean settleTransaction(Integer tranId) {
-        if (tranId == null) {
-            throw new IllegalArgumentException("交易 ID 不能为空");
+    public SettlementPreviewResponse settleTransaction(Integer tranId, SettleRequest request) {
+        if (request == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "结算请求不能为空");
         }
-        requireAccessibleTransaction(tranId);
-
-        // 从数据库直接查询产品快照（绕过缓存）
-        List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
-        if (products == null || products.isEmpty()) {
-            throw new BusinessException(CodeEnum.TRAN_NO_PRODUCTS, "该交易没有产品信息，无法结算");
+        SettlementPreviewResponse calculated = getSettlementPreview(tranId, request.getPromotionId());
+        if (!calculated.getTransactionVersion().equals(request.getExpectedVersion())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易已变更，请重新获取结算预览");
         }
-
-        // 服务端计算金额：price × quantity
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        for (TTranProduct product : products) {
-            if (product.getPrice() == null || product.getQuantity() == null) {
-                throw new BusinessException(CodeEnum.PARAM_ERROR, "交易产品 [" + product.getProductId() + "] 价格或数量为空");
-            }
-            if (product.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new BusinessException(CodeEnum.PARAM_ERROR, "交易产品 [" + product.getProductId() + "] 价格必须大于0");
-            }
-            if (product.getQuantity() <= 0) {
-                throw new BusinessException(CodeEnum.PARAM_ERROR, "交易产品 [" + product.getProductId() + "] 数量必须大于0");
-            }
-            totalAmount = totalAmount.add(
-                    product.getPrice().multiply(new BigDecimal(product.getQuantity())));
+        if (!calculated.getPricingFingerprint().equals(request.getPricingFingerprint())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "计价条件已变更，请重新获取结算预览");
         }
-
-        if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (calculated.getFinalAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "结算金额必须大于0");
         }
 
+        String promotionSnapshot = calculated.getPromotion() == null
+                ? null : JSONUtils.toJSON(calculated.getPromotion());
         Integer operatorId = currentUserProvider.getCurrentUserId();
-        int rows = tranMapper.settleAtomic(tranId, totalAmount, operatorId);
+        int rows = tranMapper.settleAtomic(
+                tranId,
+                calculated.getFinalAmount(),
+                calculated.getOriginalAmount(),
+                calculated.getDiscountAmount(),
+                calculated.getPromotionId(),
+                promotionSnapshot,
+                request.getExpectedVersion(),
+                operatorId);
         if (rows != 1) {
-            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT);
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态或版本已变更，请重新预览");
         }
+
         TTran tran = tranMapper.selectByPrimaryKey(tranId);
-        writeHistory(tranId, TranStage.PENDING, totalAmount,
+        writeHistory(tranId, TranStage.PENDING, calculated.getFinalAmount(),
                 tran != null ? tran.getExpectedDate() : null, operatorId);
         auditRecorder.record(AuditActionEnum.TRAN_SETTLE, String.valueOf(tranId));
         clearTransactionCache(tranId);
-        return true;
+        calculated.setTransactionVersion(request.getExpectedVersion() + 1);
+        return calculated;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SettlementPreviewResponse getSettlementPreview(Integer tranId, Long promotionId) {
+        if (tranId == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "交易 ID 不能为空");
+        }
+        TTran tran = requireAccessibleTransaction(tranId);
+        if (tran == null || tran.getStage() != TranStage.QUOTATION) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态不是待报价，无法预览结算");
+        }
+        List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
+        if (products == null || products.isEmpty()) {
+            throw new BusinessException(CodeEnum.TRAN_NO_PRODUCTS, "该交易没有产品信息");
+        }
+        BigDecimal originalAmount = calculateOriginalAmount(products);
+        TProductPromotion promotion = null;
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (promotionId != null) {
+            promotion = promotionService.getPromotionById(promotionId);
+            if (promotion == null) {
+                throw new BusinessException(CodeEnum.NOT_FOUND, "促销不存在");
+            }
+            if (!"进行中".equals(promotion.getStatus())) {
+                throw new BusinessException(CodeEnum.FAIL, "促销状态不是进行中");
+            }
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            if (promotion.getStartTime() == null || promotion.getEndTime() == null
+                    || now.isBefore(promotion.getStartTime()) || now.isAfter(promotion.getEndTime())) {
+                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "促销不在有效期内");
+            }
+            discountAmount = calculatePromotionDiscount(products, promotion);
+        }
+        BigDecimal finalAmount = originalAmount.subtract(discountAmount);
+        if (finalAmount.compareTo(BigDecimal.ZERO) < 0) {
+            finalAmount = BigDecimal.ZERO;
+        }
+        SettlementPreviewResponse resp = new SettlementPreviewResponse();
+        resp.setTranId(tranId);
+        resp.setPromotionId(promotionId);
+        resp.setOriginalAmount(originalAmount);
+        resp.setDiscountAmount(discountAmount);
+        resp.setFinalAmount(finalAmount);
+        resp.setTransactionVersion(tran.getVersion() != null ? tran.getVersion() : 0);
+        resp.setPricingFingerprint(buildPricingFingerprint(tranId, tran.getVersion(), products, promotion));
+        if (promotion != null) {
+            SettlementPreviewResponse.PromotionInfo info = new SettlementPreviewResponse.PromotionInfo();
+            info.setId(promotion.getId());
+            info.setName(promotion.getName());
+            info.setType(promotion.getType());
+            info.setDiscount(promotion.getDiscount());
+            info.setProductId(promotion.getProductId());
+            info.setStartTime(String.valueOf(promotion.getStartTime()));
+            info.setEndTime(String.valueOf(promotion.getEndTime()));
+            info.setUpdateTime(String.valueOf(promotion.getUpdateTime()));
+            resp.setPromotion(info);
+        }
+        return resp;
+    }
+
+    private BigDecimal calculateOriginalAmount(List<TTranProduct> products) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (TTranProduct p : products) {
+            validateSettlementProduct(p);
+            total = total.add(p.getPrice().multiply(BigDecimal.valueOf(p.getQuantity())));
+        }
+        return total.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculatePromotionDiscount(List<TTranProduct> products, TProductPromotion promotion) {
+        BigDecimal discount = BigDecimal.ZERO;
+        BigDecimal promoDiscount = promotion.getDiscount();
+        if (promotion.getProductId() == null || promoDiscount == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "促销商品和优惠值不能为空");
+        }
+        String type = promotion.getType();
+        boolean matched = false;
+        if ("PERCENTAGE".equals(type)) {
+            if (promoDiscount.compareTo(BigDecimal.ZERO) <= 0 || promoDiscount.compareTo(BigDecimal.ONE) >= 0) {
+                throw new BusinessException(CodeEnum.PARAM_ERROR, "折扣必须在0到1之间");
+            }
+            for (TTranProduct p : products) {
+                validateSettlementProduct(p);
+                if (!promotion.getProductId().equals(p.getProductId())) continue;
+                matched = true;
+                BigDecimal lineTotal = p.getPrice().multiply(BigDecimal.valueOf(p.getQuantity()));
+                BigDecimal lineDiscount = lineTotal.multiply(BigDecimal.ONE.subtract(promoDiscount));
+                discount = discount.add(lineDiscount);
+            }
+        } else if ("AMOUNT".equals(type)) {
+            if (promoDiscount.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BusinessException(CodeEnum.PARAM_ERROR, "优惠金额必须大于0");
+            }
+            for (TTranProduct p : products) {
+                validateSettlementProduct(p);
+                if (!promotion.getProductId().equals(p.getProductId())) continue;
+                matched = true;
+                BigDecimal lineDiscount = promoDiscount.multiply(BigDecimal.valueOf(p.getQuantity()));
+                discount = discount.add(lineDiscount);
+            }
+        } else {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "不支持的促销类型");
+        }
+        if (!matched) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "促销不适用于当前交易商品");
+        }
+        BigDecimal originalMatched = BigDecimal.ZERO;
+        for (TTranProduct p : products) {
+            if (!promotion.getProductId().equals(p.getProductId())) continue;
+            originalMatched = originalMatched.add(p.getPrice().multiply(BigDecimal.valueOf(p.getQuantity())));
+        }
+        if (discount.compareTo(originalMatched) > 0) {
+            discount = originalMatched;
+        }
+        return discount.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private void validateSettlementProduct(TTranProduct product) {
+        if (product == null || product.getProductId() == null
+                || product.getPrice() == null || product.getQuantity() == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "交易商品价格或数量不完整");
+        }
+        if (product.getPrice().compareTo(BigDecimal.ZERO) <= 0 || product.getQuantity() <= 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "交易商品价格和数量必须大于0");
+        }
+    }
+
+    private String buildPricingFingerprint(Integer tranId, Integer version, List<TTranProduct> products, TProductPromotion promotion) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("tran:").append(tranId).append("|v:").append(version == null ? 0 : version);
+        if (products != null) {
+            List<TTranProduct> orderedProducts = new ArrayList<>(products);
+            orderedProducts.sort(Comparator
+                    .comparing(TTranProduct::getId, Comparator.nullsLast(Integer::compareTo))
+                    .thenComparing(TTranProduct::getProductId, Comparator.nullsLast(Long::compareTo)));
+            for (TTranProduct p : orderedProducts) {
+                sb.append("|p:").append(p.getProductId()).append("x").append(p.getQuantity()).append("@").append(p.getPrice());
+            }
+        }
+        if (promotion != null) {
+            sb.append("|promo:").append(promotion.getId())
+              .append("|type:").append(promotion.getType())
+              .append("|disc:").append(promotion.getDiscount())
+              .append("|pid:").append(promotion.getProductId())
+              .append("|s:").append(promotion.getStartTime())
+              .append("|e:").append(promotion.getEndTime())
+              .append("|u:").append(promotion.getUpdateTime());
+        }
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(sb.toString().getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) hex.append(String.format("%02x", b));
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
     }
 
     @Override
@@ -645,6 +817,13 @@ public class TranServiceImpl implements TranService {
             deleteTransactionProducts(tran.getId());
             // addTransactionProducts 内部会重新计算总金额并更新 t_tran.money
             addTransactionProducts(tran.getId(), products);
+        }
+
+        int versionRows = tranMapper.incrementVersion(
+                tran.getId(), existing.getVersion() == null ? 0 : existing.getVersion(),
+                currentUserProvider.getCurrentUserId());
+        if (versionRows != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易已被其他用户修改");
         }
 
         // 获取最新金额写入历史

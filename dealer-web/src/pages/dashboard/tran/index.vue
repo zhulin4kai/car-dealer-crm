@@ -112,6 +112,13 @@
                       size="sm"
                       @click="handleDelete(row.id)"
                     >删除</Button>
+                    <Button
+                      v-if="row.stage === TRAN_STAGE.LOST"
+                      v-has-permission="PERMISSIONS.tran.resubmit"
+                      variant="secondary"
+                      size="sm"
+                      @click="handleResubmit(row)"
+                    >重新提交</Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -225,11 +232,17 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
-import { getTranList, updateTran, createTran, getTranDetail, getTranProducts, deleteTran, batchDeleteTran } from '@/modules/tran/api/tran-api'
+import { getTranList, updateTran, createTran, getTranDetail, getTranProducts, deleteTran, batchDeleteTran, resubmitTran } from '@/modules/tran/api/tran-api'
 import { getProductList } from '@/modules/product/api/product-api'
 import { getCustomerOptions } from '@/modules/customer/api/customer-api'
 import { TRAN_STAGE, TRAN_STAGE_OPTIONS, getTranStageText, getTranStageType, normalizeTranStage } from '@/modules/tran/model/tran-stage'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
+import { normalizePage } from '@/shared/utils/pagination'
+import { toLocalDateInput } from '@/shared/datetime/local-date'
+import { useLatestRequest } from '@/shared/composables/use-latest-request'
+import type { PageResult } from '@/shared/api/api-types'
+import type { EntityId } from '@/shared/types/id'
+import type { Tran } from '@/modules/tran/model/tran.types'
 import { useRouter } from 'vue-router'
 
 import { Button } from '@/components/ui/button'
@@ -246,12 +259,21 @@ import { NumberField, NumberFieldContent, NumberFieldInput, NumberFieldIncrement
 import { Skeleton } from '@/components/ui/skeleton'
 
 const router = useRouter()
-const loading = ref(false)
-const tableData = ref([])
+interface TranListRow {
+  id: EntityId
+  tranNo: string
+  customerName: string
+  amount: number
+  stage: string
+  createTime: string
+}
+
+const tableData = ref<TranListRow[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const selectedIds = ref([])
+const selectedIds = ref<EntityId[]>([])
+const { loading, run: runTranPage } = useLatestRequest<PageResult<Tran>>()
 
 // Dialog state
 const dialogOpen = ref(false)
@@ -333,58 +355,59 @@ const toggleRowSelection = (id, checked) => {
 
 // Fetch transaction list
 const fetchData = async () => {
-  loading.value = true
-  try {
-    const params = {
+  const params = {
       page: currentPage.value,
       size: pageSize.value,
       ...searchForm
-    }
-    const res = await getTranList(params)
-    if (true) {
-      tableData.value = res.list.map(item => ({
-        id: item.id,
-        tranNo: item.tranNo,
-        customerName: `${item.customerName}`,
-        amount: item.money,
-        stage: normalizeTranStage(item.stage),
-        createTime: item.createTime
-      }))
-      total.value = res.total
-    } else {
-      messageTip('请求失败', 'error')
-    }
-  } catch (error) {
-    console.error('获取交易列表失败:', error)
-    messageTip('获取数据失败', 'error')
-  } finally {
-    loading.value = false
+  }
+  const res = await runTranPage(signal => getTranList(params, signal))
+  if (res) {
+    tableData.value = res.list.map(item => ({
+      id: item.id,
+      tranNo: item.tranNo ?? '',
+      customerName: item.customerName ?? '',
+      amount: item.money ?? 0,
+      stage: normalizeTranStage(item.stage),
+      createTime: item.createTime ?? '',
+    }))
+    total.value = res.total
+  }
+}
+
+async function reloadAfterDelete(deletedCount: number): Promise<void> {
+  const estimatedTotal = Math.max(total.value - deletedCount, 0)
+  currentPage.value = normalizePage(currentPage.value, estimatedTotal, pageSize.value)
+  await fetchData()
+  if (tableData.value.length === 0 && currentPage.value > 1) {
+    currentPage.value -= 1
+    await fetchData()
   }
 }
 
 // Search
 const handleSearch = () => {
   currentPage.value = 1
-  fetchData()
+  void fetchData()
 }
 
 // Single delete
-const handleDelete = async (id) => {
+const handleDelete = async (id: number | string) => {
   try {
     await messageConfirm('您确定要删除该交易吗？')
-
-    const res = await deleteTran(id)
-    if (true) {
-      messageTip('删除成功', 'success')
-      fetchData()
-    } else {
-      messageTip('请求失败', 'error')
+  } catch {
+    messageTip('取消删除', 'warning')
+    return
+  }
+  try {
+    await deleteTran(id)
+    messageTip('删除成功', 'success')
+    try {
+      await reloadAfterDelete(1)
+    } catch {
+      messageTip('删除已成功，但列表刷新失败', 'warning')
     }
-  } catch (error) {
-    if (error.message !== 'cancel') {
-      console.error('删除失败:', error)
-      messageTip('删除失败', 'error')
-    }
+  } catch {
+    messageTip('删除失败', 'error')
   }
 }
 
@@ -394,23 +417,45 @@ const handleBatchDelete = async () => {
     messageTip('请选择要删除的交易', 'warning')
     return
   }
-
+  const deletedCount = selectedIds.value.length
   try {
-    await messageConfirm(`您确定要删除选中的 ${selectedIds.value.length} 条交易吗？`)
+    await messageConfirm(`您确定要删除选中的 ${deletedCount} 条交易吗？`)
+  } catch {
+    messageTip('取消批量删除', 'warning')
+    return
+  }
+  try {
+    await batchDeleteTran(selectedIds.value)
+    messageTip(`成功删除 ${deletedCount} 条交易`, 'success')
+    selectedIds.value = []
+    try {
+      await reloadAfterDelete(deletedCount)
+    } catch {
+      messageTip('删除已成功，但列表刷新失败', 'warning')
+    }
+  } catch {
+    messageTip('批量删除失败', 'error')
+  }
+}
 
-    const res = await batchDeleteTran(selectedIds.value)
-    if (true) {
-      messageTip(`成功删除 ${selectedIds.value.length} 条交易`, 'success')
-      selectedIds.value = []
-      fetchData()
-    } else {
-      messageTip('请求失败', 'error')
+// Resubmit rejected transaction
+const handleResubmit = async (row: Record<string, unknown>) => {
+  try {
+    await messageConfirm('确定要重新提交该交易吗？将重新占用库存并清除旧审批记录，如不改动请先进入详情编辑。')
+  } catch {
+    messageTip('取消重新提交', 'warning')
+    return
+  }
+  try {
+    await resubmitTran(row.id)
+    messageTip('重新提交成功，交易已回待报价，可重新编辑结算', 'success')
+    try {
+      await fetchData()
+    } catch {
+      messageTip('重新提交已成功，但列表刷新失败', 'warning')
     }
-  } catch (error) {
-    if (error.message !== 'cancel') {
-      console.error('批量删除失败:', error)
-      messageTip('批量删除失败', 'error')
-    }
+  } catch {
+    messageTip('重新提交失败，可能是库存不足或状态已变更', 'error')
   }
 }
 
@@ -425,16 +470,13 @@ const handleAdd = () => {
 }
 
 // Edit transaction
-const handleEdit = (row) => {
+const handleEdit = async (row: TranListRow) => {
   isEdit.value = true
-  editId = row.id
   resetFormState()
+  editId = row.id
   dialogOpen.value = true
-  loadCustomers()
-  loadProducts()
-  setTimeout(() => {
-    fetchTranDetail(row.id)
-  }, 100)
+  await Promise.all([loadCustomers(), loadProducts()])
+  await fetchTranDetail(row.id)
 }
 
 // Reset form state
@@ -485,10 +527,8 @@ const onProductChange = (index, productId) => {
 const loadCustomers = async () => {
   try {
     const res = await getCustomerOptions()
-    if (true) {
-      customerOptions.value = res
-    }
-  } catch (error) {
+    customerOptions.value = res
+  } catch {
     messageTip('加载客户列表失败', 'error')
   }
 }
@@ -500,10 +540,8 @@ const loadProducts = async () => {
       page: 1,
       size: 1000
     })
-    if (true) {
-      productOptions.list = res.list
-    }
-  } catch (error) {
+    productOptions.list = res.list
+  } catch {
     messageTip('加载产品列表失败', 'error')
   }
 }
@@ -512,32 +550,25 @@ const loadProducts = async () => {
 const fetchTranDetail = async (id) => {
   try {
     const res = await getTranDetail(id)
-    if (true) {
-      const data = res
-      editId = data.id || id
-      setValues({
-        customerId: data.customerId || '',
-        description: data.description || '',
-        expectedDeliveryDate: data.expectedDate ? new Date(data.expectedDate).toISOString().split('T')[0] : '',
-        products: [],
-      })
-      // Set customerName via setFieldValue
-      setFieldValue('customerName', data.customerName || '')
+    const data = res
+    editId = data.id || id
+    setValues({
+      customerId: String(data.customerId ?? ''),
+      description: data.description || '',
+      expectedDeliveryDate: toLocalDateInput(data.expectedDate ?? null),
+      products: [],
+    })
+    setFieldValue('customerName', data.customerName || '')
 
-      // Fetch product details
-      const productRes = await getTranProducts(id)
-      if (true && productRes.length > 0) {
-        setFieldValue('products', productRes.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price
-        })))
-      }
-    } else {
-      messageTip('请求失败', 'error')
+    const productRes = await getTranProducts(id)
+    if (productRes.length > 0) {
+      setFieldValue('products', productRes.map(item => ({
+        productId: String(item.productId),
+        quantity: item.quantity,
+        price: item.price,
+      })))
     }
-  } catch (error) {
-    console.error('获取交易详情失败:', error)
+  } catch {
     messageTip('获取交易详情失败', 'error')
   }
 }
@@ -546,37 +577,27 @@ const fetchTranDetail = async (id) => {
 const onSubmit = handleSubmit(async () => {
   try {
     // Format data for API
-    const customerName = (values as Record<string, unknown>).customerName as string || ''
-    const formData = {
-      id: isEdit.value ? editId : undefined,
+    const baseRequest = {
       customerId: values.customerId,
-      customerName,
-      amount: 0,
       products: values.products.map(p => ({
         productId: p.productId,
         quantity: p.quantity,
-        price: p.price
       })),
       description: values.description,
       expectedDeliveryDate: values.expectedDeliveryDate ?
         values.expectedDeliveryDate + ' 00:00:00' : null
     }
-    let res
     if (isEdit.value) {
-      res = await updateTran(formData)
+      if (editId === null) throw new Error('缺少编辑交易ID')
+      await updateTran({ ...baseRequest, id: editId })
     } else {
-      res = await createTran(formData)
+      await createTran(baseRequest)
     }
-    if (true) {
-      messageTip('保存成功', 'success')
-      dialogOpen.value = false
-      resetFormState()
-      fetchData()
-    } else {
-      messageTip('请求失败', 'error')
-    }
-  } catch (error) {
-    console.error('保存失败:', error)
+    messageTip('保存成功', 'success')
+    dialogOpen.value = false
+    resetFormState()
+    await fetchData()
+  } catch {
     messageTip('保存失败', 'error')
   }
 })

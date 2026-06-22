@@ -35,7 +35,7 @@ public interface TTranMapper {
     int selectByTotalTranCount();
 
     int selectBySuccessTranCount(@Param("successStage") TranStage successStage);
-    
+
     /**
      * 根据查询条件查询交易列表
      */
@@ -45,12 +45,12 @@ public interface TTranMapper {
      * 根据交易ID查询交易产品列表（包含产品名称）
      */
     List<TTranProduct> selectTranProductsByTranId(Integer tranId);
-    
+
     /**
      * 根据ID删除交易
      */
     int deleteByPrimaryKey(Integer id);
-    
+
     /**
      * 批量删除交易
      */
@@ -76,7 +76,16 @@ public interface TTranMapper {
 
     int settleAtomic(@Param("id") Integer id,
                      @Param("amount") BigDecimal amount,
+                     @Param("originalAmount") BigDecimal originalAmount,
+                     @Param("discountAmount") BigDecimal discountAmount,
+                     @Param("promotionId") Long promotionId,
+                     @Param("promotionSnapshot") String promotionSnapshot,
+                     @Param("expectedVersion") Integer expectedVersion,
                      @Param("editBy") Integer editBy);
+
+    int incrementVersion(@Param("id") Integer id,
+                         @Param("expectedVersion") Integer expectedVersion,
+                         @Param("editBy") Integer editBy);
 
     /**
      * 原子更新交易阶段为已完成，需验证已收款 >= 交易金额
