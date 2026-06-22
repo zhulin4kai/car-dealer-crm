@@ -1191,16 +1191,16 @@ INSERT INTO t_user
 (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired,
  account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time)
 VALUES
-(1, 'admin', '$2a$10$Nlhwhtd0BSCBK95CAifv7eWpCjHloPBMZ3Gaehcc56hRAV3DZALJO', '系统管理员', '13800001001', 'admin@qicheng-auto.example', 1, 1, 1, 1, '2025-01-06 09:00:00', NULL, '2026-06-01 10:30:00', 1, '2026-06-21 08:42:00'),
-(2, 'chenchen', '$2a$10$ZzzAd0nDuUGfGSjJDnZIyOaW7mUZkFzsYgOqiF/b07po/BGxBFjJ.', '陈晨', '13800001002', 'chen.chen@qicheng-auto.example', 1, 1, 1, 1, '2025-02-10 09:15:00', 1, NULL, NULL, '2026-06-21 08:51:00'),
-(3, 'wanglei', '$2a$10$Q0qTW6QqkabTzFyoilViw..YdrVzZkSKe5RvLmjgPgW/IrcPkBoF.', '王磊', '13800001003', 'wang.lei@qicheng-auto.example', 1, 1, 1, 1, '2025-03-03 10:20:00', 1, NULL, NULL, '2026-06-20 18:20:00'),
-(4, 'limin', '$2a$10$3bambNLTCAKtQn2OXPiHb.f0SzH.MucTiLi6GPT6nQrYpsxsdxaFi', '李敏', '13800001004', 'li.min@qicheng-auto.example', 1, 1, 1, 1, '2025-01-15 14:00:00', 1, NULL, NULL, '2026-06-21 09:03:00'),
-(5, 'zhouqi', '$2a$10$Lmk5wXYkZzQMFJEcXVZAZegIQhnAm6ONHpz09X/.gbOh5ze5fU6MW', '周琪', '13800001005', 'zhou.qi@qicheng-auto.example', 1, 1, 1, 1, '2025-04-08 11:30:00', 1, NULL, NULL, '2026-06-20 17:42:00'),
-(6, 'zhaoqian', '$2a$10$6zGT7CfeuJ/6jZPk1pAqcuiMYDnCJstrceThGD5DVVOA5XvOP/sQq', '赵倩', '13800001006', 'zhao.qian@qicheng-auto.example', 1, 1, 1, 1, '2025-02-18 09:40:00', 1, NULL, NULL, '2026-06-21 08:58:00'),
-(7, 'sunqiang', '$2a$10$mbsloGtPV7cDwfAVYxuvLemQRWumZKrDxVZxg4fnbfaocnfZFlYuu', '孙强', '13800001007', 'sun.qiang@qicheng-auto.example', 1, 1, 1, 1, '2025-05-12 13:20:00', 1, NULL, NULL, '2026-06-20 19:05:00'),
-(8, 'wuyue', '$2a$10$ir8uLlBrPMHRtGiu5Ajkv.UKcRacXWRen7zxelp9iUaco3WhGkJ36', '吴悦', '13800001008', 'wu.yue@qicheng-auto.example', 1, 1, 1, 1, '2025-06-09 10:10:00', 4, NULL, NULL, '2026-06-21 08:47:00'),
-(9, 'liujia', '$2a$10$jQR8yyF/ailGP/zW6G4JOOffzWOXhe02Rgw7MZLfxL.IGFdM3cjM2', '刘佳', '13800001009', 'liu.jia@qicheng-auto.example', 1, 1, 1, 1, '2025-08-04 15:30:00', 4, NULL, NULL, '2026-06-20 18:36:00'),
-(10, 'hejun', '$2a$10$0yOGdkAcG8JLEcoEmmCnfO8Vp6rcqBnn30k6pGor5Z0.eLMyLEd7.', '何军', '13800001010', 'he.jun@qicheng-auto.example', 1, 1, 0, 0, '2025-09-15 09:00:00', 1, '2026-06-10 18:00:00', 1, '2026-06-10 17:42:00');
+(1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '系统管理员', '13800001001', 'admin@qicheng-auto.example', 1, 1, 1, 1, '2025-01-06 09:00:00', NULL, '2026-06-01 10:30:00', 1, '2026-06-21 08:42:00'),
+(2, 'chenchen', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '陈晨', '13800001002', 'chen.chen@qicheng-auto.example', 1, 1, 1, 1, '2025-02-10 09:15:00', 1, NULL, NULL, '2026-06-21 08:51:00'),
+(3, 'wanglei', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '王磊', '13800001003', 'wang.lei@qicheng-auto.example', 1, 1, 1, 1, '2025-03-03 10:20:00', 1, NULL, NULL, '2026-06-20 18:20:00'),
+(4, 'limin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '李敏', '13800001004', 'li.min@qicheng-auto.example', 1, 1, 1, 1, '2025-01-15 14:00:00', 1, NULL, NULL, '2026-06-21 09:03:00'),
+(5, 'zhouqi', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '周琪', '13800001005', 'zhou.qi@qicheng-auto.example', 1, 1, 1, 1, '2025-04-08 11:30:00', 1, NULL, NULL, '2026-06-20 17:42:00'),
+(6, 'zhaoqian', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '赵倩', '13800001006', 'zhao.qian@qicheng-auto.example', 1, 1, 1, 1, '2025-02-18 09:40:00', 1, NULL, NULL, '2026-06-21 08:58:00'),
+(7, 'sunqiang', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '孙强', '13800001007', 'sun.qiang@qicheng-auto.example', 1, 1, 1, 1, '2025-05-12 13:20:00', 1, NULL, NULL, '2026-06-20 19:05:00'),
+(8, 'wuyue', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '吴悦', '13800001008', 'wu.yue@qicheng-auto.example', 1, 1, 1, 1, '2025-06-09 10:10:00', 4, NULL, NULL, '2026-06-21 08:47:00'),
+(9, 'liujia', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '刘佳', '13800001009', 'liu.jia@qicheng-auto.example', 1, 1, 1, 1, '2025-08-04 15:30:00', 4, NULL, NULL, '2026-06-20 18:36:00'),
+(10, 'hejun', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '何军', '13800001010', 'he.jun@qicheng-auto.example', 1, 1, 0, 0, '2025-09-15 09:00:00', 1, '2026-06-10 18:00:00', 1, '2026-06-10 17:42:00');
 
 create table t_user_role
 (
