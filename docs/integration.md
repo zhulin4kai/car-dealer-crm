@@ -89,7 +89,8 @@
 | getTranProducts | GET | /api/tran/products/{id} | 路径参数: id | R\<List\<TTranProduct\>\> | TranController.getTransactionProducts | 获取交易产品列表 |
 | createTran | POST | /api/tran/create | data: TranCreateRequest对象 (JSON) | R\<Integer\> | TranController.create | 创建交易 |
 | updateTran | PUT | /api/tran/update | data: TranCreateRequest对象 (JSON) | R\<Boolean\> | TranController.update | 更新交易 |
-| settleTran | PUT | /api/tran/settle/{id} | 路径参数: id, 可选data: {amount} (JSON) | R\<Boolean\> | TranController.settle | 结算交易 |
+| fetchSettlementPreview | POST | /api/tran/{id}/settlement-preview | 路径参数: id, data: {promotionId?} | R\<SettlementPreviewResponse\> | TranController.settlementPreview | 服务端结算预览 |
+| settleTran | PUT | /api/tran/{id}/settle | 路径参数: id, data: {promotionId?, expectedVersion, pricingFingerprint} | R\<SettlementPreviewResponse\> | TranController.settle | CAS 确认结算 |
 | approveTran | PUT | /api/tran/approve/{id} | 路径参数: id, data: {approved, comment} (JSON) | R\<Boolean\> | TranController.approve | 审批交易 |
 | getTranApprove | GET | /api/tran/approve/info/{tranId} | 路径参数: tranId | R\<TTranApprove\> | TranController.getApproveInfo | 获取审批信息 |
 | createInvoice | POST | /api/tran/invoice | data: TTranInvoice对象 (JSON) | R\<Boolean\> | TranController.createInvoice | 创建发票 |
@@ -117,24 +118,11 @@
 | batchDeleteDictValues | DELETE | /api/dict/value/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicValues | 批量删除字典值 |
 | clearCache | GET | /api/dict/clear | params: {forceRefresh: true} | R | DicController.clearCache | 清除字典缓存 |
 
-### 1.8 系统管理模块 (system.js)
+### 1.8 审计日志模块
 
-| 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
-|-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getSystemList | GET | /api/system/list | 无 | R\<List\<TSystem\>\> | SystemController.getAllList | 获取系统信息列表 |
-| getSystemDetail | GET | /api/system/{id} | 路径参数: id | R\<TSystem\> | SystemController.getSystemDetail | 获取系统信息详情 |
-| createSystem | POST | /api/system/create | data: TSystem对象 (JSON) | R | SystemController.createSystem | 创建系统信息 |
-| updateSystem | PUT | /api/system/{id} | 路径参数: id, data: TSystem对象 (JSON) | R | SystemController.updateSystem | 更新系统信息 |
-| deleteSystem | DELETE | /api/system/{id} | 路径参数: id | R | SystemController.deleteSystem | 删除系统信息 |
-| batchDeleteSystems | DELETE | /api/system/batch | data: List\<Integer\> (JSON数组) | R | SystemController.batchDeleteSystems | 批量删除系统信息 |
-| toggleSystemStatus | PUT | /api/system/{id}/status | 路径参数: id, data: {isopen} (JSON) | R | SystemController.toggleSystemStatus | 切换系统开启状态 |
-| getSystemMonitorInfo | GET | /api/monitor/system-info | 无 | R | SystemMonitorController.getSystemInfo | 获取系统基本信息 |
-| getMemoryInfo | GET | /api/monitor/memory-info | 无 | R | SystemMonitorController.getMemoryInfo | 获取内存信息 |
-| getCpuInfo | GET | /api/monitor/cpu-info | 无 | R | SystemMonitorController.getCpuInfo | 获取CPU信息 |
-| getDiskInfo | GET | /api/monitor/disk-info | 无 | R | SystemMonitorController.getDiskInfo | 获取磁盘信息 |
-| getJvmInfo | GET | /api/monitor/jvm-info | 无 | R | SystemMonitorController.getJvmInfo | 获取JVM信息 |
-| getNetworkInfo | GET | /api/monitor/network-info | 无 | R | SystemMonitorController.getNetworkInfo | 获取网络信息 |
-| getAllMonitorData | GET | /api/monitor/all | 无 | R | SystemMonitorController.getAllMonitorData | 获取所有监控数据 |
+审计日志已确认为后续正式模块，业务规格见 `docs/specs/审计日志/`。接口尚未实现，本文不声明可调用的审计日志 API。
+
+旧系统配置与系统监控接口已下线，不再提供 `/api/system/*` 和 `/api/monitor/*`。
 
 ### 1.9 统计模块 (后端提供，前端未定义API文件)
 
@@ -513,24 +501,16 @@ axios.interceptors.response.use((response) => {
 |-----|------|
 | HTTP方法 | GET |
 | 请求路径 | /api/exportExcel |
-| 请求参数 | ids(可选，逗号分隔的ID), Authorization(Token) |
-| 响应类型 | application/octet-stream |
-| 响应头 | Content-disposition: attachment;filename=客户信息数据{时间戳}.xlsx |
-| Token特殊处理 | 从URL参数获取Token(因为浏览器下载无法设置请求头) |
-| 权限要求 | 无特殊权限注解 |
+| 请求参数 | ids(可选，逗号分隔的ID) |
+| 认证方式 | 通过 Authorization 请求头传递 Token |
+| 响应类型 | application/vnd.openxmlformats-officedocument.spreadsheetml.sheet |
+| 响应头 | Content-disposition: attachment; filename*=UTF-8''<URL编码文件名>.xlsx |
+| 权限要求 | @PreAuthorize("hasAuthority('customer:export')") |
+| 前端实现 | `httpClient.download()` 以 Blob 接收，解析文件名后 `saveBlob` 触发下载 |
 
-### 4.3 Token在文件操作中的特殊处理
+### 4.3 Token在文件操作中的处理
 
-```java
-// TokenVerifyFilter.java:46-48
-if (request.getRequestURI().equals(Constants.EXPORT_EXCEL_URI)) {
-    // 导出Excel接口从URL参数获取token
-    token = request.getParameter("Authorization");
-} else {
-    // 其他请求从请求头获取token
-    token = request.getHeader("Authorization");
-}
-```
+Token 统一通过 `Authorization` 请求头传递，包括文件下载。`TokenVerifyFilter` 只从请求头读取 Token，不再从 URL 参数获取。前端 `httpClient.download()` 复用 `axiosClient` 的请求拦截器自动注入 Token，不再将 Token 放入 URL。
 
 ---
 
@@ -734,8 +714,14 @@ apiFunction(params).then(response => {
 | 前端调用但后端未实现 | 1 (getTranStatus) |
 | 后端提供但前端未调用 | 16 |
 | 路径不匹配 | 1 (restockProduct) |
-| 使用R类响应的模块 | 用户/线索/活动/字典/交易/系统/统计 |
+| 使用R类响应的模块 | 用户/线索/活动/字典/交易/统计 |
 | 使用Result类响应的模块 | 产品/分类/促销/库存 |
+
+---
+
+## 7. 数据库初始化契约
+
+`CarDealerCRM.sql` 是生产空库初始化入口。系统配置与系统监控能力已下线，初始化脚本不再包含 `t_system_info`。
 
 ---
 

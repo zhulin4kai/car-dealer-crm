@@ -15,9 +15,7 @@
 - [7. 市场活动模块](#7-市场活动模块)
 - [8. 商品管理模块](#8-商品管理模块)
 - [9. 字典管理模块](#9-字典管理模块)
-- [10. 系统管理模块](#10-系统管理模块)
 - [11. 统计报表模块](#11-统计报表模块)
-- [12. 系统监控模块](#12-系统监控模块)
 - [13. 安全配置](#13-安全配置)
 - [14. AOP 切面](#14-aop-切面)
 - [15. 工具类](#15-工具类)
@@ -408,10 +406,10 @@ dealer-server/src/main/java/com/autodealer/crm/
   - 删除旧产品关联（恢复库存）→ 插入新产品关联（扣减库存）
 
 #### 结算交易
-- **接口**: `PUT /api/tran/settle/{id}`
-- **流程**: `TranController.settle()` → `TranServiceImpl.updateTransaction()`
-  - 支持前端传递促销后的结算金额
-  - 更新交易金额和状态为待审批(42)
+- **接口**: `POST /api/tran/{id}/settlement-preview`、`PUT /api/tran/{id}/settle`
+- **流程**: `TranController.settlementPreview()/settle()` → `TranServiceImpl.getSettlementPreview()/settleTransaction()`
+  - 服务端根据商品快照和可选促销计算金额，不接受客户端自报金额。
+  - 确认结算必须提交预览返回的交易版本和计价指纹，并以 CAS 更新为待审批。
 
 #### 审批交易
 - **接口**: `PUT /api/tran/approve/{id}`
@@ -669,35 +667,6 @@ deleteDicType(id):
 
 ---
 
-## 10. 系统管理模块
-
-### 10.1 文件路径
-
-| 层级 | 文件路径 |
-|------|----------|
-| Controller | `web/SystemController.java` |
-| Service | `service/SystemService.java` → `service/impl/SystemServiceImpl.java` |
-| Mapper | `mapper/TSystemMapper.java` |
-| XML | `resources/mapper/TSystemMapper.xml` |
-| Model | `model/TSystem.java`, `model/TSystemInfo.java` |
-
-### 10.2 接口方法及业务流程
-
-| 接口 | 方法 | 事务 |
-|------|------|------|
-| `GET /api/system/list` | 获取所有系统配置 | 无 |
-| `GET /api/system/{id}` | 获取系统配置详情 | 无 |
-| `POST /api/system/create` | 新增系统配置 | `@Transactional` |
-| `PUT /api/system/{id}` | 更新系统配置 | `@Transactional` |
-| `DELETE /api/system/{id}` | 删除系统配置 | `@Transactional` |
-| `DELETE /api/system/batch` | 批量删除 | `@Transactional` |
-| `PUT /api/system/{id}/status` | 切换系统状态 | `@Transactional` |
-
-### 10.3 涉及数据库表
-- `t_system_info` - 系统信息表
-
----
-
 ## 11. 统计报表模块
 
 ### 11.1 文件路径
@@ -737,33 +706,6 @@ deleteDicType(id):
 - `t_clue` - 线索表
 - `t_customer` - 客户表
 - `t_tran` - 交易表
-
----
-
-## 12. 系统监控模块
-
-### 12.1 文件路径
-
-| 层级 | 文件路径 |
-|------|----------|
-| Controller | `web/SystemMonitorController.java` |
-| Service | `service/SystemMonitorService.java` → `service/impl/SystemMonitorServiceImpl.java` |
-| DTO | `dto/SystemMonitorDTO.java` |
-
-### 12.2 接口方法
-
-| 接口 | 说明 |
-|------|------|
-| `GET /api/monitor/system-info` | 操作系统信息 |
-| `GET /api/monitor/memory-info` | 内存信息 |
-| `GET /api/monitor/cpu-info` | CPU 信息（含各核心负载） |
-| `GET /api/monitor/disk-info` | 磁盘信息（含分区详情） |
-| `GET /api/monitor/network-info` | 网络信息（含各网卡流量） |
-| `GET /api/monitor/jvm-info` | JVM 信息 |
-| `GET /api/monitor/all` | 完整监控数据 |
-
-### 12.3 实现方式
-使用 `oshi` 库获取真实系统硬件信息，不依赖数据库。
 
 ---
 
@@ -1166,25 +1108,6 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新 |
 
-### 17.12 TSystemMapper.xml (t_system_info)
-
-| SQL ID | 类型 | 用途 |
-|--------|------|------|
-| `selectAll` | SELECT | 查询所有系统配置 |
-| `selectById` | SELECT | 按ID查询 |
-| `selectByPrimaryKey` | SELECT | 按主键查询 |
-| `insert` | INSERT | 插入 |
-| `insertSelective` | INSERT | 选择性插入 |
-| `update` | UPDATE | 更新 |
-| `updateByPrimaryKeySelective` | UPDATE | 选择性更新 |
-| `updateByPrimaryKey` | UPDATE | 全字段更新 |
-| `deleteById` | DELETE | 删除 |
-| `deleteByPrimaryKey` | DELETE | 按主键删除 |
-| `batchDelete` | DELETE | 批量删除 |
-| `updateStatus` | UPDATE | 更新系统状态 |
-
----
-
 ## 18. 数据库表汇总
 
 | 表名 | 说明 | 主要字段 |
@@ -1211,7 +1134,6 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `t_product_stock_record` | 库存变动记录表 | id, product_id, quantity, type, remark |
 | `t_dic_type` | 字典类型表 | id, type_code, type_name, remark |
 | `t_dic_value` | 字典值表 | id, type_code, type_value, order, remark |
-| `t_system_info` | 系统信息表 | id, system_code, name, site, logo, isopen |
 
 ---
 

@@ -980,15 +980,16 @@ fullName=张三&phone=13800138000&activityId=1&appellation=1&source=1
 ### 5.6 导出客户 Excel
 - **URL**: `/api/exportExcel`
 - **Method**: GET
-- **权限**: 需要登录
+- **权限**: 需要权限 `customer:export`
 - **描述**: 导出客户数据为 Excel 文件
+- **认证**: 通过 `Authorization: Bearer <token>` 请求头认证，Token 不得出现在 URL 中
 
 **请求参数**:
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | ids | String | 否 | 客户ID列表，逗号分隔（为空则导出全部） |
 
-**响应**: 直接返回 Excel 文件流
+**响应**: 直接返回 Excel 文件流（`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`），`Content-Disposition` 包含 `filename*` RFC 5987 编码文件名。失败时返回 JSON `R` envelope。
 
 ---
 
@@ -1165,37 +1166,62 @@ fullName=张三&phone=13800138000&activityId=1&appellation=1&source=1
 }
 ```
 
-### 6.5 结算交易
-- **URL**: `/api/tran/settle/{id}`
-- **Method**: PUT
+### 6.5 结算预览与确认
+
+结算采用服务端计价的两阶段协议。前端必须先获取预览，再原样提交预览返回的版本号和计价指纹；不得提交客户端自行计算的金额。
+
+#### 6.5.1 获取结算预览
+
+- **URL**: `/api/tran/{id}/settlement-preview`
+- **Method**: POST
 - **权限**: 需要登录
-- **描述**: 结算交易，计算总金额并更新状态为待审批
+- **描述**: 服务端按交易商品快照和可选促销计算原价、优惠和最终金额。
 
 **路径参数**:
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | id | Integer | 是 | 交易ID |
 
-**请求体**（可选）:
+**请求体**:
 ```json
 {
-  "amount": 150000
+  "promotionId": 3
 }
 ```
-
-**请求参数**:
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| amount | BigDecimal | 否 | 结算金额（不传则自动计算） |
 
 **响应示例**:
 ```json
 {
   "code": 200,
   "msg": "success",
-  "data": true
+  "data": {
+    "tranId": 1,
+    "promotionId": 3,
+    "originalAmount": 150000.00,
+    "discountAmount": 10000.00,
+    "finalAmount": 140000.00,
+    "transactionVersion": 4,
+    "pricingFingerprint": "服务端生成的SHA-256指纹"
+  }
 }
 ```
+
+#### 6.5.2 确认结算
+
+- **URL**: `/api/tran/{id}/settle`
+- **Method**: PUT
+- **权限**: 需要登录
+- **描述**: 重新计价并校验版本和指纹，通过 CAS 将交易从 `QUOTATION` 更新为 `PENDING`。
+
+```json
+{
+  "promotionId": 3,
+  "expectedVersion": 4,
+  "pricingFingerprint": "预览接口返回的原值"
+}
+```
+
+`expectedVersion` 和 `pricingFingerprint` 必填。交易、商品价格/数量或促销规则发生变化时返回状态冲突，前端必须重新获取预览，不能静默重试旧请求。
 
 ### 6.6 审批交易
 - **URL**: `/api/tran/approve/{id}`
@@ -2685,382 +2711,11 @@ name=春节促销活动&startTime=2024-01-01 00:00:00&endTime=2024-02-01 00:00:0
 
 ---
 
-## 14. 系统管理
+## 14. 审计日志
 
-### 14.1 获取系统配置列表
-- **URL**: `/api/system/list`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 获取所有系统配置列表
+审计日志模块已确认为后续正式后台能力，业务规格见 `docs/specs/审计日志/`。接口尚未实现，本文不声明可调用的审计日志 API。
 
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": [
-    {
-      "id": 1,
-      "systemCode": "CRM",
-      "name": "汽车经销商CRM系统",
-      "site": "http://localhost:8089",
-      "logo": "/logo.png",
-      "title": "汽车经销商CRM",
-      "description": "汽车经销商客户关系管理系统",
-      "keywords": "CRM,汽车,经销商",
-      "tel": "400-123-4567",
-      "weixin": "car-dealer-crm",
-      "email": "support@example.com",
-      "address": "北京市朝阳区",
-      "version": "1.0.0",
-      "isopen": "1"
-    }
-  ]
-}
-```
-
-### 14.2 获取系统配置详情
-- **URL**: `/api/system/{id}`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 获取指定系统配置的详细信息
-
-**路径参数**:
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| id | Integer | 是 | 系统配置ID |
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "id": 1,
-    "systemCode": "CRM",
-    "name": "汽车经销商CRM系统",
-    "site": "http://localhost:8089",
-    "logo": "/logo.png",
-    "title": "汽车经销商CRM",
-    "description": "汽车经销商客户关系管理系统",
-    "keywords": "CRM,汽车,经销商",
-    "shortcuticon": "/favicon.ico",
-    "tel": "400-123-4567",
-    "weixin": "car-dealer-crm",
-    "email": "support@example.com",
-    "address": "北京市朝阳区",
-    "version": "1.0.0",
-    "closeMsg": "系统维护中",
-    "isopen": "1",
-    "createTime": "2024-01-01 00:00:00",
-    "createBy": 1,
-    "editTime": "2024-01-15 10:30:00",
-    "editBy": 1
-  }
-}
-```
-
-### 14.3 创建系统配置
-- **URL**: `/api/system/create`
-- **Method**: POST
-- **权限**: 需要登录
-- **描述**: 创建新系统配置
-
-**请求体**:
-```json
-{
-  "systemCode": "CRM2",
-  "name": "另一个CRM系统",
-  "site": "http://localhost:8090",
-  "title": "另一个CRM",
-  "isopen": "1"
-}
-```
-
-**请求参数**:
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| systemCode | String | 是 | 系统代码 |
-| name | String | 是 | 系统名称 |
-| site | String | 否 | 站点地址 |
-| logo | String | 否 | Logo路径 |
-| title | String | 否 | 系统标题 |
-| description | String | 否 | 系统描述 |
-| keywords | String | 否 | 关键词 |
-| shortcuticon | String | 否 | 快捷图标 |
-| tel | String | 否 | 联系电话 |
-| weixin | String | 否 | 微信号 |
-| email | String | 否 | 邮箱 |
-| address | String | 否 | 地址 |
-| version | String | 否 | 版本号 |
-| closeMsg | String | 否 | 关闭提示信息 |
-| isopen | String | 否 | 是否开启（1开启 0关闭） |
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": null
-}
-```
-
-### 14.4 更新系统配置
-- **URL**: `/api/system/{id}`
-- **Method**: PUT
-- **权限**: 需要登录
-- **描述**: 更新系统配置信息
-
-**路径参数**:
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| id | Integer | 是 | 系统配置ID |
-
-**请求体**: 同创建系统配置
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": null
-}
-```
-
-### 14.5 删除系统配置
-- **URL**: `/api/system/{id}`
-- **Method**: DELETE
-- **权限**: 需要登录
-- **描述**: 删除指定系统配置
-
-**路径参数**:
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| id | Integer | 是 | 系统配置ID |
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": null
-}
-```
-
-### 14.6 批量删除系统配置
-- **URL**: `/api/system/batch`
-- **Method**: DELETE
-- **权限**: 需要登录
-- **描述**: 批量删除系统配置
-
-**请求体**:
-```json
-[1, 2, 3]
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": null
-}
-```
-
-### 14.7 切换系统状态
-- **URL**: `/api/system/{id}/status`
-- **Method**: PUT
-- **权限**: 需要登录
-- **描述**: 切换系统的开启/关闭状态
-
-**路径参数**:
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| id | Integer | 是 | 系统配置ID |
-
-**请求体**:
-```json
-{
-  "isopen": "0"
-}
-```
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": null
-}
-```
-
----
-
-## 15. 系统监控
-
-### 15.1 获取系统信息
-- **URL**: `/api/monitor/system-info`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 获取系统基本信息（操作系统、主机名等）
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "osName": "Mac OS X",
-    "osVersion": "14.0",
-    "osArch": "aarch64",
-    "hostName": "MacBook-Pro",
-    "userName": "admin",
-    "systemBootTime": "2024-01-01 00:00:00",
-    "serverIp": "192.168.1.100"
-  }
-}
-```
-
-### 15.2 获取 CPU 信息
-- **URL**: `/api/monitor/cpu-info`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 获取 CPU 使用情况
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "cpuName": "Apple M1",
-    "cpuCores": 8,
-    "cpuUsage": 25.5,
-    "sysUsage": 10.2,
-    "userUsage": 15.3,
-    "idle": 74.5
-  }
-}
-```
-
-### 15.3 获取内存信息
-- **URL**: `/api/monitor/memory-info`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 获取内存使用情况
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "totalMemory": 17179869184,
-    "usedMemory": 8589934592,
-    "freeMemory": 8589934592,
-    "memoryUsage": 50.0,
-    "totalMemoryFormatted": "16.0 GB",
-    "usedMemoryFormatted": "8.0 GB",
-    "freeMemoryFormatted": "8.0 GB"
-  }
-}
-```
-
-### 15.4 获取磁盘信息
-- **URL**: `/api/monitor/disk-info`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 获取磁盘使用情况
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "totalDisk": 500107862016,
-    "usedDisk": 250053931008,
-    "freeDisk": 250053931008,
-    "diskUsage": 50.0,
-    "totalDiskFormatted": "465.7 GB",
-    "usedDiskFormatted": "232.9 GB",
-    "freeDiskFormatted": "232.9 GB"
-  }
-}
-```
-
-### 15.5 获取网络信息
-- **URL**: `/api/monitor/network-info`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 获取网络接口信息
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "networkInterfaces": [
-      {
-        "name": "en0",
-        "ip": "192.168.1.100",
-        "mac": "AA:BB:CC:DD:EE:FF",
-        "status": "UP"
-      }
-    ]
-  }
-}
-```
-
-### 15.6 获取 JVM 信息
-- **URL**: `/api/monitor/jvm-info`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 获取 JVM 运行时信息
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "javaVersion": "17.0.2",
-    "javaHome": "/Library/Java/JavaVirtualMachines/jdk-17.jdk",
-    "jvmName": "Java HotSpot(TM) 64-Bit Server VM",
-    "jvmVersion": "17.0.2+8-86",
-    "totalMemory": 268435456,
-    "maxMemory": 4294967296,
-    "freeMemory": 134217728,
-    "usedMemory": 134217728,
-    "startTime": "2024-01-15 10:00:00",
-    "runTime": "2h 30m",
-    "inputArgs": ["-Xms256m", "-Xmx4g"]
-  }
-}
-```
-
-### 15.7 获取完整监控数据
-- **URL**: `/api/monitor/all`
-- **Method**: GET
-- **权限**: 需要登录
-- **描述**: 一次性获取所有监控数据
-
-**响应示例**:
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "systemInfo": {},
-    "cpuInfo": {},
-    "memoryInfo": {},
-    "diskInfo": {},
-    "networkInfo": {},
-    "jvmInfo": {}
-  }
-}
-```
+旧系统配置与系统监控接口已下线，不再提供 `/api/system/*` 和 `/api/monitor/*`。
 
 ---
 
@@ -3225,7 +2880,6 @@ name=春节促销活动&startTime=2024-01-01 00:00:00&endTime=2024-02-01 00:00:0
 | t_tran_remark | 交易备注表 |
 | t_dic_type | 字典类型表 |
 | t_dic_value | 字典值表 |
-| t_system | 系统配置表 |
 | product | 商品表 |
 | product_category | 商品分类表 |
 | product_promotion | 商品促销表 |
@@ -3235,13 +2889,12 @@ name=春节促销活动&startTime=2024-01-01 00:00:00&endTime=2024-02-01 00:00:0
 
 #### P1-2：请求体 DTO 规范化
 
-所有 `@RequestBody` 接口方法已改为使用专用 DTO 类，不再直接接收实体类型或裸集合。涉及 6 个模块共 12 个 DTO：
+所有 `@RequestBody` 接口方法已改为使用专用 DTO 类，不再直接接收实体类型或裸集合。已下线的系统管理模块不再列入 DTO 契约。
 
 | 模块 | DTO |
 |------|-----|
 | 用户 | `CreateUserRequest`, `UpdateUserRequest`, `BatchDisableUsersRequest`, `AssignUserRolesRequest`, `ChangePasswordRequest` |
 | 字典 | `CreateDicTypeRequest`, `UpdateDicTypeRequest`, `CreateDicValueRequest`, `UpdateDicValueRequest` |
-| 系统 | `CreateSystemRequest`, `UpdateSystemRequest`, `ToggleSystemStatusRequest` |
 | 商品 | `CreateProductRequest`, `UpdateProductRequest` |
 | 分类 | `CreateProductCategoryRequest`, `UpdateProductCategoryRequest` |
 | 促销 | `CreateProductPromotionRequest`, `UpdateProductPromotionRequest` |
