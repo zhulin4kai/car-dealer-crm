@@ -15,4 +15,9 @@ export interface PageQuery {
   size: number
 }
 
+export interface DownloadResult {
+  blob: Blob
+  filename: string
+}
+
 export type ApiList<T> = T[]

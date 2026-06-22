@@ -4,6 +4,7 @@ import type { SelectItemProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 import { CheckIcon } from '@lucide/vue'
 import { reactiveOmit } from '@vueuse/core'
+import { computed } from 'vue'
 import {
   SelectItem,
   SelectItemIndicator,
@@ -17,10 +18,12 @@ const props = defineProps<SelectItemProps & { class?: HTMLAttributes['class'] }>
 const delegatedProps = reactiveOmit(props, 'class')
 
 const forwardedProps = useForwardProps(delegatedProps)
+const hasValidValue = computed(() => props.value !== '' && props.value !== null && props.value !== undefined)
 </script>
 
 <template>
   <SelectItem
+    v-if="hasValidValue"
     data-slot="select-item"
     v-bind="forwardedProps"
     :class="

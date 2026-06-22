@@ -2,23 +2,25 @@ import type { App, DirectiveBinding } from 'vue'
 
 import { usePermissionStore } from '@/stores/permission.store'
 
-function removeElement(el: HTMLElement): void {
-  el.parentNode?.removeChild(el)
+export function setPermissionVisibility(el: HTMLElement, allowed: boolean): void {
+  if (allowed) {
+    el.style.removeProperty('display')
+    el.removeAttribute('aria-hidden')
+    return
+  }
+  el.style.setProperty('display', 'none', 'important')
+  el.setAttribute('aria-hidden', 'true')
 }
 
 export function installPermissionDirective(app: App): void {
   app.directive('has-permission', {
     mounted(el: HTMLElement, binding: DirectiveBinding<string>) {
       const permissionStore = usePermissionStore()
-      if (!permissionStore.hasPermission(binding.value)) {
-        removeElement(el)
-      }
+      setPermissionVisibility(el, permissionStore.hasPermission(binding.value))
     },
     updated(el: HTMLElement, binding: DirectiveBinding<string>) {
       const permissionStore = usePermissionStore()
-      if (!permissionStore.hasPermission(binding.value)) {
-        removeElement(el)
-      }
+      setPermissionVisibility(el, permissionStore.hasPermission(binding.value))
     },
   })
 }

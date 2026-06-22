@@ -1,12 +1,11 @@
-import axios, { type AxiosRequestConfig } from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
 import { ApiError } from '@/shared/api/api-error'
 import { isSessionInvalidCode } from '@/shared/api/error-codes'
-import type { ApiEnvelope } from '@/shared/api/api-types'
+import type { ApiEnvelope, DownloadResult } from '@/shared/api/api-types'
+import { notifySessionInvalid } from '@/shared/auth/session-invalid-handler'
 import { env } from '@/shared/config/env'
-import { clearPermissionCodes } from '@/shared/storage/permission-storage'
-import { clearStoredToken, readStoredToken } from '@/shared/storage/token-storage'
-import { messageConfirm, messageTip } from '@/shared/utils/feedback'
+import { readStoredToken } from '@/shared/storage/token-storage'
 
 const axiosClient = axios.create({
   baseURL: env.apiBaseUrl,
@@ -26,41 +25,21 @@ axiosClient.interceptors.request.use((config) => {
   return config
 })
 
-function handleInvalidSession(envelope: ApiEnvelope<unknown>): void {
-  if (!isSessionInvalidCode(envelope.code)) {
-    return
+function envelopeToApiError(envelope: ApiEnvelope<unknown>): ApiError {
+  const sessionInvalid = isSessionInvalidCode(envelope.code)
+  if (sessionInvalid) {
+    void notifySessionInvalid({ code: envelope.code, msg: envelope.msg })
   }
-
-  messageConfirm(`${envelope.msg}，是否重新去登录？`)
-    .then(() => {
-      clearStoredToken()
-      clearPermissionCodes()
-      window.location.href = '/'
-    })
-    .catch(() => {
-      messageTip('登录已过期，即将跳转到登录页', 'warning')
-      window.setTimeout(() => {
-        clearStoredToken()
-        clearPermissionCodes()
-        window.location.href = '/'
-      }, 1500)
-    })
+  return new ApiError(envelope.code, envelope.msg || '请求失败', envelope, sessionInvalid)
 }
 
 axiosClient.interceptors.response.use(
-  (response) => {
-    const envelope = response.data as ApiEnvelope<unknown>
-    if (typeof envelope?.code === 'number') {
-      handleInvalidSession(envelope)
-    }
-    return response
-  },
+  response => response,
   (error: unknown) => {
     if (axios.isAxiosError(error)) {
       const envelope = error.response?.data as ApiEnvelope<unknown> | undefined
       if (typeof envelope?.code === 'number') {
-        handleInvalidSession(envelope)
-        return Promise.reject(new ApiError(envelope.code, envelope.msg || '请求失败', envelope))
+        return Promise.reject(envelopeToApiError(envelope))
       }
     }
     return Promise.reject(error)
@@ -72,10 +51,80 @@ async function request<T>(config: AxiosRequestConfig): Promise<T> {
   const envelope = response.data
 
   if (envelope.code !== 200) {
-    throw new ApiError(envelope.code, envelope.msg || '请求失败', envelope)
+    throw envelopeToApiError(envelope)
   }
 
   return envelope.data
+}
+
+function parseFilename(contentDisposition: string | undefined): string {
+  if (!contentDisposition) {
+    return 'download.bin'
+  }
+  const rfc5987Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (rfc5987Match?.[1]) {
+    try {
+      return decodeURIComponent(rfc5987Match[1])
+    } catch {
+      // fall through to filename=
+    }
+  }
+  const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i)
+  if (filenameMatch?.[1]) {
+    try {
+      return decodeURIComponent(filenameMatch[1])
+    } catch {
+      return filenameMatch[1]
+    }
+  }
+  return 'download.bin'
+}
+
+async function blobToApiError(blob: Blob): Promise<ApiError | null> {
+  const text = await blob.text()
+  try {
+    const envelope = JSON.parse(text) as ApiEnvelope<unknown>
+    if (envelope && typeof envelope.code === 'number') {
+      return envelopeToApiError(envelope)
+    }
+  } catch {
+    // not valid JSON
+  }
+  return null
+}
+
+async function download(url: string, config?: AxiosRequestConfig): Promise<DownloadResult> {
+  let response: AxiosResponse<Blob>
+  try {
+    response = await axiosClient.request<Blob>({
+      ...config,
+      method: 'get',
+      url,
+      responseType: 'blob',
+    })
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
+      const apiError = await blobToApiError(error.response.data)
+      if (apiError) {
+        throw apiError
+      }
+    }
+    throw error
+  }
+
+  const blob = response.data
+  const contentType = String(response.headers['content-type'] ?? '')
+
+  if (contentType.includes('application/json')) {
+    const apiError = await blobToApiError(blob)
+    if (apiError) {
+      throw apiError
+    }
+    throw new ApiError(500, '下载失败：响应格式异常', null)
+  }
+
+  const filename = parseFilename(response.headers['content-disposition'])
+  return { blob, filename }
 }
 
 export const httpClient = {
@@ -91,13 +140,12 @@ export const httpClient = {
   delete<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     return request<T>({ ...config, method: 'delete', url, data })
   },
-  blob(url: string, config?: AxiosRequestConfig): Promise<Blob> {
-    return axiosClient
-      .request<Blob>({ ...config, method: 'get', url, responseType: 'blob' })
-      .then((response) => response.data)
+  download(url: string, config?: AxiosRequestConfig): Promise<DownloadResult> {
+    return download(url, config)
   },
 }
 
+// 仅保留为旧调用方兼容入口；业务页面应通过各领域 module API 访问后端。
 export function doGet<T>(url: string, params?: unknown): Promise<T> {
   return httpClient.get<T>(url, { params })
 }

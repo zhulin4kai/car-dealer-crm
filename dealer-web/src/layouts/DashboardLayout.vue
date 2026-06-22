@@ -19,11 +19,12 @@
 
       <!-- 菜单 -->
       <nav class="flex-1 overflow-y-auto py-1">
-        <template v-for="(menuPermission, index) in permissionStore.menuPermissionList" :key="menuPermission.id">
+        <template v-for="menuPermission in visibleMenuPermissionList" :key="getMenuKey(menuPermission)">
           <!-- 有子菜单 -->
           <Collapsible
             v-if="menuPermission.subPermissionList?.length"
-            v-model:open="openMenus[index]"
+            :open="openMenus[getMenuKey(menuPermission)] ?? false"
+            @update:open="(open: boolean) => { openMenus[getMenuKey(menuPermission)] = open }"
           >
             <CollapsibleTrigger
               class="flex items-center w-full px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -34,14 +35,14 @@
               <ChevronDown
                 v-if="!isCollapse"
                 class="w-4 h-4 ml-auto transition-transform"
-                :class="{ 'rotate-180': openMenus[index] }"
+                :class="{ 'rotate-180': openMenus[getMenuKey(menuPermission)] }"
               />
             </CollapsibleTrigger>
             <CollapsibleContent v-if="!isCollapse">
               <router-link
                 v-for="subPermission in menuPermission.subPermissionList"
-                :key="subPermission.id"
-                :to="subPermission.url ?? ''"
+                :key="getMenuKey(subPermission)"
+                :to="subPermission.url"
                 class="flex items-center pl-9 pr-3 py-2 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 :class="{ 'bg-sidebar-accent text-sidebar-accent-foreground font-medium': currentRouterPath === subPermission.url }"
               >
@@ -53,8 +54,8 @@
 
           <!-- 无子菜单 -->
           <router-link
-            v-else
-            :to="menuPermission.url ?? ''"
+            v-else-if="menuPermission.url"
+            :to="menuPermission.url"
             class="flex items-center w-full px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             :class="{ 'justify-center': isCollapse, 'bg-sidebar-accent text-sidebar-accent-foreground font-medium': currentRouterPath === menuPermission.url }"
           >
@@ -93,7 +94,11 @@
 
       <!-- 主内容区 -->
       <main class="flex-1 overflow-auto">
-        <router-view v-if="isRouterAlive" />
+        <router-view v-slot="{ Component, route: viewRoute }">
+          <div :key="viewRoute.fullPath" class="min-h-full">
+            <component :is="Component" v-if="Component" />
+          </div>
+        </router-view>
       </main>
 
       <!-- 底栏 -->
@@ -108,7 +113,7 @@
 import { computed, onMounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import type { User } from '@/modules/user/model/user.types'
+import type { Permission, User } from '@/modules/user/model/user.types'
 import { messageTip } from '@/shared/utils/feedback'
 import { resolveIcon } from '@/shared/utils/icon-mapper'
 import { useAppStore } from '@/stores/app.store'
@@ -140,7 +145,6 @@ const permissionStore = usePermissionStore()
 
 const user = computed<User>(() => authStore.currentUser ?? {})
 const isCollapse = computed(() => appStore.sidebarCollapsed)
-const isRouterAlive = computed(() => true)
 const currentRouterPath = computed(() => route.meta.activeMenu ?? route.path)
 const getUserFirstChar = computed(() => {
   const name = user.value.name?.trim() ?? ''
@@ -148,7 +152,50 @@ const getUserFirstChar = computed(() => {
 })
 
 // Track which sub-menus are open
-const openMenus = reactive<Record<number, boolean>>({})
+const openMenus = reactive<Record<string, boolean>>({})
+
+type NavigationMenuItem = Omit<Permission, 'url' | 'subPermissionList'> & {
+  url?: string
+  subPermissionList?: NavigationMenuItem[]
+}
+
+const routablePathSet = computed(() => new Set(router.getRoutes().map((item) => item.path)))
+
+const visibleMenuPermissionList = computed(() =>
+  permissionStore.menuPermissionList
+    .map(toNavigationMenuItem)
+    .filter((item): item is NavigationMenuItem => item !== null)
+)
+
+function normalizeMenuUrl(url?: string): string | null {
+  const trimmed = url?.trim()
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null' || !trimmed.startsWith('/')) {
+    return null
+  }
+
+  return routablePathSet.value.has(trimmed) ? trimmed : null
+}
+
+function toNavigationMenuItem(menuPermission: Permission): NavigationMenuItem | null {
+  const url = normalizeMenuUrl(menuPermission.url) ?? undefined
+  const subPermissionList = (menuPermission.subPermissionList ?? [])
+    .map(toNavigationMenuItem)
+    .filter((item): item is NavigationMenuItem => item !== null)
+
+  if (!url && subPermissionList.length === 0) {
+    return null
+  }
+
+  return {
+    ...menuPermission,
+    url,
+    subPermissionList,
+  }
+}
+
+function getMenuKey(menuPermission: Permission): string {
+  return String(menuPermission.id ?? menuPermission.code)
+}
 
 function isMenuActive(menuPermission: { subPermissionList?: { url?: string }[] }): boolean {
   return menuPermission.subPermissionList?.some(
