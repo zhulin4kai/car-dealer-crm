@@ -75,3 +75,4 @@ coverage/
 
 ### qoder ###
 .qoderignore
+.codegraph/
