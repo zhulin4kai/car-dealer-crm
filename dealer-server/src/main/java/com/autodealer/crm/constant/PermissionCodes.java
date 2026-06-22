@@ -77,11 +77,5 @@ public final class PermissionCodes {
     public static final String USER_ROLE = "user:role";
     public static final String USER_PASSWORD = "user:password";
 
-    public static final String SYSTEM_LIST = "system:list";
-    public static final String SYSTEM_VIEW = "system:view";
-    public static final String SYSTEM_ADD = "system:add";
-    public static final String SYSTEM_EDIT = "system:edit";
-    public static final String SYSTEM_DELETE = "system:delete";
     public static final String STATISTIC_VIEW = "statistic:view";
-    public static final String MONITOR_VIEW = "monitor:view";
 }

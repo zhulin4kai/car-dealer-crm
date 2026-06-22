@@ -103,8 +103,8 @@ class TOperationLogMapperIntegrationTest {
         TOperationLog log = new TOperationLog();
         log.setUserId(99);
         log.setUserName("测试用户");
-        log.setActionCode("SYSTEM_CONFIG_UPDATE");
-        log.setModuleName("系统管理");
+        log.setActionCode("DICT_TYPE_SAVE");
+        log.setModuleName("字典管理");
         log.setResourceId("999");
         log.setDetail("{\"result\":\"SUCCESS\"}");
         log.setIp("10.0.0.99");

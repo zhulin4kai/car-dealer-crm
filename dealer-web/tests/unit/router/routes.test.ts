@@ -17,6 +17,7 @@ describe('router routes', () => {
       'clue',
       'clue/detail/:id',
       'customer',
+      'customer/:id',
       'product',
       'product/category',
       'product/promotion',
@@ -27,7 +28,6 @@ describe('router routes', () => {
       'tran/invoice/:id',
       'dict/type',
       'dict/value',
-      'system',
     ])
   })
 })

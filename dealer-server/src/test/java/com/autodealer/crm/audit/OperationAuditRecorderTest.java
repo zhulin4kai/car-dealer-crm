@@ -149,8 +149,8 @@ class OperationAuditRecorderTest {
     void detail_shouldNotContainJwtOrAuthorization() {
         when(tOperationLogMapper.insert(any(TOperationLog.class))).thenReturn(1);
 
-        recorder.record(AuditActionEnum.SYSTEM_CONFIG_UPDATE, "1", "SUCCESS",
-                "{\"configKey\":\"site.title\"}");
+        recorder.record(AuditActionEnum.DICT_TYPE_SAVE, "1", "SUCCESS",
+                "{\"dictType\":\"customer_level\"}");
 
         ArgumentCaptor<TOperationLog> captor = ArgumentCaptor.forClass(TOperationLog.class);
         verify(tOperationLogMapper).insert(captor.capture());
@@ -244,7 +244,6 @@ class OperationAuditRecorderTest {
         assertNotNull(AuditActionEnum.PRODUCT_STATUS_CHANGE);
         assertNotNull(AuditActionEnum.DICT_TYPE_SAVE);
         assertNotNull(AuditActionEnum.DICT_VALUE_DELETE);
-        assertNotNull(AuditActionEnum.SYSTEM_CONFIG_UPDATE);
         assertNotNull(AuditActionEnum.EXPORT_ALL_CUSTOMER);
     }
 }

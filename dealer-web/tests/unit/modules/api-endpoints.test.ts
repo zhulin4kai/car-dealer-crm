@@ -6,8 +6,7 @@ import { batchDeleteCluesByIds } from '@/modules/clue/api/clue-api'
 import { fetchCustomerOptions } from '@/modules/customer/api/customer-api'
 import { clearCache } from '@/modules/dict/api/dict-api'
 import { fetchProductPage } from '@/modules/product/api/product-api'
-import { getAllMonitorData, toggleSystemStatus } from '@/modules/system/api/system-api'
-import { fetchTranPage } from '@/modules/tran/api/tran-api'
+import { fetchSettlementPreview, fetchTranPage, settleTran } from '@/modules/tran/api/tran-api'
 import { fetchUserPage } from '@/modules/user/api/user-api'
 
 const mockedAxios = vi.mocked(axios)
@@ -23,7 +22,6 @@ describe('module api endpoints', () => {
     await fetchCustomerOptions()
     await clearCache()
     await fetchProductPage({ page: 1, size: 10 })
-    await getAllMonitorData()
     await fetchTranPage({ page: 1, size: 10 })
     await fetchUserPage({ page: 1, size: 10 })
 
@@ -34,19 +32,32 @@ describe('module api endpoints', () => {
       '/api/customer/options',
       '/api/dict/clear',
       '/api/products',
-      '/api/monitor/all',
       '/api/tran/list',
       '/api/users',
     ])
   })
 
-  it('sends system status with backend isopen field', async () => {
-    await toggleSystemStatus(1, 'false')
+  it('sends the server preview token when settling a transaction', async () => {
+    await fetchSettlementPreview(9, { promotionId: 3 })
+    await settleTran(9, {
+      promotionId: 3,
+      expectedVersion: 4,
+      pricingFingerprint: 'sha256-token',
+    })
 
-    expect(mockedAxios.request).toHaveBeenLastCalledWith({
-      data: { isopen: 'false' },
+    expect(mockedAxios.request).toHaveBeenNthCalledWith(1, {
+      data: { promotionId: 3 },
+      method: 'post',
+      url: '/api/tran/9/settlement-preview',
+    })
+    expect(mockedAxios.request).toHaveBeenNthCalledWith(2, {
+      data: {
+        promotionId: 3,
+        expectedVersion: 4,
+        pricingFingerprint: 'sha256-token',
+      },
       method: 'put',
-      url: '/api/system/1/status',
+      url: '/api/tran/9/settle',
     })
   })
 })

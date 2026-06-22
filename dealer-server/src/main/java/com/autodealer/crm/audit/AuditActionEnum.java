@@ -42,8 +42,6 @@ public enum AuditActionEnum {
     DICT_VALUE_SAVE("DICT_VALUE_SAVE", "保存字典值", "字典管理"),
     DICT_VALUE_DELETE("DICT_VALUE_DELETE", "删除字典值", "字典管理"),
 
-    SYSTEM_CONFIG_UPDATE("SYSTEM_CONFIG_UPDATE", "系统配置更新", "系统管理"),
-
     EXPORT_ALL_CUSTOMER("EXPORT_ALL_CUSTOMER", "导出全部客户", "客户管理");
 
     private final String actionCode;

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS t_activity
     create_time TIMESTAMP,
     create_by   INTEGER,
     edit_time   TIMESTAMP,
-    edit_by     INTEGER,
+    edit_by           INTEGER,
     PRIMARY KEY (id)
 );
 
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS t_clue
     create_time       TIMESTAMP,
     create_by         INTEGER,
     edit_time         TIMESTAMP,
-    edit_by           INTEGER,
+    edit_by     INTEGER,
     PRIMARY KEY (id),
     CONSTRAINT uk_clue_phone UNIQUE (phone)
 );
@@ -164,31 +164,6 @@ CREATE TABLE IF NOT EXISTS t_role_permission
     PRIMARY KEY (role_id, permission_id),
     CONSTRAINT fk_role_permission_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE CASCADE,
     CONSTRAINT fk_role_permission_permission FOREIGN KEY (permission_id) REFERENCES t_permission(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS t_system_info
-(
-    id           INTEGER NOT NULL AUTO_INCREMENT,
-    system_code  VARCHAR(45),
-    name         VARCHAR(100) NOT NULL,
-    site         VARCHAR(100) NOT NULL,
-    logo         VARCHAR(100),
-    title        VARCHAR(45) NOT NULL,
-    description  VARCHAR(45) NOT NULL,
-    keywords     VARCHAR(100) NOT NULL,
-    shortcuticon VARCHAR(100) NOT NULL,
-    tel          VARCHAR(100),
-    weixin       VARCHAR(25),
-    email        VARCHAR(45),
-    address      VARCHAR(100),
-    version      VARCHAR(145),
-    closeMsg     VARCHAR(500),
-    isopen       VARCHAR(8) DEFAULT 'y',
-    create_time  TIMESTAMP,
-    create_by    INTEGER,
-    edit_time    TIMESTAMP,
-    edit_by      INTEGER,
-    PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS t_user

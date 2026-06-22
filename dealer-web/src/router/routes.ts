@@ -122,12 +122,6 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/dashboard/dict/value.vue'),
         meta: { requiresAuth: true, title: '字典值', activeMenu: '/dashboard/dict/value', permission: PERMISSIONS.dict.value.list },
       },
-      {
-        path: 'system',
-        name: 'system',
-        component: () => import('@/pages/dashboard/system.vue'),
-        meta: { requiresAuth: true, title: '系统管理', activeMenu: '/dashboard/system', permission: PERMISSIONS.system.list },
-      },
     ],
   },
   {

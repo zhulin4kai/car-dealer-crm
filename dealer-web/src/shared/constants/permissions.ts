@@ -85,17 +85,7 @@ export const PERMISSIONS = {
     role: 'user:role',
     password: 'user:password',
   },
-  system: {
-    list: 'system:list',
-    view: 'system:view',
-    add: 'system:add',
-    edit: 'system:edit',
-    delete: 'system:delete',
-  },
   statistic: {
     view: 'statistic:view',
-  },
-  monitor: {
-    view: 'monitor:view',
   },
 } as const

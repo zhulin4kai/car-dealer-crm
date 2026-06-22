@@ -42,7 +42,6 @@ class SchemaConstraintsTest {
             "t_customer", "t_customer_remark",
             "t_dic_type", "t_dic_value",
             "t_permission", "t_role", "t_role_permission",
-            "t_system_info",
             "t_tran", "t_tran_history", "t_tran_product",
             "t_tran_invoice", "t_tran_approve", "t_tran_remark",
             "t_product", "t_product_category", "t_product_promotion",

@@ -474,8 +474,7 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 ('交易管理', 'menu:tran', NULL, 'menu', NULL, 4, 'Wallet', 1),
 ('产品管理', 'menu:product', NULL, 'menu', NULL, 5, 'Memo', 1),
 ('字典管理', 'menu:dict', NULL, 'menu', NULL, 6, 'Grid', 1),
-('用户管理', 'menu:user', NULL, 'menu', NULL, 7, 'Stamp', 1),
-('系统管理', 'menu:system', NULL, 'menu', NULL, 8, 'Setting', 1);
+('用户管理', 'menu:user', NULL, 'menu', NULL, 7, 'Stamp', 1);
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '市场活动', 'page:activity:list', '/dashboard/activity', 'menu', id, 1, 'CreditCard', 1 FROM `t_permission` WHERE code = 'menu:activity';
@@ -499,8 +498,6 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '字典数据', 'page:dict:value', '/dashboard/dict/value', 'menu', id, 2, 'DataAnalysis', 1 FROM `t_permission` WHERE code = 'menu:dict';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '用户管理', 'page:user:list', '/dashboard/user', 'menu', id, 1, 'UserCog', 1 FROM `t_permission` WHERE code = 'menu:user';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理', 'page:system:list', '/dashboard/system', 'menu', id, 1, 'Tools', 1 FROM `t_permission` WHERE code = 'menu:system';
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '市场活动-列表', 'activity:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
@@ -627,19 +624,7 @@ SELECT '用户管理-角色分配', 'user:role', NULL, 'button', id, NULL, NULL,
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '用户管理-密码重置', 'user:password', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-列表', 'system:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-查看', 'system:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-录入', 'system:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-编辑', 'system:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-删除', 'system:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '统计报表-查看', 'statistic:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:dashboard';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统监控-查看', 'monitor:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:system';
 
 -- ----------------------------
 -- Table structure for t_role
@@ -689,7 +674,7 @@ CREATE TABLE `t_role_permission`
 -- ----------------------------
 -- Records of t_role_permission
 -- ----------------------------
--- 管理员显式拥有当前全部已启用权限；后续新增权限的迁移必须同步补充管理员映射。
+-- 管理员显式拥有当前全部已启用权限；后续新增权限时必须同步补充管理员映射。
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
 WHERE r.role = 'admin' AND r.enabled = 1 AND p.enabled = 1;
@@ -713,59 +698,6 @@ WHERE r.role = 'finance_specialist' AND p.code IN ('menu:dashboard', 'menu:tran'
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
 WHERE r.role = 'inventory_specialist' AND p.code IN ('menu:product', 'page:product:list', 'page:product:category', 'page:product:promotion', 'page:product:stock', 'product:list', 'product:view', 'product:add', 'product:edit', 'product:delete', 'product:category:list', 'product:category:view', 'product:category:add', 'product:category:edit', 'product:category:delete', 'product:promotion:list', 'product:promotion:view', 'product:promotion:add', 'product:promotion:edit', 'product:promotion:delete', 'product:stock:view', 'product:stock:adjust');
-
--- ----------------------------
--- Table structure for t_system_info
--- ----------------------------
-DROP TABLE IF EXISTS `t_system_info`;
-CREATE TABLE `t_system_info`
-(
-    `id`           int                                                           NOT NULL AUTO_INCREMENT,
-    `system_code`  varchar(45) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL,
-    `name`         varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
-    `site`         varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
-    `logo`         varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
-    `title`        varchar(45) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NOT NULL,
-    `description`  varchar(45) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NOT NULL,
-    `keywords`     varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
-    `shortcuticon` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
-    `tel`          varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
-    `weixin`       varchar(25) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL,
-    `email`        varchar(45) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL,
-    `address`      varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
-    `version`      varchar(145) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
-    `closeMsg`     varchar(500) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL,
-    `isopen`       varchar(8) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci   NULL DEFAULT 'y',
-    `create_time`  datetime                                                      NULL DEFAULT NULL,
-    `create_by`    int                                                           NULL DEFAULT NULL,
-    `edit_time`    datetime                                                      NULL DEFAULT NULL,
-    `edit_by`      int                                                           NULL DEFAULT NULL,
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `t_system_info_ibfk_1` (`create_by` ASC) USING BTREE,
-    INDEX `t_system_info_ibfk_2` (`edit_by` ASC) USING BTREE
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 3
-  CHARACTER SET = utf8mb3
-  COLLATE = utf8mb3_general_ci COMMENT = '系统信息表'
-  ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of t_system_info
--- ----------------------------
-
-INSERT INTO `t_system_info`
-(`system_code`, `name`, `site`, `logo`, `title`, `description`, `keywords`,
- `shortcuticon`, `tel`, `weixin`, `email`, `address`, `version`, `closeMsg`,
- `isopen`, `create_time`, `create_by`, `edit_time`, `edit_by`)
-VALUES
-('SZ_NANSHAN_STORE', '启程汽车南山店 CRM', 'https://crm.qicheng-auto.example',
- '/assets/logo.svg', '启程汽车客户关系管理系统',
- '用于南山门店线索、客户、车辆商品、交易、收款与经营分析。',
- '汽车经销商,客户管理,销售线索,车辆库存', '/favicon.ico',
- '0755-86001234', 'qicheng_auto_sz', 'crm@qicheng-auto.example',
- '广东省深圳市南山区深南大道8008号启程汽车城A座', '2.3.0',
- '系统维护中，请联系门店管理员。', 'y',
- '2025-01-06 09:00:00', 1, '2026-06-18 18:20:00', 1);
 
 -- ----------------------------
 -- Table structure for t_tran
@@ -943,8 +875,8 @@ CREATE TABLE `t_tran_invoice`
     `issue_time`   datetime       NULL DEFAULT NULL COMMENT '开具时间',
     `create_time`  datetime       NULL DEFAULT NULL COMMENT '创建时间',
     `create_by`    int            NULL DEFAULT NULL COMMENT '创建人',
-  `edit_time`    datetime       NULL DEFAULT NULL COMMENT '编辑时间',
-  `edit_by`      int            NULL DEFAULT NULL COMMENT '编辑人',
+    `edit_time`    datetime       NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`      int            NULL DEFAULT NULL COMMENT '编辑人',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE KEY `uk_invoice_no` (`invoice_no`),
     INDEX `t_tran_invoice_ibfk_1` (`tran_id` ASC) USING BTREE,

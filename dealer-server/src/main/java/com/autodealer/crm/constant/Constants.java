@@ -43,14 +43,6 @@ public class Constants {
     public static final String CACHE_KEY_TRAN_PRODUCTION = "cdrm:tran:production:";
     public static final String CACHE_KEY_TRAN_INVOICES = "cdrm:tran:invoices:";
 
-    // 系统信息缓存相关常量
-    public static final String REDIS_SYSTEM_KEY = "cdrm:system:";
-    public static final String REDIS_SYSTEM_LIST_KEY = REDIS_SYSTEM_KEY + "list";
-    public static final String REDIS_SYSTEM_DETAIL_KEY = REDIS_SYSTEM_KEY + "detail:";
-
-    // 系统缓存过期时间 1 天
-    public static final long SYSTEM_CACHE_EXPIRE_TIME = 24 * 60 * 60L;
-
     public static final Integer TRAN_STAGE_01 = 41;
 
     // 批量操作最大数量限制

@@ -143,33 +143,6 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
                 "Cross-layer /api/logout method mismatch. Pick one HTTP method and update all three layers. " + msg);
     }
 
-    // ==================== TSystem field name consistency ====================
-
-    @Test
-    @DisplayName("TSystem field name for system-open flag MUST match what the frontend sends and the JSON serialization actually emits")
-    void systemOpenFieldNameMustBeConsistent() throws Exception {
-        // Trigger the real serialization path: get a token, hit GET /api/system/list,
-        // inspect the JSON keys. Use H2 + real controller.
-        String token = loginAsAdmin();
-        MvcResult result = mockMvc.perform(get("/api/system/list")
-                        .header(HttpHeaders.AUTHORIZATION, token))
-                .andExpect(status().isOk())
-                .andReturn();
-        String body = result.getResponse().getContentAsString();
-        JsonNode tree = objectMapper.readTree(body);
-        JsonNode dataNode = tree.path("data");
-        assertTrue(dataNode.isArray() && !dataNode.isEmpty(),
-                "GET /api/system/list must return a non-empty array; seed t_system_info is required. Body: " + body);
-        JsonNode first = dataNode.get(0);
-        Set<String> actualKeys = new HashSet<>();
-        first.fieldNames().forEachRemaining(actualKeys::add);
-        assertTrue(actualKeys.contains("isopen"),
-                "TSystem JSON must expose the open flag as the lowercase 'isopen' key, got: " + actualKeys);
-        assertFalse(actualKeys.contains("isOpen"),
-                "TSystem JSON must NOT expose a camelCase 'isOpen' alias; the field is lowercase 'isopen', got: "
-                        + actualKeys);
-    }
-
     // ==================== Batch disable parameter shape ====================
 
     @Test

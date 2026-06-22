@@ -152,13 +152,6 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- OSHI System Information -->
-        <dependency>
-            <groupId>com.github.oshi</groupId>
-            <artifactId>oshi-core</artifactId>
-            <version>6.4.8</version>
-        </dependency>
-
     </dependencies>
 
     <build>

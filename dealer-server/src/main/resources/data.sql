@@ -37,8 +37,7 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 ('交易管理', 'menu:tran', NULL, 'menu', NULL, 4, 'Wallet', 1),
 ('产品管理', 'menu:product', NULL, 'menu', NULL, 5, 'Memo', 1),
 ('字典管理', 'menu:dict', NULL, 'menu', NULL, 6, 'Grid', 1),
-('用户管理', 'menu:user', NULL, 'menu', NULL, 7, 'Stamp', 1),
-('系统管理', 'menu:system', NULL, 'menu', NULL, 8, 'Setting', 1);
+('用户管理', 'menu:user', NULL, 'menu', NULL, 7, 'Stamp', 1);
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '市场活动', 'page:activity:list', '/dashboard/activity', 'menu', id, 1, 'CreditCard', 1 FROM `t_permission` WHERE code = 'menu:activity';
@@ -62,8 +61,6 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '字典数据', 'page:dict:value', '/dashboard/dict/value', 'menu', id, 2, 'DataAnalysis', 1 FROM `t_permission` WHERE code = 'menu:dict';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '用户管理', 'page:user:list', '/dashboard/user', 'menu', id, 1, 'UserCog', 1 FROM `t_permission` WHERE code = 'menu:user';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理', 'page:system:list', '/dashboard/system', 'menu', id, 1, 'Tools', 1 FROM `t_permission` WHERE code = 'menu:system';
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '市场活动-列表', 'activity:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
@@ -190,22 +187,10 @@ SELECT '用户管理-角色分配', 'user:role', NULL, 'button', id, NULL, NULL,
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '用户管理-密码重置', 'user:password', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-列表', 'system:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-查看', 'system:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-录入', 'system:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-编辑', 'system:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统管理-删除', 'system:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:system:list';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '统计报表-查看', 'statistic:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:dashboard';
-INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
-SELECT '系统监控-查看', 'monitor:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:system';
 
 -- ==================== Role Permissions ====================
--- 管理员显式拥有当前全部已启用权限；后续新增权限的迁移必须同步补充管理员映射。
+-- 管理员显式拥有当前全部已启用权限；后续新增权限时必须同步补充管理员映射。
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
 WHERE r.role = 'admin' AND r.enabled = 1 AND p.enabled = 1;
@@ -437,10 +422,6 @@ VALUES (1, 1, '宝马X5五一促销', 'PERCENTAGE', 0.95, '2025-04-28 00:00:00',
 
 MERGE INTO t_product_promotion (id, product_id, name, type, discount, start_time, end_time, status, create_time, update_time) KEY(id)
 VALUES (2, 5, '特斯拉Model 3购车补贴', 'AMOUNT', 20000.00, '2025-05-01 00:00:00', '2025-06-30 23:59:59', '进行中', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-
--- ==================== System Info ====================
-MERGE INTO t_system_info (id, system_code, name, site, logo, title, description, keywords, shortcuticon, tel, weixin, email, address, version, closeMsg, isopen, create_time, create_by, edit_time, edit_by) KEY(id)
-VALUES (1, 'CarSales_001', '豪华汽车销售系统', 'http://www.luxcars.com', '/logos/luxcars_logo.png', '豪华车销售', '提供高端豪华汽车销售服务', '豪华车,销售,宝马,奔驰,奥迪', '/icons/favicon.ico', '400-123-4567', 'luxcars_official', 'contact@luxcars.com', '中国北京市朝阳区', '1.0.0', NULL, 'y', CURRENT_TIMESTAMP, 1, NULL, NULL);
 
 -- ==================== Transaction Approvals ====================
 MERGE INTO t_tran_approve (id, tran_id, approve_result, approve_comment, approve_time, approve_by, create_time, create_by) KEY(id)
