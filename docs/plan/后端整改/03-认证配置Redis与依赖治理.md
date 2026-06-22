@@ -95,7 +95,7 @@
 - **实际修改文件**：
   - `dealer-server/pom.xml`（为 embedded-redis 添加 slf4j-simple exclusion，消除多 SLF4J provider 警告）
   - `dealer-server/src/main/java/com/autodealer/crm/query/` 下 5 个 BaseQuery 子类（添加 `@EqualsAndHashCode(callSuper = true)`）
-  - `dealer-server/src/main/java/com/autodealer/crm/service/impl/SystemServiceImpl.java`（清理空 clearCache 方法和未使用的 RedisManager import）
-- **已接入的生产入口**：Maven 依赖树清理；BaseQuery 子类 equals/hashCode 正确继承；SystemServiceImpl 无用代码移除
+- **2026-06-22 更新**：原 `SystemServiceImpl` 已随系统管理模块下线，不再作为本 Plan 的生产文件。
+- **已接入的生产入口**：Maven 依赖树清理；BaseQuery 子类 equals/hashCode 正确继承
 - **已执行测试命令及结果**：`./mvnw clean test` — 408 tests, 0 failures, 0 errors
 - **未完成项和阻塞原因**：无
