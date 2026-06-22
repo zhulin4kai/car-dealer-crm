@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-screen">
+  <div class="login-page flex h-screen">
     <!-- 左侧展示区 -->
     <aside class="hidden md:flex w-[40%] flex-col justify-center items-center text-center bg-muted p-8">
       <img src="@/assets/logo-2.svg" class="w-4/5 h-auto max-h-[413px]">
@@ -111,3 +111,12 @@ onMounted(() => {
   void restoreRememberedSession()
 })
 </script>
+
+<style scoped>
+.login-page {
+  background-image: url('@/assets/background.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+</style>

@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/pagination'
 
 const props = defineProps<{
+  page?: number
   pageSize: number
   total: number
 }>()
@@ -47,7 +48,7 @@ const emit = defineEmits<{
   change: [page: number]
 }>()
 
-const currentPage = ref(1)
+const currentPage = ref(props.page ?? 1)
 
 function onPageChange(page: number) {
   currentPage.value = page
@@ -58,6 +59,12 @@ watch(() => props.total, () => {
   if (currentPage.value > Math.ceil(props.total / props.pageSize) && Math.ceil(props.total / props.pageSize) > 0) {
     currentPage.value = 1
     emit('change', 1)
+  }
+})
+
+watch(() => props.page, (page) => {
+  if (typeof page === 'number' && page !== currentPage.value) {
+    currentPage.value = page
   }
 })
 </script>
