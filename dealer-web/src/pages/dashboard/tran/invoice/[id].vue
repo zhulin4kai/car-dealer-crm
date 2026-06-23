@@ -3,7 +3,10 @@
     <Card class="max-w-[1000px] mx-auto">
       <CardHeader class="flex flex-row items-center justify-between space-y-0">
         <CardTitle>交易开票</CardTitle>
-        <Badge class="bg-green-600 text-white">已审批</Badge>
+        <div class="flex items-center gap-2">
+          <Button variant="outline" size="sm" @click="goBack">返回</Button>
+          <Badge class="bg-green-600 text-white">已审批</Badge>
+        </div>
       </CardHeader>
       <CardContent>
         <!-- Transaction Basic Info -->
@@ -92,7 +95,7 @@
           <!-- Invoice Type -->
           <div class="space-y-2">
             <Label>发票类型</Label>
-            <RadioGroup v-model="values.type" class="flex items-center gap-6">
+            <RadioGroup v-model="type" class="flex items-center gap-6">
               <div class="flex items-center space-x-2">
                 <RadioGroupItem id="vat-normal" value="VAT_NORMAL" />
                 <Label for="vat-normal" class="font-normal cursor-pointer">增值税普通发票</Label>
@@ -103,7 +106,7 @@
               </div>
             </RadioGroup>
             <p v-if="errors.type" class="text-sm text-destructive">{{ errors.type }}</p>
-            <Alert v-if="values.type === 'VAT_SPECIAL'" class="mt-2">
+            <Alert v-if="type === 'VAT_SPECIAL'" class="mt-2">
               <AlertTitle>提示：开具增值税专用发票需要填写完整的开户行、银行账号、注册地址和注册电话信息</AlertTitle>
             </Alert>
           </div>
@@ -111,7 +114,7 @@
           <!-- Invoice Title -->
           <div class="space-y-2">
             <Label>发票抬头</Label>
-            <Input v-model="values.title" placeholder="请输入发票抬头（2-100个字符）" maxlength="100" />
+            <Input v-model="title" placeholder="请输入发票抬头（2-100个字符）" maxlength="100" />
             <p v-if="errors.title" class="text-sm text-destructive">{{ errors.title }}</p>
           </div>
 
@@ -119,11 +122,11 @@
           <div class="space-y-2">
             <Label>纳税人识别号</Label>
             <Input
-              v-model="values.taxNumber"
+              v-model="taxNumber"
               placeholder="请输入纳税人识别号（15-20位数字和字母组合）"
               maxlength="20"
               class="uppercase"
-              @update:model-value="(v) => values.taxNumber = (v || '').toUpperCase()"
+              @update:model-value="(v) => taxNumber = (v || '').toUpperCase()"
             />
             <p v-if="errors.taxNumber" class="text-sm text-destructive">{{ errors.taxNumber }}</p>
           </div>
@@ -131,7 +134,7 @@
           <!-- Bank Name -->
           <div class="space-y-2">
             <Label>开户行</Label>
-            <Input v-model="values.bankName" placeholder="请输入开户行（专用发票必填）" maxlength="50" />
+            <Input v-model="bankName" placeholder="请输入开户行（专用发票必填）" maxlength="50" />
             <p v-if="errors.bankName" class="text-sm text-destructive">{{ errors.bankName }}</p>
           </div>
 
@@ -139,10 +142,10 @@
           <div class="space-y-2">
             <Label>银行账号</Label>
             <Input
-              v-model="values.bankAccount"
+              v-model="bankAccount"
               placeholder="请输入银行账号（10-30位数字，专用发票必填）"
               maxlength="30"
-              @update:model-value="(v) => values.bankAccount = (v || '').replace(/\D/g, '')"
+              @update:model-value="(v) => bankAccount = (v || '').replace(/\D/g, '')"
             />
             <p v-if="errors.bankAccount" class="text-sm text-destructive">{{ errors.bankAccount }}</p>
           </div>
@@ -150,21 +153,21 @@
           <!-- Address -->
           <div class="space-y-2">
             <Label>注册地址</Label>
-            <Input v-model="values.address" placeholder="请输入注册地址（专用发票必填）" maxlength="200" />
+            <Input v-model="address" placeholder="请输入注册地址（专用发票必填）" maxlength="200" />
             <p v-if="errors.address" class="text-sm text-destructive">{{ errors.address }}</p>
           </div>
 
           <!-- Phone -->
           <div class="space-y-2">
             <Label>注册电话</Label>
-            <Input v-model="values.phone" placeholder="请输入注册电话（固话：0xx-xxxxxxxx，手机：1xxxxxxxxx，专用发票必填）" maxlength="20" />
+            <Input v-model="phone" placeholder="请输入注册电话（固话：0xx-xxxxxxxx，手机：1xxxxxxxxx，专用发票必填）" maxlength="20" />
             <p v-if="errors.phone" class="text-sm text-destructive">{{ errors.phone }}</p>
           </div>
 
           <!-- Amount -->
           <div class="space-y-2">
             <Label>发票金额</Label>
-            <NumberField v-model="values.amount" :min="0.01" :max="99999999.99" :step="0.01" class="w-full">
+            <NumberField v-model="amount" :min="0.01" :max="99999999.99" :step="0.01" class="w-full">
               <NumberFieldContent>
                 <NumberFieldDecrement />
                 <NumberFieldInput placeholder="发票金额（0.01-99,999,999.99）" />
@@ -177,7 +180,7 @@
           <!-- Remark -->
           <div class="space-y-2">
             <Label>备注</Label>
-            <Textarea v-model="values.remark" :rows="3" placeholder="请输入备注信息（最多500个字符）" maxlength="500" />
+            <Textarea v-model="remark" :rows="3" placeholder="请输入备注信息（最多500个字符）" maxlength="500" />
             <p v-if="errors.remark" class="text-sm text-destructive">{{ errors.remark }}</p>
           </div>
 
@@ -186,6 +189,7 @@
             <Button v-has-permission="PERMISSIONS.tran.invoice" type="submit" :disabled="isSubmitting">
               {{ isSubmitting ? '提交中...' : '开具发票' }}
             </Button>
+            <Button type="button" variant="outline" class="ml-2" @click="goBack">返回</Button>
           </div>
         </form>
       </CardContent>
@@ -195,7 +199,7 @@
 
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
@@ -268,7 +272,7 @@ const invoiceSchema = toTypedSchema(z.object({
   }
 }))
 
-const { handleSubmit, errors, values, isSubmitting, setValues } = useForm({
+const { handleSubmit, errors, isSubmitting, resetForm, defineField } = useForm({
   validationSchema: invoiceSchema,
   initialValues: {
     type: 'VAT_NORMAL',
@@ -282,6 +286,15 @@ const { handleSubmit, errors, values, isSubmitting, setValues } = useForm({
     remark: '',
   },
 })
+const [type] = defineField('type')
+const [title] = defineField('title')
+const [taxNumber] = defineField('taxNumber')
+const [bankName] = defineField('bankName')
+const [bankAccount] = defineField('bankAccount')
+const [address] = defineField('address')
+const [phone] = defineField('phone')
+const [amount] = defineField('amount')
+const [remark] = defineField('remark')
 
 // Internal tranId for API calls
 let tranId = null
@@ -332,10 +345,11 @@ const fetchTranDetail = async () => {
       updateTime: data.editTime || data.updateTime || '',
       expectedDeliveryDate: data.expectedDate || data.expectedDeliveryDate || '',
       description: data.description || '',
-      products: data.products || [],
+      products: tranDetail.value.products.length > 0 ? tranDetail.value.products : data.products || [],
     }
     tranId = Number(id)
-    setValues({
+    resetForm({
+      values: {
       type: 'VAT_NORMAL',
       title: '',
       taxNumber: '',
@@ -345,6 +359,7 @@ const fetchTranDetail = async () => {
       phone: '',
       amount: tranDetail.value.amount,
       remark: '',
+      },
     })
   } catch {
     messageTip('获取交易详情失败', 'error')
@@ -371,14 +386,23 @@ const fetchInvoiceList = async () => {
   }
 }
 
+async function loadInvoicePageData(): Promise<void> {
+  await fetchTranDetail()
+  await Promise.all([fetchProducts(), fetchInvoiceList()])
+}
+
 // Submit invoice form
-const onSubmit = handleSubmit(async () => {
+const onSubmit = handleSubmit(async (formData) => {
   if (hasAnyInvoice.value) {
     messageTip('该交易已有发票，不能重复开票', 'warning')
     return
   }
   try {
-    await createInvoice({ tranId, ...values })
+    if (tranId === null) {
+      messageTip('缺少交易ID参数', 'error')
+      return
+    }
+    await createInvoice({ tranId, ...formData })
     messageTip('发票创建成功', 'success')
     try {
       await Promise.all([fetchInvoiceList(), fetchTranDetail()])
@@ -409,6 +433,10 @@ const markAsIssued = async (invoice: { id: number | string }) => {
   }
 }
 
+function goBack(): void {
+  router.push('/dashboard/tran')
+}
+
 // Void invoice
 const voidInvoice = async (invoice: { id: number | string }) => {
   try {
@@ -431,7 +459,7 @@ const voidInvoice = async (invoice: { id: number | string }) => {
 // Watch route params
 watch(() => route.params.id, async (newId) => {
   if (newId) {
-    await Promise.all([fetchTranDetail(), fetchProducts(), fetchInvoiceList()])
+    await loadInvoicePageData()
   }
 })
 
@@ -440,6 +468,6 @@ onMounted(async () => {
     messageTip('缺少交易ID参数', 'error')
     return
   }
-  await Promise.all([fetchTranDetail(), fetchProducts(), fetchInvoiceList()])
+  await loadInvoicePageData()
 })
 </script>

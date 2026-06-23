@@ -43,6 +43,10 @@
               <Search class="h-4 w-4" />
               查询
             </Button>
+            <Button variant="outline" class="gap-2" @click="handleReset">
+              <RotateCcw class="h-4 w-4" />
+              重置
+            </Button>
             <Button
               v-has-permission="PERMISSIONS.tran.create"
               variant="outline"
@@ -145,6 +149,7 @@
                 <TableCell>
                   <Checkbox
                     :checked="selectedIds.includes(row.id)"
+                    :disabled="row.stage !== TRAN_STAGE.QUOTATION"
                     @update:checked="(v) => toggleRowSelection(row.id, v)"
                   />
                 </TableCell>
@@ -256,7 +261,7 @@
           <!-- Customer -->
           <div class="space-y-2">
             <Label>客户名称</Label>
-            <Select v-model="values.customerId" @update:model-value="onCustomerChange">
+            <Select v-model="customerId" @update:model-value="onCustomerChange">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择客户" />
               </SelectTrigger>
@@ -264,7 +269,7 @@
                 <SelectItem
                   v-for="customer in customerOptions"
                   :key="customer.customerId"
-                  :value="customer.customerId"
+                  :value="String(customer.customerId)"
                 >
                   {{ customer.customerName }}
                 </SelectItem>
@@ -275,7 +280,7 @@
 
           <!-- Products -->
           <div class="border rounded-md p-4 bg-muted/30 space-y-3">
-            <div v-for="(product, index) in values.products" :key="index" class="space-y-2">
+            <div v-for="(product, index) in productRows" :key="index" class="space-y-2">
               <Label v-if="index === 0">产品选择</Label>
               <div class="flex items-center gap-2">
                 <Select
@@ -287,7 +292,7 @@
                     <SelectValue placeholder="请选择产品" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem v-for="item in productOptions.list" :key="item.id" :value="item.id">
+                    <SelectItem v-for="item in productOptions.list" :key="item.id" :value="String(item.id)">
                       {{ item.name }} (&yen;{{ item.price }})
                     </SelectItem>
                   </SelectContent>
@@ -302,7 +307,7 @@
                 </NumberField>
 
                 <Button
-                  v-if="values.products.length > 1"
+                  v-if="productRows.length > 1"
                   type="button"
                   variant="destructive"
                   size="sm"
@@ -311,8 +316,8 @@
                   >删除</Button
                 >
               </div>
-              <p v-if="errors[`products.${index}.productId`]" class="text-sm text-destructive">
-                {{ errors[`products.${index}.productId`] }}
+              <p v-if="productErrors[index]" class="text-sm text-destructive">
+                {{ productErrors[index] }}
               </p>
             </div>
 
@@ -322,13 +327,13 @@
           <!-- Description -->
           <div class="space-y-2">
             <Label>交易描述</Label>
-            <Textarea v-model="values.description" :rows="4" placeholder="请输入交易描述" />
+            <Textarea v-model="description" :rows="4" placeholder="请输入交易描述" />
           </div>
 
           <!-- Expected Delivery Date -->
           <div class="space-y-2">
             <Label>预计交付日期</Label>
-            <Input type="date" v-model="values.expectedDeliveryDate" class="w-full" />
+            <Input type="date" v-model="expectedDeliveryDate" class="w-full" />
             <p v-if="errors.expectedDeliveryDate" class="text-sm text-destructive">
               {{ errors.expectedDeliveryDate }}
             </p>
@@ -430,6 +435,17 @@ interface TranListRow {
   createTime: string
 }
 
+interface TranProductFormRow {
+  productId: string
+  quantity: number
+  price: number
+}
+
+interface CustomerOption {
+  customerId: EntityId
+  customerName: string
+}
+
 const tableData = ref<TranListRow[]>([])
 const {
   sortBy,
@@ -454,9 +470,11 @@ const { loading, run: runTranPage } = useLatestRequest<PageResult<Tran>>()
 const dialogOpen = ref(false)
 const isEdit = ref(false)
 const productOptions = reactive({
-  list: [],
+  list: [] as Array<{ id: EntityId; name?: string; price?: number | string }>,
 })
-const customerOptions = ref([])
+const customerOptions = ref<CustomerOption[]>([])
+const productRows = ref<TranProductFormRow[]>([{ productId: '', quantity: 1, price: 0 }])
+const productErrors = ref<string[]>([])
 
 const searchForm = reactive({
   tranNo: '',
@@ -471,29 +489,22 @@ const tranSchema = toTypedSchema(
     customerId: z.string().min(1, '请选择客户'),
     description: z.string().optional().default(''),
     expectedDeliveryDate: z.string().min(1, '请选择预计交付日期'),
-    products: z
-      .array(
-        z.object({
-          productId: z.string().min(1, '请选择产品'),
-          quantity: z.number().min(1, '数量至少为1').max(999),
-          price: z.number().min(0),
-        }),
-      )
-      .min(1),
   }),
 )
 
-const { handleSubmit, errors, values, isSubmitting, setFieldValue, resetForm, setValues } = useForm(
+const { handleSubmit, errors, isSubmitting, resetForm, defineField } = useForm(
   {
     validationSchema: tranSchema,
     initialValues: {
       customerId: '',
       description: '',
       expectedDeliveryDate: '',
-      products: [{ productId: '', quantity: 1, price: 0 }],
     },
   },
 )
+const [customerId] = defineField('customerId')
+const [description] = defineField('description')
+const [expectedDeliveryDate] = defineField('expectedDeliveryDate')
 
 // Internal edit ID (not in form schema)
 let editId = null
@@ -523,18 +534,25 @@ function getTranTone(
 
 // Selection helpers
 const isAllSelected = computed(() => {
-  return displayTranList.value.length > 0 && selectedIds.value.length === displayTranList.value.length
+  const selectableRows = displayTranList.value.filter((item) => item.stage === TRAN_STAGE.QUOTATION)
+  return selectableRows.length > 0 && selectedIds.value.length === selectableRows.length
 })
 
 const toggleSelectAll = (checked) => {
   if (checked) {
-    selectedIds.value = displayTranList.value.map((item) => item.id)
+    selectedIds.value = displayTranList.value
+      .filter((item) => item.stage === TRAN_STAGE.QUOTATION)
+      .map((item) => item.id)
   } else {
     selectedIds.value = []
   }
 }
 
 const toggleRowSelection = (id, checked) => {
+  const row = displayTranList.value.find((item) => item.id === id)
+  if (row && row.stage !== TRAN_STAGE.QUOTATION) {
+    return
+  }
   if (checked) {
     if (!selectedIds.value.includes(id)) {
       selectedIds.value.push(id)
@@ -589,6 +607,15 @@ const handleSearch = () => {
   void fetchData()
 }
 
+const handleReset = () => {
+  searchForm.tranNo = ''
+  searchForm.customerId = ''
+  searchForm.customerName = ''
+  searchForm.stage = ''
+  currentPage.value = 1
+  void fetchData()
+}
+
 // Single delete
 const handleDelete = async (id: number | string) => {
   try {
@@ -632,8 +659,8 @@ const handleBatchDelete = async () => {
     } catch {
       messageTip('删除已成功，但列表刷新失败', 'warning')
     }
-  } catch {
-    messageTip('批量删除失败', 'error')
+  } catch (error) {
+    messageTip(error instanceof Error ? error.message : '批量删除失败', 'error')
   }
 }
 
@@ -683,7 +710,15 @@ const handleEdit = async (row: TranListRow) => {
 // Reset form state
 const resetFormState = () => {
   editId = null
-  resetForm()
+  productRows.value = [{ productId: '', quantity: 1, price: 0 }]
+  productErrors.value = []
+  resetForm({
+    values: {
+      customerId: '',
+      description: '',
+      expectedDeliveryDate: '',
+    },
+  })
 }
 
 // Close Dialog
@@ -694,7 +729,7 @@ const handleDialogClose = () => {
 
 // Add product row
 const addProduct = () => {
-  values.products.push({
+  productRows.value.push({
     productId: '',
     quantity: 1,
     price: 0,
@@ -703,24 +738,22 @@ const addProduct = () => {
 
 // Remove product row
 const removeProduct = (index) => {
-  if (values.products.length > 1) {
-    values.products.splice(index, 1)
+  if (productRows.value.length > 1) {
+    productRows.value.splice(index, 1)
+    productErrors.value.splice(index, 1)
   }
 }
 
 // Customer selection change - update customerName
 const onCustomerChange = (customerId) => {
-  const selectedCustomer = customerOptions.value.find((c) => c.customerId === customerId)
-  if (selectedCustomer) {
-    setFieldValue('customerName', selectedCustomer.customerName)
-  }
+  searchForm.customerId = String(customerId ?? '')
 }
 
 // Product selection change - update price
 const onProductChange = (index, productId) => {
-  const selectedProduct = productOptions.list.find((p) => p.id === productId)
+  const selectedProduct = productOptions.list.find((p) => String(p.id) === String(productId))
   if (selectedProduct) {
-    setFieldValue(`products.${index}.price`, selectedProduct.price)
+    productRows.value[index].price = Number(selectedProduct.price ?? 0)
   }
 }
 
@@ -753,24 +786,21 @@ const fetchTranDetail = async (id) => {
     const res = await getTranDetail(id)
     const data = res
     editId = data.id || id
-    setValues({
+    resetForm({
+      values: {
       customerId: String(data.customerId ?? ''),
       description: data.description || '',
       expectedDeliveryDate: toLocalDateInput(data.expectedDate ?? null),
-      products: [],
+      },
     })
-    setFieldValue('customerName', data.customerName || '')
 
     const productRes = await getTranProducts(id)
     if (productRes.length > 0) {
-      setFieldValue(
-        'products',
-        productRes.map((item) => ({
+      productRows.value = productRes.map((item) => ({
           productId: String(item.productId),
           quantity: item.quantity,
           price: item.price,
-        })),
-      )
+        }))
     }
   } catch {
     messageTip('获取交易详情失败', 'error')
@@ -778,18 +808,30 @@ const fetchTranDetail = async (id) => {
 }
 
 // Submit form
-const onSubmit = handleSubmit(async () => {
+function validateProductRows(): boolean {
+  productErrors.value = productRows.value.map((item) => {
+    if (!item.productId) return '请选择产品'
+    if (!item.quantity || item.quantity < 1) return '数量至少为1'
+    return ''
+  })
+  return productErrors.value.every((message) => !message)
+}
+
+const onSubmit = handleSubmit(async (formValues) => {
+  if (!validateProductRows()) {
+    return
+  }
   try {
     // Format data for API
     const baseRequest = {
-      customerId: values.customerId,
-      products: values.products.map((p) => ({
+      customerId: formValues.customerId,
+      products: productRows.value.map((p) => ({
         productId: p.productId,
         quantity: p.quantity,
       })),
-      description: values.description,
-      expectedDeliveryDate: values.expectedDeliveryDate
-        ? values.expectedDeliveryDate + ' 00:00:00'
+      description: formValues.description,
+      expectedDeliveryDate: formValues.expectedDeliveryDate
+        ? formValues.expectedDeliveryDate + ' 00:00:00'
         : null,
     }
     if (isEdit.value) {

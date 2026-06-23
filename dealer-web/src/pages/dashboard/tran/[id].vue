@@ -74,7 +74,7 @@
                   <SelectValue placeholder="请选择促销活动（可选）" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem v-for="promotion in availablePromotions" :key="promotion.id" :value="promotion.id">
+                  <SelectItem v-for="promotion in availablePromotions" :key="promotion.id" :value="String(promotion.id)">
                     {{ promotion.name }} ({{ getPromotionText(promotion) }})
                   </SelectItem>
                 </SelectContent>
@@ -324,17 +324,21 @@ const invoiceList = ref<TranInvoice[]>([])
 // Promotion data
 const promotionList = ref<ProductPromotion[]>([])
 const promotionForm = ref({
-  selectedPromotion: null as EntityId | null,
+  selectedPromotion: '' as string,
 })
 
 // Computed properties
 const availablePromotions = computed(() => {
-  return promotionList.value.filter(promotion => promotion.status === '进行中')
+  const productIds = new Set(tranDetail.value.products.map((product) => String(product.productId)))
+  return promotionList.value.filter(
+    (promotion) =>
+      isActivePromotionStatus(promotion.status) && productIds.has(String(promotion.productId)),
+  )
 })
 
 const selectedPromotionInfo = computed(() => {
   if (!promotionForm.value.selectedPromotion) return null
-  return promotionList.value.find(p => p.id === promotionForm.value.selectedPromotion)
+  return promotionList.value.find((p) => String(p.id) === promotionForm.value.selectedPromotion)
 })
 
 const previewLoading = ref(false)
@@ -347,7 +351,7 @@ async function onPromotionChange(): Promise<void> {
   previewLoading.value = true
   try {
     previewData.value = await fetchSettlementPreview(route.params.id as string, {
-      promotionId: promotionForm.value.selectedPromotion ?? undefined,
+      promotionId: promotionForm.value.selectedPromotion || undefined,
     })
   } catch {
     previewError.value = '促销预览失败'
@@ -420,6 +424,10 @@ const getPromotionText = (promotion) => {
   }
 }
 
+function isActivePromotionStatus(status?: string): boolean {
+  return ['进行中', 'ACTIVE', 'active'].includes(status ?? '')
+}
+
 // Fetch promotion list
 const fetchPromotionList = async () => {
   try {
@@ -447,7 +455,7 @@ const fetchTranDetail = async () => {
       updateTime: data.editTime || '',
       expectedDeliveryDate: data.expectedDate || '',
       description: data.description || '',
-      products: data.products || []
+      products: tranDetail.value.products.length > 0 ? tranDetail.value.products : data.products || []
     }
   } catch {
     messageTip('获取交易详情失败', 'error')
@@ -462,6 +470,17 @@ const fetchProducts = async () => {
   } catch {
     messageTip('获取产品详情失败', 'error')
   }
+}
+
+const loadTranPageData = async () => {
+  await fetchTranDetail()
+  await Promise.all([
+    fetchProducts(),
+    fetchInvoiceInfo(),
+    fetchPaymentList(),
+    fetchPromotionList(),
+  ])
+  await onPromotionChange()
 }
 
 // Fetch invoice info
@@ -651,14 +670,7 @@ const handleInvoice = () => {
 // Watch route params change
 watch(() => route.params.id, async (newId) => {
     if (newId) {
-    await Promise.all([
-      fetchTranDetail(),
-      fetchProducts(),
-      fetchInvoiceInfo(),
-      fetchPaymentList(),
-      fetchPromotionList(),
-    ])
-    await onPromotionChange()
+    await loadTranPageData()
   }
 })
 
@@ -668,13 +680,6 @@ onMounted(async () => {
     return
   }
 
-  await Promise.all([
-    fetchTranDetail(),
-    fetchProducts(),
-    fetchInvoiceInfo(),
-    fetchPaymentList(),
-    fetchPromotionList(),
-  ])
-  await onPromotionChange()
+  await loadTranPageData()
 })
 </script>

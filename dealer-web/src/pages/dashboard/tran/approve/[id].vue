@@ -59,7 +59,7 @@
         <form class="mt-8 max-w-[600px] space-y-4" @submit.prevent="onSubmit">
           <div class="space-y-2">
             <Label>审批结果</Label>
-            <RadioGroup v-model="values.approved" class="flex items-center gap-6">
+            <RadioGroup v-model="approved" class="flex items-center gap-6">
               <div class="flex items-center space-x-2">
                 <RadioGroupItem id="approve-yes" value="true" />
                 <Label for="approve-yes" class="font-normal cursor-pointer">通过</Label>
@@ -74,7 +74,7 @@
 
           <div class="space-y-2">
             <Label>审批意见</Label>
-            <Textarea v-model="values.comment" :rows="4" placeholder="请输入审批意见" />
+            <Textarea v-model="comment" :rows="4" placeholder="请输入审批意见" />
             <p v-if="errors.comment" class="text-sm text-destructive">{{ errors.comment }}</p>
           </div>
 
@@ -142,13 +142,15 @@ const approveSchema = toTypedSchema(z.object({
   comment: z.string().min(5, '审批意见不能少于5个字符'),
 }))
 
-const { handleSubmit, errors, values, isSubmitting } = useForm({
+const { handleSubmit, errors, isSubmitting, defineField } = useForm({
   validationSchema: approveSchema,
   initialValues: {
     approved: 'true',
     comment: '',
   },
 })
+const [approved] = defineField('approved')
+const [comment] = defineField('comment')
 
 // Fetch transaction detail
 const fetchTranDetail = async () => {
@@ -184,13 +186,13 @@ const fetchProducts = async () => {
 }
 
 // Submit approval
-const onSubmit = handleSubmit(async () => {
+const onSubmit = handleSubmit(async (formData) => {
   const id = toRouteId(route.params.id)
   if (!id) return
   try {
     const approveData = {
-      approved: values.approved === 'true',
-      comment: values.comment,
+      approved: formData.approved === 'true',
+      comment: formData.comment,
     }
     await approveTran(id, approveData)
     messageTip('审批提交成功', 'success')
