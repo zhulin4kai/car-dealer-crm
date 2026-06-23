@@ -19,8 +19,18 @@ describe('dashboard layout route stability contracts', () => {
   it('does not render sidebar links from empty fallback URLs', () => {
     const source = readFileSync(dashboardLayout, 'utf8')
 
-    expect(source).toContain('visibleMenuPermissionList')
+    expect(source).toContain('navigationSections')
     expect(source).toContain('normalizeMenuUrl')
     expect(source).not.toMatch(/:to="[^"]*\?\?\s*['"]{2}/)
+  })
+
+  it('renders the permission tree as grouped flat navigation instead of nested sidebar menus', () => {
+    const source = readFileSync(dashboardLayout, 'utf8')
+
+    expect(source).toContain('PRODUCT_MENU_CODE')
+    expect(source).toContain('DICT_MENU_CODE')
+    expect(source).toContain('产品中心')
+    expect(source).toContain('字典管理')
+    expect(source).not.toContain('Collapsible')
   })
 })

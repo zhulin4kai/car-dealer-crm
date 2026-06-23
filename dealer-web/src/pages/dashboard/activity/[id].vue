@@ -11,61 +11,119 @@
       <CardContent>
         <!-- 基本信息区域 -->
         <div class="mb-8 last:mb-0">
-          <h4 class="text-base font-semibold mb-5 pb-2 border-b-2 border-border relative before:absolute before:bottom-[-2px] before:left-0 before:w-[60px] before:h-[2px] before:bg-primary">基本信息</h4>
+          <h4
+            class="text-base font-semibold mb-5 pb-2 border-b-2 border-border relative before:absolute before:bottom-[-2px] before:left-0 before:w-[60px] before:h-[2px] before:bg-primary"
+          >
+            基本信息
+          </h4>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">活动ID：</span>
-              <span class="flex-1 break-all font-semibold text-primary">{{ activityDetail.id || '暂无' }}</span>
+            <div
+              class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >活动ID：</span
+              >
+              <span class="flex-1 break-all font-semibold text-primary">{{
+                activityDetail.id || '暂无'
+              }}</span>
             </div>
-            <div class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">负责人：</span>
+            <div
+              class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >负责人：</span
+              >
               <span class="flex-1 break-all">{{ activityDetail.ownerDO?.name || '暂无' }}</span>
             </div>
-            <div class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">活动预算：</span>
-              <span class="flex-1 break-all font-semibold text-primary">{{ activityDetail.cost || '暂无' }}</span>
+            <div
+              class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >活动预算：</span
+              >
+              <span class="flex-1 break-all font-semibold text-primary">{{
+                activityDetail.cost || '暂无'
+              }}</span>
             </div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mt-4">
-            <div class="md:col-span-6 flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">活动名称：</span>
+            <div
+              class="md:col-span-6 flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >活动名称：</span
+              >
               <span class="flex-1 break-all">{{ activityDetail.name || '暂无' }}</span>
             </div>
-            <div class="md:col-span-3 flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">开始时间：</span>
+            <div
+              class="md:col-span-3 flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >开始时间：</span
+              >
               <span class="flex-1 break-all">{{ activityDetail.startTime || '暂无' }}</span>
             </div>
-            <div class="md:col-span-3 flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">结束时间：</span>
+            <div
+              class="md:col-span-3 flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >结束时间：</span
+              >
               <span class="flex-1 break-all">{{ activityDetail.endTime || '暂无' }}</span>
             </div>
           </div>
           <div v-if="activityDetail.description" class="mt-4">
-            <div class="flex flex-col items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mb-2">活动描述：</span>
-              <div class="mt-2 p-3 bg-muted rounded w-full leading-relaxed">{{ activityDetail.description }}</div>
+            <div
+              class="flex flex-col items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mb-2"
+                >活动描述：</span
+              >
+              <div class="mt-2 p-3 bg-muted rounded w-full leading-relaxed">
+                {{ activityDetail.description }}
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 管理信息区域 -->
         <div class="mb-8 last:mb-0">
-          <h4 class="text-base font-semibold mb-5 pb-2 border-b-2 border-border relative before:absolute before:bottom-[-2px] before:left-0 before:w-[60px] before:h-[2px] before:bg-primary">管理信息</h4>
+          <h4
+            class="text-base font-semibold mb-5 pb-2 border-b-2 border-border relative before:absolute before:bottom-[-2px] before:left-0 before:w-[60px] before:h-[2px] before:bg-primary"
+          >
+            管理信息
+          </h4>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">创建时间：</span>
+            <div
+              class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >创建时间：</span
+              >
               <span class="flex-1 break-all">{{ activityDetail.createTime || '暂无' }}</span>
             </div>
-            <div class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">创建人：</span>
+            <div
+              class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >创建人：</span
+              >
               <span class="flex-1 break-all">{{ activityDetail.createByDO?.name || '暂无' }}</span>
             </div>
-            <div class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">编辑时间：</span>
+            <div
+              class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >编辑时间：</span
+              >
               <span class="flex-1 break-all">{{ activityDetail.editTime || '暂无' }}</span>
             </div>
-            <div class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm">
-              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]">编辑人：</span>
+            <div
+              class="flex items-start p-3 bg-background rounded-md border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+            >
+              <span class="font-semibold text-muted-foreground whitespace-nowrap mr-3 min-w-[80px]"
+                >编辑人：</span
+              >
               <span class="flex-1 break-all">{{ activityDetail.editByDO?.name || '暂无' }}</span>
             </div>
           </div>
@@ -87,7 +145,9 @@
               :rows="6"
               placeholder="请输入详细的活动备注内容..."
             />
-            <p v-if="errors.noteContent" class="text-sm text-destructive">{{ errors.noteContent }}</p>
+            <p v-if="errors.noteContent" class="text-sm text-destructive">
+              {{ errors.noteContent }}
+            </p>
           </div>
 
           <div class="flex gap-2">
@@ -105,14 +165,13 @@
       </CardContent>
     </Card>
 
-    <!-- 备注记录列表卡片 -->
-    <Card class="mb-5">
-      <CardHeader class="border-b bg-muted/50">
-        <CardTitle class="text-lg font-semibold">活动备注记录</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
+    <section class="crm-panel">
+      <div class="border-b border-[var(--crm-border-light)] px-5 py-4">
+        <h2 class="text-lg font-semibold text-[var(--crm-text-primary)]">活动备注记录</h2>
+      </div>
+      <div class="crm-table-shell">
+        <Table class="min-w-[960px]">
+          <TableHeader class="bg-[var(--crm-bg-muted)]">
             <TableRow>
               <TableHead class="w-[60px] text-center">序号</TableHead>
               <TableHead class="min-w-[200px]">备注内容</TableHead>
@@ -124,27 +183,43 @@
             </TableRow>
           </TableHeader>
           <TableBody>
+            <TableRow v-if="activityRemarkList.length === 0">
+              <TableCell colspan="7" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+                >暂无活动备注</TableCell
+              >
+            </TableRow>
             <TableRow v-for="(remark, index) in activityRemarkList" :key="remark.id">
-              <TableCell class="text-center">{{ index + 1 }}</TableCell>
-              <TableCell class="truncate max-w-[300px]">{{ remark.noteContent }}</TableCell>
+              <TableCell class="text-center text-[var(--crm-text-tertiary)]">{{
+                index + 1
+              }}</TableCell>
+              <TableCell
+                class="max-w-[300px] truncate font-medium text-[var(--crm-text-primary)]"
+                >{{ remark.noteContent || '--' }}</TableCell
+              >
               <TableCell class="text-center">{{ remark.createTime }}</TableCell>
               <TableCell class="text-center">{{ remark.createByDO?.name }}</TableCell>
               <TableCell class="text-center">{{ remark.editTime }}</TableCell>
               <TableCell class="text-center">{{ remark.editByDO?.name }}</TableCell>
               <TableCell class="text-center">
                 <div class="flex justify-center gap-1">
-                  <Button variant="link" size="sm" class="text-destructive" @click="del(remark.id)">删除</Button>
+                  <RowActionButton label="删除" danger @click="del(remark.id)">
+                    <Trash2 class="h-4 w-4" />
+                  </RowActionButton>
                 </div>
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
-
-        <div class="flex justify-center mt-5">
-          <DataTablePagination :page-size="pageSize" :total="total" @change="toPage" />
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div class="crm-table-footer">
+        <DataTablePagination
+          :page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @change="toPage"
+        />
+      </div>
+    </section>
   </div>
 </template>
 
@@ -154,7 +229,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
-import { Pencil, RotateCw, Loader2 } from '@lucide/vue'
+import { Pencil, RotateCw, Loader2, Trash2 } from '@lucide/vue'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
 import {
   createActivityRemark,
@@ -168,9 +243,17 @@ import { toRouteId } from '@/shared/types/id'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table'
 import { Label } from '@/components/ui/label'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+import RowActionButton from '@/shared/ui/RowActionButton.vue'
 
 // 路由
 const route = useRoute()
@@ -180,13 +263,14 @@ const router = useRouter()
 const activityDetail = ref<Activity>({
   ownerDO: {},
   createByDO: {},
-  editByDO: {}
+  editByDO: {},
 })
 
 // 活动备注的列表对象
 const activityRemarkList = ref<ActivityRemark[]>([])
 
 // 分页
+const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
@@ -194,9 +278,14 @@ const total = ref(0)
 const submitting = ref(false)
 
 // 备注表单校验规则 (zod)
-const remarkSchema = toTypedSchema(z.object({
-  noteContent: z.string().min(5, '活动备注长度为5-255个字符').max(255, '活动备注长度为5-255个字符'),
-}))
+const remarkSchema = toTypedSchema(
+  z.object({
+    noteContent: z
+      .string()
+      .min(5, '活动备注长度为5-255个字符')
+      .max(255, '活动备注长度为5-255个字符'),
+  }),
+)
 
 const { handleSubmit, errors, values, resetForm } = useForm({
   validationSchema: remarkSchema,
@@ -230,7 +319,7 @@ const loadActivityDetail = async () => {
       activityDetail.value.editByDO = {}
     }
   } catch (error) {
-    messageTip("加载活动详情失败", "error")
+    messageTip('加载活动详情失败', 'error')
   }
 }
 
@@ -239,11 +328,11 @@ const onSubmitRemark = handleSubmit(async (formData) => {
   try {
     if (!activityDetail.value.id) throw new Error('活动ID不存在')
     await createActivityRemark(activityDetail.value.id, formData.noteContent)
-    messageTip("提交成功", "success")
+    messageTip('提交成功', 'success')
     await loadActivityRemarkList(1)
     resetRemarkForm()
   } catch (error) {
-    messageTip("提交失败", "error")
+    messageTip('提交失败', 'error')
   } finally {
     submitting.value = false
   }
@@ -253,44 +342,49 @@ const loadActivityRemarkList = async (current: number) => {
   const activityId = toRouteId(route.params.id)
   if (!activityId) return
   try {
+    currentPage.value = current
     const resp = await fetchActivityRemarkPage(current, activityId)
     activityRemarkList.value = resp.list || []
     pageSize.value = resp.pageSize || 10
     total.value = resp.total || 0
   } catch (error) {
-    messageTip("加载备注列表失败", "error")
+    messageTip('加载备注列表失败', 'error')
   }
 }
 
 // 分页函数
 const toPage = (current: number) => {
+  currentPage.value = current
   loadActivityRemarkList(current)
 }
 
 const del = async (id: number | string) => {
   try {
-    await messageConfirm("您确定要删除该数据吗？")
+    await messageConfirm('您确定要删除该数据吗？')
   } catch {
-    messageTip("取消删除", "info")
+    messageTip('取消删除', 'info')
     return
   }
 
   try {
     await deleteActivityRemark(id)
-    messageTip("删除成功", "success")
+    messageTip('删除成功', 'success')
     await loadActivityRemarkList(1)
   } catch (error) {
-    messageTip("删除失败", "error")
+    messageTip('删除失败', 'error')
   }
 }
 
 // 监听路由参数变化
-watch(() => route.params.id, (newId) => {
-  if (newId) {
-    loadActivityDetail()
-    loadActivityRemarkList(1)
-  }
-})
+watch(
+  () => route.params.id,
+  (newId) => {
+    if (newId) {
+      loadActivityDetail()
+      loadActivityRemarkList(1)
+    }
+  },
+)
 
 // 组件挂载时执行
 onMounted(() => {

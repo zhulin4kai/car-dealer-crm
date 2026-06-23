@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-h-full gap-6 p-6 max-[1199px]:flex-col">
     <section class="min-w-0 flex-1 space-y-5">
-      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <article
           v-for="card in metricCards"
           :key="card.label"
@@ -18,23 +18,35 @@
               </div>
               <div class="text-sm text-[var(--crm-text-tertiary)]">{{ card.description }}</div>
             </div>
-            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" :class="card.iconClass">
+            <div
+              class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+              :class="card.iconClass"
+            >
               <component :is="card.icon" class="h-5 w-5" />
             </div>
           </div>
         </article>
       </div>
 
-      <section class="overflow-hidden rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] shadow-[var(--crm-shadow-card)]">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-border-light)] px-5 py-4">
+      <section
+        class="overflow-hidden rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] shadow-[var(--crm-shadow-card)]"
+      >
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-border-light)] px-5 py-4"
+        >
           <div class="flex items-center gap-3">
             <h2 class="text-base font-semibold">最新线索</h2>
-            <span class="rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 text-sm text-[var(--crm-text-tertiary)]">
+            <span
+              class="rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 text-sm text-[var(--crm-text-tertiary)]"
+            >
               {{ formatNumber(clueTotal) }}
             </span>
           </div>
           <div class="flex items-center gap-2">
-            <Button class="gap-2 bg-[var(--crm-primary)] hover:bg-[var(--crm-primary-hover)]" @click="goToClueList">
+            <Button
+              class="gap-2 bg-[var(--crm-primary)] hover:bg-[var(--crm-primary-hover)]"
+              @click="goToClueList"
+            >
               <Plus class="h-4 w-4" />
               录入线索
             </Button>
@@ -47,7 +59,9 @@
 
         <div class="overflow-x-auto">
           <table class="min-w-[960px] w-full text-left text-sm">
-            <thead class="bg-[var(--crm-bg-muted)] text-xs font-semibold text-[var(--crm-text-tertiary)]">
+            <thead
+              class="bg-[var(--crm-bg-muted)] text-xs font-semibold text-[var(--crm-text-tertiary)]"
+            >
               <tr>
                 <th class="px-5 py-3">姓名</th>
                 <th class="px-5 py-3">手机</th>
@@ -61,13 +75,19 @@
             </thead>
             <tbody class="divide-y divide-[var(--crm-border-light)]">
               <tr v-if="clueLoading">
-                <td class="px-5 py-10 text-center text-[var(--crm-text-tertiary)]" colspan="8">线索加载中...</td>
+                <td class="px-5 py-10 text-center text-[var(--crm-text-tertiary)]" colspan="8">
+                  线索加载中...
+                </td>
               </tr>
               <tr v-else-if="clueError">
-                <td class="px-5 py-10 text-center text-[var(--crm-danger)]" colspan="8">线索加载失败，请稍后重试</td>
+                <td class="px-5 py-10 text-center text-[var(--crm-danger)]" colspan="8">
+                  线索加载失败，请稍后重试
+                </td>
               </tr>
               <tr v-else-if="recentClues.length === 0">
-                <td class="px-5 py-10 text-center text-[var(--crm-text-tertiary)]" colspan="8">暂无线索数据</td>
+                <td class="px-5 py-10 text-center text-[var(--crm-text-tertiary)]" colspan="8">
+                  暂无线索数据
+                </td>
               </tr>
               <template v-else>
                 <tr
@@ -77,23 +97,40 @@
                   :class="clue.id ? 'cursor-pointer' : ''"
                   @click="goToClueDetail(clue)"
                 >
-                  <td class="px-5 py-4 font-semibold text-[var(--crm-text-primary)]">{{ clue.fullName || '--' }}</td>
-                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">{{ formatPhone(clue.phone) }}</td>
+                  <td class="px-5 py-4 font-semibold text-[var(--crm-text-primary)]">
+                    {{ clue.fullName || '--' }}
+                  </td>
+                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">
+                    {{ formatPhone(clue.phone) }}
+                  </td>
                   <td class="px-5 py-4 text-[var(--crm-text-secondary)]">
                     <span class="inline-flex items-center gap-2">
-                      <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-xs font-semibold text-[var(--crm-primary)]">
+                      <span
+                        class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-xs font-semibold text-[var(--crm-primary)]"
+                      >
                         {{ getNameInitial(clue.ownerDO?.name) }}
                       </span>
                       {{ clue.ownerDO?.name || '--' }}
                     </span>
                   </td>
-                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">{{ clue.activityDO?.name || '--' }}</td>
-                  <td class="px-5 py-4">
-                    <StatusBadge :label="clue.intentionStateDO?.typeValue" :tone="getClueTone(clue.intentionStateDO?.typeValue)" />
+                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">
+                    {{ clue.activityDO?.name || '--' }}
                   </td>
-                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">{{ clue.intentionProductDO?.name || '--' }}</td>
-                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">{{ clue.sourceDO?.typeValue || '--' }}</td>
-                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">{{ formatDateTime(clue.nextContactTime) }}</td>
+                  <td class="px-5 py-4">
+                    <StatusBadge
+                      :label="clue.intentionStateDO?.typeValue"
+                      :tone="getClueTone(clue.intentionStateDO?.typeValue)"
+                    />
+                  </td>
+                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">
+                    {{ clue.intentionProductDO?.name || '--' }}
+                  </td>
+                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">
+                    {{ clue.sourceDO?.typeValue || '--' }}
+                  </td>
+                  <td class="px-5 py-4 text-[var(--crm-text-secondary)]">
+                    {{ formatDateTime(clue.nextContactTime) }}
+                  </td>
                 </tr>
               </template>
             </tbody>
@@ -103,24 +140,33 @@
     </section>
 
     <aside class="w-[var(--crm-right-panel-width)] shrink-0 space-y-5 max-[1199px]:w-full">
-      <section class="rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-5 shadow-[var(--crm-shadow-card)]">
+      <section
+        class="rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-5 shadow-[var(--crm-shadow-card)]"
+      >
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-base font-semibold">业务动态</h2>
         </div>
-        <div class="flex min-h-[180px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--crm-border)] bg-[var(--crm-bg-muted)] px-6 text-center">
+        <div
+          class="flex min-h-[180px] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--crm-border)] bg-[var(--crm-bg-muted)] px-6 text-center"
+        >
           <Inbox class="mb-3 h-8 w-8 text-[var(--crm-text-tertiary)]" />
           <p class="text-sm font-medium text-[var(--crm-text-secondary)]">暂无业务动态数据</p>
           <p class="mt-1 text-xs text-[var(--crm-text-tertiary)]">审计日志接口尚未开放</p>
         </div>
       </section>
 
-      <section class="rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-5 shadow-[var(--crm-shadow-card)]">
+      <section
+        class="rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-5 shadow-[var(--crm-shadow-card)]"
+      >
         <div class="mb-2">
           <h2 class="text-base font-semibold">销售漏斗</h2>
           <p class="mt-1 text-sm text-[var(--crm-text-tertiary)]">线索到成交转化追踪</p>
         </div>
         <div ref="funnelChartRef" class="h-[260px] w-full" />
-        <div v-if="funnelData.length === 0" class="-mt-[260px] flex h-[260px] items-center justify-center text-sm text-[var(--crm-text-tertiary)]">
+        <div
+          v-if="funnelData.length === 0"
+          class="-mt-[260px] flex h-[260px] items-center justify-center text-sm text-[var(--crm-text-tertiary)]"
+        >
           暂无漏斗数据
         </div>
         <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
@@ -131,12 +177,17 @@
         </div>
       </section>
 
-      <section class="rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-5 shadow-[var(--crm-shadow-card)]">
+      <section
+        class="rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-5 shadow-[var(--crm-shadow-card)]"
+      >
         <div class="mb-4">
           <h2 class="text-base font-semibold">线索来源分布</h2>
         </div>
         <div ref="sourceChartRef" class="h-[250px] w-full" />
-        <div v-if="sourceData.length === 0" class="-mt-[250px] flex h-[250px] items-center justify-center text-sm text-[var(--crm-text-tertiary)]">
+        <div
+          v-if="sourceData.length === 0"
+          class="-mt-[250px] flex h-[250px] items-center justify-center text-sm text-[var(--crm-text-tertiary)]"
+        >
           暂无来源数据
         </div>
         <div class="space-y-2">
@@ -146,10 +197,15 @@
             class="flex items-center justify-between gap-3 text-sm"
           >
             <span class="flex min-w-0 items-center gap-2 text-[var(--crm-text-secondary)]">
-              <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: sourceColors[index % sourceColors.length] }" />
+              <span
+                class="h-2.5 w-2.5 shrink-0 rounded-full"
+                :style="{ backgroundColor: sourceColors[index % sourceColors.length] }"
+              />
               <span class="truncate">{{ item.name || '--' }}</span>
             </span>
-            <span class="font-semibold text-[var(--crm-text-primary)]">{{ formatNumber(item.value) }}</span>
+            <span class="font-semibold text-[var(--crm-text-primary)]">{{
+              formatNumber(item.value)
+            }}</span>
           </div>
         </div>
       </section>
@@ -175,11 +231,11 @@ import {
 import type { NameValueData, SummaryData } from '@/modules/statistic/model/statistic.types'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
 import {
-  formatCurrency,
   formatDateTime,
   formatNumber,
   formatPercent,
   formatPhone,
+  toNumber,
 } from '@/shared/utils/display-format'
 import { ExternalLink, Handshake, Inbox, Megaphone, Plus, UserSearch, Users } from '@lucide/vue'
 
@@ -204,14 +260,16 @@ let resizeObserver: ResizeObserver | null = null
 
 const sourceColors = ['#3370FF', '#34C759', '#FF9500', '#9B59B6', '#0A84FF', '#9CA3AF']
 
-const metricCards = computed<Array<{
-  label: string
-  value: string
-  subValue?: string
-  description: string
-  icon: Component
-  iconClass: string
-}>>(() => [
+const metricCards = computed<
+  Array<{
+    label: string
+    value: string
+    subValue?: string
+    description: string
+    icon: Component
+    iconClass: string
+  }>
+>(() => [
   {
     label: '市场活动',
     value: formatNumber(summaryData.effectiveActivityCount),
@@ -236,8 +294,8 @@ const metricCards = computed<Array<{
   },
   {
     label: '交易总额',
-    value: formatCurrency(summaryData.successTranAmount, { fractionDigits: 1, suffix: '万' }),
-    subValue: `/ ${formatCurrency(summaryData.totalTranAmount, { fractionDigits: 0, suffix: '万' })}`,
+    value: formatWanCurrency(summaryData.successTranAmount),
+    subValue: `/ ${formatWanCurrency(summaryData.totalTranAmount)}`,
     description: '已成交/总额',
     icon: Handshake,
     iconClass: 'bg-[var(--crm-warning-bg)] text-[var(--crm-warning)]',
@@ -255,6 +313,17 @@ const funnelRates = computed(() => {
 
 async function loadSummary(): Promise<void> {
   Object.assign(summaryData, await fetchSummaryData())
+}
+
+function formatWanCurrency(value: number | string | null | undefined): string {
+  const numericValue = toNumber(value)
+  if (numericValue === null) {
+    return '--'
+  }
+  return `¥${(numericValue / 10000).toLocaleString('zh-CN', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}万`
 }
 
 async function loadRecentClues(): Promise<void> {
@@ -349,7 +418,9 @@ function getNameInitial(name?: string): string {
   return value ? value.charAt(0) : '--'
 }
 
-function getClueTone(label?: string): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
+function getClueTone(
+  label?: string,
+): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
   if (!label) {
     return 'muted'
   }

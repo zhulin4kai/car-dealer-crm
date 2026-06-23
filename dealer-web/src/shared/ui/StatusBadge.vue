@@ -1,27 +1,33 @@
 <template>
-  <span
-    class="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold"
+  <Badge
+    variant="outline"
+    class="h-6 gap-1.5 rounded-full border-transparent px-2.5 font-semibold"
     :class="toneClass"
   >
     <span class="h-1.5 w-1.5 rounded-full" :class="dotClass" />
     <span>{{ displayLabel }}</span>
-  </span>
+  </Badge>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { Badge } from '@/components/ui/badge'
+
 defineOptions({
   name: 'StatusBadge',
 })
 
-const props = withDefaults(defineProps<{
-  label?: string | number | null
-  tone?: 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple'
-}>(), {
-  label: '--',
-  tone: 'muted',
-})
+const props = withDefaults(
+  defineProps<{
+    label?: string | number | null
+    tone?: 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple'
+  }>(),
+  {
+    label: '--',
+    tone: 'muted',
+  },
+)
 
 const displayLabel = computed(() => {
   const label = String(props.label ?? '').trim()

@@ -30,4 +30,15 @@ describe('router routes', () => {
       'dict/value',
     ])
   })
+
+  it('keeps dictionary pages highlighted under the single sidebar entry', () => {
+    const dashboardRoute = routes.find((route) => route.path === '/dashboard')
+    const dictTypeRoute = dashboardRoute?.children?.find((route) => route.path === 'dict/type')
+    const dictValueRoute = dashboardRoute?.children?.find((route) => route.path === 'dict/value')
+
+    expect(dictTypeRoute?.meta?.activeMenu).toBe('/dashboard/dict/type')
+    expect(dictValueRoute?.meta?.activeMenu).toBe('/dashboard/dict/type')
+    expect(dictTypeRoute?.meta?.title).toBe('字典管理')
+    expect(dictValueRoute?.meta?.title).toBe('字典管理')
+  })
 })
