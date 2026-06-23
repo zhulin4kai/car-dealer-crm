@@ -7,6 +7,7 @@ describe('saveBlob', () => {
   let revokeObjectURLSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
+    vi.useFakeTimers()
     createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fake-url')
     revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
   })
@@ -14,6 +15,7 @@ describe('saveBlob', () => {
   afterEach(() => {
     createObjectURLSpy.mockRestore()
     revokeObjectURLSpy.mockRestore()
+    vi.useRealTimers()
   })
 
   it('creates object URL, triggers download, and revokes URL', () => {
@@ -22,6 +24,8 @@ describe('saveBlob', () => {
     saveBlob(blob, 'test.txt')
 
     expect(createObjectURLSpy).toHaveBeenCalledWith(blob)
+    expect(revokeObjectURLSpy).not.toHaveBeenCalled()
+    vi.runAllTimers()
     expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:fake-url')
   })
 
@@ -33,6 +37,8 @@ describe('saveBlob', () => {
     })
 
     expect(() => saveBlob(blob, 'test.txt')).toThrow('appendChild failed')
+    expect(revokeObjectURLSpy).not.toHaveBeenCalled()
+    vi.runAllTimers()
     expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:fake-url')
 
     appendChildSpy.mockRestore()

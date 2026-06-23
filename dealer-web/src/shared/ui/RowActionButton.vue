@@ -1,23 +1,25 @@
 <template>
-  <TooltipProvider :delay-duration="120">
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <button
-          class="inline-flex h-8 w-8 items-center justify-center rounded-md p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--crm-primary)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-          :class="buttonClass"
-          type="button"
-          :aria-label="label"
-          :disabled="disabled"
-          @click.stop="emit('click', $event)"
-        >
-          <slot />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {{ label }}
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
+  <span class="inline-flex">
+    <TooltipProvider :delay-duration="120">
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <button
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--crm-primary)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            :class="buttonClass"
+            type="button"
+            :aria-label="label"
+            :disabled="disabled"
+            @click.stop="emit('click', $event)"
+          >
+            <slot />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {{ label }}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  </span>
 </template>
 
 <script setup lang="ts">

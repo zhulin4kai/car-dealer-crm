@@ -8,6 +8,6 @@ export function saveBlob(blob: Blob, filename: string): void {
     link.click()
     document.body.removeChild(link)
   } finally {
-    URL.revokeObjectURL(url)
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 }
