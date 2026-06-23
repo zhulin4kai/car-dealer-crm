@@ -7,7 +7,7 @@
         <div class="crm-toolbar">
           <div class="crm-field">
             <Label class="crm-field-label">字典类型</Label>
-            <Select v-model="searchForm.typeCode">
+            <Select v-model="searchForm.typeCode" @update:model-value="handleTypeCodeChange">
               <SelectTrigger class="w-[200px]">
                 <SelectValue placeholder="请选择字典类型" />
               </SelectTrigger>
@@ -32,6 +32,10 @@
             <Button class="gap-2" @click="handleSearch()">
               <Search class="h-4 w-4" />
               查询
+            </Button>
+            <Button variant="outline" class="gap-2" @click="handleReset()">
+              <RotateCcw class="h-4 w-4" />
+              重置
             </Button>
             <Button
               v-has-permission="PERMISSIONS.dict.value.add"
@@ -199,7 +203,7 @@
         <form class="space-y-4" @submit.prevent="onFormSubmit">
           <div class="space-y-2">
             <Label>字典类型</Label>
-            <Select v-model="values.typeCode">
+            <Select v-model="typeCode">
               <SelectTrigger>
                 <SelectValue placeholder="请选择字典类型" />
               </SelectTrigger>
@@ -213,17 +217,17 @@
           </div>
           <div class="space-y-2">
             <Label>字典值</Label>
-            <Input v-model="values.typeValue" placeholder="请输入字典值" />
+            <Input v-model="typeValue" placeholder="请输入字典值" />
             <p v-if="errors.typeValue" class="text-sm text-destructive">{{ errors.typeValue }}</p>
           </div>
           <div class="space-y-2">
             <Label>业务编码</Label>
-            <Input v-model="values.valueCode" placeholder="例如：wechat" />
+            <Input v-model="valueCode" placeholder="例如：wechat" />
             <p v-if="errors.valueCode" class="text-sm text-destructive">{{ errors.valueCode }}</p>
           </div>
           <div class="space-y-2">
             <Label>排序</Label>
-            <NumberField v-model="values.order" :min="1">
+            <NumberField v-model="order" :min="1">
               <NumberFieldContent>
                 <NumberFieldDecrement />
                 <NumberFieldInput />
@@ -234,7 +238,7 @@
           </div>
           <div class="space-y-2">
             <Label>备注</Label>
-            <Textarea v-model="values.remark" placeholder="请输入备注" :rows="3" />
+            <Textarea v-model="remark" placeholder="请输入备注" :rows="3" />
           </div>
         </form>
         <DialogFooter>
@@ -307,7 +311,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import { useClientSort } from '@/shared/utils/table-sort'
-import { Pencil, Plus, Search, Trash2 } from '@lucide/vue'
+import { Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
 
 import DictManagementTabs from './DictManagementTabs.vue'
 
@@ -315,6 +319,7 @@ const { run: runDictValueQuery, loading } = useLatestRequest<PageResult<DictValu
 const submitting = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const editingValueId = ref<EntityId | null>(null)
 const tableData = ref<DictValue[]>([])
 const selectedIds = ref<EntityId[]>([])
 const currentPage = ref(1)
@@ -355,7 +360,7 @@ const formSchema = toTypedSchema(
   }),
 )
 
-const { handleSubmit, errors, values, resetForm } = useForm({
+const { handleSubmit, errors, resetForm, defineField } = useForm({
   validationSchema: formSchema,
   initialValues: {
     typeCode: '',
@@ -365,6 +370,11 @@ const { handleSubmit, errors, values, resetForm } = useForm({
     remark: '',
   },
 })
+const [typeCode] = defineField('typeCode')
+const [typeValue] = defineField('typeValue')
+const [valueCode] = defineField('valueCode')
+const [order] = defineField('order')
+const [remark] = defineField('remark')
 
 // 全选相关
 const allSelected = computed(
@@ -437,9 +447,21 @@ function handleSearch() {
   void loadData()
 }
 
+function handleTypeCodeChange() {
+  handleSearch()
+}
+
+function handleReset() {
+  searchForm.typeCode = ALL_DICT_TYPE_CODE
+  searchForm.typeValue = ''
+  currentPage.value = 1
+  void loadData()
+}
+
 // 新增
 const handleAdd = () => {
   isEdit.value = false
+  editingValueId.value = null
   resetForm({
     values: {
       typeCode: '',
@@ -455,7 +477,16 @@ const handleAdd = () => {
 // 编辑
 const handleEdit = (row) => {
   isEdit.value = true
-  Object.assign(values, row)
+  editingValueId.value = row.id ?? null
+  resetForm({
+    values: {
+      typeCode: row.typeCode ?? '',
+      typeValue: row.typeValue ?? '',
+      valueCode: row.valueCode ?? '',
+      order: Number(row.order ?? 1),
+      remark: row.remark ?? '',
+    },
+  })
   dialogVisible.value = true
 }
 
@@ -508,7 +539,11 @@ const doSubmit = async (formData: Record<string, unknown>) => {
       remark: formData.remark,
     }
     if (isEdit.value) {
-      await updateDictValue(values.id, requestData)
+      if (editingValueId.value === null) {
+        messageTip('无法确定编辑目标', 'error')
+        return
+      }
+      await updateDictValue(editingValueId.value, requestData)
       messageTip('更新成功', 'success')
     } else {
       await createDictValue(requestData)

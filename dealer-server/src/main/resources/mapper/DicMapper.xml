@@ -46,16 +46,11 @@
         FROM t_dic_value dv
         LEFT JOIN t_dic_type dt ON dv.type_code = dt.type_code
         <where>
-            <if test="(typeCode != null and typeCode != '') or (typeValue != null and typeValue != '')">
-                <if test="typeCode != null and typeCode != ''">
-                    dv.type_code = #{typeCode}
-                </if>
-                <if test="(typeCode != null and typeCode != '') and (typeValue != null and typeValue != '')">
-                    OR
-                </if>
-                <if test="typeValue != null and typeValue != ''">
-                    dv.type_value LIKE CONCAT('%', #{typeValue}, '%')
-                </if>
+            <if test="typeCode != null and typeCode != ''">
+                AND dv.type_code = #{typeCode}
+            </if>
+            <if test="typeValue != null and typeValue != ''">
+                AND dv.type_value LIKE CONCAT('%', #{typeValue}, '%')
             </if>
         </where>
         ORDER BY dv.`order`

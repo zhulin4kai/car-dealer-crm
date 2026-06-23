@@ -28,6 +28,10 @@
               <Search class="h-4 w-4" />
               查询
             </Button>
+            <Button variant="outline" class="gap-2" @click="handleReset()">
+              <RotateCcw class="h-4 w-4" />
+              重置
+            </Button>
             <Button
               v-has-permission="PERMISSIONS.dict.type.add"
               variant="outline"
@@ -171,7 +175,7 @@
           <div class="space-y-2">
             <Label>类型代码</Label>
             <Input
-              v-model="values.typeCode"
+              v-model="typeCode"
               placeholder="请输入类型代码"
               @keyup.enter="onFormSubmit"
             />
@@ -180,7 +184,7 @@
           <div class="space-y-2">
             <Label>类型名称</Label>
             <Input
-              v-model="values.typeName"
+              v-model="typeName"
               placeholder="请输入类型名称"
               @keyup.enter="onFormSubmit"
             />
@@ -189,7 +193,7 @@
           <div class="space-y-2">
             <Label>备注</Label>
             <Textarea
-              v-model="values.remark"
+              v-model="remark"
               placeholder="请输入备注"
               :rows="3"
               @keyup.enter="onFormSubmit"
@@ -251,7 +255,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import { useClientSort } from '@/shared/utils/table-sort'
-import { Pencil, Plus, Search, Trash2 } from '@lucide/vue'
+import { Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
 
 import DictManagementTabs from './DictManagementTabs.vue'
 
@@ -259,6 +263,7 @@ const { run: runDictTypeQuery, loading } = useLatestRequest<PageResult<DictType>
 const submitting = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const editingTypeId = ref<EntityId | null>(null)
 const tableData = ref<DictType[]>([])
 const selectedIds = ref<EntityId[]>([])
 const currentPage = ref(1)
@@ -290,7 +295,7 @@ const formSchema = toTypedSchema(
   }),
 )
 
-const { handleSubmit, errors, values, resetForm } = useForm({
+const { handleSubmit, errors, resetForm, defineField } = useForm({
   validationSchema: formSchema,
   initialValues: {
     typeCode: '',
@@ -298,6 +303,9 @@ const { handleSubmit, errors, values, resetForm } = useForm({
     remark: '',
   },
 })
+const [typeCode] = defineField('typeCode')
+const [typeName] = defineField('typeName')
+const [remark] = defineField('remark')
 
 // 全选相关
 const allSelected = computed(
@@ -356,9 +364,17 @@ function handleSearch() {
   void loadData()
 }
 
+function handleReset() {
+  searchForm.typeCode = ''
+  searchForm.typeName = ''
+  currentPage.value = 1
+  void loadData()
+}
+
 // 新增
 const handleAdd = () => {
   isEdit.value = false
+  editingTypeId.value = null
   resetForm({
     values: {
       typeCode: '',
@@ -372,7 +388,14 @@ const handleAdd = () => {
 // 编辑
 const handleEdit = (row: DictType) => {
   isEdit.value = true
-  Object.assign(values, row)
+  editingTypeId.value = row.id ?? null
+  resetForm({
+    values: {
+      typeCode: row.typeCode ?? '',
+      typeName: row.typeName ?? '',
+      remark: row.remark ?? '',
+    },
+  })
   dialogVisible.value = true
 }
 
@@ -420,7 +443,11 @@ const doSubmit = async (formData: Record<string, unknown>) => {
       remark: formData.remark,
     }
     if (isEdit.value) {
-      await updateDictType(values.id, requestData)
+      if (editingTypeId.value === null) {
+        messageTip('无法确定编辑目标', 'error')
+        return
+      }
+      await updateDictType(editingTypeId.value, requestData)
       messageTip('更新成功', 'success')
     } else {
       await createDictType(requestData)
