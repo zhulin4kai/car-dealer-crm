@@ -26,75 +26,83 @@
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <Label>客户姓名</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.customerName }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.customerName) }}</div>
             </div>
             <div class="space-y-1">
               <Label>手机号</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.phone }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.phone) }}</div>
             </div>
             <div class="space-y-1">
               <Label>微信</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.weixin }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.weixin) }}</div>
             </div>
             <div class="space-y-1">
               <Label>QQ</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.qq }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.qq) }}</div>
             </div>
             <div class="space-y-1">
               <Label>邮箱</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.email }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.email) }}</div>
             </div>
             <div class="space-y-1">
               <Label>年龄</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.age }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.age) }}</div>
             </div>
             <div class="space-y-1">
               <Label>职业</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.job }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.job) }}</div>
             </div>
             <div class="space-y-1">
               <Label>年收入</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.yearIncome }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.yearIncome) }}</div>
             </div>
             <div class="space-y-1">
               <Label>地址</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.address }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.address) }}</div>
             </div>
             <div class="space-y-1">
               <Label>称呼</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.appellationName }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.appellationName) }}</div>
             </div>
             <div class="space-y-1">
               <Label>负责人</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.ownerName }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.ownerName) }}</div>
             </div>
             <div class="space-y-1">
               <Label>所属活动</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.activityName }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.activityName) }}</div>
             </div>
             <div class="space-y-1">
               <Label>是否需要贷款</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.needLoanName }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.needLoanName) }}</div>
             </div>
             <div class="space-y-1">
               <Label>线索来源</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.sourceName }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.sourceName) }}</div>
+            </div>
+            <div class="space-y-1">
+              <Label>意向状态</Label>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.intentionStateName) }}</div>
+            </div>
+            <div class="space-y-1">
+              <Label>线索状态</Label>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.stateName) }}</div>
             </div>
             <div class="space-y-1">
               <Label>意向产品</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.productName }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.productName ?? customer.intentionProductName) }}</div>
             </div>
             <div class="space-y-1">
               <Label>描述</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.description }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.description) }}</div>
             </div>
             <div class="space-y-1">
               <Label>下次联系时间</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.nextContactTime }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.nextContactTime) }}</div>
             </div>
             <div class="space-y-1">
               <Label>创建时间</Label>
-              <div class="w-full bg-muted rounded px-4 py-2">{{ customer.createTime }}</div>
+              <div class="w-full bg-muted rounded px-4 py-2">{{ displayValue(customer.createTime) }}</div>
             </div>
           </div>
         </div>
@@ -163,6 +171,13 @@ function goBack(): void {
   } else {
     router.push('/dashboard/customer')
   }
+}
+
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') {
+    return '暂无'
+  }
+  return String(value)
 }
 
 watch(

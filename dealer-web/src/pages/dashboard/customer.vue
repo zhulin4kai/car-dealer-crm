@@ -6,19 +6,21 @@
           <Button
             v-has-permission="PERMISSIONS.customer.export"
             class="gap-2"
+            :disabled="exporting"
             @click="batchExportExcel"
           >
             <Download class="h-4 w-4" />
-            全部导出
+            {{ exporting ? '导出中...' : '全部导出' }}
           </Button>
           <Button
             v-has-permission="PERMISSIONS.customer.export"
             variant="outline"
             class="gap-2"
+            :disabled="exporting"
             @click="chooseExportExcel"
           >
             <ListChecks class="h-4 w-4" />
-            选择导出
+            {{ exporting ? '导出中...' : '选择导出' }}
           </Button>
         </div>
       </div>

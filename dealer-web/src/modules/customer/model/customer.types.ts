@@ -37,7 +37,10 @@ export interface CustomerDetail {
   activityName?: string
   appellationName?: string
   needLoanName?: string
+  intentionStateName?: string
+  stateName?: string
   sourceName?: string
+  intentionProductName?: string
   productName?: string
   product?: number | string
   description?: string
