@@ -14,8 +14,8 @@
             :disabled="!userIdArray.length"
             @click="batchDel"
           >
-            <Trash2 class="h-4 w-4" />
-            批量删除
+            <Ban class="h-4 w-4" />
+            批量禁用
           </Button>
         </div>
       </div>
@@ -72,6 +72,14 @@
               >
               <TableHead
                 sortable
+                sort-key="accountEnabled"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >账号状态</TableHead
+              >
+              <TableHead
+                sortable
                 sort-key="createTime"
                 :sort-by="sortBy"
                 :sort-direction="sortDirection"
@@ -83,7 +91,7 @@
           </TableHeader>
           <TableBody>
             <TableRow v-if="displayUserList.length === 0">
-              <TableCell colspan="8" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+              <TableCell colspan="9" class="h-32 text-center text-[var(--crm-text-tertiary)]"
                 >暂无用户数据</TableCell
               >
             </TableRow>
@@ -91,6 +99,7 @@
               <TableCell>
                 <Checkbox
                   :checked="userIdArray.includes(row.id)"
+                  :disabled="!isAccountEnabled(row)"
                   @update:checked="(v: boolean) => toggleRowSelection(row, v)"
                 />
               </TableCell>
@@ -105,6 +114,12 @@
               >
               <TableCell class="max-w-[150px] truncate">{{ formatPhone(row.phone) }}</TableCell>
               <TableCell class="max-w-[180px] truncate">{{ row.email || '--' }}</TableCell>
+              <TableCell>
+                <StatusBadge
+                  :label="isAccountEnabled(row) ? '启用' : '禁用'"
+                  :tone="isAccountEnabled(row) ? 'success' : 'muted'"
+                />
+              </TableCell>
               <TableCell class="max-w-[180px] truncate">{{
                 formatDateTime(row.createTime)
               }}</TableCell>
@@ -126,11 +141,12 @@
                   </RowActionButton>
                   <RowActionButton
                     v-has-permission="PERMISSIONS.user.status"
-                    label="删除"
-                    danger
-                    @click="del(row.id)"
+                    :label="isAccountEnabled(row) ? '禁用' : '启用'"
+                    :danger="isAccountEnabled(row)"
+                    @click="toggleUserStatus(row)"
                   >
-                    <Trash2 class="h-4 w-4" />
+                    <Ban v-if="isAccountEnabled(row)" class="h-4 w-4" />
+                    <Power v-else class="h-4 w-4" />
                   </RowActionButton>
                 </div>
               </TableCell>
@@ -157,31 +173,31 @@
         <form class="space-y-4" @submit.prevent="userSubmit">
           <div class="space-y-2">
             <Label>账号</Label>
-            <Input v-model="values.loginAct" />
+            <Input v-model="loginAct" />
             <p v-if="errors.loginAct" class="text-sm text-destructive">{{ errors.loginAct }}</p>
           </div>
 
           <div class="space-y-2" v-if="!isEditMode">
             <Label>密码</Label>
-            <Input type="password" v-model="values.loginPwd" />
+            <Input type="password" v-model="loginPwd" />
             <p v-if="errors.loginPwd" class="text-sm text-destructive">{{ errors.loginPwd }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>姓名</Label>
-            <Input v-model="values.name" />
+            <Input v-model="name" />
             <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>手机</Label>
-            <Input v-model="values.phone" />
+            <Input v-model="phone" />
             <p v-if="errors.phone" class="text-sm text-destructive">{{ errors.phone }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>邮箱</Label>
-            <Input v-model="values.email" />
+            <Input v-model="email" />
             <p v-if="errors.email" class="text-sm text-destructive">{{ errors.email }}</p>
           </div>
         </form>
@@ -198,7 +214,7 @@
 
     <!-- 用户详情的弹窗 -->
     <Dialog v-model:open="userDetailDialogVisible">
-      <DialogContent class="sm:max-w-[500px]">
+      <DialogContent class="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>用户详情</DialogTitle>
         </DialogHeader>
@@ -294,6 +310,7 @@ import {
   createUser,
   updateUser,
   disableUser,
+  enableUser,
   batchDisableUsers,
 } from '@/modules/user/api/user-api'
 import type { User } from '@/modules/user/model/user.types'
@@ -324,9 +341,10 @@ import {
 } from '@/components/ui/table'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
+import StatusBadge from '@/shared/ui/StatusBadge.vue'
 import { formatDateTime, formatPhone } from '@/shared/utils/display-format'
 import { useClientSort } from '@/shared/utils/table-sort'
-import { Eye, Pencil, Plus, Trash2 } from '@lucide/vue'
+import { Ban, Eye, Pencil, Plus, Power } from '@lucide/vue'
 
 const userList = ref<User[]>([])
 const pageSize = ref(10)
@@ -349,6 +367,7 @@ const {
   name: 'name',
   phone: 'phone',
   email: 'email',
+  accountEnabled: (row) => (isAccountEnabled(row) ? 1 : 0),
   createTime: 'createTime',
 })
 
@@ -389,7 +408,7 @@ const updateUserSchema = toTypedSchema(
 
 const validationSchema = computed(() => (isEditMode.value ? updateUserSchema : createUserSchema))
 
-const { handleSubmit, errors, values, setValues, resetForm } = useForm<UserFormValues>({
+const { handleSubmit, errors, resetForm, defineField } = useForm<UserFormValues>({
   validationSchema,
   initialValues: {
     loginAct: '',
@@ -399,14 +418,23 @@ const { handleSubmit, errors, values, setValues, resetForm } = useForm<UserFormV
     email: '',
   },
 })
+const [loginAct] = defineField('loginAct')
+const [loginPwd] = defineField('loginPwd')
+const [name] = defineField('name')
+const [phone] = defineField('phone')
+const [email] = defineField('email')
 
 const allSelected = computed(
-  () => displayUserList.value.length > 0 && userIdArray.value.length === displayUserList.value.length,
+  () => {
+    const enabledRows = displayUserList.value.filter(isAccountEnabled)
+    return enabledRows.length > 0 && userIdArray.value.length === enabledRows.length
+  },
 )
 
 function toggleSelectAll(checked: boolean) {
   if (checked) {
     userIdArray.value = displayUserList.value
+      .filter(isAccountEnabled)
       .map((data) => data.id)
       .filter((id): id is number | string => id !== undefined)
   } else {
@@ -415,6 +443,9 @@ function toggleSelectAll(checked: boolean) {
 }
 
 function toggleRowSelection(row: User, checked: boolean) {
+  if (!isAccountEnabled(row)) {
+    return
+  }
   if (checked && row.id !== undefined) {
     if (!userIdArray.value.includes(row.id)) {
       userIdArray.value.push(row.id)
@@ -422,6 +453,10 @@ function toggleRowSelection(row: User, checked: boolean) {
   } else {
     userIdArray.value = userIdArray.value.filter((id: number | string) => id !== row.id)
   }
+}
+
+function isAccountEnabled(user: User): boolean {
+  return user.accountEnabled === 1 || user.accountEnabled === undefined
 }
 
 async function getData(current: number) {
@@ -503,12 +538,14 @@ async function edit(id: number) {
   try {
     const user = await fetchUserDetail(id)
     if (editingUserId.value !== id) return
-    setValues({
-      loginAct: user.loginAct ?? '',
-      loginPwd: '',
-      name: user.name ?? '',
-      phone: user.phone ?? '',
-      email: user.email ?? '',
+    resetForm({
+      values: {
+        loginAct: user.loginAct ?? '',
+        loginPwd: '',
+        name: user.name ?? '',
+        phone: user.phone ?? '',
+        email: user.email ?? '',
+      },
     })
     userDialogVisible.value = true
   } catch {
@@ -529,6 +566,34 @@ async function del(id: number) {
     await getData(currentPage.value)
   } catch {
     messageTip('禁用失败', 'error')
+  }
+}
+
+async function enable(id: number) {
+  try {
+    await messageConfirm('您确定要启用该账号吗？')
+  } catch {
+    messageTip('取消启用', 'warning')
+    return
+  }
+  try {
+    await enableUser(id)
+    messageTip('启用成功', 'success')
+    await getData(currentPage.value)
+  } catch {
+    messageTip('启用失败', 'error')
+  }
+}
+
+async function toggleUserStatus(row: User) {
+  if (row.id === undefined) {
+    messageTip('用户ID为空，无法操作', 'warning')
+    return
+  }
+  if (isAccountEnabled(row)) {
+    await del(Number(row.id))
+  } else {
+    await enable(Number(row.id))
   }
 }
 
