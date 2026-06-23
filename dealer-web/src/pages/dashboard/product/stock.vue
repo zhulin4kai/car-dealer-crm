@@ -531,6 +531,12 @@ async function handleRestockSubmit() {
     await restockProduct(restockForm.value)
     messageTip('补货成功', 'success')
     restockDialogVisible.value = false
+    currentProduct.value = null
+    restockForm.value = {
+      productId: 0,
+      quantity: 1,
+      remark: '',
+    }
     try {
       await loadStockAlerts()
     } catch {

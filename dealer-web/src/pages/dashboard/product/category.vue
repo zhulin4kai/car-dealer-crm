@@ -197,8 +197,10 @@
           </div>
         </form>
         <DialogFooter>
-          <Button variant="outline" @click="dialogVisible = false">取消</Button>
-          <Button @click="handleSubmit">确定</Button>
+          <Button variant="outline" @click="dialogVisible = false" :disabled="submitting">取消</Button>
+          <Button @click="handleSubmit" :disabled="submitting">{{
+            submitting ? '提交中...' : '确定'
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -215,7 +217,7 @@ import {
   getCategoryList,
   updateCategory,
 } from '@/modules/product/api/product-api'
-import type { ProductCategory, ProductForm } from '@/modules/product/model/product.types'
+import type { ProductCategory } from '@/modules/product/model/product.types'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
@@ -264,6 +266,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const loading = ref(false)
+const submitting = ref(false)
 const {
   sortBy,
   sortDirection,
@@ -279,7 +282,16 @@ const {
 })
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
-const categoryForm = ref<ProductForm>({
+type CategoryFormState = {
+  id?: number | string
+  name: string
+  code: string
+  description: string
+  sort: number
+  status: string
+}
+
+const categoryForm = ref<CategoryFormState>({
   name: '',
   code: '',
   description: '',
@@ -325,18 +337,29 @@ async function handleDelete(row: ProductCategory): Promise<void> {
 }
 
 async function handleSubmit(): Promise<void> {
+  if (submitting.value) return
+  submitting.value = true
   try {
+    const payload = {
+      name: categoryForm.value.name.trim(),
+      code: categoryForm.value.code.trim(),
+      description: categoryForm.value.description?.trim() ?? '',
+      sort: Number(categoryForm.value.sort ?? 0),
+      status: categoryForm.value.status,
+    }
     if (dialogType.value === 'add') {
-      await createCategory(categoryForm.value)
+      await createCategory(payload)
       messageTip('新增成功', 'success')
     } else if (categoryForm.value.id !== undefined) {
-      await updateCategory(String(categoryForm.value.id), categoryForm.value)
+      await updateCategory(String(categoryForm.value.id), payload)
       messageTip('编辑成功', 'success')
     }
     dialogVisible.value = false
     await loadCategories()
   } catch {
     messageTip('操作失败', 'error')
+  } finally {
+    submitting.value = false
   }
 }
 

@@ -67,6 +67,10 @@
             <Search class="h-4 w-4" />
             搜索
           </Button>
+          <Button variant="outline" class="gap-2" @click="resetFilters">
+            <RotateCcw class="h-4 w-4" />
+            重置
+          </Button>
         </div>
 
         <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
@@ -365,7 +369,7 @@
           </div>
           <div class="space-y-2">
             <Label>价格</Label>
-            <NumberField v-model="productForm.price" :min="0.01" :step="0.1">
+            <NumberField v-model="productForm.price" :min="0" :step="0.01">
               <NumberFieldContent>
                 <NumberFieldDecrement />
                 <NumberFieldInput />
@@ -493,6 +497,7 @@ import {
   Package,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   Shield,
   Tags,
@@ -522,6 +527,7 @@ const categoryTotal = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const systemTotal = ref(0)
 const loading = ref(false)
 const submitting = ref(false)
 const searchKeyword = ref('')
@@ -593,7 +599,7 @@ const summaryCards = computed<
 >(() => [
   {
     label: '产品总数',
-    value: formatNumber(total.value),
+    value: formatNumber(systemTotal.value),
     description: '产品记录总数',
     icon: Package,
     iconClass: 'bg-[var(--crm-primary-light)] text-[var(--crm-primary)]',
@@ -649,6 +655,9 @@ async function loadProducts(): Promise<void> {
 
     const result = await fetchProductPage(params)
     const list = result.list ?? []
+    if (!hasClientFilter) {
+      systemTotal.value = result.total ?? 0
+    }
     if (hasClientFilter) {
       const filteredList = list.filter((item) => matchProductFilters(item, keyword))
       total.value = filteredList.length
@@ -676,6 +685,13 @@ async function loadCategories(): Promise<void> {
 }
 
 function applyFilters(): void {
+  currentPage.value = 1
+  void loadProducts()
+}
+
+function resetFilters(): void {
+  searchKeyword.value = ''
+  activeCategoryId.value = 'all'
   currentPage.value = 1
   void loadProducts()
 }

@@ -195,9 +195,8 @@
                 <SelectValue placeholder="请选择类型" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="折扣">折扣</SelectItem>
-                <SelectItem value="满减">满减</SelectItem>
-                <SelectItem value="直降">直降</SelectItem>
+                <SelectItem value="AMOUNT">满减</SelectItem>
+                <SelectItem value="PERCENTAGE">折扣</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -206,8 +205,8 @@
             <NumberField
               v-model="promotionForm.discount"
               :min="0"
-              :max="promotionForm.type === '折扣' ? 10 : 999999"
-              :step="promotionForm.type === '折扣' ? 0.1 : 1"
+              :max="promotionForm.type === 'PERCENTAGE' ? 1 : 999999"
+              :step="promotionForm.type === 'PERCENTAGE' ? 0.01 : 1"
             >
               <NumberFieldContent>
                 <NumberFieldDecrement />
@@ -231,7 +230,7 @@
                 <SelectValue placeholder="请选择状态" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="未开始">未开始</SelectItem>
+                <SelectItem value="待开始">待开始</SelectItem>
                 <SelectItem value="进行中">进行中</SelectItem>
                 <SelectItem value="已结束">已结束</SelectItem>
               </SelectContent>
@@ -346,6 +345,7 @@ const promotionForm = ref<PromotionFormValues>({
   endTime: '',
   status: '未开始',
 })
+const editingPromotionId = ref<string | number | null>(null)
 
 function getPromotionTypeTone(
   type: string,
@@ -355,6 +355,8 @@ function getPromotionTypeTone(
     DISCOUNT: 'success',
     discount: 'success',
     满减: 'info',
+    AMOUNT: 'info',
+    amount: 'info',
     FULL_REDUCTION: 'info',
     full_reduction: 'info',
     直降: 'warning',
@@ -374,6 +376,7 @@ function getPromotionStatusTone(
     进行中: 'success',
     ACTIVE: 'success',
     active: 'success',
+    待开始: 'purple',
     已结束: 'muted',
     ENDED: 'muted',
     ended: 'muted',
@@ -396,6 +399,8 @@ function formatPromotionType(type: string): string {
     满减: '满减',
     FULL_REDUCTION: '满减',
     full_reduction: '满减',
+    AMOUNT: '满减',
+    amount: '满减',
     直降: '直降',
     DIRECT_REDUCTION: '直降',
     direct_reduction: '直降',
@@ -406,6 +411,7 @@ function formatPromotionType(type: string): string {
 function formatPromotionStatus(status: string): string {
   const map: Record<string, string> = {
     未开始: '未开始',
+    待开始: '待开始',
     NOT_STARTED: '未开始',
     pending: '未开始',
     进行中: '进行中',
@@ -452,14 +458,15 @@ async function loadPromotions(): Promise<void> {
 
 function handleAdd(): void {
   dialogType.value = 'add'
+  editingPromotionId.value = null
   promotionForm.value = {
     productId: '',
     name: '',
-    type: '折扣',
+    type: 'AMOUNT',
     discount: 0,
     startTime: '',
     endTime: '',
-    status: '未开始',
+    status: '待开始',
   }
   dialogVisible.value = true
 }
@@ -468,14 +475,15 @@ async function handleEdit(row: ProductPromotion): Promise<void> {
   dialogType.value = 'edit'
   try {
     const detail = await fetchPromotionDetail(row.id)
+    editingPromotionId.value = detail.id ?? row.id
     promotionForm.value = {
       productId: String(detail.productId ?? ''),
       name: detail.name ?? '',
-      type: detail.type ?? '折扣',
+      type: normalizePromotionType(detail.type),
       discount: Number(detail.discount ?? 0),
       startTime: toLocalDateTimeInput(detail.startTime),
       endTime: toLocalDateTimeInput(detail.endTime),
-      status: detail.status ?? '未开始',
+      status: normalizePromotionStatus(detail.status),
     }
     dialogVisible.value = true
   } catch {
@@ -520,8 +528,11 @@ function validateForm(): string | null {
   if (promotionForm.value.discount < 0) {
     return '折扣/金额不能为负'
   }
-  if (promotionForm.value.type === '折扣' && promotionForm.value.discount > 10) {
-    return '折扣不能超过10'
+  if (promotionForm.value.type === 'AMOUNT' && promotionForm.value.discount <= 0) {
+    return '满减金额必须大于0'
+  }
+  if (promotionForm.value.type === 'PERCENTAGE' && promotionForm.value.discount > 1) {
+    return '折扣比例不能超过1'
   }
   return null
 }
@@ -550,14 +561,11 @@ async function handleSubmit(): Promise<void> {
       await createPromotion(toCreatePromotionRequest(valuesWithTime))
       messageTip('新增成功', 'success')
     } else {
-      const editingId = promotionList.value.find(
-        (p) => p.productId === promotionForm.value.productId,
-      )?.id
-      if (editingId === undefined) {
+      if (editingPromotionId.value === null) {
         messageTip('无法确定编辑目标', 'error')
         return
       }
-      await updatePromotion(editingId, toUpdatePromotionRequest(valuesWithTime))
+      await updatePromotion(editingPromotionId.value, toUpdatePromotionRequest(valuesWithTime))
       messageTip('编辑成功', 'success')
     }
     dialogVisible.value = false
@@ -571,6 +579,36 @@ async function handleSubmit(): Promise<void> {
   } finally {
     submitting.value = false
   }
+}
+
+function normalizePromotionType(type?: string): string {
+  const map: Record<string, string> = {
+    折扣: 'PERCENTAGE',
+    DISCOUNT: 'PERCENTAGE',
+    PERCENTAGE: 'PERCENTAGE',
+    percentage: 'PERCENTAGE',
+    满减: 'AMOUNT',
+    FULL_REDUCTION: 'AMOUNT',
+    AMOUNT: 'AMOUNT',
+    amount: 'AMOUNT',
+  }
+  return map[type ?? ''] ?? 'AMOUNT'
+}
+
+function normalizePromotionStatus(status?: string): string {
+  const map: Record<string, string> = {
+    未开始: '待开始',
+    待开始: '待开始',
+    NOT_STARTED: '待开始',
+    pending: '待开始',
+    进行中: '进行中',
+    ACTIVE: '进行中',
+    active: '进行中',
+    已结束: '已结束',
+    ENDED: '已结束',
+    ended: '已结束',
+  }
+  return map[status ?? ''] ?? '待开始'
 }
 
 function handleCurrentChange(val: number): void {
