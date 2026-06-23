@@ -45,7 +45,7 @@
           <div class="flex items-center gap-2">
             <Button
               class="gap-2 bg-[var(--crm-primary)] hover:bg-[var(--crm-primary-hover)]"
-              @click="goToClueList"
+              @click="goToCreateClue"
             >
               <Plus class="h-4 w-4" />
               录入线索
@@ -441,6 +441,10 @@ function getClueTone(
 
 function goToClueList(): void {
   void router.push('/dashboard/clue')
+}
+
+function goToCreateClue(): void {
+  void router.push({ path: '/dashboard/clue', query: { create: '1' } })
 }
 
 function goToClueDetail(clue: Clue): void {

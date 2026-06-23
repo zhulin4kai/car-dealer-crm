@@ -10,7 +10,7 @@
                 <SelectValue placeholder="请选择负责人" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="String(item.id)">
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -227,12 +227,12 @@
         <form @submit.prevent="onSubmitForm" class="space-y-4">
           <div class="space-y-2">
             <Label>负责人</Label>
-            <Select v-model="values.ownerId">
+            <Select v-model="ownerId">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="String(item.id)">
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -242,31 +242,31 @@
 
           <div class="space-y-2">
             <Label>活动名称</Label>
-            <Input v-model="values.name" placeholder="请输入活动名称" />
+            <Input v-model="name" placeholder="请输入活动名称" />
             <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>开始时间</Label>
-            <Input type="datetime-local" v-model="values.startTime" class="w-full" />
+            <Input type="datetime-local" v-model="startTime" class="w-full" />
             <p v-if="errors.startTime" class="text-sm text-destructive">{{ errors.startTime }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>结束时间</Label>
-            <Input type="datetime-local" v-model="values.endTime" class="w-full" />
+            <Input type="datetime-local" v-model="endTime" class="w-full" />
             <p v-if="errors.endTime" class="text-sm text-destructive">{{ errors.endTime }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>活动预算</Label>
-            <Input v-model="values.cost" placeholder="请输入活动预算" />
+            <Input v-model="cost" placeholder="请输入活动预算" />
             <p v-if="errors.cost" class="text-sm text-destructive">{{ errors.cost }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>活动描述</Label>
-            <Textarea v-model="values.description" :rows="6" placeholder="请输入活动描述" />
+            <Textarea v-model="description" :rows="6" placeholder="请输入活动描述" />
             <p v-if="errors.description" class="text-sm text-destructive">
               {{ errors.description }}
             </p>
@@ -292,6 +292,7 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
+import { fromLocalDateTimeInput, toLocalDateTimeInput } from '@/shared/datetime/local-date'
 import {
   getActivityList,
   getOwnerList,
@@ -389,7 +390,7 @@ const activityFormSchema = toTypedSchema(
   }),
 )
 
-const { handleSubmit, errors, values, resetForm, setValues } = useForm({
+const { handleSubmit, errors, resetForm, defineField } = useForm({
   validationSchema: activityFormSchema,
   initialValues: {
     ownerId: '',
@@ -400,6 +401,12 @@ const { handleSubmit, errors, values, resetForm, setValues } = useForm({
     description: '',
   },
 })
+const [ownerId] = defineField('ownerId')
+const [name] = defineField('name')
+const [startTime] = defineField('startTime')
+const [endTime] = defineField('endTime')
+const [cost] = defineField('cost')
+const [description] = defineField('description')
 
 // 全选计算
 const isAllSelected = computed(
@@ -510,7 +517,16 @@ const add = async () => {
   dialogTitle.value = '录入市场活动'
   isEditing.value = false
   editingId.value = null
-  resetForm()
+  resetForm({
+    values: {
+      ownerId: '',
+      name: '',
+      startTime: '',
+      endTime: '',
+      cost: '',
+      description: '',
+    },
+  })
   await loadOwner()
   activityDialogVisible.value = true
 }
@@ -573,13 +589,15 @@ const loadActivityForEdit = async (id: number | string) => {
   try {
     const res = await getActivityById(id)
     editingId.value = res.id
-    setValues({
+    resetForm({
+      values: {
       ownerId: String(res.ownerId ?? ''),
       name: res.name ?? '',
-      startTime: res.startTime ?? '',
-      endTime: res.endTime ?? '',
+      startTime: toLocalDateTimeInput(res.startTime),
+      endTime: toLocalDateTimeInput(res.endTime),
       cost: String(res.cost ?? ''),
       description: res.description ?? '',
+      },
     })
   } catch (error) {
     messageTip('获取活动详情失败', 'error')
@@ -591,8 +609,13 @@ const onSubmitForm = handleSubmit(async (formData) => {
   try {
     const fd = new FormData()
     for (let field in formData) {
-      if (formData[field]) {
-        fd.append(field, formData[field])
+      const rawValue = formData[field]
+      const value =
+        field === 'startTime' || field === 'endTime'
+          ? fromLocalDateTimeInput(String(rawValue ?? ''))
+          : rawValue
+      if (value) {
+        fd.append(field, value)
       }
     }
     if (isEditing.value && editingId.value) {

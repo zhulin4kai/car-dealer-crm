@@ -319,12 +319,12 @@
         <form @submit.prevent="onSubmitClue" class="space-y-4">
           <div class="space-y-2">
             <Label>负责人</Label>
-            <Select v-model="values.ownerId" disabled>
+            <Select v-model="ownerId" disabled>
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择负责人" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="String(item.id)">
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -333,12 +333,12 @@
 
           <div class="space-y-2">
             <Label>所属活动</Label>
-            <Select v-model="values.activityId">
+            <Select v-model="activityId">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择所属活动" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in activityOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in activityOptions" :key="item.id" :value="String(item.id)">
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -347,18 +347,18 @@
 
           <div class="space-y-2">
             <Label>姓名</Label>
-            <Input v-model="values.fullName" />
+            <Input v-model="fullName" />
             <p v-if="errors.fullName" class="text-sm text-destructive">{{ errors.fullName }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>称呼</Label>
-            <Select v-model="values.appellation">
+            <Select v-model="appellation">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择称呼" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in appellationOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in appellationOptions" :key="item.id" :value="String(item.id)">
                   {{ item.typeValue }}
                 </SelectItem>
               </SelectContent>
@@ -366,64 +366,64 @@
           </div>
 
           <!-- 编辑模式：手机禁用 -->
-          <div class="space-y-2" v-if="clueQuery.id > 0">
+          <div class="space-y-2" v-if="isEditingClue">
             <Label>手机</Label>
-            <Input :model-value="clueQuery.phone" disabled />
+            <Input :model-value="originalPhone" disabled />
           </div>
           <!-- 录入模式：手机可编辑 -->
           <div class="space-y-2" v-else>
             <Label>手机</Label>
-            <Input v-model="values.phone" />
+            <Input v-model="phone" />
             <p v-if="errors.phone" class="text-sm text-destructive">{{ errors.phone }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>微信</Label>
-            <Input v-model="values.weixin" />
+            <Input v-model="weixin" />
           </div>
 
           <div class="space-y-2">
             <Label>QQ</Label>
-            <Input v-model="values.qq" />
+            <Input v-model="qq" />
             <p v-if="errors.qq" class="text-sm text-destructive">{{ errors.qq }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>邮箱</Label>
-            <Input v-model="values.email" />
+            <Input v-model="email" />
             <p v-if="errors.email" class="text-sm text-destructive">{{ errors.email }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>年龄</Label>
-            <Input v-model="values.age" />
+            <Input v-model="age" />
             <p v-if="errors.age" class="text-sm text-destructive">{{ errors.age }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>职业</Label>
-            <Input v-model="values.job" />
+            <Input v-model="job" />
           </div>
 
           <div class="space-y-2">
             <Label>年收入</Label>
-            <Input v-model="values.yearIncome" />
+            <Input v-model="yearIncome" />
             <p v-if="errors.yearIncome" class="text-sm text-destructive">{{ errors.yearIncome }}</p>
           </div>
 
           <div class="space-y-2">
             <Label>住址</Label>
-            <Input v-model="values.address" />
+            <Input v-model="address" />
           </div>
 
           <div class="space-y-2">
             <Label>贷款</Label>
-            <Select v-model="values.needLoan">
+            <Select v-model="needLoan">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择是否需要贷款" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in needLoanOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in needLoanOptions" :key="item.id" :value="String(item.id)">
                   {{ item.typeValue }}
                 </SelectItem>
               </SelectContent>
@@ -432,12 +432,12 @@
 
           <div class="space-y-2">
             <Label>意向状态</Label>
-            <Select v-model="values.intentionState">
+            <Select v-model="intentionState">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择意向状态" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in intentionStateOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in intentionStateOptions" :key="item.id" :value="String(item.id)">
                   {{ item.typeValue }}
                 </SelectItem>
               </SelectContent>
@@ -446,12 +446,12 @@
 
           <div class="space-y-2">
             <Label>意向产品</Label>
-            <Select v-model="values.intentionProduct">
+            <Select v-model="intentionProduct">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择意向产品" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in productOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in productOptions" :key="item.id" :value="String(item.id)">
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -460,12 +460,12 @@
 
           <div class="space-y-2">
             <Label>线索状态</Label>
-            <Select v-model="values.state">
+            <Select v-model="state">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择线索状态" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in clueStateOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in clueStateOptions" :key="item.id" :value="String(item.id)">
                   {{ item.typeValue }}
                 </SelectItem>
               </SelectContent>
@@ -474,12 +474,12 @@
 
           <div class="space-y-2">
             <Label>线索来源</Label>
-            <Select v-model="values.source">
+            <Select v-model="source">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择线索来源" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in sourceOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in sourceOptions" :key="item.id" :value="String(item.id)">
                   {{ item.typeValue }}
                 </SelectItem>
               </SelectContent>
@@ -488,7 +488,7 @@
 
           <div class="space-y-2">
             <Label>线索描述</Label>
-            <Textarea v-model="values.description" :rows="5" placeholder="请输入线索描述" />
+            <Textarea v-model="description" :rows="5" placeholder="请输入线索描述" />
             <p v-if="errors.description" class="text-sm text-destructive">
               {{ errors.description }}
             </p>
@@ -496,7 +496,7 @@
 
           <div class="space-y-2">
             <Label>下次联系时间</Label>
-            <Input type="datetime-local" v-model="values.nextContactTime" class="w-full" />
+            <Input type="datetime-local" v-model="nextContactTime" class="w-full" />
           </div>
 
           <DialogFooter>
@@ -513,7 +513,7 @@
 
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import {
   batchDeleteCluesByIds,
@@ -529,6 +529,7 @@ import {
 import { getOwnerList } from '@/modules/activity/api/activity-api'
 import { getDictValueList } from '@/modules/dict/api/dict-api'
 import router from '@/router'
+import { useRoute } from 'vue-router'
 import { getProductList } from '@/modules/product/api/product-api'
 import { getActivityList } from '@/modules/activity/api/activity-api'
 import type { Activity } from '@/modules/activity/model/activity.types'
@@ -537,6 +538,7 @@ import type { DictValue } from '@/modules/dict/model/dict.types'
 import type { Product } from '@/modules/product/model/product.types'
 import type { User } from '@/modules/user/model/user.types'
 import type { PageResult } from '@/shared/api/api-types'
+import { fromLocalDateTimeInput, toLocalDateTimeInput } from '@/shared/datetime/local-date'
 
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -578,6 +580,7 @@ import { Eye, Pencil, Plus, Trash2, Upload } from '@lucide/vue'
 
 // 原有的线索列表相关数据 (严禁修改)
 const clueList = ref<Clue[]>([])
+const route = useRoute()
 
 const pageSize = ref(10)
 const total = ref(0)
@@ -610,7 +613,9 @@ let selectedFile: File | null = null
 // 线索录入/编辑相关数据
 const clueDialogVisible = ref(false)
 const dialogTitle = ref('录入线索')
-const clueQuery = reactive<Record<string, unknown>>({})
+const editingClueId = ref<number | string | null>(null)
+const originalPhone = ref('')
+const isEditingClue = computed(() => editingClueId.value !== null)
 
 // 加载动态数据
 const activityOptions = ref<Activity[]>([])
@@ -634,7 +639,7 @@ const clueSchema = toTypedSchema(
         async (v) => {
           if (!v) return true
           // 如果是编辑模式且手机号未变化，跳过验证
-          if (clueQuery.id > 0 && clueQuery.phone === v) return true
+          if (editingClueId.value !== null && originalPhone.value === v) return true
           return isCluePhoneAvailable(v)
         },
         { message: '该手机号录入过了，不能再录入' },
@@ -678,7 +683,7 @@ const clueSchema = toTypedSchema(
   }),
 )
 
-const { handleSubmit, errors, values, resetForm, setValues } = useForm({
+const { handleSubmit, errors, resetForm, defineField, setFieldValue } = useForm({
   validationSchema: clueSchema,
   initialValues: {
     phone: '',
@@ -702,16 +707,25 @@ const { handleSubmit, errors, values, resetForm, setValues } = useForm({
     nextContactTime: '',
   },
 })
-
-// 同步 vee-validate values 到 clueQuery（保持原有 addClueSubmit 逻辑不变）
-watch(
-  values,
-  (newValues) => {
-    Object.keys(clueQuery).forEach((key) => delete clueQuery[key])
-    Object.assign(clueQuery, newValues)
-  },
-  { deep: true },
-)
+const [phone] = defineField('phone')
+const [fullName] = defineField('fullName')
+const [qq] = defineField('qq')
+const [email] = defineField('email')
+const [age] = defineField('age')
+const [yearIncome] = defineField('yearIncome')
+const [description] = defineField('description')
+const [ownerId] = defineField('ownerId')
+const [activityId] = defineField('activityId')
+const [appellation] = defineField('appellation')
+const [weixin] = defineField('weixin')
+const [job] = defineField('job')
+const [address] = defineField('address')
+const [needLoan] = defineField('needLoan')
+const [intentionState] = defineField('intentionState')
+const [intentionProduct] = defineField('intentionProduct')
+const [state] = defineField('state')
+const [source] = defineField('source')
+const [nextContactTime] = defineField('nextContactTime')
 
 // 全选计算
 const isAllSelected = computed(
@@ -807,7 +821,10 @@ const handleFileChange = (event: Event) => {
 
 // 上传文件 (严禁修改 API 调用)
 const uploadFile = () => {
-  if (!selectedFile) return
+  if (!selectedFile) {
+    messageTip('请选择要导入的Excel文件', 'warning')
+    return
+  }
   let formData = new FormData()
   formData.append('file', selectedFile)
   importExcelAPI(formData).then((resp: unknown) => {
@@ -871,8 +888,8 @@ const addClue = async () => {
   dialogTitle.value = '录入线索'
   resetClueForm()
   await loadData()
-  loadOwner()
-  loadLoginUser()
+  await loadOwner()
+  await loadLoginUser()
   clueDialogVisible.value = true
 }
 
@@ -880,16 +897,37 @@ const edit = async (id: number | string) => {
   dialogTitle.value = '编辑线索'
   resetClueForm()
   await loadData()
-  loadOwner()
-  loadClue(id)
+  await loadOwner()
+  await loadClue(id)
   clueDialogVisible.value = true
 }
 
 const resetClueForm = () => {
-  Object.keys(clueQuery).forEach((key) => {
-    delete clueQuery[key]
+  editingClueId.value = null
+  originalPhone.value = ''
+  resetForm({
+    values: {
+      phone: '',
+      fullName: '',
+      qq: '',
+      email: '',
+      age: '',
+      yearIncome: '',
+      description: '',
+      ownerId: '',
+      activityId: '',
+      appellation: '',
+      weixin: '',
+      job: '',
+      address: '',
+      needLoan: '',
+      intentionState: '',
+      intentionProduct: '',
+      state: '',
+      source: '',
+      nextContactTime: '',
+    },
   })
-  resetForm()
 }
 
 const handleDialogClose = () => {
@@ -897,13 +935,15 @@ const handleDialogClose = () => {
 }
 
 // 加载字典数据 (严禁修改)
-const loadData = () => {
-  loadDicValue('appellation')
-  loadDicValue('needLoan')
-  loadDicValue('intentionState')
-  loadDicValue('clueState')
-  loadDicValue('source')
-  loadActivityAndProduct()
+const loadData = async () => {
+  await Promise.all([
+    loadDicValue('appellation'),
+    loadDicValue('needLoan'),
+    loadDicValue('intentionState'),
+    loadDicValue('clueState'),
+    loadDicValue('source'),
+    loadActivityAndProduct(),
+  ])
 }
 
 const loadActivityAndProduct = async () => {
@@ -941,27 +981,28 @@ const loadDicValue = async (typeCode: string) => {
 }
 
 // 加载负责人 (严禁修改)
-const loadOwner = () => {
-  getOwnerList().then((resp: User[]) => {
+const loadOwner = async () => {
+  await getOwnerList().then((resp: User[]) => {
     ownerOptions.value = resp
   })
 }
 
 // 加载当前登录用户 (严禁修改)
-const loadLoginUser = () => {
-  getLoginInfo().then((resp: User) => {
+const loadLoginUser = async () => {
+  await getLoginInfo().then((resp: User) => {
     let user = resp
-    clueQuery.ownerId = user.id
-    values.ownerId = String(user.id ?? '')
+    setFieldValue('ownerId', String(user.id ?? ''))
   })
 }
 
 // 加载要编辑的线索数据 (严禁修改 API 调用)
-const loadClue = (id: number | string) => {
+const loadClue = async (id: number | string) => {
   if (id) {
-    getClueDetail(id).then((resp: Clue) => {
-      Object.assign(clueQuery, resp)
-      setValues({
+    await getClueDetail(id).then((resp: Clue) => {
+      editingClueId.value = resp.id ?? id
+      originalPhone.value = resp.phone ?? ''
+      resetForm({
+        values: {
         phone: resp.phone ?? '',
         fullName: resp.fullName ?? '',
         qq: String(resp.qq ?? ''),
@@ -980,26 +1021,30 @@ const loadClue = (id: number | string) => {
         intentionProduct: String(resp.intentionProduct ?? ''),
         state: String(resp.state ?? ''),
         source: String(resp.source ?? ''),
-        nextContactTime: resp.nextContactTime ?? '',
+        nextContactTime: toLocalDateTimeInput(resp.nextContactTime),
+        },
       })
     })
   }
 }
 
 // 提交表单 (严禁修改 FormData + API 逻辑)
-const onSubmitClue = handleSubmit(() => {
-  // 复用原有 addClueSubmit 逻辑：通过 clueQuery 提交
+const onSubmitClue = handleSubmit((formValues) => {
   let formData = new FormData()
-  for (let field in clueQuery) {
+  for (let field in formValues) {
     // 编辑模式下排除手机号字段
-    if (clueQuery.id > 0 && field === 'phone') {
+    if (editingClueId.value !== null && field === 'phone') {
       continue
     }
-    if (clueQuery[field]) {
-      formData.append(field, clueQuery[field])
+    const rawValue = formValues[field as keyof typeof formValues]
+    const value =
+      field === 'nextContactTime' ? fromLocalDateTimeInput(String(rawValue ?? '')) : rawValue
+    if (value) {
+      formData.append(field, String(value))
     }
   }
-  if (clueQuery.id > 0) {
+  if (editingClueId.value !== null) {
+    formData.append('id', String(editingClueId.value))
     updateClue(formData).then((resp: unknown) => {
       messageTip('编辑成功', 'success')
       clueDialogVisible.value = false
@@ -1014,8 +1059,26 @@ const onSubmitClue = handleSubmit(() => {
   }
 })
 
+const openCreateDialogFromRoute = async () => {
+  if (route.query.create !== '1' || clueDialogVisible.value) {
+    return
+  }
+  await addClue()
+  const nextQuery = { ...route.query }
+  delete nextQuery.create
+  await router.replace({ path: '/dashboard/clue', query: nextQuery })
+}
+
+watch(
+  () => route.query.create,
+  () => {
+    void openCreateDialogFromRoute()
+  },
+)
+
 // 生命周期钩子
 onMounted(() => {
   getData(1)
+  void openCreateDialogFromRoute()
 })
 </script>

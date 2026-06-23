@@ -141,7 +141,7 @@
           <div class="space-y-2">
             <Label>活动备注</Label>
             <Textarea
-              v-model="values.noteContent"
+              v-model="noteContent"
               :rows="6"
               placeholder="请输入详细的活动备注内容..."
             />
@@ -287,16 +287,21 @@ const remarkSchema = toTypedSchema(
   }),
 )
 
-const { handleSubmit, errors, values, resetForm } = useForm({
+const { handleSubmit, errors, resetForm, defineField } = useForm({
   validationSchema: remarkSchema,
   initialValues: {
     noteContent: '',
   },
 })
+const [noteContent] = defineField('noteContent')
 
 // 重置备注表单
 const resetRemarkForm = () => {
-  resetForm()
+  resetForm({
+    values: {
+      noteContent: '',
+    },
+  })
 }
 
 // 返回上一页

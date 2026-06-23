@@ -221,18 +221,12 @@
         <CardTitle class="text-lg font-semibold">添加跟踪记录</CardTitle>
       </CardHeader>
       <CardContent>
-        <Form
-          :key="remarkResetKey"
-          :validation-schema="remarkFormSchema"
-          :initial-values="remarkInitialValues"
-          v-slot="{ errors: remarkErrors, values: remarkValues }"
-          @submit="onSubmitRemark"
-        >
+        <form @submit.prevent="onSubmitRemark">
           <div class="space-y-4">
             <div class="space-y-2">
               <Label>跟踪方式</Label>
               <Select
-                v-model="remarkValues.noteWay"
+                v-model="noteWay"
                 @update:open="
                   (open: boolean) => {
                     if (open) loadDicValue('noteWay')
@@ -243,7 +237,7 @@
                   <SelectValue placeholder="请选择跟踪方式" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem v-for="item in noteWayOptions" :key="item.id" :value="item.id">
+                  <SelectItem v-for="item in noteWayOptions" :key="item.id" :value="String(item.id)">
                     {{ item.typeValue }}
                   </SelectItem>
                 </SelectContent>
@@ -256,7 +250,7 @@
             <div class="space-y-2">
               <Label>跟踪记录</Label>
               <Textarea
-                v-model="remarkValues.noteContent"
+                v-model="noteContent"
                 :rows="6"
                 placeholder="请输入详细的跟踪记录内容..."
               />
@@ -277,7 +271,7 @@
               </Button>
             </div>
           </div>
-        </Form>
+        </form>
       </CardContent>
     </Card>
 
@@ -341,22 +335,16 @@
         <DialogTitle>线索转换客户</DialogTitle>
       </DialogHeader>
 
-      <Form
-        :key="convertResetKey"
-        :validation-schema="convertFormSchema"
-        :initial-values="convertInitVals"
-        v-slot="{ errors: convertErrors, values: convertValues }"
-        @submit="onSubmitConvert"
-      >
+      <form @submit.prevent="onSubmitConvert">
         <div class="space-y-4">
           <div class="space-y-2">
             <Label>意向产品</Label>
-            <Select v-model="convertValues.product">
+            <Select v-model="convertProduct">
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="请选择意向产品" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in productOptions" :key="item.id" :value="item.id">
+                <SelectItem v-for="item in productOptions" :key="item.id" :value="String(item.id)">
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -368,7 +356,7 @@
 
           <div class="space-y-2">
             <Label>客户描述</Label>
-            <Textarea v-model="convertValues.description" :rows="6" placeholder="请输入客户描述" />
+            <Textarea v-model="convertDescription" :rows="6" placeholder="请输入客户描述" />
             <p v-if="convertErrors.description" class="text-sm text-destructive">
               {{ convertErrors.description }}
             </p>
@@ -376,7 +364,7 @@
 
           <div class="space-y-2">
             <Label>下次跟踪时间</Label>
-            <Input type="datetime-local" v-model="convertValues.nextContactTime" class="w-full" />
+            <Input type="datetime-local" v-model="convertNextContactTime" class="w-full" />
             <p v-if="convertErrors.nextContactTime" class="text-sm text-destructive">
               {{ convertErrors.nextContactTime }}
             </p>
@@ -392,7 +380,7 @@
             </Button>
           </DialogFooter>
         </div>
-      </Form>
+      </form>
     </DialogContent>
   </Dialog>
 </template>
@@ -401,7 +389,7 @@
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Form } from 'vee-validate'
+import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
 import { Pencil, RotateCw, Loader2 } from '@lucide/vue'
@@ -417,6 +405,7 @@ import { getProductList } from '@/modules/product/api/product-api'
 import type { Clue, ClueRemark } from '@/modules/clue/model/clue.types'
 import type { DictValue } from '@/modules/dict/model/dict.types'
 import type { Product } from '@/modules/product/model/product.types'
+import { fromLocalDateTimeInput } from '@/shared/datetime/local-date'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -494,10 +483,20 @@ const remarkFormSchema = toTypedSchema(
   }),
 )
 
-const remarkInitialValues = {
-  noteContent: '',
-  noteWay: '',
-}
+const {
+  handleSubmit: handleRemarkSubmit,
+  errors: remarkErrors,
+  resetForm: resetRemarkFields,
+  defineField: defineRemarkField,
+} = useForm({
+  validationSchema: remarkFormSchema,
+  initialValues: {
+    noteContent: '',
+    noteWay: '',
+  },
+})
+const [noteContent] = defineRemarkField('noteContent')
+const [noteWay] = defineRemarkField('noteWay')
 
 // 转换客户表单 schema (zod)
 const convertFormSchema = toTypedSchema(
@@ -511,22 +510,32 @@ const convertFormSchema = toTypedSchema(
   }),
 )
 
-const convertInitVals = ref({
-  product: '',
-  description: '',
-  nextContactTime: '',
+const {
+  handleSubmit: handleConvertSubmit,
+  errors: convertErrors,
+  resetForm: resetConvertFields,
+  defineField: defineConvertField,
+} = useForm({
+  validationSchema: convertFormSchema,
+  initialValues: {
+    product: '',
+    description: '',
+    nextContactTime: '',
+  },
 })
-
-const convertResetKey = ref(0)
+const [convertProduct] = defineConvertField('product')
+const [convertDescription] = defineConvertField('description')
+const [convertNextContactTime] = defineConvertField('nextContactTime')
 
 // 重置跟踪记录表单
 const resetRemarkForm = () => {
-  // Form 组件的 reset 通过 slot 不直接可用，此处通过重新渲染 Form 实现
-  // 由于 Form 组件使用 initial-values，重置可通过 key 变化触发
-  remarkResetKey.value++
+  resetRemarkFields({
+    values: {
+      noteContent: '',
+      noteWay: '',
+    },
+  })
 }
-
-const remarkResetKey = ref(0)
 
 // 加载线索详情 (严禁修改)
 const loadClueDetail = async () => {
@@ -539,20 +548,20 @@ const loadClueDetail = async () => {
 }
 
 // 提交线索跟踪记录 (严禁修改 API 调用)
-const onSubmitRemark = async (payload: Record<string, Record<string, unknown>>) => {
-  const formData = payload.values
+const onSubmitRemark = handleRemarkSubmit(async (formData) => {
   submitting.value = true
   try {
+    if (!clueDetail.value.id) throw new Error('线索ID不存在')
     await addClueRemark(clueDetail.value.id, formData.noteContent, formData.noteWay)
     messageTip('提交成功', 'success')
     await loadClueRemarkList(1)
-    remarkResetKey.value++
+    resetRemarkForm()
   } catch (error) {
     messageTip('提交失败', 'error')
   } finally {
     submitting.value = false
   }
-}
+})
 
 // 加载字典数据 (严禁修改)
 const loadDicValue = async (typeCode: string) => {
@@ -591,25 +600,31 @@ const convertCustomer = async () => {
   await ProductList()
 
   // 设置意向产品的默认值为当前线索的意向产品
-  convertInitVals.value = {
-    product: String(clueDetail.value.intentionProductDO?.id ?? ''),
-    description: '',
-    nextContactTime: '',
-  }
-  convertResetKey.value++
+  resetConvertFields({
+    values: {
+      product: String(clueDetail.value.intentionProduct ?? clueDetail.value.intentionProductDO?.id ?? ''),
+      description: '',
+      nextContactTime: '',
+    },
+  })
   convertCustomerDialogVisible.value = true
 }
 
 // 线索转换客户 (严禁修改 API 调用)
-const onSubmitConvert = async (payload: Record<string, Record<string, unknown>>) => {
-  const formData = payload.values
+const onSubmitConvert = handleConvertSubmit(async (formData) => {
   converting.value = true
   try {
+    if (!clueDetail.value.id) throw new Error('线索ID不存在')
+    const nextContactTime = fromLocalDateTimeInput(formData.nextContactTime)
+    if (!nextContactTime) {
+      messageTip('下次跟踪时间格式有误', 'error')
+      return
+    }
     await convertClueToCustomer(
       clueDetail.value.id,
       formData.product,
       formData.description,
-      formData.nextContactTime,
+      nextContactTime,
     )
     messageTip('转换成功', 'success')
     convertCustomerDialogVisible.value = false
@@ -619,7 +634,7 @@ const onSubmitConvert = async (payload: Record<string, Record<string, unknown>>)
   } finally {
     converting.value = false
   }
-}
+})
 
 const ProductList = async () => {
   try {
