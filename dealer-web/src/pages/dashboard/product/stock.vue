@@ -1,108 +1,231 @@
 <template>
-  <div class="p-5 space-y-5">
-    <Card>
-      <CardContent class="flex gap-2.5 pt-6">
-        <Button variant="outline" @click="goBack">返 回</Button>
-        <Button variant="outline" :disabled="loading" @click="loadStockAlerts">
-          <RefreshCw class="h-4 w-4 mr-1.5" /> 刷新数据
-        </Button>
-      </CardContent>
-    </Card>
+  <div class="crm-data-page">
+    <section class="crm-panel">
+      <div
+        class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-border-light)] px-5 py-4"
+      >
+        <div class="min-w-0">
+          <div class="flex items-center gap-3">
+            <h2 class="text-lg font-semibold">库存管理</h2>
+            <span
+              class="rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 text-sm text-[var(--crm-text-tertiary)]"
+            >
+              {{ total }} 条预警
+            </span>
+          </div>
+          <p class="mt-1 text-sm text-[var(--crm-text-tertiary)]">
+            查看低于最低库存的产品，并处理补货和库存变动记录。
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <Button variant="outline" :disabled="loading" @click="loadStockAlerts">
+            <RefreshCw class="h-4 w-4" />
+            刷新数据
+          </Button>
+        </div>
+      </div>
+    </section>
 
-    <Card class="bg-muted/50">
-      <CardContent class="pt-6">
-        <form class="flex flex-wrap items-end gap-4" @submit.prevent="handleSearch">
-          <div class="space-y-2">
-            <Label>SKU</Label>
+    <section class="crm-panel">
+      <div class="crm-panel-body">
+        <form class="crm-toolbar" @submit.prevent="handleSearch">
+          <div class="crm-field">
+            <Label class="crm-field-label">SKU</Label>
             <Input
               v-model="filterForm.sku"
+              class="w-[200px]"
               placeholder="请输入SKU"
               @keyup.enter="handleSearch"
             />
           </div>
-          <div class="space-y-2">
-            <Label>产品名称</Label>
+          <div class="crm-field">
+            <Label class="crm-field-label">产品名称</Label>
             <Input
               v-model="filterForm.name"
+              class="w-[200px]"
               placeholder="请输入产品名称"
               @keyup.enter="handleSearch"
             />
           </div>
-          <div class="space-y-2">
-            <Label>分类</Label>
+          <div class="crm-field">
+            <Label class="crm-field-label">分类</Label>
             <Select v-model="filterForm.categoryId">
               <SelectTrigger class="w-[180px]">
                 <SelectValue placeholder="请选择分类" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem
-                  v-for="item in categoryOptions"
-                  :key="item.value"
-                  :value="item.value"
-                >
+                <SelectItem v-for="item in categoryOptions" :key="item.value" :value="item.value">
                   {{ item.label }}
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div class="flex gap-2">
-            <Button type="submit" :disabled="loading">查询</Button>
-            <Button type="button" variant="outline" :disabled="loading" @click="handleReset">重置</Button>
+          <div class="crm-toolbar-actions">
+            <Button type="submit" class="gap-2" :disabled="loading">
+              <Search class="h-4 w-4" />
+              查询
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              class="gap-2"
+              :disabled="loading"
+              @click="handleReset"
+            >
+              <RotateCcw class="h-4 w-4" />
+              重置
+            </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
 
-    <Card>
-      <CardContent class="pt-6">
-        <div v-if="loading" class="py-10 text-center text-muted-foreground">加载中...</div>
-        <div v-else-if="stockAlertList.length === 0" class="py-10 flex flex-col items-center text-muted-foreground">
+    <section class="crm-panel">
+      <div class="crm-table-shell">
+        <div v-if="loading" class="py-10 text-center text-[var(--crm-text-tertiary)]">
+          加载中...
+        </div>
+        <div
+          v-else-if="stockAlertList.length === 0"
+          class="flex flex-col items-center py-10 text-[var(--crm-text-tertiary)]"
+        >
           <MessageSquare class="h-10 w-10 mb-2.5" />
           <p>暂无符合条件的库存预警产品</p>
         </div>
-        <Table v-else>
-          <TableHeader>
+        <Table v-else class="min-w-[1080px]">
+          <TableHeader class="bg-[var(--crm-bg-muted)]">
             <TableRow>
-              <TableHead class="w-[60px]">序号</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>产品名称</TableHead>
-              <TableHead>分类</TableHead>
-              <TableHead>规格</TableHead>
-              <TableHead>当前库存</TableHead>
-              <TableHead>最低库存</TableHead>
-              <TableHead>最后更新时间</TableHead>
-              <TableHead>操作</TableHead>
+              <TableHead
+                class="w-[60px]"
+                sortable
+                sort-key="index"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >序号</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="sku"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >SKU</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="name"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >产品名称</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="categoryName"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >分类</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="specification"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >规格</TableHead
+              >
+              <TableHead
+                class="w-[110px]"
+                sortable
+                sort-key="stock"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >当前库存</TableHead
+              >
+              <TableHead
+                class="w-[100px]"
+                sortable
+                sort-key="minStock"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >最低库存</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="updateTime"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >最后更新时间</TableHead
+              >
+              <TableHead class="w-[100px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="(row, idx) in stockAlertList" :key="row.id ?? idx">
-              <TableCell>{{ idx + 1 }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.sku }}</TableCell>
-              <TableCell class="truncate max-w-[200px]">{{ row.name }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.categoryName }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.specification }}</TableCell>
+            <TableRow v-for="(row, idx) in displayStockAlertList" :key="row.id ?? idx">
+              <TableCell class="text-[var(--crm-text-tertiary)]">{{ idx + 1 }}</TableCell>
+              <TableCell class="max-w-[150px] truncate">
+                <span
+                  class="inline-flex rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 font-mono text-xs text-[var(--crm-text-secondary)]"
+                >
+                  {{ row.sku || '--' }}
+                </span>
+              </TableCell>
+              <TableCell
+                class="max-w-[200px] truncate font-semibold text-[var(--crm-text-primary)]"
+                >{{ row.name || '--' }}</TableCell
+              >
+              <TableCell class="max-w-[150px] truncate">{{ row.categoryName || '--' }}</TableCell>
+              <TableCell class="max-w-[150px] truncate">{{ row.specification || '--' }}</TableCell>
               <TableCell>
-                <span :class="{ 'text-red-500 font-bold px-2 py-0.5 rounded bg-red-500/10': row.stock < row.minStock }">
+                <span
+                  class="font-semibold"
+                  :class="
+                    row.stock < row.minStock
+                      ? 'text-[var(--crm-warning)]'
+                      : 'text-[var(--crm-text-primary)]'
+                  "
+                >
                   {{ row.stock }}
                 </span>
               </TableCell>
-              <TableCell>{{ row.minStock }}</TableCell>
+              <TableCell class="text-[var(--crm-text-secondary)]">{{ row.minStock }}</TableCell>
               <TableCell>{{ formatDateTime(row.updateTime) }}</TableCell>
-              <TableCell class="flex gap-2">
-                <Button v-has-permission="PERMISSIONS.product.stock.view" variant="outline" size="sm" @click="handleDetail(row)">详情</Button>
-                <Button v-has-permission="PERMISSIONS.product.stock.adjust" size="sm" @click="handleRestock(row)">补货</Button>
+              <TableCell>
+                <div class="flex items-center gap-1">
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.product.stock.view"
+                    label="详情"
+                    @click="handleDetail(row)"
+                  >
+                    <Eye class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.product.stock.adjust"
+                    label="补货"
+                    @click="handleRestock(row)"
+                  >
+                    <Plus class="h-4 w-4" />
+                  </RowActionButton>
+                </div>
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
-
-    <DataTablePagination
-      :page-size="pageSize"
-      :total="total"
-      @change="handleCurrentChange"
-    />
+      </div>
+      <div class="crm-table-footer">
+        <DataTablePagination
+          :page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @change="handleCurrentChange"
+        />
+      </div>
+    </section>
 
     <!-- 补货对话框 -->
     <Dialog v-model:open="restockDialogVisible">
@@ -177,7 +300,12 @@
             <TableRow v-for="record in stockRecords" :key="record.id">
               <TableCell>{{ record.id }}</TableCell>
               <TableCell>{{ record.quantity }}</TableCell>
-              <TableCell>{{ record.type }}</TableCell>
+              <TableCell>
+                <StatusBadge
+                  :label="formatStockRecordType(record.type)"
+                  :tone="getStockRecordTone(record.type)"
+                />
+              </TableCell>
               <TableCell>{{ record.remark }}</TableCell>
               <TableCell>{{ formatDateTime(record.createTime) }}</TableCell>
             </TableRow>
@@ -195,21 +323,22 @@
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted } from 'vue'
 import { messageTip } from '@/shared/utils/feedback'
-import { useRouter } from 'vue-router'
-import { MessageSquare, RefreshCw } from '@lucide/vue'
+import { Eye, MessageSquare, Plus, RefreshCw, RotateCcw, Search } from '@lucide/vue'
 import {
   getStockAlerts,
   restockProduct,
   getStockRecords,
-  getCategoryList
+  getCategoryList,
 } from '@/modules/product/api/product-api'
 import type { StockAlert, StockRecord, RestockRequest } from '@/modules/product/model/product.types'
 import { useLatestRequest } from '@/shared/composables/use-latest-request'
 import type { PageResult } from '@/shared/api/api-types'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+import RowActionButton from '@/shared/ui/RowActionButton.vue'
+import StatusBadge from '@/shared/ui/StatusBadge.vue'
+import { useClientSort } from '@/shared/utils/table-sort'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -250,8 +379,22 @@ interface CategoryOption {
 }
 
 const ALL_CATEGORY_ID = '__ALL_CATEGORIES__'
-const router = useRouter()
 const stockAlertList = ref<StockAlert[]>([])
+const {
+  sortBy,
+  sortDirection,
+  sortedRows: displayStockAlertList,
+  toggleSort,
+} = useClientSort<StockAlert>(stockAlertList, {
+  index: 'id',
+  sku: 'sku',
+  name: 'name',
+  categoryName: 'categoryName',
+  specification: 'specification',
+  stock: 'stock',
+  minStock: 'minStock',
+  updateTime: 'updateTime',
+})
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -272,7 +415,11 @@ const categoryOptions = ref<CategoryOption[]>([])
 const detailDialogVisible = ref(false)
 const stockRecords = ref<StockRecord[]>([])
 
-const { run: runStockAlerts, cancel: cancelStockAlerts, loading } = useLatestRequest<PageResult<StockAlert>>()
+const {
+  run: runStockAlerts,
+  cancel: cancelStockAlerts,
+  loading,
+} = useLatestRequest<PageResult<StockAlert>>()
 
 function buildStockAlertQuery() {
   const params: Record<string, unknown> = {
@@ -295,10 +442,12 @@ async function loadCategoryOptions() {
   try {
     const res = await getCategoryList({ page: 1, size: 100 })
     const options: CategoryOption[] = [{ value: ALL_CATEGORY_ID, label: '全部' }]
-    const categoryList = res.list.filter(item => item.id !== null && item.id !== undefined).map(item => ({
-      value: String(item.id),
-      label: item.name ?? '',
-    }))
+    const categoryList = res.list
+      .filter((item) => item.id !== null && item.id !== undefined)
+      .map((item) => ({
+        value: String(item.id),
+        label: item.name ?? '',
+      }))
     categoryOptions.value = [...options, ...categoryList]
   } catch {
     categoryOptions.value = [{ value: ALL_CATEGORY_ID, label: '全部' }]
@@ -308,7 +457,7 @@ async function loadCategoryOptions() {
 
 async function loadStockAlerts() {
   const query = buildStockAlertQuery()
-  const result = await runStockAlerts(signal => getStockAlerts(query, signal))
+  const result = await runStockAlerts((signal) => getStockAlerts(query, signal))
   if (result) {
     stockAlertList.value = result.list ?? []
     total.value = result.total ?? 0
@@ -319,6 +468,30 @@ async function loadStockAlerts() {
 function formatDateTime(dateTimeStr?: string) {
   if (!dateTimeStr) return ''
   return dateTimeStr.replace('T', ' ').split('.')[0] ?? ''
+}
+
+function formatStockRecordType(type?: string): string {
+  const map: Record<string, string> = {
+    IN: '入库',
+    in: '入库',
+    RESTOCK: '补货',
+    restock: '补货',
+    OUT: '出库',
+    out: '出库',
+    ADJUST: '调整',
+    adjust: '调整',
+  }
+  return map[type ?? ''] ?? type ?? '--'
+}
+
+function getStockRecordTone(
+  type?: string,
+): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
+  const label = formatStockRecordType(type)
+  if (label === '入库' || label === '补货') return 'success'
+  if (label === '出库') return 'warning'
+  if (label === '调整') return 'info'
+  return 'muted'
 }
 
 function handleSearch() {
@@ -383,14 +556,6 @@ async function handleDetail(row: StockAlert) {
 function handleCurrentChange(val: number) {
   currentPage.value = val
   void loadStockAlerts()
-}
-
-function goBack() {
-  if (window.history.length > 1) {
-    window.history.back()
-  } else {
-    router.push('/dashboard/product')
-  }
 }
 
 onMounted(() => {

@@ -1,63 +1,152 @@
 <template>
-  <div>
-    <!-- Action buttons -->
-    <Card class="mb-5">
-      <CardContent class="flex gap-2 pt-6">
-        <Button @click="add" v-has-permission="PERMISSIONS.user.add">添加用户</Button>
-        <Button variant="destructive" @click="batchDel" v-has-permission="PERMISSIONS.user.status" :disabled="!userIdArray.length">批量删除</Button>
-      </CardContent>
-    </Card>
+  <div class="crm-data-page">
+    <section class="crm-panel">
+      <div class="crm-panel-body">
+        <div class="crm-toolbar-actions">
+          <Button v-has-permission="PERMISSIONS.user.add" class="gap-2" @click="add">
+            <Plus class="h-4 w-4" />
+            添加用户
+          </Button>
+          <Button
+            v-has-permission="PERMISSIONS.user.status"
+            variant="destructive"
+            class="gap-2"
+            :disabled="!userIdArray.length"
+            @click="batchDel"
+          >
+            <Trash2 class="h-4 w-4" />
+            批量删除
+          </Button>
+        </div>
+      </div>
+    </section>
 
-    <!-- Data table -->
-    <Card class="mb-5">
-      <CardContent class="pt-6">
-        <Table>
-          <TableHeader>
+    <section class="crm-panel">
+      <div class="crm-table-shell">
+        <Table class="min-w-[960px]">
+          <TableHeader class="bg-[var(--crm-bg-muted)]">
             <TableRow>
               <TableHead class="w-[55px]">
-                <Checkbox
-                  :checked="allSelected"
-                  @update:checked="toggleSelectAll"
-                />
+                <Checkbox :checked="allSelected" @update:checked="toggleSelectAll" />
               </TableHead>
-              <TableHead class="w-[60px]">序号</TableHead>
-              <TableHead>账号</TableHead>
-              <TableHead>姓名</TableHead>
-              <TableHead>手机</TableHead>
-              <TableHead>邮箱</TableHead>
-              <TableHead>创建时间</TableHead>
+              <TableHead
+                class="w-[60px]"
+                sortable
+                sort-key="index"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >序号</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="loginAct"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >账号</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="name"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >姓名</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="phone"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >手机</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="email"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >邮箱</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="createTime"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >创建时间</TableHead
+              >
               <TableHead>操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="(row, idx) in userList" :key="row.id">
+            <TableRow v-if="displayUserList.length === 0">
+              <TableCell colspan="8" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+                >暂无用户数据</TableCell
+              >
+            </TableRow>
+            <TableRow v-for="(row, idx) in displayUserList" :key="row.id">
               <TableCell>
                 <Checkbox
                   :checked="userIdArray.includes(row.id)"
                   @update:checked="(v: boolean) => toggleRowSelection(row, v)"
                 />
               </TableCell>
-              <TableCell>{{ startIndex(idx) }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.loginAct }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.name }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.phone }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.email }}</TableCell>
-              <TableCell class="truncate max-w-[150px]">{{ row.createTime }}</TableCell>
+              <TableCell class="text-[var(--crm-text-tertiary)]">{{ startIndex(idx) }}</TableCell>
+              <TableCell
+                class="max-w-[150px] truncate font-mono text-xs text-[var(--crm-text-secondary)]"
+                >{{ row.loginAct || '--' }}</TableCell
+              >
+              <TableCell
+                class="max-w-[150px] truncate font-semibold text-[var(--crm-text-primary)]"
+                >{{ row.name || '--' }}</TableCell
+              >
+              <TableCell class="max-w-[150px] truncate">{{ formatPhone(row.phone) }}</TableCell>
+              <TableCell class="max-w-[180px] truncate">{{ row.email || '--' }}</TableCell>
+              <TableCell class="max-w-[180px] truncate">{{
+                formatDateTime(row.createTime)
+              }}</TableCell>
               <TableCell>
-                <div class="flex gap-1">
-                  <Button variant="link" size="sm" @click="view(row.id)" v-has-permission="PERMISSIONS.user.view">详情</Button>
-                  <Button variant="link" size="sm" @click="edit(row.id)" v-has-permission="PERMISSIONS.user.edit">编辑</Button>
-                  <Button variant="destructive" size="sm" @click="del(row.id)" v-has-permission="PERMISSIONS.user.status">删除</Button>
+                <div class="flex items-center gap-1">
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.user.view"
+                    label="详情"
+                    @click="view(row.id)"
+                  >
+                    <Eye class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.user.edit"
+                    label="编辑"
+                    @click="edit(row.id)"
+                  >
+                    <Pencil class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.user.status"
+                    label="删除"
+                    danger
+                    @click="del(row.id)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </RowActionButton>
                 </div>
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
-
-    <!-- Pagination -->
-    <DataTablePagination :page-size="pageSize" :total="total" @change="toPage" />
+      </div>
+      <div class="crm-table-footer">
+        <DataTablePagination
+          :page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @change="toPage"
+        />
+      </div>
+    </section>
 
     <!-- 新增/编辑用户的弹窗 -->
     <Dialog v-model:open="userDialogVisible">
@@ -97,8 +186,12 @@
           </div>
         </form>
         <DialogFooter>
-          <Button variant="outline" @click="userDialogVisible = false" :disabled="submitting">关 闭</Button>
-          <Button @click="userSubmit" :disabled="submitting">{{ submitting ? '提交中...' : '提 交' }}</Button>
+          <Button variant="outline" @click="userDialogVisible = false" :disabled="submitting"
+            >关 闭</Button
+          >
+          <Button @click="userSubmit" :disabled="submitting">{{
+            submitting ? '提交中...' : '提 交'
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -137,19 +230,27 @@
           </div>
           <div class="space-y-1">
             <Label>账号未过期</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.accountNoExpired === 1 ? '是' : '否' }}</div>
+            <div class="w-full bg-muted rounded px-4 py-2">
+              {{ userDetail.accountNoExpired === 1 ? '是' : '否' }}
+            </div>
           </div>
           <div class="space-y-1">
             <Label>密码未过期</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.credentialsNoExpired === 1 ? '是' : '否' }}</div>
+            <div class="w-full bg-muted rounded px-4 py-2">
+              {{ userDetail.credentialsNoExpired === 1 ? '是' : '否' }}
+            </div>
           </div>
           <div class="space-y-1">
             <Label>账号未锁定</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.accountNoLocked === 1 ? '是' : '否' }}</div>
+            <div class="w-full bg-muted rounded px-4 py-2">
+              {{ userDetail.accountNoLocked === 1 ? '是' : '否' }}
+            </div>
           </div>
           <div class="space-y-1">
             <Label>账号是否启用</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.accountEnabled === 1 ? '是' : '否' }}</div>
+            <div class="w-full bg-muted rounded px-4 py-2">
+              {{ userDetail.accountEnabled === 1 ? '是' : '否' }}
+            </div>
           </div>
           <div class="space-y-1">
             <Label>创建时间</Label>
@@ -203,13 +304,29 @@ import {
 } from '@/modules/user/model/user.types'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+import RowActionButton from '@/shared/ui/RowActionButton.vue'
+import { formatDateTime, formatPhone } from '@/shared/utils/display-format'
+import { useClientSort } from '@/shared/utils/table-sort'
+import { Eye, Pencil, Plus, Trash2 } from '@lucide/vue'
 
 const userList = ref<User[]>([])
 const pageSize = ref(10)
@@ -221,25 +338,54 @@ const isEditMode = ref(false)
 const editingUserId = ref<number | null>(null)
 const submitting = ref(false)
 const loadingDetail = ref(false)
+const {
+  sortBy,
+  sortDirection,
+  sortedRows: displayUserList,
+  toggleSort,
+} = useClientSort<User>(userList, {
+  index: 'id',
+  loginAct: 'loginAct',
+  name: 'name',
+  phone: 'phone',
+  email: 'email',
+  createTime: 'createTime',
+})
 
 const userDetailDialogVisible = ref(false)
 const userDetail = ref<User | null>(null)
 
-const createUserSchema = toTypedSchema(z.object({
-  loginAct: z.string().min(1, '请输入登录账号'),
-  loginPwd: z.string().min(6, '登录密码长度为6-16位').max(16, '登录密码长度为6-16位'),
-  name: z.string().min(1, '请输入姓名'),
-  phone: z.string().min(1, '请输入手机号码').regex(/^1[3-9]\d{9}$/, '手机号码格式有误'),
-  email: z.string().min(1, '请输入邮箱').regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, '邮箱格式有误'),
-}))
+const createUserSchema = toTypedSchema(
+  z.object({
+    loginAct: z.string().min(1, '请输入登录账号'),
+    loginPwd: z.string().min(6, '登录密码长度为6-16位').max(16, '登录密码长度为6-16位'),
+    name: z.string().min(1, '请输入姓名'),
+    phone: z
+      .string()
+      .min(1, '请输入手机号码')
+      .regex(/^1[3-9]\d{9}$/, '手机号码格式有误'),
+    email: z
+      .string()
+      .min(1, '请输入邮箱')
+      .regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, '邮箱格式有误'),
+  }),
+)
 
-const updateUserSchema = toTypedSchema(z.object({
-  loginAct: z.string().min(1, '请输入登录账号'),
-  loginPwd: z.string().optional(),
-  name: z.string().min(1, '请输入姓名'),
-  phone: z.string().min(1, '请输入手机号码').regex(/^1[3-9]\d{9}$/, '手机号码格式有误'),
-  email: z.string().min(1, '请输入邮箱').regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, '邮箱格式有误'),
-}))
+const updateUserSchema = toTypedSchema(
+  z.object({
+    loginAct: z.string().min(1, '请输入登录账号'),
+    loginPwd: z.string().optional(),
+    name: z.string().min(1, '请输入姓名'),
+    phone: z
+      .string()
+      .min(1, '请输入手机号码')
+      .regex(/^1[3-9]\d{9}$/, '手机号码格式有误'),
+    email: z
+      .string()
+      .min(1, '请输入邮箱')
+      .regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, '邮箱格式有误'),
+  }),
+)
 
 const validationSchema = computed(() => (isEditMode.value ? updateUserSchema : createUserSchema))
 
@@ -254,13 +400,15 @@ const { handleSubmit, errors, values, setValues, resetForm } = useForm<UserFormV
   },
 })
 
-const allSelected = computed(() =>
-  userList.value.length > 0 && userIdArray.value.length === userList.value.length
+const allSelected = computed(
+  () => displayUserList.value.length > 0 && userIdArray.value.length === displayUserList.value.length,
 )
 
 function toggleSelectAll(checked: boolean) {
   if (checked) {
-    userIdArray.value = userList.value.map(data => data.id).filter((id): id is number | string => id !== undefined)
+    userIdArray.value = displayUserList.value
+      .map((data) => data.id)
+      .filter((id): id is number | string => id !== undefined)
   } else {
     userIdArray.value = []
   }

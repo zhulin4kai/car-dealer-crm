@@ -1,82 +1,165 @@
 <template>
-  <div class="p-5">
-    <!-- 搜索栏 -->
-    <Card class="mb-5">
-      <CardContent class="pt-6">
-        <div class="flex flex-wrap items-end gap-4">
-          <div class="space-y-2">
-            <Label>类型代码</Label>
+  <div class="crm-data-page">
+    <DictManagementTabs />
+
+    <section class="crm-panel">
+      <div class="crm-panel-body">
+        <div class="crm-toolbar">
+          <div class="crm-field">
+            <Label class="crm-field-label">类型代码</Label>
             <Input
               v-model="searchForm.typeCode"
+              class="w-[200px]"
               placeholder="请输入类型代码"
               @keyup.enter="handleSearch()"
             />
           </div>
-          <div class="space-y-2">
-            <Label>类型名称</Label>
+          <div class="crm-field">
+            <Label class="crm-field-label">类型名称</Label>
             <Input
               v-model="searchForm.typeName"
+              class="w-[200px]"
               placeholder="请输入类型名称"
               @keyup.enter="handleSearch()"
             />
           </div>
-          <div class="flex gap-2">
-            <Button @click="handleSearch()">查询</Button>
-            <Button v-has-permission="PERMISSIONS.dict.type.add" variant="secondary" @click="handleAdd()">新增类型</Button>
-            <Button v-has-permission="PERMISSIONS.dict.type.delete" variant="destructive" @click="handleBatchDelete()" :disabled="!selectedIds.length">批量删除</Button>
+          <div class="crm-toolbar-actions">
+            <Button class="gap-2" @click="handleSearch()">
+              <Search class="h-4 w-4" />
+              查询
+            </Button>
+            <Button
+              v-has-permission="PERMISSIONS.dict.type.add"
+              variant="outline"
+              class="gap-2"
+              @click="handleAdd()"
+            >
+              <Plus class="h-4 w-4" />
+              新增类型
+            </Button>
+            <Button
+              v-has-permission="PERMISSIONS.dict.type.delete"
+              variant="destructive"
+              class="gap-2"
+              :disabled="!selectedIds.length"
+              @click="handleBatchDelete()"
+            >
+              <Trash2 class="h-4 w-4" />
+              批量删除
+            </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
 
-    <!-- 数据表格 -->
-    <Card class="mb-5">
-      <CardContent class="pt-6">
+    <section class="crm-panel">
+      <div class="crm-table-shell">
         <template v-if="loading">
-          <Skeleton class="h-8 w-full mb-2" v-for="i in 5" :key="i" />
+          <div class="space-y-2 p-5">
+            <Skeleton class="h-8 w-full" v-for="i in 5" :key="i" />
+          </div>
         </template>
-        <Table v-else>
-          <TableHeader>
+        <Table v-else class="min-w-[900px]">
+          <TableHeader class="bg-[var(--crm-bg-muted)]">
             <TableRow>
               <TableHead class="w-[55px]">
-                <Checkbox
-                  :checked="allSelected"
-                  @update:checked="toggleSelectAll"
-                />
+                <Checkbox :checked="allSelected" @update:checked="toggleSelectAll" />
               </TableHead>
-              <TableHead class="w-[80px]">序号</TableHead>
-              <TableHead class="w-[180px]">类型代码</TableHead>
-              <TableHead class="w-[180px]">类型名称</TableHead>
-              <TableHead>备注</TableHead>
+              <TableHead
+                class="w-[80px]"
+                sortable
+                sort-key="index"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >序号</TableHead
+              >
+              <TableHead
+                class="w-[180px]"
+                sortable
+                sort-key="typeCode"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >类型代码</TableHead
+              >
+              <TableHead
+                class="w-[180px]"
+                sortable
+                sort-key="typeName"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >类型名称</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="remark"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >备注</TableHead
+              >
               <TableHead class="w-[200px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="(row, idx) in tableData" :key="row.id">
+            <TableRow v-if="displayTableData.length === 0">
+              <TableCell colspan="6" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+                >暂无字典类型数据</TableCell
+              >
+            </TableRow>
+            <TableRow v-for="(row, idx) in displayTableData" :key="row.id">
               <TableCell>
                 <Checkbox
                   :checked="selectedIds.includes(row.id)"
                   @update:checked="(v: boolean) => toggleRowSelection(row, v)"
                 />
               </TableCell>
-              <TableCell>{{ startIndex(idx) }}</TableCell>
-              <TableCell>{{ row.typeCode }}</TableCell>
-              <TableCell>{{ row.typeName }}</TableCell>
-              <TableCell>{{ row.remark }}</TableCell>
+              <TableCell class="text-[var(--crm-text-tertiary)]">{{ startIndex(idx) }}</TableCell>
               <TableCell>
-                <div class="flex gap-1">
-                  <Button v-has-permission="PERMISSIONS.dict.type.edit" variant="link" size="sm" @click="handleEdit(row)">编辑</Button>
-                  <Button v-has-permission="PERMISSIONS.dict.type.delete" variant="destructive" size="sm" @click="handleDelete(row)">删除</Button>
+                <span
+                  class="inline-flex rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 font-mono text-xs text-[var(--crm-text-secondary)]"
+                >
+                  {{ row.typeCode || '--' }}
+                </span>
+              </TableCell>
+              <TableCell class="font-semibold text-[var(--crm-text-primary)]">{{
+                row.typeName || '--'
+              }}</TableCell>
+              <TableCell class="max-w-[260px] truncate">{{ row.remark || '--' }}</TableCell>
+              <TableCell>
+                <div class="flex items-center gap-1">
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.dict.type.edit"
+                    label="编辑"
+                    @click="handleEdit(row)"
+                  >
+                    <Pencil class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.dict.type.delete"
+                    label="删除"
+                    danger
+                    @click="handleDelete(row)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </RowActionButton>
                 </div>
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
-
-    <!-- 分页 -->
-    <DataTablePagination :page-size="pageSize" :total="total" @change="handleCurrentChange" />
+      </div>
+      <div class="crm-table-footer">
+        <DataTablePagination
+          :page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @change="handleCurrentChange"
+        />
+      </div>
+    </section>
 
     <!-- 新增/编辑弹窗 -->
     <Dialog v-model:open="dialogVisible">
@@ -114,8 +197,12 @@
           </div>
         </form>
         <DialogFooter>
-          <Button variant="outline" @click="dialogVisible = false" :disabled="submitting">取消</Button>
-          <Button @click="onFormSubmit" :disabled="submitting">{{ submitting ? '提交中...' : '确定' }}</Button>
+          <Button variant="outline" @click="dialogVisible = false" :disabled="submitting"
+            >取消</Button
+          >
+          <Button @click="onFormSubmit" :disabled="submitting">{{
+            submitting ? '提交中...' : '确定'
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -128,22 +215,45 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
-import { getDictTypeList, createDictType, updateDictType, deleteDictType, batchDeleteDictTypes } from '@/modules/dict/api/dict-api'
+import {
+  getDictTypeList,
+  createDictType,
+  updateDictType,
+  deleteDictType,
+  batchDeleteDictTypes,
+} from '@/modules/dict/api/dict-api'
 import type { DictQuery, DictType } from '@/modules/dict/model/dict.types'
 import type { PageResult } from '@/shared/api/api-types'
 import { useLatestRequest } from '@/shared/composables/use-latest-request'
 import type { EntityId } from '@/shared/types/id'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+import RowActionButton from '@/shared/ui/RowActionButton.vue'
+import { useClientSort } from '@/shared/utils/table-sort'
+import { Pencil, Plus, Search, Trash2 } from '@lucide/vue'
+
+import DictManagementTabs from './DictManagementTabs.vue'
 
 const { run: runDictTypeQuery, loading } = useLatestRequest<PageResult<DictType>>()
 const submitting = ref(false)
@@ -154,18 +264,31 @@ const selectedIds = ref<EntityId[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const {
+  sortBy,
+  sortDirection,
+  sortedRows: displayTableData,
+  toggleSort,
+} = useClientSort<DictType>(tableData, {
+  index: 'id',
+  typeCode: 'typeCode',
+  typeName: 'typeName',
+  remark: 'remark',
+})
 
 const searchForm = reactive({
   typeCode: '',
-  typeName: ''
+  typeName: '',
 })
 
 // 表单验证 schema
-const formSchema = toTypedSchema(z.object({
-  typeCode: z.string().min(1, '请输入类型代码'),
-  typeName: z.string().min(1, '请输入类型名称'),
-  remark: z.string().optional(),
-}))
+const formSchema = toTypedSchema(
+  z.object({
+    typeCode: z.string().min(1, '请输入类型代码'),
+    typeName: z.string().min(1, '请输入类型名称'),
+    remark: z.string().optional(),
+  }),
+)
 
 const { handleSubmit, errors, values, resetForm } = useForm({
   validationSchema: formSchema,
@@ -177,13 +300,16 @@ const { handleSubmit, errors, values, resetForm } = useForm({
 })
 
 // 全选相关
-const allSelected = computed(() =>
-  tableData.value.length > 0 && selectedIds.value.length === tableData.value.length
+const allSelected = computed(
+  () =>
+    displayTableData.value.length > 0 && selectedIds.value.length === displayTableData.value.length,
 )
 
 const toggleSelectAll = (checked: boolean) => {
   if (checked) {
-    selectedIds.value = tableData.value.map(data => data.id).filter((id): id is EntityId => id !== undefined)
+    selectedIds.value = displayTableData.value
+      .map((data) => data.id)
+      .filter((id): id is EntityId => id !== undefined)
   } else {
     selectedIds.value = []
   }
@@ -215,7 +341,7 @@ function buildDictTypeQuery(): DictQuery {
 
 const loadData = async () => {
   try {
-    const res = await runDictTypeQuery(signal => getDictTypeList(buildDictTypeQuery(), signal))
+    const res = await runDictTypeQuery((signal) => getDictTypeList(buildDictTypeQuery(), signal))
     if (!res) return
     tableData.value = [...res.list].sort((a, b) => Number(a.id ?? 0) - Number(b.id ?? 0))
     total.value = res.total

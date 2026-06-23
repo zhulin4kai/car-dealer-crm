@@ -2,7 +2,9 @@
   <div class="flex h-screen overflow-hidden bg-[var(--crm-bg-page)] text-[var(--crm-text-primary)]">
     <aside
       class="flex shrink-0 flex-col border-r border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] transition-[width] duration-200"
-      :class="isCollapse ? 'w-[var(--crm-sidebar-collapsed-width)]' : 'w-[var(--crm-sidebar-width)]'"
+      :class="
+        isCollapse ? 'w-[var(--crm-sidebar-collapsed-width)]' : 'w-[var(--crm-sidebar-width)]'
+      "
     >
       <button
         class="flex h-[var(--crm-header-height)] items-center gap-3 border-b border-[var(--crm-border-light)] px-4 text-left"
@@ -10,82 +12,88 @@
         type="button"
         @click="backToHome"
       >
-        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--crm-primary)] text-white shadow-[0_8px_18px_rgba(51,112,255,0.28)]">
+        <span
+          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--crm-primary)] text-white shadow-[0_8px_18px_rgba(51,112,255,0.28)]"
+        >
           <Car class="h-5 w-5" />
         </span>
         <span v-if="!isCollapse" class="truncate text-base font-semibold">汽车销售管理系统</span>
       </button>
 
-      <nav class="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-        <template v-for="menuPermission in visibleMenuPermissionList" :key="getMenuKey(menuPermission)">
-          <Collapsible
-            v-if="menuPermission.subPermissionList?.length"
-            :open="openMenus[getMenuKey(menuPermission)] ?? false"
-            @update:open="(open: boolean) => { openMenus[getMenuKey(menuPermission)] = open }"
+      <nav class="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        <section
+          v-for="section in navigationSections"
+          :key="section.key"
+          class="space-y-1"
+          :aria-label="section.label"
+        >
+          <div
+            v-if="!isCollapse"
+            class="px-3 pb-1 text-xs font-semibold tracking-wide text-[var(--crm-text-tertiary)]"
           >
-            <CollapsibleTrigger
-              class="mb-1 flex h-10 w-full items-center rounded-lg px-3 text-sm font-medium text-[var(--crm-text-secondary)] transition-colors hover:bg-[var(--crm-bg-hover)] hover:text-[var(--crm-primary)]"
-              :class="[
-                isCollapse ? 'justify-center px-0' : '',
-                isMenuActive(menuPermission) ? 'bg-[var(--crm-primary-light)] text-[var(--crm-primary)]' : '',
-              ]"
-            >
-              <component :is="resolveIcon(menuPermission.icon)" class="h-5 w-5 shrink-0" />
-              <span v-if="!isCollapse" class="ml-3 truncate">{{ menuPermission.name }}</span>
-              <ChevronDown
-                v-if="!isCollapse"
-                class="ml-auto h-4 w-4 transition-transform"
-                :class="{ 'rotate-180': openMenus[getMenuKey(menuPermission)] }"
-              />
-            </CollapsibleTrigger>
-
-            <CollapsibleContent v-if="!isCollapse" class="mb-2 space-y-1">
-              <router-link
-                v-for="subPermission in menuPermission.subPermissionList"
-                :key="getMenuKey(subPermission)"
-                :to="subPermission.url"
-                class="flex h-10 items-center rounded-lg pl-11 pr-3 text-sm font-medium text-[var(--crm-text-secondary)] transition-colors hover:bg-[var(--crm-bg-hover)] hover:text-[var(--crm-primary)]"
-                :class="currentRouterPath === subPermission.url ? 'bg-[var(--crm-primary-light)] text-[var(--crm-primary)]' : ''"
-              >
-                <component :is="resolveIcon(subPermission.icon)" class="mr-2 h-4 w-4 shrink-0" />
-                <span class="truncate">{{ subPermission.name }}</span>
-              </router-link>
-            </CollapsibleContent>
-          </Collapsible>
-
+            {{ section.label }}
+          </div>
           <router-link
-            v-else-if="menuPermission.url"
-            :to="menuPermission.url"
-            class="mb-1 flex h-10 w-full items-center rounded-lg px-3 text-sm font-medium text-[var(--crm-text-secondary)] transition-colors hover:bg-[var(--crm-bg-hover)] hover:text-[var(--crm-primary)]"
+            v-for="menuItem in section.items"
+            :key="getMenuKey(menuItem)"
+            :to="menuItem.url"
+            class="flex h-10 w-full items-center rounded-lg px-3 text-sm font-medium text-[var(--crm-text-secondary)] transition-colors hover:bg-[var(--crm-bg-hover)] hover:text-[var(--crm-primary)] focus-visible:outline-none focus-visible:ring-0"
             :class="[
               isCollapse ? 'justify-center px-0' : '',
-              currentRouterPath === menuPermission.url ? 'bg-[var(--crm-primary-light)] text-[var(--crm-primary)]' : '',
+              isNavigationItemActive(menuItem)
+                ? 'bg-[var(--crm-primary-light)] text-[var(--crm-primary)]'
+                : '',
             ]"
+            :title="menuItem.name"
           >
-            <component :is="resolveIcon(menuPermission.icon)" class="h-5 w-5 shrink-0" />
-            <span v-if="!isCollapse" class="ml-3 truncate">{{ menuPermission.name }}</span>
+            <component :is="resolveIcon(menuItem.icon)" class="h-5 w-5 shrink-0" />
+            <span v-if="!isCollapse" class="ml-3 truncate">{{ menuItem.name }}</span>
           </router-link>
-        </template>
+        </section>
       </nav>
 
       <div class="border-t border-[var(--crm-border-light)] p-3">
-        <div
-          class="flex items-center gap-3 rounded-lg px-2 py-3"
-          :class="isCollapse ? 'justify-center px-0' : ''"
+        <button
+          v-if="isCollapse"
+          class="flex w-full items-center justify-center rounded-lg px-0 py-3 text-[var(--crm-primary)] transition-colors hover:bg-[var(--crm-bg-hover)]"
+          type="button"
+          title="退出登录"
+          aria-label="退出登录"
+          @click="logout"
         >
-          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-sm font-semibold text-[var(--crm-primary)]">
+          <div
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-sm font-semibold text-[var(--crm-primary)]"
+          >
             {{ getUserFirstChar }}
           </div>
-          <div v-if="!isCollapse" class="min-w-0">
+        </button>
+        <div v-else class="flex items-center gap-3 rounded-lg px-2 py-3">
+          <div
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-sm font-semibold text-[var(--crm-primary)]"
+          >
+            {{ getUserFirstChar }}
+          </div>
+          <div class="min-w-0 flex-1">
             <div class="truncate text-sm font-semibold">{{ user.name || '管理员' }}</div>
             <div class="mt-0.5 truncate text-xs text-[var(--crm-text-tertiary)]">当前用户</div>
           </div>
+          <button
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--crm-text-tertiary)] transition-colors hover:bg-[var(--crm-danger-bg)] hover:text-[var(--crm-danger)]"
+            type="button"
+            title="退出登录"
+            aria-label="退出登录"
+            @click="logout"
+          >
+            <LogOut class="h-4 w-4" />
+          </button>
         </div>
       </div>
     </aside>
 
     <div class="flex min-w-0 flex-1 flex-col">
-      <header class="flex h-[var(--crm-header-height)] shrink-0 items-center justify-between border-b border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] px-6">
+      <header
+        class="flex h-[var(--crm-header-height)] shrink-0 items-center justify-between border-b border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] px-6"
+      >
         <div class="flex min-w-0 items-center gap-4">
           <button
             class="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--crm-text-secondary)] transition-colors hover:bg-[var(--crm-bg-hover)] hover:text-[var(--crm-primary)]"
@@ -99,25 +107,16 @@
           <div class="min-w-0">
             <div class="flex items-center gap-3">
               <h1 class="truncate text-lg font-semibold">{{ pageTitle }}</h1>
-              <span class="rounded-md bg-[var(--crm-bg-muted)] px-2.5 py-1 text-sm text-[var(--crm-text-tertiary)]">
+              <span
+                class="rounded-md bg-[var(--crm-bg-muted)] px-2.5 py-1 text-sm text-[var(--crm-text-tertiary)]"
+              >
                 {{ currentDateLabel }}
               </span>
             </div>
           </div>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger class="flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors hover:bg-[var(--crm-bg-hover)]">
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-sm font-semibold text-[var(--crm-primary)]">
-              {{ getUserFirstChar }}
-            </div>
-            <span class="hidden text-sm font-medium sm:inline">{{ user.name || '管理员' }}</span>
-            <ChevronDown class="h-4 w-4 text-[var(--crm-text-tertiary)]" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem @click="logout">退出登录</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div aria-hidden="true" />
       </header>
 
       <main class="min-h-0 flex-1 overflow-auto">
@@ -132,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import type { Permission, User } from '@/modules/user/model/user.types'
@@ -142,18 +141,7 @@ import { useAppStore } from '@/stores/app.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { usePermissionStore } from '@/stores/permission.store'
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Car, ChevronDown, PanelLeftClose, PanelLeftOpen } from '@lucide/vue'
+import { Car, LogOut, PanelLeftClose, PanelLeftOpen } from '@lucide/vue'
 
 defineOptions({
   name: 'DashboardLayout',
@@ -167,7 +155,7 @@ const permissionStore = usePermissionStore()
 
 const user = computed<User>(() => authStore.currentUser ?? {})
 const isCollapse = computed(() => appStore.sidebarCollapsed)
-const currentRouterPath = computed(() => route.meta.activeMenu ?? route.path)
+const currentRouterPath = computed(() => String(route.meta.activeMenu ?? route.path))
 const pageTitle = computed(() => {
   if (route.path === '/dashboard') {
     return '工作台概览'
@@ -183,20 +171,204 @@ const getUserFirstChar = computed(() => {
   return name ? name.charAt(0).toUpperCase() : '管'
 })
 
-const openMenus = reactive<Record<string, boolean>>({})
-
 type NavigationMenuItem = Omit<Permission, 'url' | 'subPermissionList'> & {
-  url?: string
-  subPermissionList?: NavigationMenuItem[]
+  name: string
+  url: string
+}
+
+type NavigationSection = {
+  key: string
+  label: string
+  items: NavigationMenuItem[]
+}
+
+type NavigationSectionDefinition = Omit<NavigationSection, 'items'> & {
+  matches: (item: NavigationMenuItem) => boolean
+}
+
+const PRODUCT_MENU_CODE = 'menu:product'
+const DICT_MENU_CODE = 'menu:dict'
+const BUSINESS_MENU_CODES = new Set([
+  'menu:dashboard',
+  'menu:activity',
+  'menu:clue',
+  'menu:customer',
+  'menu:tran',
+])
+const SYSTEM_MENU_CODES = new Set(['menu:user', DICT_MENU_CODE])
+const MENU_ITEM_OVERRIDES: Record<string, Partial<Pick<NavigationMenuItem, 'name' | 'icon'>>> = {
+  'menu:dashboard': { name: '工作台', icon: 'Menu' },
+}
+const PRODUCT_ITEM_OVERRIDES: Record<string, Pick<NavigationMenuItem, 'name' | 'icon'>> = {
+  'page:product:list': { name: '产品列表', icon: 'Box' },
+  'page:product:category': { name: '产品分类', icon: 'Tag' },
+  'page:product:promotion': { name: '促销管理', icon: 'BadgePercent' },
+  'page:product:stock': { name: '库存管理', icon: 'Warehouse' },
+}
+const DICT_ITEM_OVERRIDE: Pick<NavigationMenuItem, 'name' | 'icon'> = {
+  name: '字典管理',
+  icon: 'Grid',
+}
+const NAVIGATION_SECTION_DEFINITIONS: NavigationSectionDefinition[] = [
+  {
+    key: 'business',
+    label: '业务管理',
+    matches: (item) => BUSINESS_MENU_CODES.has(item.code),
+  },
+  {
+    key: 'product',
+    label: '产品中心',
+    matches: (item) => item.code.startsWith('page:product') || item.code === PRODUCT_MENU_CODE,
+  },
+  {
+    key: 'system',
+    label: '系统',
+    matches: (item) => SYSTEM_MENU_CODES.has(item.code) || item.code.startsWith('page:dict'),
+  },
+]
+const NAVIGATION_ITEM_ORDER: Record<string, number> = {
+  'menu:dashboard': 1,
+  'menu:activity': 2,
+  'menu:clue': 3,
+  'menu:customer': 4,
+  'menu:tran': 5,
+  'page:product:list': 1,
+  'page:product:category': 2,
+  'page:product:promotion': 3,
+  'page:product:stock': 4,
+  'menu:user': 1,
+  [DICT_MENU_CODE]: 2,
 }
 
 const routablePathSet = computed(() => new Set(router.getRoutes().map((item) => item.path)))
 
-const visibleMenuPermissionList = computed(() =>
-  permissionStore.menuPermissionList
-    .map(toNavigationMenuItem)
-    .filter((item): item is NavigationMenuItem => item !== null)
+const navigationMenuItems = computed(() =>
+  permissionStore.menuPermissionList.flatMap(toFlatNavigationItems),
 )
+const navigationSections = computed<NavigationSection[]>(() => {
+  const sections = NAVIGATION_SECTION_DEFINITIONS.map((section) => ({
+    key: section.key,
+    label: section.label,
+    items: [] as NavigationMenuItem[],
+  }))
+  const fallbackSection: NavigationSection = {
+    key: 'other',
+    label: '其他',
+    items: [],
+  }
+
+  navigationMenuItems.value.forEach((item) => {
+    const sectionIndex = NAVIGATION_SECTION_DEFINITIONS.findIndex((section) =>
+      section.matches(item),
+    )
+    if (sectionIndex >= 0) {
+      sections[sectionIndex].items.push(item)
+      return
+    }
+    fallbackSection.items.push(item)
+  })
+
+  return [...sections, fallbackSection]
+    .filter((section) => section.items.length > 0)
+    .map((section) => ({
+      ...section,
+      items: sortNavigationItems(section.items),
+    }))
+})
+
+function sortByOrder<T extends { orderNo?: number }>(items: T[]): T[] {
+  return [...items].sort((current, next) => (current.orderNo ?? 0) - (next.orderNo ?? 0))
+}
+
+function sortNavigationItems(items: NavigationMenuItem[]): NavigationMenuItem[] {
+  return [...items].sort(
+    (current, next) =>
+      (NAVIGATION_ITEM_ORDER[current.code] ?? current.orderNo ?? 0) -
+      (NAVIGATION_ITEM_ORDER[next.code] ?? next.orderNo ?? 0),
+  )
+}
+
+function createNavigationItem(
+  menuPermission: Permission,
+  urlOverride?: string,
+  overrides: Partial<Pick<NavigationMenuItem, 'name' | 'icon'>> = {},
+): NavigationMenuItem | null {
+  const url = normalizeMenuUrl(urlOverride ?? menuPermission.url)
+  if (!url) {
+    return null
+  }
+  const itemOverrides = {
+    ...MENU_ITEM_OVERRIDES[menuPermission.code],
+    ...overrides,
+  }
+
+  return {
+    id: menuPermission.id,
+    code: menuPermission.code,
+    type: menuPermission.type,
+    parentId: menuPermission.parentId,
+    orderNo: menuPermission.orderNo,
+    enabled: menuPermission.enabled,
+    name: itemOverrides.name ?? menuPermission.name ?? menuPermission.code,
+    icon: itemOverrides.icon ?? menuPermission.icon,
+    url,
+  }
+}
+
+function toFlatNavigationItems(menuPermission: Permission): NavigationMenuItem[] {
+  const subPermissionList = sortByOrder(menuPermission.subPermissionList ?? [])
+
+  if (menuPermission.code === PRODUCT_MENU_CODE) {
+    return subPermissionList
+      .map((subPermission) =>
+        createNavigationItem(
+          subPermission,
+          subPermission.url,
+          PRODUCT_ITEM_OVERRIDES[subPermission.code],
+        ),
+      )
+      .filter((item): item is NavigationMenuItem => item !== null)
+  }
+
+  if (menuPermission.code === DICT_MENU_CODE) {
+    const firstRoutableSubMenu = subPermissionList
+      .map((subPermission) => createNavigationItem(subPermission))
+      .find((item): item is NavigationMenuItem => item !== null)
+
+    return firstRoutableSubMenu
+      ? [createNavigationItem(menuPermission, firstRoutableSubMenu.url, DICT_ITEM_OVERRIDE)].filter(
+          (item): item is NavigationMenuItem => item !== null,
+        )
+      : []
+  }
+
+  const directItem = createNavigationItem(menuPermission)
+  if (directItem) {
+    return [directItem]
+  }
+
+  const routableSubMenuItems = subPermissionList
+    .map((subPermission) => createNavigationItem(subPermission))
+    .filter((item): item is NavigationMenuItem => item !== null)
+
+  if (routableSubMenuItems.length === 1) {
+    return [
+      createNavigationItem(menuPermission, routableSubMenuItems[0].url, {
+        name: menuPermission.name ?? routableSubMenuItems[0].name,
+        icon: menuPermission.icon ?? routableSubMenuItems[0].icon,
+      }),
+    ].filter((item): item is NavigationMenuItem => item !== null)
+  }
+
+  return routableSubMenuItems
+}
+
+function isNavigationItemActive(menuItem: NavigationMenuItem): boolean {
+  if (menuItem.code === DICT_MENU_CODE && route.path.startsWith('/dashboard/dict')) {
+    return true
+  }
+  return currentRouterPath.value === menuItem.url
+}
 
 function normalizeMenuUrl(url?: string): string | null {
   const trimmed = url?.trim()
@@ -207,31 +379,8 @@ function normalizeMenuUrl(url?: string): string | null {
   return routablePathSet.value.has(trimmed) ? trimmed : null
 }
 
-function toNavigationMenuItem(menuPermission: Permission): NavigationMenuItem | null {
-  const url = normalizeMenuUrl(menuPermission.url) ?? undefined
-  const subPermissionList = (menuPermission.subPermissionList ?? [])
-    .map(toNavigationMenuItem)
-    .filter((item): item is NavigationMenuItem => item !== null)
-
-  if (!url && subPermissionList.length === 0) {
-    return null
-  }
-
-  return {
-    ...menuPermission,
-    url,
-    subPermissionList,
-  }
-}
-
 function getMenuKey(menuPermission: Permission): string {
   return String(menuPermission.id ?? menuPermission.code)
-}
-
-function isMenuActive(menuPermission: { subPermissionList?: { url?: string }[] }): boolean {
-  return menuPermission.subPermissionList?.some(
-    (sub) => currentRouterPath.value === sub.url
-  ) ?? false
 }
 
 function showMenu(): void {

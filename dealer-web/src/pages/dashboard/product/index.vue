@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-full space-y-5 p-6">
+  <div class="crm-data-page">
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <section
         v-for="card in summaryCards"
@@ -7,50 +7,45 @@
         class="rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-5 shadow-[var(--crm-shadow-card)]"
       >
         <div class="flex items-center gap-4">
-          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl" :class="card.iconClass">
+          <div
+            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            :class="card.iconClass"
+          >
             <component :is="card.icon" class="h-5 w-5" />
           </div>
           <div class="min-w-0">
             <div class="text-sm text-[var(--crm-text-tertiary)]">{{ card.label }}</div>
             <div class="mt-1 flex items-end gap-2">
               <span class="text-2xl font-semibold leading-none">{{ card.value }}</span>
-              <span class="pb-0.5 text-sm text-[var(--crm-text-tertiary)]">{{ card.description }}</span>
+              <span class="pb-0.5 text-sm text-[var(--crm-text-tertiary)]">{{
+                card.description
+              }}</span>
             </div>
           </div>
         </div>
       </section>
     </div>
 
-    <section class="overflow-hidden rounded-[var(--crm-card-radius)] border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] shadow-[var(--crm-shadow-card)]">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-border-light)] px-5 py-4">
+    <section class="crm-panel">
+      <div
+        class="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--crm-border-light)] px-5 py-4"
+      >
         <div class="flex items-center gap-3">
           <h2 class="text-lg font-semibold">产品列表</h2>
-          <span class="rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 text-sm text-[var(--crm-text-tertiary)]">
+          <span
+            class="rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 text-sm text-[var(--crm-text-tertiary)]"
+          >
             {{ formatNumber(total) }} 条
           </span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <Button v-has-permission="PERMISSIONS.product.add" class="gap-2 bg-[var(--crm-primary)] hover:bg-[var(--crm-primary-hover)]" @click="handleAdd">
+          <Button
+            v-has-permission="PERMISSIONS.product.add"
+            class="gap-2 bg-[var(--crm-primary)] hover:bg-[var(--crm-primary-hover)]"
+            @click="handleAdd"
+          >
             <Plus class="h-4 w-4" />
             新增产品
-          </Button>
-          <Button variant="outline" class="gap-2" @click="handleCategory">
-            <Tags class="h-4 w-4" />
-            分类管理
-          </Button>
-          <Button variant="outline" class="gap-2" @click="handlePromotion">
-            <Percent class="h-4 w-4" />
-            促销设置
-          </Button>
-          <Button variant="outline" class="gap-2" @click="handleStockAlert">
-            <TriangleAlert class="h-4 w-4" />
-            库存预警
-            <span
-              v-if="lowStockPageCount > 0"
-              class="-mr-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--crm-danger)] px-1.5 text-xs text-white"
-            >
-              {{ lowStockPageCount }}
-            </span>
           </Button>
         </div>
       </div>
@@ -58,7 +53,9 @@
       <div class="flex flex-col gap-4 border-b border-[var(--crm-border-light)] px-5 py-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="relative w-full max-w-[360px]">
-            <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--crm-text-tertiary)]" />
+            <Search
+              class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--crm-text-tertiary)]"
+            />
             <Input
               v-model="searchKeyword"
               class="h-10 pl-9"
@@ -73,55 +70,136 @@
         </div>
 
         <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
-          <button
-            class="h-9 shrink-0 rounded-full px-4 text-sm font-medium transition-colors"
-            :class="activeCategoryId === 'all' ? 'bg-[var(--crm-primary)] text-white' : 'text-[var(--crm-text-secondary)] hover:bg-[var(--crm-bg-hover)]'"
+          <Button
+            class="h-9 shrink-0 rounded-full px-4"
+            :variant="activeCategoryId === 'all' ? 'default' : 'ghost'"
+            :class="
+              activeCategoryId === 'all'
+                ? 'bg-[var(--crm-primary)] text-white hover:bg-[var(--crm-primary-hover)]'
+                : 'text-[var(--crm-text-secondary)] hover:bg-[var(--crm-bg-hover)]'
+            "
             type="button"
             @click="selectCategory('all')"
           >
             全部
-          </button>
-          <button
+          </Button>
+          <Button
             v-for="category in categoryOptions"
             :key="category.id ?? category.name"
-            class="h-9 shrink-0 rounded-full px-4 text-sm font-medium transition-colors"
-            :class="String(activeCategoryId) === String(category.id) ? 'bg-[var(--crm-primary)] text-white' : 'text-[var(--crm-text-secondary)] hover:bg-[var(--crm-bg-hover)]'"
+            class="h-9 shrink-0 rounded-full px-4"
+            :variant="String(activeCategoryId) === String(category.id) ? 'default' : 'ghost'"
+            :class="
+              String(activeCategoryId) === String(category.id)
+                ? 'bg-[var(--crm-primary)] text-white hover:bg-[var(--crm-primary-hover)]'
+                : 'text-[var(--crm-text-secondary)] hover:bg-[var(--crm-bg-hover)]'
+            "
             type="button"
             @click="selectCategory(category.id)"
           >
             {{ category.name || '--' }}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div class="overflow-x-auto">
-        <Table class="min-w-[1120px]">
+      <div class="crm-table-shell">
+        <Table class="min-w-[1080px] table-fixed">
           <TableHeader class="bg-[var(--crm-bg-muted)]">
             <TableRow>
-              <TableHead class="w-[56px]">
-                <Checkbox :checked="allSelected" @update:checked="(checked) => toggleSelectAll(checked === true)" />
+              <TableHead class="w-[48px]">
+                <Checkbox
+                  :checked="allSelected"
+                  @update:checked="(checked) => toggleSelectAll(checked === true)"
+                />
               </TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>产品名称</TableHead>
-              <TableHead>分类</TableHead>
-              <TableHead>规格</TableHead>
-              <TableHead>价格</TableHead>
-              <TableHead>库存</TableHead>
-              <TableHead>最低库存</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead class="w-[132px]">操作</TableHead>
+              <TableHead
+                class="w-[150px]"
+                sortable
+                sort-key="sku"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >SKU</TableHead
+              >
+              <TableHead
+                class="w-[220px]"
+                sortable
+                sort-key="name"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >产品名称</TableHead
+              >
+              <TableHead
+                class="w-[90px]"
+                sortable
+                sort-key="categoryName"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >分类</TableHead
+              >
+              <TableHead
+                class="w-[210px]"
+                sortable
+                sort-key="specification"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >规格</TableHead
+              >
+              <TableHead
+                class="w-[120px]"
+                sortable
+                sort-key="price"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >价格</TableHead
+              >
+              <TableHead
+                class="w-[64px]"
+                sortable
+                sort-key="stock"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >库存</TableHead
+              >
+              <TableHead
+                class="w-[76px]"
+                sortable
+                sort-key="minStock"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >最低库存</TableHead
+              >
+              <TableHead
+                class="w-[76px]"
+                sortable
+                sort-key="status"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >状态</TableHead
+              >
+              <TableHead class="w-[88px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow v-if="loading">
-              <TableCell colspan="10" class="h-32 text-center text-[var(--crm-text-tertiary)]">加载中...</TableCell>
+              <TableCell colspan="10" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+                >加载中...</TableCell
+              >
             </TableRow>
-            <TableRow v-else-if="productList.length === 0">
-              <TableCell colspan="10" class="h-32 text-center text-[var(--crm-text-tertiary)]">暂无产品数据</TableCell>
+            <TableRow v-else-if="displayProductList.length === 0">
+              <TableCell colspan="10" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+                >暂无产品数据</TableCell
+              >
             </TableRow>
             <template v-else>
               <TableRow
-                v-for="(row, index) in productList"
+                v-for="(row, index) in displayProductList"
                 :key="row.id ?? row.sku ?? index"
                 class="hover:bg-[var(--crm-bg-hover)]"
               >
@@ -133,40 +211,79 @@
                   />
                 </TableCell>
                 <TableCell>
-                  <span class="inline-flex rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 font-mono text-xs text-[var(--crm-text-secondary)]">
+                  <span
+                    class="inline-flex rounded-md bg-[var(--crm-bg-muted)] px-2 py-1 font-mono text-xs text-[var(--crm-text-secondary)]"
+                  >
                     {{ row.sku || '--' }}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <div class="flex min-w-[220px] items-center gap-3">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--crm-bg-muted)] text-[var(--crm-text-tertiary)]">
+                  <div class="flex min-w-0 items-center gap-3">
+                    <span
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--crm-bg-muted)] text-[var(--crm-text-tertiary)]"
+                    >
                       <component :is="resolveProductIcon(row.categoryName)" class="h-4 w-4" />
                     </span>
-                    <span class="truncate font-semibold text-[var(--crm-text-primary)]">{{ row.name || '--' }}</span>
+                    <span class="min-w-0 truncate font-semibold text-[var(--crm-text-primary)]">{{
+                      row.name || '--'
+                    }}</span>
                   </div>
                 </TableCell>
-                <TableCell class="text-[var(--crm-text-secondary)]">{{ row.categoryName || '--' }}</TableCell>
-                <TableCell class="text-[var(--crm-text-secondary)]">{{ row.specification || '--' }}</TableCell>
-                <TableCell class="font-semibold text-[var(--crm-text-primary)]">{{ formatCurrency(row.price) }}</TableCell>
+                <TableCell class="truncate text-[var(--crm-text-secondary)]">{{
+                  row.categoryName || '--'
+                }}</TableCell>
+                <TableCell class="truncate text-[var(--crm-text-secondary)]">{{
+                  row.specification || '--'
+                }}</TableCell>
+                <TableCell class="font-semibold text-[var(--crm-text-primary)]">{{
+                  formatCurrency(row.price)
+                }}</TableCell>
                 <TableCell>
-                  <div class="font-semibold" :class="isLowStock(row) ? 'text-[var(--crm-warning)]' : 'text-[var(--crm-text-primary)]'">
+                  <div
+                    class="font-semibold"
+                    :class="
+                      isLowStock(row)
+                        ? 'text-[var(--crm-warning)]'
+                        : 'text-[var(--crm-text-primary)]'
+                    "
+                  >
                     {{ formatNumber(row.stock) }}
                   </div>
-                  <div v-if="isLowStock(row)" class="mt-1 text-xs text-[var(--crm-warning)]">低于最低库存</div>
+                  <div v-if="isLowStock(row)" class="mt-1 text-xs text-[var(--crm-warning)]">
+                    低于最低库存
+                  </div>
                 </TableCell>
-                <TableCell class="text-[var(--crm-text-secondary)]">{{ formatNumber(row.minStock) }}</TableCell>
+                <TableCell class="text-[var(--crm-text-secondary)]">{{
+                  formatNumber(row.minStock)
+                }}</TableCell>
                 <TableCell>
-                  <StatusBadge :label="row.status" :tone="getProductStatusTone(row.status)" />
+                  <StatusBadge
+                    :label="formatProductStatus(row.status)"
+                    :tone="getProductStatusTone(row.status)"
+                  />
                 </TableCell>
                 <TableCell>
                   <div class="flex items-center gap-1">
-                    <RowActionButton v-has-permission="PERMISSIONS.product.view" label="查看" @click="handleView(row)">
+                    <RowActionButton
+                      v-has-permission="PERMISSIONS.product.view"
+                      label="查看"
+                      @click="handleView(row)"
+                    >
                       <Eye class="h-4 w-4" />
                     </RowActionButton>
-                    <RowActionButton v-has-permission="PERMISSIONS.product.edit" label="编辑" @click="handleEdit(row)">
+                    <RowActionButton
+                      v-has-permission="PERMISSIONS.product.edit"
+                      label="编辑"
+                      @click="handleEdit(row)"
+                    >
                       <Pencil class="h-4 w-4" />
                     </RowActionButton>
-                    <RowActionButton v-has-permission="PERMISSIONS.product.delete" label="删除" danger @click="handleDelete(row)">
+                    <RowActionButton
+                      v-has-permission="PERMISSIONS.product.delete"
+                      label="删除"
+                      danger
+                      @click="handleDelete(row)"
+                    >
                       <Trash2 class="h-4 w-4" />
                     </RowActionButton>
                   </div>
@@ -177,8 +294,7 @@
         </Table>
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--crm-border-light)] px-5 py-4">
-        <div class="text-sm text-[var(--crm-text-tertiary)]">共 {{ formatNumber(total) }} 条记录</div>
+      <div class="crm-table-footer">
         <DataTablePagination
           :page="currentPage"
           :page-size="pageSize"
@@ -193,11 +309,19 @@
         <DialogHeader>
           <DialogTitle>产品详情</DialogTitle>
         </DialogHeader>
-        <div v-if="viewLoading" class="py-12 text-center text-[var(--crm-text-tertiary)]">加载中...</div>
+        <div v-if="viewLoading" class="py-12 text-center text-[var(--crm-text-tertiary)]">
+          加载中...
+        </div>
         <div v-else class="grid gap-3 sm:grid-cols-2">
-          <div v-for="item in viewItems" :key="item.label" class="rounded-lg border border-[var(--crm-border-light)] bg-[var(--crm-bg-muted)] p-3">
+          <div
+            v-for="item in viewItems"
+            :key="item.label"
+            class="rounded-lg border border-[var(--crm-border-light)] bg-[var(--crm-bg-muted)] p-3"
+          >
             <div class="text-xs text-[var(--crm-text-tertiary)]">{{ item.label }}</div>
-            <div class="mt-1 break-words text-sm font-semibold text-[var(--crm-text-primary)]">{{ item.value }}</div>
+            <div class="mt-1 break-words text-sm font-semibold text-[var(--crm-text-primary)]">
+              {{ item.value }}
+            </div>
           </div>
         </div>
       </DialogContent>
@@ -226,16 +350,14 @@
                 <SelectValue placeholder="请选择分类" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem
-                  v-for="item in categoryOptions"
-                  :key="item.id"
-                  :value="String(item.id)"
-                >
+                <SelectItem v-for="item in categoryOptions" :key="item.id" :value="String(item.id)">
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
             </Select>
-            <p v-if="formErrors.categoryId" class="text-sm text-destructive">{{ formErrors.categoryId }}</p>
+            <p v-if="formErrors.categoryId" class="text-sm text-destructive">
+              {{ formErrors.categoryId }}
+            </p>
           </div>
           <div class="space-y-2">
             <Label for="product-specification">规格</Label>
@@ -272,7 +394,9 @@
                 <NumberFieldIncrement />
               </NumberFieldContent>
             </NumberField>
-            <p v-if="formErrors.minStock" class="text-sm text-destructive">{{ formErrors.minStock }}</p>
+            <p v-if="formErrors.minStock" class="text-sm text-destructive">
+              {{ formErrors.minStock }}
+            </p>
           </div>
           <div class="space-y-2">
             <Label>状态</Label>
@@ -290,7 +414,11 @@
         </form>
         <DialogFooter>
           <Button variant="outline" @click="dialogVisible = false">取消</Button>
-          <Button class="bg-[var(--crm-primary)] hover:bg-[var(--crm-primary-hover)]" :disabled="submitting" @click="onSubmit">
+          <Button
+            class="bg-[var(--crm-primary)] hover:bg-[var(--crm-primary-hover)]"
+            :disabled="submitting"
+            @click="onSubmit"
+          >
             确定
           </Button>
         </DialogFooter>
@@ -302,7 +430,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -345,25 +472,26 @@ import {
   fetchProductPage,
   updateProduct,
 } from '@/modules/product/api/product-api'
-import type { Product, ProductCategory, ProductForm, ProductQuery } from '@/modules/product/model/product.types'
+import type {
+  Product,
+  ProductCategory,
+  ProductForm,
+  ProductQuery,
+} from '@/modules/product/model/product.types'
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import type { EntityId } from '@/shared/types/id'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
-import {
-  formatCurrency,
-  formatNumber,
-  toNumber,
-} from '@/shared/utils/display-format'
+import { formatCurrency, formatNumber, toNumber } from '@/shared/utils/display-format'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
+import { useClientSort } from '@/shared/utils/table-sort'
 import {
   Box,
   Car,
   Eye,
   Package,
   Pencil,
-  Percent,
   Plus,
   Search,
   Shield,
@@ -388,7 +516,6 @@ type ProductFormState = {
   status: string
 }
 
-const router = useRouter()
 const productList = ref<Product[]>([])
 const categoryOptions = ref<ProductCategory[]>([])
 const categoryTotal = ref(0)
@@ -429,26 +556,45 @@ const formErrors = reactive<Record<keyof ProductFormState, string>>({
   status: '',
 })
 
-const listedPageCount = computed(() => productList.value.filter((item) => item.status === '上架').length)
+const listedPageCount = computed(
+  () => productList.value.filter((item) => isListedStatus(item.status)).length,
+)
 const lowStockPageCount = computed(() => productList.value.filter(isLowStock).length)
 const allSelected = computed(() => {
-  const selectableIds = productList.value
+  const selectableIds = displayProductList.value
     .map((item) => item.id)
     .filter((id): id is EntityId => id != null)
   return selectableIds.length > 0 && selectableIds.every((id) => selectedIds.value.includes(id))
 })
+const {
+  sortBy,
+  sortDirection,
+  sortedRows: displayProductList,
+  toggleSort,
+} = useClientSort<Product>(productList, {
+  sku: 'sku',
+  name: 'name',
+  categoryName: 'categoryName',
+  specification: 'specification',
+  price: (row) => toNumber(row.price) ?? 0,
+  stock: 'stock',
+  minStock: 'minStock',
+  status: (row) => formatProductStatus(row.status),
+})
 
-const summaryCards = computed<Array<{
-  label: string
-  value: string
-  description: string
-  icon: Component
-  iconClass: string
-}>>(() => [
+const summaryCards = computed<
+  Array<{
+    label: string
+    value: string
+    description: string
+    icon: Component
+    iconClass: string
+  }>
+>(() => [
   {
     label: '产品总数',
     value: formatNumber(total.value),
-    description: `${formatNumber(categoryTotal.value)} 个分类`,
+    description: '产品记录总数',
     icon: Package,
     iconClass: 'bg-[var(--crm-primary-light)] text-[var(--crm-primary)]',
   },
@@ -485,28 +631,32 @@ const viewItems = computed(() => {
     { label: '价格', value: formatCurrency(item?.price) },
     { label: '库存', value: formatNumber(item?.stock) },
     { label: '最低库存', value: formatNumber(item?.minStock) },
-    { label: '状态', value: item?.status || '--' },
+    { label: '状态', value: formatProductStatus(item?.status) },
   ]
 })
 
 async function loadProducts(): Promise<void> {
   loading.value = true
   try {
-    const params: ProductQuery = {
-      page: currentPage.value,
-      size: pageSize.value,
-    }
     const keyword = searchKeyword.value.trim()
-    if (keyword) {
-      params.name = keyword
-    }
-    if (activeCategoryId.value !== 'all') {
-      params.categoryId = activeCategoryId.value
-    }
+    const hasClientFilter = Boolean(keyword || activeCategoryId.value !== 'all')
+    const params: ProductQuery = hasClientFilter
+      ? { page: 1, size: 1000 }
+      : {
+          page: currentPage.value,
+          size: pageSize.value,
+        }
 
     const result = await fetchProductPage(params)
-    productList.value = result.list ?? []
-    total.value = result.total ?? 0
+    const list = result.list ?? []
+    if (hasClientFilter) {
+      const filteredList = list.filter((item) => matchProductFilters(item, keyword))
+      total.value = filteredList.length
+      productList.value = paginateProducts(filteredList)
+    } else {
+      productList.value = list
+      total.value = result.total ?? 0
+    }
     selectedIds.value = []
   } catch {
     messageTip('加载产品列表失败', 'error')
@@ -542,10 +692,38 @@ function isSelected(id?: EntityId): boolean {
 
 function toggleSelectAll(checked: boolean): void {
   selectedIds.value = checked
-    ? productList.value
-      .map((item) => item.id)
-      .filter((id): id is EntityId => id != null)
+    ? displayProductList.value.map((item) => item.id).filter((id): id is EntityId => id != null)
     : []
+}
+
+function matchProductFilters(row: Product, keyword: string): boolean {
+  const keywordMatched =
+    !keyword ||
+    [row.name, row.sku, row.specification, row.categoryName].some((value) =>
+      String(value ?? '')
+        .toLowerCase()
+        .includes(keyword.toLowerCase()),
+    )
+  const categoryMatched =
+    activeCategoryId.value === 'all' ||
+    String(row.categoryId) === String(activeCategoryId.value) ||
+    (getActiveCategoryName() != null && row.categoryName === getActiveCategoryName())
+
+  return keywordMatched && categoryMatched
+}
+
+function getActiveCategoryName(): string | undefined {
+  if (activeCategoryId.value === 'all') {
+    return undefined
+  }
+  return categoryOptions.value.find(
+    (category) => String(category.id) === String(activeCategoryId.value),
+  )?.name
+}
+
+function paginateProducts(list: Product[]): Product[] {
+  const start = (currentPage.value - 1) * pageSize.value
+  return list.slice(start, start + pageSize.value)
 }
 
 function handleRowSelect(id: EntityId | undefined, checked: boolean): void {
@@ -567,14 +745,34 @@ function isLowStock(row: Product): boolean {
   return minStock > 0 && stock < minStock
 }
 
-function getProductStatusTone(status?: string): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
-  if (status === '上架') {
+function getProductStatusTone(
+  status?: string,
+): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
+  if (isListedStatus(status)) {
     return 'success'
   }
-  if (status === '下架') {
+  if (isUnlistedStatus(status)) {
     return 'muted'
   }
   return 'warning'
+}
+
+function formatProductStatus(status?: string): string {
+  if (isListedStatus(status)) {
+    return '上架'
+  }
+  if (isUnlistedStatus(status)) {
+    return '下架'
+  }
+  return status || '--'
+}
+
+function isListedStatus(status?: string): boolean {
+  return ['上架', 'ON_SHELF', 'ENABLED', 'on_sale', 'ON_SALE'].includes(status ?? '')
+}
+
+function isUnlistedStatus(status?: string): boolean {
+  return ['下架', 'OFF_SHELF', 'DISABLED', 'off_sale', 'OFF_SALE'].includes(status ?? '')
 }
 
 function resolveProductIcon(categoryName?: string): Component {
@@ -705,8 +903,8 @@ async function handleDelete(row: Product): Promise<void> {
     await deleteProduct(row.id)
     messageTip('删除成功', 'success')
     await loadProducts()
-  } catch {
-    messageTip('删除失败', 'error')
+  } catch (error) {
+    messageTip(getProductMutationErrorMessage(error, '删除失败'), 'error')
   }
 }
 
@@ -727,23 +925,19 @@ async function onSubmit(): Promise<void> {
     }
     dialogVisible.value = false
     await loadProducts()
-  } catch {
-    messageTip('操作失败', 'error')
+  } catch (error) {
+    messageTip(getProductMutationErrorMessage(error, '操作失败'), 'error')
   } finally {
     submitting.value = false
   }
 }
 
-function handleCategory(): void {
-  void router.push('/dashboard/product/category')
-}
-
-function handlePromotion(): void {
-  void router.push('/dashboard/product/promotion')
-}
-
-function handleStockAlert(): void {
-  void router.push('/dashboard/product/stock')
+function getProductMutationErrorMessage(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : ''
+  if (message.includes('foreign key') || message.includes('约束') || message.includes('引用')) {
+    return '该产品已被客户、线索或交易引用，不能直接删除'
+  }
+  return message || fallback
 }
 
 function handleCurrentChange(page: number): void {

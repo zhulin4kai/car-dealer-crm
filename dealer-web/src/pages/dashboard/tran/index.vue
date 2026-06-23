@@ -1,143 +1,253 @@
 <template>
-  <div class="p-5">
-    <!-- Search Bar -->
-    <Card class="mb-5">
-      <CardContent class="pt-6">
-        <div class="flex flex-nowrap items-center gap-4">
-          <div class="flex items-center gap-2 shrink-0">
-            <Label class="whitespace-nowrap">交易编号</Label>
-            <Input v-model="searchForm.tranNo" @keyup.enter="handleSearch" placeholder="请输入交易编号" class="w-[200px]" />
+  <div class="crm-data-page">
+    <section class="crm-panel">
+      <div class="crm-panel-body">
+        <div class="crm-toolbar">
+          <div class="crm-field">
+            <Label class="crm-field-label">交易编号</Label>
+            <Input
+              v-model="searchForm.tranNo"
+              @keyup.enter="handleSearch"
+              placeholder="请输入交易编号"
+              class="w-[200px]"
+            />
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <Label class="whitespace-nowrap">客户名称</Label>
-            <Input v-model="searchForm.customerName" @keyup.enter="handleSearch" placeholder="请输入客户名称" class="w-[200px]" />
+          <div class="crm-field">
+            <Label class="crm-field-label">客户名称</Label>
+            <Input
+              v-model="searchForm.customerName"
+              @keyup.enter="handleSearch"
+              placeholder="请输入客户名称"
+              class="w-[200px]"
+            />
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <Label class="whitespace-nowrap">交易状态</Label>
+          <div class="crm-field">
+            <Label class="crm-field-label">交易状态</Label>
             <Select v-model="searchForm.stage">
               <SelectTrigger class="w-[200px]" @keyup.enter="handleSearch">
                 <SelectValue placeholder="请选择状态" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="option in TRAN_STAGE_OPTIONS" :key="option.value" :value="option.value">
+                <SelectItem
+                  v-for="option in TRAN_STAGE_OPTIONS"
+                  :key="option.value"
+                  :value="option.value"
+                >
                   {{ option.label }}
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <Button @click="handleSearch">查询</Button>
-            <Button v-has-permission="PERMISSIONS.tran.create" variant="secondary" @click="handleAdd">新增交易</Button>
-            <Button v-has-permission="PERMISSIONS.tran.delete" variant="destructive" @click="handleBatchDelete" :disabled="selectedIds.length === 0">批量删除</Button>
+          <div class="crm-toolbar-actions">
+            <Button class="gap-2" @click="handleSearch">
+              <Search class="h-4 w-4" />
+              查询
+            </Button>
+            <Button
+              v-has-permission="PERMISSIONS.tran.create"
+              variant="outline"
+              class="gap-2"
+              @click="handleAdd"
+            >
+              <Plus class="h-4 w-4" />
+              新增交易
+            </Button>
+            <Button
+              v-has-permission="PERMISSIONS.tran.delete"
+              variant="destructive"
+              class="gap-2"
+              @click="handleBatchDelete"
+              :disabled="selectedIds.length === 0"
+            >
+              <Trash2 class="h-4 w-4" />
+              批量删除
+            </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
 
-    <!-- Data Table -->
-    <Card class="mb-5">
-      <CardContent class="pt-6">
-        <Table>
-          <TableHeader>
+    <section class="crm-panel">
+      <div class="crm-table-shell">
+        <Table class="min-w-[1080px]">
+          <TableHeader class="bg-[var(--crm-bg-muted)]">
             <TableRow>
               <TableHead class="w-[55px]">
-                <Checkbox
-                  :checked="isAllSelected"
-                  @update:checked="toggleSelectAll"
-                />
+                <Checkbox :checked="isAllSelected" @update:checked="toggleSelectAll" />
               </TableHead>
-              <TableHead class="w-[80px]">序号</TableHead>
-              <TableHead>交易编号</TableHead>
-              <TableHead>客户名称</TableHead>
-              <TableHead>交易金额</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>创建时间</TableHead>
-              <TableHead>操作</TableHead>
+              <TableHead
+                class="w-[80px]"
+                sortable
+                sort-key="index"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >序号</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="tranNo"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >交易编号</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="customerName"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >客户名称</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="amount"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >交易金额</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="stage"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >状态</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="createTime"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >创建时间</TableHead
+              >
+              <TableHead class="w-[180px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <template v-if="loading">
               <TableRow v-for="i in 5" :key="'skel-' + i">
-                <TableCell v-for="j in 8" :key="'skel-c-' + j"><Skeleton class="h-4 w-full" /></TableCell>
+                <TableCell v-for="j in 8" :key="'skel-c-' + j"
+                  ><Skeleton class="h-4 w-full"
+                /></TableCell>
               </TableRow>
             </template>
             <template v-else>
-              <TableRow v-for="(row, idx) in tableData" :key="row.id">
+              <TableRow v-if="displayTranList.length === 0">
+                <TableCell colspan="8" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+                  >暂无交易数据</TableCell
+                >
+              </TableRow>
+              <TableRow v-for="(row, idx) in displayTranList" :key="row.id">
                 <TableCell>
                   <Checkbox
                     :checked="selectedIds.includes(row.id)"
                     @update:checked="(v) => toggleRowSelection(row.id, v)"
                   />
                 </TableCell>
-                <TableCell>{{ startIndex(idx) }}</TableCell>
-                <TableCell class="truncate max-w-[200px]">{{ row.tranNo }}</TableCell>
-                <TableCell class="truncate max-w-[200px]">{{ row.customerName }}</TableCell>
-                <TableCell class="truncate max-w-[200px]">
-                  <span v-if="row.stage === TRAN_STAGE.QUOTATION">?</span>
-                  <span v-else>&yen;{{ row.amount }}</span>
+                <TableCell class="text-[var(--crm-text-tertiary)]">{{ startIndex(idx) }}</TableCell>
+                <TableCell
+                  class="max-w-[200px] truncate font-mono text-xs text-[var(--crm-text-secondary)]"
+                  >{{ row.tranNo }}</TableCell
+                >
+                <TableCell
+                  class="max-w-[200px] truncate font-semibold text-[var(--crm-text-primary)]"
+                  >{{ row.customerName }}</TableCell
+                >
+                <TableCell class="max-w-[200px] truncate">
+                  <span
+                    v-if="row.stage === TRAN_STAGE.QUOTATION"
+                    class="text-[var(--crm-text-tertiary)]"
+                    >待报价</span
+                  >
+                  <span v-else class="font-semibold text-[var(--crm-text-primary)]">{{
+                    formatCurrency(row.amount, { fractionDigits: 0 })
+                  }}</span>
                 </TableCell>
                 <TableCell>
-                  <Badge :class="getBadgeClass(row.stage)">
-                    {{ getStatusText(row.stage) }}
-                  </Badge>
+                  <StatusBadge :label="getStatusText(row.stage)" :tone="getTranTone(row.stage)" />
                 </TableCell>
-                <TableCell class="truncate max-w-[200px]">{{ row.createTime }}</TableCell>
+                <TableCell class="max-w-[200px] truncate">{{ row.createTime }}</TableCell>
                 <TableCell>
-                  <div class="flex gap-1.5 justify-center flex-wrap">
-                    <Button v-has-permission="PERMISSIONS.tran.view" variant="outline" size="sm" @click="handleView(row)">查看</Button>
-                    <Button
+                  <div class="flex items-center gap-1">
+                    <RowActionButton
+                      v-has-permission="PERMISSIONS.tran.view"
+                      label="查看"
+                      @click="handleView(row)"
+                    >
+                      <Eye class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
                       v-if="row.stage === TRAN_STAGE.QUOTATION"
                       v-has-permission="PERMISSIONS.tran.edit"
-                      size="sm"
+                      label="编辑"
                       @click="handleEdit(row)"
-                    >编辑</Button>
-                    <Button
+                    >
+                      <Pencil class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
                       v-if="row.stage === TRAN_STAGE.PENDING"
                       v-has-permission="PERMISSIONS.tran.approve"
-                      variant="secondary"
-                      size="sm"
+                      label="审批"
                       @click="handleApprove(row)"
-                    >审批</Button>
-                    <Button
+                    >
+                      <BadgeCheck class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
                       v-if="row.stage === TRAN_STAGE.APPROVED"
                       v-has-permission="PERMISSIONS.tran.invoice"
-                      variant="outline"
-                      size="sm"
+                      label="开票"
                       @click="handleInvoice(row)"
-                    >开票</Button>
-                    <Button
+                    >
+                      <FileText class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
                       v-if="row.stage === TRAN_STAGE.QUOTATION"
                       v-has-permission="PERMISSIONS.tran.delete"
-                      variant="destructive"
-                      size="sm"
+                      label="删除"
+                      danger
                       @click="handleDelete(row.id)"
-                    >删除</Button>
-                    <Button
+                    >
+                      <Trash2 class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
                       v-if="row.stage === TRAN_STAGE.LOST"
                       v-has-permission="PERMISSIONS.tran.resubmit"
-                      variant="secondary"
-                      size="sm"
+                      label="重新提交"
                       @click="handleResubmit(row)"
-                    >重新提交</Button>
+                    >
+                      <RotateCcw class="h-4 w-4" />
+                    </RowActionButton>
                   </div>
                 </TableCell>
               </TableRow>
             </template>
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
-
-    <!-- Pagination -->
-    <div class="flex items-center justify-center gap-2 mt-3">
-      <Button variant="outline" size="sm" @click="handleCurrentChange(currentPage - 1)" :disabled="currentPage <= 1">上一页</Button>
-      <span class="text-sm text-muted-foreground px-2">{{ currentPage }} / {{ Math.ceil(total / pageSize) || 1 }}</span>
-      <Button variant="outline" size="sm" @click="handleCurrentChange(currentPage + 1)" :disabled="currentPage >= Math.ceil(total / pageSize)">下一页</Button>
-    </div>
+      </div>
+      <div class="crm-table-footer">
+        <DataTablePagination
+          :page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @change="handleCurrentChange"
+        />
+      </div>
+    </section>
 
     <!-- Transaction Edit Dialog -->
     <Dialog v-model:open="dialogOpen">
-      <DialogContent class="max-w-[800px]" @update:open="(v) => { if (!v) handleDialogClose() }">
+      <DialogContent
+        class="max-w-[800px]"
+        @update:open="
+          (v) => {
+            if (!v) handleDialogClose()
+          }
+        "
+      >
         <DialogHeader>
           <DialogTitle>{{ isEdit ? '编辑交易' : '新增交易' }}</DialogTitle>
         </DialogHeader>
@@ -151,7 +261,11 @@
                 <SelectValue placeholder="请选择客户" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="customer in customerOptions" :key="customer.customerId" :value="customer.customerId">
+                <SelectItem
+                  v-for="customer in customerOptions"
+                  :key="customer.customerId"
+                  :value="customer.customerId"
+                >
                   {{ customer.customerName }}
                 </SelectItem>
               </SelectContent>
@@ -164,7 +278,11 @@
             <div v-for="(product, index) in values.products" :key="index" class="space-y-2">
               <Label v-if="index === 0">产品选择</Label>
               <div class="flex items-center gap-2">
-                <Select v-model="product.productId" @update:model-value="(v) => onProductChange(index, v)" class="flex-1">
+                <Select
+                  v-model="product.productId"
+                  @update:model-value="(v) => onProductChange(index, v)"
+                  class="flex-1"
+                >
                   <SelectTrigger class="w-[60%]">
                     <SelectValue placeholder="请选择产品" />
                   </SelectTrigger>
@@ -175,12 +293,7 @@
                   </SelectContent>
                 </Select>
 
-                <NumberField
-                  v-model="product.quantity"
-                  :min="1"
-                  :max="999"
-                  class="w-[25%]"
-                >
+                <NumberField v-model="product.quantity" :min="1" :max="999" class="w-[25%]">
                   <NumberFieldContent>
                     <NumberFieldDecrement />
                     <NumberFieldInput placeholder="数量" />
@@ -195,9 +308,12 @@
                   size="sm"
                   @click="removeProduct(index)"
                   class="w-[10%]"
-                >删除</Button>
+                  >删除</Button
+                >
               </div>
-              <p v-if="errors[`products.${index}.productId`]" class="text-sm text-destructive">{{ errors[`products.${index}.productId`] }}</p>
+              <p v-if="errors[`products.${index}.productId`]" class="text-sm text-destructive">
+                {{ errors[`products.${index}.productId`] }}
+              </p>
             </div>
 
             <Button type="button" variant="outline" @click="addProduct">追加商品</Button>
@@ -213,7 +329,9 @@
           <div class="space-y-2">
             <Label>预计交付日期</Label>
             <Input type="date" v-model="values.expectedDeliveryDate" class="w-full" />
-            <p v-if="errors.expectedDeliveryDate" class="text-sm text-destructive">{{ errors.expectedDeliveryDate }}</p>
+            <p v-if="errors.expectedDeliveryDate" class="text-sm text-destructive">
+              {{ errors.expectedDeliveryDate }}
+            </p>
           </div>
         </form>
 
@@ -232,10 +350,25 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
-import { getTranList, updateTran, createTran, getTranDetail, getTranProducts, deleteTran, batchDeleteTran, resubmitTran } from '@/modules/tran/api/tran-api'
+import {
+  getTranList,
+  updateTran,
+  createTran,
+  getTranDetail,
+  getTranProducts,
+  deleteTran,
+  batchDeleteTran,
+  resubmitTran,
+} from '@/modules/tran/api/tran-api'
 import { getProductList } from '@/modules/product/api/product-api'
 import { getCustomerOptions } from '@/modules/customer/api/customer-api'
-import { TRAN_STAGE, TRAN_STAGE_OPTIONS, getTranStageText, getTranStageType, normalizeTranStage } from '@/modules/tran/model/tran-stage'
+import {
+  TRAN_STAGE,
+  TRAN_STAGE_OPTIONS,
+  getTranStageText,
+  getTranStageType,
+  normalizeTranStage,
+} from '@/modules/tran/model/tran-stage'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
 import { normalizePage } from '@/shared/utils/pagination'
 import { toLocalDateInput } from '@/shared/datetime/local-date'
@@ -246,17 +379,46 @@ import type { Tran } from '@/modules/tran/model/tran.types'
 import { useRouter } from 'vue-router'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { NumberField, NumberFieldContent, NumberFieldInput, NumberFieldIncrement, NumberFieldDecrement } from '@/components/ui/number-field'
+import {
+  NumberField,
+  NumberFieldContent,
+  NumberFieldInput,
+  NumberFieldIncrement,
+  NumberFieldDecrement,
+} from '@/components/ui/number-field'
 import { Skeleton } from '@/components/ui/skeleton'
+import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+import RowActionButton from '@/shared/ui/RowActionButton.vue'
+import StatusBadge from '@/shared/ui/StatusBadge.vue'
+import { formatCurrency } from '@/shared/utils/display-format'
+import { useClientSort } from '@/shared/utils/table-sort'
+import { BadgeCheck, Eye, FileText, Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
 
 const router = useRouter()
 interface TranListRow {
@@ -269,6 +431,19 @@ interface TranListRow {
 }
 
 const tableData = ref<TranListRow[]>([])
+const {
+  sortBy,
+  sortDirection,
+  sortedRows: displayTranList,
+  toggleSort,
+} = useClientSort<TranListRow>(tableData, {
+  index: 'id',
+  tranNo: 'tranNo',
+  customerName: 'customerName',
+  amount: 'amount',
+  stage: (row) => getStatusText(row.stage),
+  createTime: 'createTime',
+})
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -279,7 +454,7 @@ const { loading, run: runTranPage } = useLatestRequest<PageResult<Tran>>()
 const dialogOpen = ref(false)
 const isEdit = ref(false)
 const productOptions = reactive({
-  list: []
+  list: [],
 })
 const customerOptions = ref([])
 
@@ -287,30 +462,38 @@ const searchForm = reactive({
   tranNo: '',
   customerId: '',
   customerName: '',
-  stage: ''
+  stage: '',
 })
 
 // Form schema
-const tranSchema = toTypedSchema(z.object({
-  customerId: z.string().min(1, '请选择客户'),
-  description: z.string().optional().default(''),
-  expectedDeliveryDate: z.string().min(1, '请选择预计交付日期'),
-  products: z.array(z.object({
-    productId: z.string().min(1, '请选择产品'),
-    quantity: z.number().min(1, '数量至少为1').max(999),
-    price: z.number().min(0),
-  })).min(1),
-}))
+const tranSchema = toTypedSchema(
+  z.object({
+    customerId: z.string().min(1, '请选择客户'),
+    description: z.string().optional().default(''),
+    expectedDeliveryDate: z.string().min(1, '请选择预计交付日期'),
+    products: z
+      .array(
+        z.object({
+          productId: z.string().min(1, '请选择产品'),
+          quantity: z.number().min(1, '数量至少为1').max(999),
+          price: z.number().min(0),
+        }),
+      )
+      .min(1),
+  }),
+)
 
-const { handleSubmit, errors, values, isSubmitting, setFieldValue, resetForm, setValues } = useForm({
-  validationSchema: tranSchema,
-  initialValues: {
-    customerId: '',
-    description: '',
-    expectedDeliveryDate: '',
-    products: [{ productId: '', quantity: 1, price: 0 }],
+const { handleSubmit, errors, values, isSubmitting, setFieldValue, resetForm, setValues } = useForm(
+  {
+    validationSchema: tranSchema,
+    initialValues: {
+      customerId: '',
+      description: '',
+      expectedDeliveryDate: '',
+      products: [{ productId: '', quantity: 1, price: 0 }],
+    },
   },
-})
+)
 
 // Internal edit ID (not in form schema)
 let editId = null
@@ -318,26 +501,34 @@ let editId = null
 const getStatusType = getTranStageType
 const getStatusText = getTranStageText
 
-// Badge class mapping
-const getBadgeClass = (stage) => {
+function getTranTone(
+  stage: unknown,
+): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
   const type = getStatusType(stage)
   switch (type) {
-    case 'success': return 'bg-green-600 text-white'
-    case 'warning': return 'bg-yellow-600 text-white'
-    case 'danger': return 'bg-red-600 text-white'
-    case 'info': return ''
-    default: return ''
+    case 'success':
+      return 'success'
+    case 'warning':
+      return 'warning'
+    case 'danger':
+      return 'danger'
+    case 'info':
+      return 'info'
+    case 'primary':
+      return 'purple'
+    default:
+      return 'muted'
   }
 }
 
 // Selection helpers
 const isAllSelected = computed(() => {
-  return tableData.value.length > 0 && selectedIds.value.length === tableData.value.length
+  return displayTranList.value.length > 0 && selectedIds.value.length === displayTranList.value.length
 })
 
 const toggleSelectAll = (checked) => {
   if (checked) {
-    selectedIds.value = tableData.value.map(item => item.id)
+    selectedIds.value = displayTranList.value.map((item) => item.id)
   } else {
     selectedIds.value = []
   }
@@ -349,20 +540,28 @@ const toggleRowSelection = (id, checked) => {
       selectedIds.value.push(id)
     }
   } else {
-    selectedIds.value = selectedIds.value.filter(i => i !== id)
+    selectedIds.value = selectedIds.value.filter((i) => i !== id)
   }
 }
 
 // Fetch transaction list
 const fetchData = async () => {
-  const params = {
-      page: currentPage.value,
-      size: pageSize.value,
-      ...searchForm
+  const params: TranQuery = {
+    page: currentPage.value,
+    size: pageSize.value,
   }
-  const res = await runTranPage(signal => getTranList(params, signal))
+  if (searchForm.tranNo.trim()) {
+    params.tranNo = searchForm.tranNo.trim()
+  }
+  if (searchForm.customerName.trim()) {
+    params.customerName = searchForm.customerName.trim()
+  }
+  if (searchForm.stage) {
+    params.stage = searchForm.stage
+  }
+  const res = await runTranPage((signal) => getTranList(params, signal))
   if (res) {
-    tableData.value = res.list.map(item => ({
+    tableData.value = res.list.map((item) => ({
       id: item.id,
       tranNo: item.tranNo ?? '',
       customerName: item.customerName ?? '',
@@ -441,7 +640,9 @@ const handleBatchDelete = async () => {
 // Resubmit rejected transaction
 const handleResubmit = async (row: Record<string, unknown>) => {
   try {
-    await messageConfirm('确定要重新提交该交易吗？将重新占用库存并清除旧审批记录，如不改动请先进入详情编辑。')
+    await messageConfirm(
+      '确定要重新提交该交易吗？将重新占用库存并清除旧审批记录，如不改动请先进入详情编辑。',
+    )
   } catch {
     messageTip('取消重新提交', 'warning')
     return
@@ -496,7 +697,7 @@ const addProduct = () => {
   values.products.push({
     productId: '',
     quantity: 1,
-    price: 0
+    price: 0,
   })
 }
 
@@ -509,7 +710,7 @@ const removeProduct = (index) => {
 
 // Customer selection change - update customerName
 const onCustomerChange = (customerId) => {
-  const selectedCustomer = customerOptions.value.find(c => c.customerId === customerId)
+  const selectedCustomer = customerOptions.value.find((c) => c.customerId === customerId)
   if (selectedCustomer) {
     setFieldValue('customerName', selectedCustomer.customerName)
   }
@@ -517,7 +718,7 @@ const onCustomerChange = (customerId) => {
 
 // Product selection change - update price
 const onProductChange = (index, productId) => {
-  const selectedProduct = productOptions.list.find(p => p.id === productId)
+  const selectedProduct = productOptions.list.find((p) => p.id === productId)
   if (selectedProduct) {
     setFieldValue(`products.${index}.price`, selectedProduct.price)
   }
@@ -538,7 +739,7 @@ const loadProducts = async () => {
   try {
     const res = await getProductList({
       page: 1,
-      size: 1000
+      size: 1000,
     })
     productOptions.list = res.list
   } catch {
@@ -562,11 +763,14 @@ const fetchTranDetail = async (id) => {
 
     const productRes = await getTranProducts(id)
     if (productRes.length > 0) {
-      setFieldValue('products', productRes.map(item => ({
-        productId: String(item.productId),
-        quantity: item.quantity,
-        price: item.price,
-      })))
+      setFieldValue(
+        'products',
+        productRes.map((item) => ({
+          productId: String(item.productId),
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      )
     }
   } catch {
     messageTip('获取交易详情失败', 'error')
@@ -579,13 +783,14 @@ const onSubmit = handleSubmit(async () => {
     // Format data for API
     const baseRequest = {
       customerId: values.customerId,
-      products: values.products.map(p => ({
+      products: values.products.map((p) => ({
         productId: p.productId,
         quantity: p.quantity,
       })),
       description: values.description,
-      expectedDeliveryDate: values.expectedDeliveryDate ?
-        values.expectedDeliveryDate + ' 00:00:00' : null
+      expectedDeliveryDate: values.expectedDeliveryDate
+        ? values.expectedDeliveryDate + ' 00:00:00'
+        : null,
     }
     if (isEdit.value) {
       if (editId === null) throw new Error('缺少编辑交易ID')

@@ -1,169 +1,287 @@
 <template>
-  <Card class="mb-5">
-    <CardContent>
-      <div class="flex flex-wrap items-end gap-4 mb-5">
-        <div class="space-y-1">
-          <Label>负责人</Label>
-          <Select v-model="activityQuery.ownerId" @update:model-value="loadOwner">
-            <SelectTrigger class="w-[150px]">
-              <SelectValue placeholder="请选择负责人" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+  <div class="crm-data-page">
+    <section class="crm-panel">
+      <div class="crm-panel-body space-y-4">
+        <div class="crm-toolbar">
+          <div class="crm-field">
+            <Label class="crm-field-label">负责人</Label>
+            <Select v-model="activityQuery.ownerId" @update:model-value="loadOwner">
+              <SelectTrigger class="w-[150px]">
+                <SelectValue placeholder="请选择负责人" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
+                  {{ item.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div class="space-y-1">
-          <Label>活动名称</Label>
-          <Input v-model="activityQuery.name" placeholder="请输入活动名称" class="w-[180px]" />
-        </div>
+          <div class="crm-field">
+            <Label class="crm-field-label">活动名称</Label>
+            <Input v-model="activityQuery.name" placeholder="请输入活动名称" class="w-[180px]" />
+          </div>
 
-        <div class="space-y-1">
-          <Label>活动时间</Label>
-          <div class="flex items-center gap-2">
-            <Input type="datetime-local" v-model="searchStartTime" class="w-[200px]" />
-            <span class="text-muted-foreground">至</span>
-            <Input type="datetime-local" v-model="searchEndTime" class="w-[200px]" />
+          <div class="crm-field">
+            <Label class="crm-field-label">活动时间</Label>
+            <div class="flex items-center gap-2">
+              <Input type="datetime-local" v-model="searchStartTime" class="w-[200px]" />
+              <span class="text-muted-foreground">至</span>
+              <Input type="datetime-local" v-model="searchEndTime" class="w-[200px]" />
+            </div>
+          </div>
+
+          <div class="crm-field">
+            <Label class="crm-field-label">活动最低预算</Label>
+            <Input
+              v-model="activityQuery.cost"
+              placeholder="请输入活动最低预算"
+              class="w-[180px]"
+            />
+          </div>
+
+          <div class="crm-field">
+            <Label class="crm-field-label">创建时间</Label>
+            <Input type="datetime-local" v-model="activityQuery.createTime" class="w-[200px]" />
+          </div>
+
+          <div class="crm-toolbar-actions">
+            <Button class="gap-2" @click="onSearch">
+              <Search class="h-4 w-4" />
+              搜索
+            </Button>
+            <Button variant="outline" class="gap-2" @click="onReset">
+              <RotateCcw class="h-4 w-4" />
+              重置
+            </Button>
           </div>
         </div>
 
-        <div class="space-y-1">
-          <Label>活动最低预算</Label>
-          <Input v-model="activityQuery.cost" placeholder="请输入活动最低预算" class="w-[180px]" />
-        </div>
-
-        <div class="space-y-1">
-          <Label>创建时间</Label>
-          <Input type="datetime-local" v-model="activityQuery.createTime" class="w-[200px]" />
-        </div>
-
-        <div class="flex items-end gap-2">
-          <Button @click="onSearch">搜 索</Button>
-          <Button variant="outline" @click="onReset">重 置</Button>
+        <div class="crm-toolbar-actions">
+          <Button v-has-permission="PERMISSIONS.activity.add" class="gap-2" @click="add">
+            <Plus class="h-4 w-4" />
+            录入市场活动
+          </Button>
+          <Button
+            v-has-permission="PERMISSIONS.activity.delete"
+            variant="destructive"
+            class="gap-2"
+            @click="batchDel"
+          >
+            <Trash2 class="h-4 w-4" />
+            批量删除
+          </Button>
         </div>
       </div>
+    </section>
 
-      <div class="flex gap-2">
-        <Button v-has-permission="PERMISSIONS.activity.add" @click="add">录入市场活动</Button>
-        <Button v-has-permission="PERMISSIONS.activity.delete" variant="destructive" @click="batchDel">批量删除</Button>
+    <section class="crm-panel">
+      <div class="crm-table-shell">
+        <Table class="min-w-[1080px]">
+          <TableHeader class="bg-[var(--crm-bg-muted)]">
+            <TableRow>
+              <TableHead class="w-[55px]">
+                <Checkbox :checked="isAllSelected" @update:checked="toggleSelectAll" />
+              </TableHead>
+              <TableHead
+                class="w-[80px]"
+                sortable
+                sort-key="index"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >序号</TableHead
+              >
+              <TableHead
+                class="w-[100px]"
+                sortable
+                sort-key="owner"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >负责人</TableHead
+              >
+              <TableHead
+                class="w-[150px]"
+                sortable
+                sort-key="name"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >活动名称</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="startTime"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >开始时间</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="endTime"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >结束时间</TableHead
+              >
+              <TableHead
+                class="w-[100px]"
+                sortable
+                sort-key="cost"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >活动预算</TableHead
+              >
+              <TableHead
+                sortable
+                sort-key="createTime"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="toggleSort"
+                >创建时间</TableHead
+              >
+              <TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-if="displayActivityList.length === 0">
+              <TableCell colspan="9" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+                >暂无市场活动数据</TableCell
+              >
+            </TableRow>
+            <TableRow v-for="(activity, index) in displayActivityList" :key="activity.id">
+              <TableCell>
+                <Checkbox
+                  :checked="selectedActivityIds.includes(activity.id)"
+                  @update:checked="(checked: boolean) => toggleSelection(activity.id, checked)"
+                />
+              </TableCell>
+              <TableCell class="text-[var(--crm-text-tertiary)]">{{
+                (currentPage - 1) * pageSize + index + 1
+              }}</TableCell>
+              <TableCell class="font-medium text-[var(--crm-text-primary)]">{{
+                activity.ownerDO?.name || '--'
+              }}</TableCell>
+              <TableCell
+                class="max-w-[180px] truncate font-semibold text-[var(--crm-text-primary)]"
+                >{{ activity.name || '--' }}</TableCell
+              >
+              <TableCell class="max-w-[190px] truncate">{{ activity.startTime || '--' }}</TableCell>
+              <TableCell class="max-w-[190px] truncate">{{ activity.endTime || '--' }}</TableCell>
+              <TableCell class="font-semibold text-[var(--crm-text-primary)]">{{
+                formatCurrency(activity.cost, { fractionDigits: 0 })
+              }}</TableCell>
+              <TableCell class="max-w-[190px] truncate">{{
+                activity.createTime || '--'
+              }}</TableCell>
+              <TableCell>
+                <div class="flex items-center gap-1">
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.activity.view"
+                    label="详情"
+                    @click="view(activity.id)"
+                  >
+                    <Eye class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.activity.edit"
+                    label="编辑"
+                    @click="edit(activity.id)"
+                  >
+                    <Pencil class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.activity.delete"
+                    label="删除"
+                    danger
+                    @click="del(activity.id)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </RowActionButton>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
-    </CardContent>
-  </Card>
+      <div class="crm-table-footer">
+        <DataTablePagination
+          :page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @change="toPage"
+        />
+      </div>
+    </section>
 
-  <Card class="mb-5">
-    <CardContent>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead class="w-[55px]">
-              <Checkbox
-                :checked="isAllSelected"
-                @update:checked="toggleSelectAll"
-              />
-            </TableHead>
-            <TableHead class="w-[80px]">序号</TableHead>
-            <TableHead class="w-[100px]">负责人</TableHead>
-            <TableHead class="w-[150px]">活动名称</TableHead>
-            <TableHead>开始时间</TableHead>
-            <TableHead>结束时间</TableHead>
-            <TableHead class="w-[100px]">活动预算</TableHead>
-            <TableHead>创建时间</TableHead>
-            <TableHead>操作</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="(activity, index) in activityList" :key="activity.id">
-            <TableCell>
-              <Checkbox
-                :checked="selectedActivityIds.includes(activity.id)"
-                @update:checked="(checked: boolean) => toggleSelection(activity.id, checked)"
-              />
-            </TableCell>
-            <TableCell>{{ (currentPage - 1) * pageSize + index + 1 }}</TableCell>
-            <TableCell>{{ activity.ownerDO?.name }}</TableCell>
-            <TableCell class="truncate max-w-[150px]">{{ activity.name }}</TableCell>
-            <TableCell class="truncate max-w-[180px]">{{ activity.startTime }}</TableCell>
-            <TableCell class="truncate max-w-[180px]">{{ activity.endTime }}</TableCell>
-            <TableCell>{{ activity.cost }}</TableCell>
-            <TableCell class="truncate max-w-[180px]">{{ activity.createTime }}</TableCell>
-            <TableCell>
-              <div class="flex gap-1">
-                <Button v-has-permission="PERMISSIONS.activity.view" size="sm" @click="view(activity.id)">详情</Button>
-                <Button v-has-permission="PERMISSIONS.activity.edit" size="sm" variant="secondary" @click="edit(activity.id)">编辑</Button>
-                <Button v-has-permission="PERMISSIONS.activity.delete" size="sm" variant="destructive" @click="del(activity.id)">删除</Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </CardContent>
-  </Card>
+    <!-- 活动录入/编辑对话框 -->
+    <Dialog v-model:open="activityDialogVisible">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{{ dialogTitle }}</DialogTitle>
+        </DialogHeader>
 
-  <DataTablePagination :page-size="pageSize" :total="total" @change="toPage" />
+        <form @submit.prevent="onSubmitForm" class="space-y-4">
+          <div class="space-y-2">
+            <Label>负责人</Label>
+            <Select v-model="values.ownerId">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
+                  {{ item.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p v-if="errors.ownerId" class="text-sm text-destructive">{{ errors.ownerId }}</p>
+          </div>
 
-  <!-- 活动录入/编辑对话框 -->
-  <Dialog v-model:open="activityDialogVisible">
-    <DialogContent class="sm:max-w-lg">
-      <DialogHeader>
-        <DialogTitle>{{ dialogTitle }}</DialogTitle>
-      </DialogHeader>
+          <div class="space-y-2">
+            <Label>活动名称</Label>
+            <Input v-model="values.name" placeholder="请输入活动名称" />
+            <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
+          </div>
 
-      <form @submit.prevent="onSubmitForm" class="space-y-4">
-        <div class="space-y-2">
-          <Label>负责人</Label>
-          <Select v-model="values.ownerId">
-            <SelectTrigger class="w-full">
-              <SelectValue placeholder="请选择" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="item in ownerOptions" :key="item.id" :value="item.id">
-                {{ item.name }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <p v-if="errors.ownerId" class="text-sm text-destructive">{{ errors.ownerId }}</p>
-        </div>
+          <div class="space-y-2">
+            <Label>开始时间</Label>
+            <Input type="datetime-local" v-model="values.startTime" class="w-full" />
+            <p v-if="errors.startTime" class="text-sm text-destructive">{{ errors.startTime }}</p>
+          </div>
 
-        <div class="space-y-2">
-          <Label>活动名称</Label>
-          <Input v-model="values.name" placeholder="请输入活动名称" />
-          <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
-        </div>
+          <div class="space-y-2">
+            <Label>结束时间</Label>
+            <Input type="datetime-local" v-model="values.endTime" class="w-full" />
+            <p v-if="errors.endTime" class="text-sm text-destructive">{{ errors.endTime }}</p>
+          </div>
 
-        <div class="space-y-2">
-          <Label>开始时间</Label>
-          <Input type="datetime-local" v-model="values.startTime" class="w-full" />
-          <p v-if="errors.startTime" class="text-sm text-destructive">{{ errors.startTime }}</p>
-        </div>
+          <div class="space-y-2">
+            <Label>活动预算</Label>
+            <Input v-model="values.cost" placeholder="请输入活动预算" />
+            <p v-if="errors.cost" class="text-sm text-destructive">{{ errors.cost }}</p>
+          </div>
 
-        <div class="space-y-2">
-          <Label>结束时间</Label>
-          <Input type="datetime-local" v-model="values.endTime" class="w-full" />
-          <p v-if="errors.endTime" class="text-sm text-destructive">{{ errors.endTime }}</p>
-        </div>
+          <div class="space-y-2">
+            <Label>活动描述</Label>
+            <Textarea v-model="values.description" :rows="6" placeholder="请输入活动描述" />
+            <p v-if="errors.description" class="text-sm text-destructive">
+              {{ errors.description }}
+            </p>
+          </div>
 
-        <div class="space-y-2">
-          <Label>活动预算</Label>
-          <Input v-model="values.cost" placeholder="请输入活动预算" />
-          <p v-if="errors.cost" class="text-sm text-destructive">{{ errors.cost }}</p>
-        </div>
-
-        <div class="space-y-2">
-          <Label>活动描述</Label>
-          <Textarea v-model="values.description" :rows="6" placeholder="请输入活动描述" />
-          <p v-if="errors.description" class="text-sm text-destructive">{{ errors.description }}</p>
-        </div>
-
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="activityDialogVisible = false">取 消</Button>
-          <Button type="submit">提 交</Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="activityDialogVisible = false"
+              >取 消</Button
+            >
+            <Button type="submit">提 交</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -181,33 +299,69 @@ import {
   deleteActivity,
   createActivity,
   updateActivity,
-  getActivityById
+  getActivityById,
 } from '@/modules/activity/api/activity-api'
 import type { Activity } from '@/modules/activity/model/activity.types'
 import type { User } from '@/modules/user/model/user.types'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
+import RowActionButton from '@/shared/ui/RowActionButton.vue'
+import { formatCurrency } from '@/shared/utils/display-format'
+import { useClientSort } from '@/shared/utils/table-sort'
+import { Eye, Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
 
 // 响应式状态
 const router = useRouter()
 const activityQuery = reactive<Record<string, unknown>>({})
 const searchStartTime = ref('')
 const searchEndTime = ref('')
-const activityList = ref([{ ownerDO: {} }])
+const activityList = ref<Activity[]>([])
 const pageSize = ref(10)
 const total = ref(0)
-const ownerOptions = ref([{}])
+const ownerOptions = ref<User[]>([])
 const currentPage = ref(1)
 const selectedActivityIds = ref<(number | string)[]>([])
+const {
+  sortBy,
+  sortDirection,
+  sortedRows: displayActivityList,
+  toggleSort,
+} = useClientSort<Activity>(activityList, {
+  index: (row) => row.id ?? 0,
+  owner: (row) => row.ownerDO?.name ?? '',
+  name: 'name',
+  startTime: 'startTime',
+  endTime: 'endTime',
+  cost: 'cost',
+  createTime: 'createTime',
+})
 
 // 对话框状态
 const activityDialogVisible = ref(false)
@@ -216,15 +370,24 @@ const isEditing = ref(false)
 const editingId = ref<number | string | null>(null)
 
 // 活动表单校验规则 (zod)
-const activityFormSchema = toTypedSchema(z.object({
-  ownerId: z.string().min(1, '请选择负责人'),
-  name: z.string().min(1, '请输入活动名称'),
-  startTime: z.string().min(1, '请选择开始时间'),
-  endTime: z.string().min(1, '请选择结束时间'),
-  cost: z.string().min(1, '请输入活动预算')
-    .refine(v => /^[0-9]+(\.[0-9]{1,2})?$/.test(v), { message: '活动预算必须是整数或最多两位小数' }),
-  description: z.string().min(5, '活动描述长度为5-255个字符').max(255, '活动描述长度为5-255个字符'),
-}))
+const activityFormSchema = toTypedSchema(
+  z.object({
+    ownerId: z.string().min(1, '请选择负责人'),
+    name: z.string().min(1, '请输入活动名称'),
+    startTime: z.string().min(1, '请选择开始时间'),
+    endTime: z.string().min(1, '请选择结束时间'),
+    cost: z
+      .string()
+      .min(1, '请输入活动预算')
+      .refine((v) => /^[0-9]+(\.[0-9]{1,2})?$/.test(v), {
+        message: '活动预算必须是整数或最多两位小数',
+      }),
+    description: z
+      .string()
+      .min(5, '活动描述长度为5-255个字符')
+      .max(255, '活动描述长度为5-255个字符'),
+  }),
+)
 
 const { handleSubmit, errors, values, resetForm, setValues } = useForm({
   validationSchema: activityFormSchema,
@@ -239,19 +402,30 @@ const { handleSubmit, errors, values, resetForm, setValues } = useForm({
 })
 
 // 全选计算
-const isAllSelected = computed(() =>
-  activityList.value.length > 0 && selectedActivityIds.value.length === activityList.value.length
+const isAllSelected = computed(
+  () =>
+    displayActivityList.value.length > 0 &&
+    selectedActivityIds.value.length === displayActivityList.value.length,
 )
 
 const toggleSelectAll = (checked: boolean) => {
-  selectedActivityIds.value = checked ? activityList.value.map((item: Activity) => item.id) : []
+  selectedActivityIds.value = checked
+    ? displayActivityList.value
+        .map((item: Activity) => item.id)
+        .filter((id): id is number | string => id != null)
+    : []
 }
 
-const toggleSelection = (id: number | string, checked: boolean) => {
-  if (checked) {
+const toggleSelection = (id: number | string | undefined, checked: boolean) => {
+  if (id == null) {
+    return
+  }
+  if (checked && !selectedActivityIds.value.includes(id)) {
     selectedActivityIds.value.push(id)
-  } else {
-    selectedActivityIds.value = selectedActivityIds.value.filter((sid: number | string) => sid !== id)
+  } else if (!checked) {
+    selectedActivityIds.value = selectedActivityIds.value.filter(
+      (sid: number | string) => sid !== id,
+    )
   }
 }
 
@@ -265,15 +439,31 @@ const getData = async (current: number) => {
   if (searchEndTime.value) {
     endTime = searchEndTime.value.replace('T', ' ') + ':00'
   }
+  const createTime =
+    typeof activityQuery.createTime === 'string' && activityQuery.createTime
+      ? activityQuery.createTime.replace('T', ' ') + ':00'
+      : ''
 
-  const params = {
-    current: current,
-    ownerId: activityQuery.ownerId,
-    name: activityQuery.name,
-    startTime: startTime,
-    endTime: endTime,
-    cost: activityQuery.cost,
-    createTime: activityQuery.createTime
+  const params: Record<string, unknown> = {
+    current,
+  }
+  if (activityQuery.ownerId) {
+    params.ownerId = activityQuery.ownerId
+  }
+  if (typeof activityQuery.name === 'string' && activityQuery.name.trim()) {
+    params.name = activityQuery.name.trim()
+  }
+  if (startTime) {
+    params.startTime = startTime
+  }
+  if (endTime) {
+    params.endTime = endTime
+  }
+  if (activityQuery.cost) {
+    params.cost = activityQuery.cost
+  }
+  if (createTime) {
+    params.createTime = createTime
   }
 
   try {
@@ -309,7 +499,7 @@ const onSearch = () => {
 
 // 重置搜索
 const onReset = () => {
-  Object.keys(activityQuery).forEach(key => delete activityQuery[key])
+  Object.keys(activityQuery).forEach((key) => delete activityQuery[key])
   searchStartTime.value = ''
   searchEndTime.value = ''
   getData(1)
@@ -334,7 +524,7 @@ const edit = async (id: number | string) => {
 }
 
 const view = (id: number | string) => {
-  router.push("/dashboard/activity/" + id)
+  router.push('/dashboard/activity/' + id)
 }
 
 // 批量删除
