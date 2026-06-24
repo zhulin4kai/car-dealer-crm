@@ -1,12 +1,15 @@
 package com.autodealer.crm.query;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.autodealer.crm.enums.TranStage;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.format.annotation.DateTimeFormat;
 import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -60,4 +63,13 @@ public class TranQuery extends BaseQuery {
     
     /** 发票状态 */
     private String invoiceStatus;
+
+    @JsonIgnore
+    private boolean transactionAllScope;
+
+    @JsonIgnore
+    private boolean transactionApprovalScope;
+
+    @JsonIgnore
+    private List<TranStage> transactionFinanceStages = Collections.emptyList();
 }

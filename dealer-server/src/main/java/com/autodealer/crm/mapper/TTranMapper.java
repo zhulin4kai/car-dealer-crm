@@ -22,7 +22,9 @@ public interface TTranMapper {
     TTran selectByPrimaryKeyForUpdate(Integer id);
 
     TTran selectScopedById(@Param("id") Integer id,
-                           @Param("dataScopeUserId") Integer dataScopeUserId);
+                           @Param("dataScopeUserId") Integer dataScopeUserId,
+                           @Param("transactionApprovalScope") boolean transactionApprovalScope,
+                           @Param("transactionFinanceStages") List<TranStage> transactionFinanceStages);
 
     int updateByPrimaryKeySelective(TTran record);
 

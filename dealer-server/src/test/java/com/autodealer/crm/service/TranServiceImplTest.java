@@ -64,6 +64,8 @@ class TranServiceImplTest {
     void setUp() {
         lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(7);
         lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+        lenient().when(currentUserProvider.getTransactionDataScope())
+                .thenReturn(CurrentUserProvider.TransactionDataScope.all());
         lenient().when(tranHistoryMapper.insert(any())).thenReturn(1);
         lenient().when(tranMapper.incrementVersion(anyInt(), anyInt(), anyInt())).thenReturn(1);
     }
@@ -104,9 +106,22 @@ class TranServiceImplTest {
     @Test
     void getTransactionById_shouldReturnTran() {
         TTran tran = newTran(1, TranStage.QUOTATION);
-        when(currentUserProvider.getDataScopeUserId()).thenReturn(7);
-        when(tranMapper.selectScopedById(1, 7)).thenReturn(tran);
+        when(currentUserProvider.getTransactionDataScope())
+                .thenReturn(CurrentUserProvider.TransactionDataScope.limited(7, false, List.of()));
+        when(tranMapper.selectScopedById(eq(1), eq(7), eq(false), anyList())).thenReturn(tran);
         assertEquals(1, tranService.getTransactionById(1).getId());
+    }
+
+    @Test
+    void getTransactionById_salesManagerCanAccessPendingApprovalScope() {
+        TTran tran = newTran(1, TranStage.PENDING);
+        when(currentUserProvider.getTransactionDataScope())
+                .thenReturn(CurrentUserProvider.TransactionDataScope.limited(7, true, List.of()));
+        when(tranMapper.selectScopedById(eq(1), eq(7), eq(true), anyList())).thenReturn(tran);
+
+        assertEquals(1, tranService.getTransactionById(1).getId());
+
+        verify(tranMapper).selectScopedById(eq(1), eq(7), eq(true), anyList());
     }
 
     @Test
@@ -405,6 +420,20 @@ class TranServiceImplTest {
     }
 
     @Test
+    void approveTran_creatorShouldBeRejectedBeforeStageUpdate() {
+        TTran selfCreated = newTran(1, TranStage.PENDING);
+        selfCreated.setCreateBy(7);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(selfCreated);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> tranService.approveTran(1, true, "ok"));
+
+        assertEquals(CodeEnum.ACCESS_DENIED, exception.getCodeEnum());
+        verify(tranMapper, never()).updateStageAtomic(anyInt(), any(), any(), anyInt());
+        verify(tranApproveMapper, never()).insertSelective(any());
+    }
+
+    @Test
     void createTranInvoice_shouldUseAtomicCAS() {
         TTran existing = newTran(1, TranStage.APPROVED);
         when(tranMapper.updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), any())).thenReturn(1);
@@ -416,6 +445,26 @@ class TranServiceImplTest {
         inv.setAmount(BigDecimal.valueOf(100000));
         inv.setCreateBy(1);
         assertTrue(tranService.createTranInvoice(inv));
+    }
+
+    @Test
+    void createTranInvoice_financeScopeCanAccessApprovedTransaction() {
+        TTran existing = newTran(1, TranStage.APPROVED);
+        List<TranStage> financeStages = List.of(
+                TranStage.APPROVED, TranStage.PAYMENT, TranStage.COMPLETED, TranStage.CANCELLED);
+        when(currentUserProvider.getTransactionDataScope())
+                .thenReturn(CurrentUserProvider.TransactionDataScope.limited(null, false, financeStages));
+        when(tranMapper.selectScopedById(eq(1), isNull(), eq(false), eq(financeStages))).thenReturn(existing);
+        when(tranMapper.updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), any())).thenReturn(1);
+        when(tranInvoiceMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
+        when(tranInvoiceMapper.insertSelective(any())).thenReturn(1);
+
+        TTranInvoice inv = new TTranInvoice();
+        inv.setTranId(1);
+        inv.setAmount(BigDecimal.valueOf(100000));
+
+        assertTrue(tranService.createTranInvoice(inv));
+        verify(tranMapper).selectScopedById(eq(1), isNull(), eq(false), eq(financeStages));
     }
 
     @Test

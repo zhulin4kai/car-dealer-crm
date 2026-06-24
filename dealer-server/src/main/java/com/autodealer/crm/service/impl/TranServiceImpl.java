@@ -584,6 +584,9 @@ public class TranServiceImpl implements TranService {
         }
         TTran tran = requireAccessibleTransaction(tranId);
         Integer approveBy = currentUserProvider.getCurrentUserId();
+        if (approveBy != null && approveBy.equals(tran.getCreateBy())) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "交易创建人不能审批自己的交易");
+        }
         Date now = new Date();
 
         // 原子 CAS：仅 PENDING 阶段可审批
@@ -1048,10 +1051,11 @@ public class TranServiceImpl implements TranService {
     }
 
     private TTran findAccessibleTransaction(Integer tranId) {
-        Integer scopeUserId = currentUserProvider.getDataScopeUserId();
-        return scopeUserId == null
+        CurrentUserProvider.TransactionDataScope scope = currentUserProvider.getTransactionDataScope();
+        return scope.isAll()
                 ? tranMapper.selectByPrimaryKey(tranId)
-                : tranMapper.selectScopedById(tranId, scopeUserId);
+                : tranMapper.selectScopedById(tranId, scope.getSelfUserId(),
+                        scope.isApprovalScope(), scope.getFinanceStages());
     }
 
     private TTran requireAccessibleTransaction(Integer tranId) {

@@ -2,6 +2,7 @@ package com.autodealer.crm.aspect;
 
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.query.BaseQuery;
+import com.autodealer.crm.query.TranQuery;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +45,24 @@ class DataScopeAspectTest {
 
         assertNull(query.getDataScopeUserId());
         verify(joinPoint).proceed();
+    }
+
+    @Test
+    void transactionQueryShouldReceiveTransactionScope() throws Throwable {
+        TranQuery query = new TranQuery();
+        when(joinPoint.getArgs()).thenReturn(new Object[]{query});
+        doAnswer(invocation -> {
+            TranQuery tranQuery = invocation.getArgument(0);
+            tranQuery.setDataScopeUserId(7);
+            tranQuery.setTransactionApprovalScope(true);
+            return null;
+        }).when(currentUserProvider).applyTransactionDataScope(query);
+        when(joinPoint.proceed()).thenReturn("result");
+
+        assertEquals("result", aspect.process(joinPoint));
+        assertEquals(7, query.getDataScopeUserId());
+        assertTrue(query.isTransactionApprovalScope());
+        verify(currentUserProvider, never()).getDataScopeUserId();
     }
 
     @Test

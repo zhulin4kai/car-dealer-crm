@@ -2,6 +2,7 @@ package com.autodealer.crm.aspect;
 
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.query.BaseQuery;
+import com.autodealer.crm.query.TranQuery;
 import jakarta.annotation.Resource;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -30,7 +31,11 @@ public class DataScopeAspect {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("@DataScope 方法必须包含 BaseQuery 参数"));
 
-        query.setDataScopeUserId(currentUserProvider.getDataScopeUserId());
+        if (query instanceof TranQuery tranQuery) {
+            currentUserProvider.applyTransactionDataScope(tranQuery);
+        } else {
+            query.setDataScopeUserId(currentUserProvider.getDataScopeUserId());
+        }
         return joinPoint.proceed();
     }
 }

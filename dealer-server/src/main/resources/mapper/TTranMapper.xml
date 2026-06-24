@@ -39,6 +39,32 @@
     t.create_time, t.create_by, t.edit_time, t.edit_by, t.version, t.promotion_id, t.original_amount, t.discount_amount, t.promotion_snapshot
   </sql>
 
+  <sql id="Transaction_Limited_Data_Scope">
+    <choose>
+      <when test="dataScopeUserId != null or transactionApprovalScope or (transactionFinanceStages != null and transactionFinanceStages.size() > 0)">
+        (
+        <trim prefixOverrides="OR">
+          <if test="dataScopeUserId != null">
+            OR t.create_by = #{dataScopeUserId,jdbcType=INTEGER}
+          </if>
+          <if test="transactionApprovalScope">
+            OR t.stage = 'PENDING'
+          </if>
+          <if test="transactionFinanceStages != null and transactionFinanceStages.size() > 0">
+            OR t.stage IN
+            <foreach collection="transactionFinanceStages" item="financeStage" open="(" close=")" separator=",">
+              #{financeStage,jdbcType=VARCHAR}
+            </foreach>
+          </if>
+        </trim>
+        )
+      </when>
+      <otherwise>
+        (1 = 0)
+      </otherwise>
+    </choose>
+  </sql>
+
   <select id="selectByQuery" parameterType="com.autodealer.crm.query.TranQuery" resultMap="BaseResultMap">
     SELECT DISTINCT
     <include refid="Base_Column_List" />
@@ -82,9 +108,6 @@
       <if test="createBy != null">
         AND t.create_by = #{createBy}
       </if>
-      <if test="dataScopeUserId != null">
-        AND t.create_by = #{dataScopeUserId,jdbcType=INTEGER}
-      </if>
       <if test="productId != null">
         AND tp.product_id = #{productId}
       </if>
@@ -93,6 +116,9 @@
       </if>
       <if test="invoiceStatus != null and invoiceStatus != ''">
         AND ti.status = #{invoiceStatus}
+      </if>
+      <if test="transactionAllScope == false">
+        AND <include refid="Transaction_Limited_Data_Scope" />
       </if>
     </where>
     ORDER BY t.create_time DESC
@@ -112,9 +138,7 @@
     LEFT JOIN t_customer c ON t.customer_id = c.id
     LEFT JOIN t_clue cl ON c.clue_id = cl.id
     WHERE t.id = #{id,jdbcType=INTEGER}
-    <if test="dataScopeUserId != null">
-      AND t.create_by = #{dataScopeUserId,jdbcType=INTEGER}
-    </if>
+    AND <include refid="Transaction_Limited_Data_Scope" />
   </select>
 
   <select id="selectByTotalTranAmount" resultType="java.math.BigDecimal">
