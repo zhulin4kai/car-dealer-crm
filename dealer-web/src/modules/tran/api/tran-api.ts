@@ -8,6 +8,7 @@ import type {
   InvoiceStatusCommand,
   PaymentRequest,
   SettleRequest,
+  SettlementPromotionOption,
   SettlementPreviewRequest,
   SettlementPreviewResponse,
   TPayment,
@@ -45,6 +46,10 @@ export function settleTran(id: EntityId, data: SettleRequest): Promise<Settlemen
 
 export function fetchSettlementPreview(id: EntityId, data: SettlementPreviewRequest): Promise<SettlementPreviewResponse> {
   return httpClient.post<SettlementPreviewResponse>(`/api/tran/${id}/settlement-preview`, data)
+}
+
+export function fetchAvailableSettlementPromotions(id: EntityId): Promise<SettlementPromotionOption[]> {
+  return httpClient.get<SettlementPromotionOption[]>(`/api/tran/${id}/available-promotions`)
 }
 
 export function approveTran(id: EntityId, data: ApproveTranRequest): Promise<boolean> {

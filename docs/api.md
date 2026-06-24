@@ -1174,7 +1174,7 @@ fullName=张三&phone=13800138000&activityId=1&appellation=1&source=1
 
 - **URL**: `/api/tran/{id}/settlement-preview`
 - **Method**: POST
-- **权限**: 需要登录
+- **权限**: 需要权限 `tran:settle`
 - **描述**: 服务端按交易商品快照和可选促销计算原价、优惠和最终金额。
 
 **路径参数**:
@@ -1206,11 +1206,43 @@ fullName=张三&phone=13800138000&activityId=1&appellation=1&source=1
 }
 ```
 
-#### 6.5.2 确认结算
+#### 6.5.2 获取可用促销
+
+- **URL**: `/api/tran/{id}/available-promotions`
+- **Method**: GET
+- **权限**: 需要权限 `tran:settle`
+- **描述**: 获取当前交易商品可用于结算的促销活动，只返回状态有效且处于有效期内的促销。
+
+**路径参数**:
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | Integer | 是 | 交易ID |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": [
+    {
+      "id": 3,
+      "productId": 1,
+      "name": "限时优惠",
+      "type": "AMOUNT",
+      "discount": 10000.00,
+      "startTime": "2026-06-01T00:00:00",
+      "endTime": "2026-06-30T23:59:59",
+      "status": "ACTIVE"
+    }
+  ]
+}
+```
+
+#### 6.5.3 确认结算
 
 - **URL**: `/api/tran/{id}/settle`
 - **Method**: PUT
-- **权限**: 需要登录
+- **权限**: 需要权限 `tran:settle`
 - **描述**: 重新计价并校验版本和指纹，通过 CAS 将交易从 `QUOTATION` 更新为 `PENDING`。
 
 ```json

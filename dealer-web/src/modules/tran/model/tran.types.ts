@@ -126,6 +126,17 @@ export interface SettlementPreviewRequest {
   promotionId?: EntityId
 }
 
+export interface SettlementPromotionOption {
+  id: EntityId
+  productId: EntityId
+  name: string
+  type: string
+  discount: number | string
+  startTime?: string
+  endTime?: string
+  status?: string
+}
+
 export interface SettleRequest {
   promotionId?: EntityId
   expectedVersion: number

@@ -196,4 +196,6 @@ public interface TranService {
     List<TPayment> getTransactionPayments(Integer tranId);
 
     SettlementPreviewResponse getSettlementPreview(Integer tranId, Long promotionId);
+
+    List<TProductPromotion> getAvailablePromotions(Integer tranId);
 }

@@ -128,7 +128,7 @@
                 @sort="toggleSort"
                 >创建时间</TableHead
               >
-              <TableHead class="w-[180px]">操作</TableHead>
+              <TableHead class="w-[220px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -192,6 +192,14 @@
                       @click="handleEdit(row)"
                     >
                       <Pencil class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
+                      v-if="row.stage === TRAN_STAGE.QUOTATION"
+                      v-has-permission="PERMISSIONS.tran.settle"
+                      label="结算"
+                      @click="handleOpenSettlement(row)"
+                    >
+                      <Calculator class="h-4 w-4" />
                     </RowActionButton>
                     <RowActionButton
                       v-if="row.stage === TRAN_STAGE.PENDING"
@@ -346,6 +354,14 @@
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <SettlementDialog
+      v-model:open="settlementDialogOpen"
+      :tran-id="settlementTarget?.id ?? null"
+      :tran-no="settlementTarget?.tranNo"
+      :customer-name="settlementTarget?.customerName"
+      @settled="handleSettlementDone"
+    />
   </div>
 </template>
 
@@ -421,9 +437,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
+import SettlementDialog from '@/modules/tran/components/SettlementDialog.vue'
 import { formatCurrency } from '@/shared/utils/display-format'
 import { useClientSort } from '@/shared/utils/table-sort'
-import { BadgeCheck, Eye, FileText, Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
+import { BadgeCheck, Calculator, Eye, FileText, Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
 
 const router = useRouter()
 interface TranListRow {
@@ -475,6 +492,8 @@ const productOptions = reactive({
 const customerOptions = ref<CustomerOption[]>([])
 const productRows = ref<TranProductFormRow[]>([{ productId: '', quantity: 1, price: 0 }])
 const productErrors = ref<string[]>([])
+const settlementDialogOpen = ref(false)
+const settlementTarget = ref<TranListRow | null>(null)
 
 const searchForm = reactive({
   tranNo: '',
@@ -684,6 +703,20 @@ const handleResubmit = async (row: Record<string, unknown>) => {
     }
   } catch {
     messageTip('重新提交失败，可能是库存不足或状态已变更', 'error')
+  }
+}
+
+function handleOpenSettlement(row: TranListRow): void {
+  settlementTarget.value = row
+  settlementDialogOpen.value = true
+}
+
+async function handleSettlementDone(): Promise<void> {
+  settlementTarget.value = null
+  try {
+    await fetchData()
+  } catch {
+    messageTip('结算已成功，但列表刷新失败', 'warning')
   }
 }
 

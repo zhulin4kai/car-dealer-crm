@@ -24,6 +24,21 @@ public class ProductPromotionServiceImpl implements ProductPromotionService {
         List<TProductPromotion> promotions = promotionMapper.selectList((pageNum - 1) * pageSize, pageSize);
         return new PageInfo<>(promotions);
     }
+
+    @Override
+    public List<TProductPromotion> getAvailablePromotions(List<Long> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> distinctProductIds = productIds.stream()
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        if (distinctProductIds.isEmpty()) {
+            return List.of();
+        }
+        return promotionMapper.selectAvailableByProductIds(distinctProductIds, LocalDateTime.now());
+    }
     
     @Override
     public TProductPromotion getPromotionById(Long id) {

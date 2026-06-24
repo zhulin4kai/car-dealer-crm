@@ -261,12 +261,10 @@ public class TranServiceImpl implements TranService {
             if (promotion == null) {
                 throw new BusinessException(CodeEnum.NOT_FOUND, "促销不存在");
             }
-            if (!"进行中".equals(promotion.getStatus())) {
+            if (!isActivePromotionStatus(promotion.getStatus())) {
                 throw new BusinessException(CodeEnum.FAIL, "促销状态不是进行中");
             }
-            java.time.LocalDateTime now = java.time.LocalDateTime.now();
-            if (promotion.getStartTime() == null || promotion.getEndTime() == null
-                    || now.isBefore(promotion.getStartTime()) || now.isAfter(promotion.getEndTime())) {
+            if (!isPromotionEffectiveNow(promotion)) {
                 throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "促销不在有效期内");
             }
             discountAmount = calculatePromotionDiscount(products, promotion);
@@ -296,6 +294,37 @@ public class TranServiceImpl implements TranService {
             resp.setPromotion(info);
         }
         return resp;
+    }
+
+    @Override
+    public List<TProductPromotion> getAvailablePromotions(Integer tranId) {
+        if (tranId == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "交易 ID 不能为空");
+        }
+        TTran tran = requireAccessibleTransaction(tranId);
+        if (tran.getStage() != TranStage.QUOTATION) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态不是待报价，无法选择促销");
+        }
+        List<TTranProduct> products = tranProductMapper.selectByTranId(tranId);
+        if (products == null || products.isEmpty()) {
+            return List.of();
+        }
+        List<Long> productIds = products.stream()
+                .map(TTranProduct::getProductId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        return promotionService.getAvailablePromotions(productIds);
+    }
+
+    private boolean isActivePromotionStatus(String status) {
+        return "进行中".equals(status) || "ACTIVE".equals(status) || "active".equals(status);
+    }
+
+    private boolean isPromotionEffectiveNow(TProductPromotion promotion) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        return promotion.getStartTime() != null && promotion.getEndTime() != null
+                && !now.isBefore(promotion.getStartTime()) && !now.isAfter(promotion.getEndTime());
     }
 
     private BigDecimal calculateOriginalAmount(List<TTranProduct> products) {

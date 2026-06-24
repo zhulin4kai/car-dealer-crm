@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -216,6 +217,88 @@ class TranServiceImplTest {
         p.setQuantity(quantity);
         p.setPrice(price);
         return p;
+    }
+
+    private TProductPromotion newPromotion(Long id, Long productId, String type, BigDecimal discount, String status) {
+        TProductPromotion promotion = new TProductPromotion();
+        promotion.setId(id);
+        promotion.setProductId(productId);
+        promotion.setName("结算促销");
+        promotion.setType(type);
+        promotion.setDiscount(discount);
+        promotion.setStatus(status);
+        promotion.setStartTime(LocalDateTime.now().minusDays(1));
+        promotion.setEndTime(LocalDateTime.now().plusDays(1));
+        promotion.setUpdateTime(LocalDateTime.now());
+        return promotion;
+    }
+
+    @Test
+    void getAvailablePromotions_shouldUseQuotationProductIds() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(
+                List.of(
+                        newProduct(1, 1, BigDecimal.TEN),
+                        newProduct(1, 2, BigDecimal.TEN),
+                        newProduct(2, 1, BigDecimal.TEN)));
+        List<TProductPromotion> promotions = List.of(
+                newPromotion(10L, 1L, "AMOUNT", BigDecimal.TEN, "进行中"));
+        when(promotionService.getAvailablePromotions(List.of(1L, 2L))).thenReturn(promotions);
+
+        assertEquals(promotions, tranService.getAvailablePromotions(1));
+
+        verify(promotionService).getAvailablePromotions(List.of(1L, 2L));
+    }
+
+    @Test
+    void getAvailablePromotions_nonQuotation_shouldThrowBusinessException() {
+        TTran existing = newTran(1, TranStage.PENDING);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> tranService.getAvailablePromotions(1));
+
+        assertEquals(CodeEnum.TRAN_STATE_CONFLICT, exception.getCodeEnum());
+        verify(promotionService, never()).getAvailablePromotions(anyList());
+    }
+
+    @Test
+    void getSettlementPreview_percentagePromotion_shouldDiscountMatchedProductOnly() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(
+                List.of(
+                        newProduct(1, 2, BigDecimal.valueOf(100)),
+                        newProduct(2, 1, BigDecimal.valueOf(50))));
+        when(promotionService.getPromotionById(10L)).thenReturn(
+                newPromotion(10L, 1L, "PERCENTAGE", new BigDecimal("0.90"), "ACTIVE"));
+
+        SettlementPreviewResponse preview = tranService.getSettlementPreview(1, 10L);
+
+        assertEquals(new BigDecimal("250.00"), preview.getOriginalAmount());
+        assertEquals(new BigDecimal("20.00"), preview.getDiscountAmount());
+        assertEquals(new BigDecimal("230.00"), preview.getFinalAmount());
+        assertNotNull(preview.getPromotion());
+        assertEquals(1L, preview.getPromotion().getProductId());
+    }
+
+    @Test
+    void getSettlementPreview_amountPromotion_shouldCapDiscountAtMatchedAmount() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(
+                List.of(
+                        newProduct(1, 1, BigDecimal.valueOf(100)),
+                        newProduct(2, 1, BigDecimal.valueOf(50))));
+        when(promotionService.getPromotionById(10L)).thenReturn(
+                newPromotion(10L, 1L, "AMOUNT", BigDecimal.valueOf(150), "进行中"));
+
+        SettlementPreviewResponse preview = tranService.getSettlementPreview(1, 10L);
+
+        assertEquals(new BigDecimal("150.00"), preview.getOriginalAmount());
+        assertEquals(new BigDecimal("100.00"), preview.getDiscountAmount());
+        assertEquals(new BigDecimal("50.00"), preview.getFinalAmount());
     }
 
     @Test

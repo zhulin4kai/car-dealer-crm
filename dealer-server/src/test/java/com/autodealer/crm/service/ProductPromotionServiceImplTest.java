@@ -55,6 +55,27 @@ class ProductPromotionServiceImplTest {
     }
 
     @Test
+    void getAvailablePromotions_shouldDeduplicateProductIdsBeforeQuerying() {
+        List<TProductPromotion> promotions = List.of(createPromotion(1L, "可用促销"));
+        when(promotionMapper.selectAvailableByProductIds(eq(List.of(1L, 2L)), any(LocalDateTime.class)))
+                .thenReturn(promotions);
+
+        List<TProductPromotion> result = promotionService.getAvailablePromotions(
+                Arrays.asList(1L, null, 2L, 1L));
+
+        assertEquals(promotions, result);
+        verify(promotionMapper).selectAvailableByProductIds(eq(List.of(1L, 2L)), any(LocalDateTime.class));
+    }
+
+    @Test
+    void getAvailablePromotions_emptyProductIds_shouldNotQueryMapper() {
+        assertTrue(promotionService.getAvailablePromotions(Collections.emptyList()).isEmpty());
+        assertTrue(promotionService.getAvailablePromotions(Collections.singletonList(null)).isEmpty());
+
+        verify(promotionMapper, never()).selectAvailableByProductIds(anyList(), any(LocalDateTime.class));
+    }
+
+    @Test
     void testGetPromotionById() {
         TProductPromotion promotion = createPromotion(1L, "Summer Sale");
         when(promotionMapper.selectById(1L)).thenReturn(promotion);

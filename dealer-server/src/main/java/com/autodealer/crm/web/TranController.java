@@ -119,6 +119,15 @@ public class TranController {
     }
 
     /**
+     * 获取交易当前可用于结算的促销活动。
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_SETTLE + "')")
+    @GetMapping("/{id}/available-promotions")
+    public R<List<TProductPromotion>> availablePromotions(@PathVariable Integer id) {
+        return R.OK(tranService.getAvailablePromotions(id));
+    }
+
+    /**
      * 结算交易（带 CAS 版本控制）
      */
     @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_SETTLE + "')")

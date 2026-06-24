@@ -14,6 +14,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Transactional
 class ProductPromotionMapperIntegrationTest extends BackendIntegrationTestBase {
@@ -48,5 +49,42 @@ class ProductPromotionMapperIntegrationTest extends BackendIntegrationTestBase {
         promotion.setProductId(2L);
         assertEquals(1, promotionMapper.update(promotion));
         assertEquals(2L, promotionMapper.selectById(promotion.getId()).getProductId());
+    }
+
+    @Test
+    @DisplayName("可用促销查询必须按交易商品、状态和有效期过滤")
+    void selectAvailableByProductIds_shouldFilterByProductStatusAndTime() {
+        LocalDateTime now = LocalDateTime.now();
+        TProductPromotion available = insertPromotion(1L, "可用促销", "ACTIVE",
+                now.minusDays(1), now.plusDays(1));
+        insertPromotion(1L, "过期促销", "ACTIVE", now.minusDays(5), now.minusDays(1));
+        insertPromotion(1L, "未开始促销", "ACTIVE", now.plusDays(1), now.plusDays(5));
+        insertPromotion(1L, "暂停促销", "PAUSED", now.minusDays(1), now.plusDays(1));
+        TProductPromotion otherProduct = insertPromotion(2L, "其他商品促销", "进行中",
+                now.minusDays(1), now.plusDays(1));
+
+        List<TProductPromotion> result = promotionMapper.selectAvailableByProductIds(List.of(1L), now);
+
+        assertTrue(result.stream().anyMatch(promotion -> promotion.getId().equals(available.getId())));
+        assertTrue(result.stream().noneMatch(promotion -> promotion.getName().equals("过期促销")));
+        assertTrue(result.stream().noneMatch(promotion -> promotion.getName().equals("未开始促销")));
+        assertTrue(result.stream().noneMatch(promotion -> promotion.getName().equals("暂停促销")));
+        assertTrue(result.stream().noneMatch(promotion -> promotion.getId().equals(otherProduct.getId())));
+    }
+
+    private TProductPromotion insertPromotion(Long productId, String name, String status,
+                                              LocalDateTime startTime, LocalDateTime endTime) {
+        TProductPromotion promotion = new TProductPromotion();
+        promotion.setProductId(productId);
+        promotion.setName(name);
+        promotion.setType("AMOUNT");
+        promotion.setDiscount(new BigDecimal("1000.00"));
+        promotion.setStartTime(startTime);
+        promotion.setEndTime(endTime);
+        promotion.setStatus(status);
+        promotion.setCreateTime(LocalDateTime.now());
+        promotion.setUpdateTime(LocalDateTime.now());
+        assertEquals(1, promotionMapper.insert(promotion));
+        return promotion;
     }
 }

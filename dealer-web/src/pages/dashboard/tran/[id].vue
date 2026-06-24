@@ -62,34 +62,6 @@
             </TableRow>
           </TableBody>
         </Table>
-
-        <!-- Promotion Selection - only shown in QUOTATION stage -->
-        <div v-if="tranDetail.stage === TRAN_STAGE.QUOTATION" class="mt-5 p-5 bg-muted/30 rounded-md border">
-          <div class="text-base font-bold mb-4">促销选择</div>
-          <div class="space-y-4">
-            <div class="space-y-2">
-              <Label>促销活动（可选）</Label>
-              <Select v-model="promotionForm.selectedPromotion" @update:model-value="onPromotionChange">
-                <SelectTrigger class="w-full">
-                  <SelectValue placeholder="请选择促销活动（可选）" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem v-for="promotion in availablePromotions" :key="promotion.id" :value="String(promotion.id)">
-                    {{ promotion.name }} ({{ getPromotionText(promotion) }})
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div v-if="previewLoading" class="text-sm text-muted-foreground">计算中...</div>
-            <div v-else-if="previewError" class="text-sm text-red-500">{{ previewError }}</div>
-            <div v-else-if="previewData" class="p-3 bg-background border rounded-md space-y-1 text-sm">
-              <div>原价：¥{{ previewData.originalAmount.toFixed(2) }}</div>
-              <div v-if="previewData.discountAmount > 0" class="text-green-600">优惠：-¥{{ previewData.discountAmount.toFixed(2) }}</div>
-              <div class="text-lg font-bold text-yellow-600">结算价：¥{{ previewData.finalAmount.toFixed(2) }}</div>
-            </div>
-            <p class="text-xs text-muted-foreground">结算金额由服务端按当前商品与促销规则计算。</p>
-          </div>
-        </div>
       </CardContent>
     </Card>
 
@@ -242,7 +214,6 @@
         v-has-permission="PERMISSIONS.tran.settle"
         variant="secondary"
         @click="handleSettle"
-        :disabled="previewLoading || !previewData"
         v-if="tranDetail.stage === 'QUOTATION'"
       >结算</Button>
       <Button
@@ -264,6 +235,14 @@
         v-if="tranDetail.stage === TRAN_STAGE.PAYMENT"
       >收款</Button>
     </div>
+
+    <SettlementDialog
+      v-model:open="settlementDialogOpen"
+      :tran-id="route.params.id as string"
+      :tran-no="tranDetail.tranNo"
+      :customer-name="tranDetail.customerName"
+      @settled="handleSettlementDone"
+    />
   </div>
 </template>
 
@@ -272,17 +251,14 @@ import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
-import { getTranDetail, getTranInvoiceList, getTranProducts, settleTran, fetchSettlementPreview, getTranPayments, recordPayment, refundPayment } from '@/modules/tran/api/tran-api'
+import { getTranDetail, getTranInvoiceList, getTranProducts, getTranPayments, recordPayment, refundPayment } from '@/modules/tran/api/tran-api'
 import type {
-  SettlementPreviewResponse,
   TPayment,
   TranInvoice,
   TranProduct,
 } from '@/modules/tran/model/tran.types'
 import { TRAN_STAGE, getTranStageText, getTranStageType, normalizeTranStage } from '@/modules/tran/model/tran-stage'
-import { getPromotionList } from '@/modules/product/api/product-api'
-import type { ProductPromotion } from '@/modules/product/model/product.types'
-import type { EntityId } from '@/shared/types/id'
+import SettlementDialog from '@/modules/tran/components/SettlementDialog.vue'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -320,46 +296,7 @@ const tranDetail = ref<TranDetailView>({
 })
 
 const invoiceList = ref<TranInvoice[]>([])
-
-// Promotion data
-const promotionList = ref<ProductPromotion[]>([])
-const promotionForm = ref({
-  selectedPromotion: '' as string,
-})
-
-// Computed properties
-const availablePromotions = computed(() => {
-  const productIds = new Set(tranDetail.value.products.map((product) => String(product.productId)))
-  return promotionList.value.filter(
-    (promotion) =>
-      isActivePromotionStatus(promotion.status) && productIds.has(String(promotion.productId)),
-  )
-})
-
-const selectedPromotionInfo = computed(() => {
-  if (!promotionForm.value.selectedPromotion) return null
-  return promotionList.value.find((p) => String(p.id) === promotionForm.value.selectedPromotion)
-})
-
-const previewLoading = ref(false)
-const previewData = ref<SettlementPreviewResponse | null>(null)
-const previewError = ref<string | null>(null)
-
-async function onPromotionChange(): Promise<void> {
-  previewError.value = null
-  previewData.value = null
-  previewLoading.value = true
-  try {
-    previewData.value = await fetchSettlementPreview(route.params.id as string, {
-      promotionId: promotionForm.value.selectedPromotion || undefined,
-    })
-  } catch {
-    previewError.value = '促销预览失败'
-    previewData.value = null
-  } finally {
-    previewLoading.value = false
-  }
-}
+const settlementDialogOpen = ref(false)
 
 const invoiceStatusMap = {
   'PENDING': { type: 'warning', text: '待开具' },
@@ -404,43 +341,6 @@ const getInvoiceTypeText = (type) => {
   return typeMap[type] || type
 }
 
-// Promotion methods
-const getPromotionText = (promotion) => {
-  const promotionType = promotion.type?.toLowerCase() || ''
-
-  if (promotionType === 'percentage' || promotionType === '折扣') {
-    let discountRate = promotion.discount
-    if (discountRate > 1) {
-      return `${discountRate}折`
-    } else {
-      return `${(discountRate * 100)}折`
-    }
-  } else if (promotionType === 'amount' || promotionType === '满减') {
-    return `满减¥${promotion.discount}`
-  } else if (promotionType === '直降') {
-    return `直降¥${promotion.discount}`
-  } else {
-    return promotion.type || '优惠'
-  }
-}
-
-function isActivePromotionStatus(status?: string): boolean {
-  return ['进行中', 'ACTIVE', 'active'].includes(status ?? '')
-}
-
-// Fetch promotion list
-const fetchPromotionList = async () => {
-  try {
-    const res = await getPromotionList({
-      page: 1,
-      size: 1000
-    })
-    promotionList.value = res.list || []
-  } catch {
-    messageTip('获取促销列表失败', 'error')
-  }
-}
-
 // Fetch transaction detail
 const fetchTranDetail = async () => {
   try {
@@ -478,9 +378,7 @@ const loadTranPageData = async () => {
     fetchProducts(),
     fetchInvoiceInfo(),
     fetchPaymentList(),
-    fetchPromotionList(),
   ])
-  await onPromotionChange()
 }
 
 // Fetch invoice info
@@ -623,37 +521,21 @@ const handleEdit = () => {
 }
 
 // Settle transaction
-const handleSettle = async () => {
+const handleSettle = () => {
   if (!tranDetail.value.products || tranDetail.value.products.length === 0) {
     messageTip('该交易没有产品信息，无法结算', 'error')
     return
   }
-  const preview = previewData.value
-  if (!preview) {
-    messageTip('请先获取有效的服务端结算预览', 'warning')
-    return
-  }
-  const desc = `确认结算该交易吗？\n结算金额：¥${preview.finalAmount.toFixed(2)}`
+  settlementDialogOpen.value = true
+}
+
+const handleSettlementDone = async () => {
   try {
-    const res = await messageConfirm(desc)
-    if (!res) return
-  } catch {
-    return
-  }
-  try {
-    await settleTran(route.params.id as string, {
-      promotionId: preview.promotionId ?? undefined,
-      expectedVersion: preview.transactionVersion,
-      pricingFingerprint: preview.pricingFingerprint,
-    })
-    messageTip('结算成功，交易状态已更新为待审批', 'success')
-    previewData.value = null
-    previewError.value = null
     await fetchTranDetail()
     goBack()
   } catch {
-    messageTip('结算失败，请重新获取促销预览', 'error')
-    previewData.value = null
+    messageTip('结算已成功，但刷新交易详情失败', 'warning')
+    goBack()
   }
 }
 
