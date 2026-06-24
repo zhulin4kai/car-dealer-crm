@@ -7,6 +7,7 @@ import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.TPermissionMapper;
 import com.autodealer.crm.mapper.TRoleMapper;
 import com.autodealer.crm.mapper.TUserMapper;
+import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.audit.AuditActionEnum;
@@ -177,6 +178,19 @@ class UserServiceImplTest {
     }
 
     @Test
+    void lockUser_lastAdmin_shouldRejectBeforeUpdate() {
+        TUser user = new TUser(); user.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tRoleMapper.selectByUserId(2)).thenReturn(List.of(adminRole()));
+        when(tUserMapper.countAdminUsers()).thenReturn(1);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.lockUser(2));
+
+        assertEquals(CodeEnum.ACCESS_DENIED, ex.getCodeEnum());
+        verify(tUserMapper, never()).lockById(anyInt());
+    }
+
+    @Test
     void testUnlockUser() {
         TUser user = new TUser(); user.setId(2);
         when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
@@ -204,6 +218,39 @@ class UserServiceImplTest {
         when(redisManager.delete(anyString())).thenReturn(true);
         userService.assignRoles(r);
         verify(tUserMapper).deleteUserRoles(2);
+    }
+
+    @Test
+    void assignRoles_lastAdminRemoval_shouldRejectBeforeDelete() {
+        AssignUserRolesRequest request = new AssignUserRolesRequest();
+        request.setUserId(2);
+        request.setRoleIds(Collections.emptyList());
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(new TUser());
+        when(tUserMapper.selectRolesByUserId(2)).thenReturn(List.of(adminRole()));
+        when(tUserMapper.countAdminUsers()).thenReturn(1);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.assignRoles(request));
+
+        assertEquals(CodeEnum.ACCESS_DENIED, ex.getCodeEnum());
+        verify(tUserMapper, never()).deleteUserRoles(anyInt());
+        verify(tUserMapper, never()).insertUserRoles(anyInt(), anyList());
+    }
+
+    @Test
+    void assignRoles_keepAdminRole_shouldAllowUpdate() {
+        AssignUserRolesRequest request = new AssignUserRolesRequest();
+        request.setUserId(2);
+        request.setRoleIds(List.of(1));
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(new TUser());
+        when(tUserMapper.selectRolesByUserId(2)).thenReturn(List.of(adminRole()));
+        when(tRoleMapper.selectByPrimaryKey(1)).thenReturn(adminRole());
+        when(tUserMapper.deleteUserRoles(2)).thenReturn(1);
+        when(tUserMapper.insertUserRoles(2, List.of(1))).thenReturn(1);
+
+        userService.assignRoles(request);
+
+        verify(tUserMapper).deleteUserRoles(2);
+        verify(tUserMapper).insertUserRoles(2, List.of(1));
     }
 
     @Test
@@ -237,5 +284,13 @@ class UserServiceImplTest {
         doThrow(new IllegalStateException("审计写入失败"))
                 .when(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, "2");
         assertThrows(IllegalStateException.class, () -> userService.unlockUser(2));
+    }
+
+    private TRole adminRole() {
+        TRole role = new TRole();
+        role.setId(1);
+        role.setRole("admin");
+        role.setEnabled(1);
+        return role;
     }
 }

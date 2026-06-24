@@ -65,7 +65,17 @@
     from t_user tu left join t_user tu2 on tu.create_by = tu2.id left join t_user tu3 on tu.edit_by = tu3.id
     where tu.id = #{id, jdbcType=INTEGER}
   </select>
-  <select id="selectByOwner" resultMap="BaseResultMap"> select id, name from t_user </select>
+  <select id="selectByOwner" resultMap="BaseResultMap">
+    select distinct tu.id, tu.name
+    from t_user tu
+    inner join t_user_role tur on tu.id = tur.user_id
+    inner join t_role tr on tur.role_id = tr.id
+    where tu.account_enabled = 1
+      and tu.account_no_locked = 1
+      and tr.enabled = 1
+      and tr.role in ('sales_consultant', 'sales_manager')
+    order by tu.name asc, tu.id asc
+  </select>
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
     select <include refid="Base_Column_List" /> from t_user where id = #{id, jdbcType=INTEGER}
   </select>
@@ -90,7 +100,7 @@
   <select id="countAdminUsers" resultType="int">
     select count(distinct tu.id) from t_user tu
     inner join t_user_role tur on tu.id = tur.user_id inner join t_role tr on tur.role_id = tr.id
-    where tr.role = 'admin' and tu.account_enabled = 1
+    where tr.role = 'admin' and tr.enabled = 1 and tu.account_enabled = 1 and tu.account_no_locked = 1
   </select>
   <select id="countBusinessReferences" parameterType="java.lang.Integer" resultType="int">
     select (select count(*) from t_activity where owner_id = #{userId, jdbcType=INTEGER})

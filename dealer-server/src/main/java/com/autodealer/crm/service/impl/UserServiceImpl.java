@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
+    private static final String ROLE_ADMIN = "admin";
     private static final int BUILTIN_ADMIN_ID = 1;
     private static final int MIN_PASSWORD_LENGTH = 6;
     private static final int MAX_PASSWORD_LENGTH = 16;
@@ -256,6 +257,10 @@ public class UserServiceImpl implements UserService {
         validateNotSelfOperation(id, "不能锁定当前登录账号");
         requireUserAccess(id);
         if (tUserMapper.selectByPrimaryKey(id) == null) throw new BusinessException(CodeEnum.FAIL, "用户不存在");
+        if (Integer.valueOf(BUILTIN_ADMIN_ID).equals(id)) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "内置管理员不能被锁定");
+        }
+        validateNotLastAdmin(id, "该用户是最后一个有效管理员，不能锁定");
         if (tUserMapper.lockById(id) != 1) throw new BusinessException(CodeEnum.FAIL, "锁定操作失败");
         invalidateUserSession(id);
         clearOwnerListCache();
@@ -309,6 +314,7 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(CodeEnum.FAIL, "用户不存在");
         }
         List<Integer> roleIds = request.getRoleIds() != null ? request.getRoleIds() : Collections.emptyList();
+        validateAdminRoleRetention(request.getUserId(), roleIds);
         tUserMapper.deleteUserRoles(request.getUserId());
         if (!roleIds.isEmpty()) {
             if (tUserMapper.insertUserRoles(request.getUserId(), roleIds) != roleIds.size()) {
@@ -376,14 +382,55 @@ public class UserServiceImpl implements UserService {
     }
 
     private void validateNotLastAdmin(Integer targetUserId) {
+        validateNotLastAdmin(targetUserId, "该用户是最后一个有效管理员，不能禁用");
+    }
+
+    private void validateNotLastAdmin(Integer targetUserId, String message) {
         TUser targetUser = tUserMapper.selectByPrimaryKey(targetUserId);
         if (targetUser == null) return;
         List<TRole> userRoles = tRoleMapper.selectByUserId(targetUserId);
-        if (userRoles.stream().anyMatch(r -> "admin".equals(r.getRole()))) {
+        if (hasAdminRole(userRoles)) {
             if (tUserMapper.countAdminUsers() <= 1) {
-                throw new BusinessException(CodeEnum.ACCESS_DENIED, "该用户是最后一个有效管理员，不能禁用");
+                throw new BusinessException(CodeEnum.ACCESS_DENIED, message);
             }
         }
+    }
+
+    private void validateAdminRoleRetention(Integer targetUserId, List<Integer> newRoleIds) {
+        List<TRole> currentRoles = tUserMapper.selectRolesByUserId(targetUserId);
+        if (!hasAdminRole(currentRoles) || containsAdminRole(newRoleIds)) {
+            return;
+        }
+        if (Integer.valueOf(BUILTIN_ADMIN_ID).equals(targetUserId)) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "内置管理员不能被移除管理员角色");
+        }
+        if (tUserMapper.countAdminUsers() <= 1) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "该用户是最后一个有效管理员，不能移除管理员角色");
+        }
+    }
+
+    private boolean containsAdminRole(List<Integer> roleIds) {
+        for (Integer roleId : roleIds) {
+            if (roleId == null) {
+                continue;
+            }
+            TRole role = tRoleMapper.selectByPrimaryKey(roleId);
+            if (isEnabledRole(role) && ROLE_ADMIN.equals(role.getRole())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdminRole(List<TRole> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return false;
+        }
+        return roles.stream().anyMatch(role -> isEnabledRole(role) && ROLE_ADMIN.equals(role.getRole()));
+    }
+
+    private boolean isEnabledRole(TRole role) {
+        return role != null && (role.getEnabled() == null || role.getEnabled() == 1);
     }
 
     private void requireUserAccess(Integer targetUserId) {

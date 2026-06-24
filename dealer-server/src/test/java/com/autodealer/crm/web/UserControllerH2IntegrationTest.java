@@ -321,13 +321,33 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("GET /api/owner returns the owner list (real SQL, real data)")
-    void owner_returnsRealList() throws Exception {
+    @DisplayName("GET /api/owner returns only enabled unlocked sales owners")
+    void owner_returnsOnlyEnabledUnlockedSalesUsers() throws Exception {
+        int financeId = nextTestId();
+        insertTestUser(financeId, "owner_finance_" + financeId, "测试财务");
+        assignTestRole(financeId, "finance_specialist");
+        int inventoryId = nextTestId();
+        insertTestUser(inventoryId, "owner_inventory_" + inventoryId, "测试库存");
+        assignTestRole(inventoryId, "inventory_specialist");
+        int disabledSalesId = nextTestId();
+        insertTestUser(disabledSalesId, "owner_disabled_" + disabledSalesId, "禁用销售", 1, 0);
+        assignTestRole(disabledSalesId, "sales_consultant");
+        int lockedSalesId = nextTestId();
+        insertTestUser(lockedSalesId, "owner_locked_" + lockedSalesId, "锁定销售", 0, 1);
+        assignTestRole(lockedSalesId, "sales_consultant");
+
         mockMvc.perform(get("/api/owner")
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[?(@.name == '张三')]").exists())
+                .andExpect(jsonPath("$.data[?(@.name == '李四')]").exists())
+                .andExpect(jsonPath("$.data[?(@.name == '管理员')]").doesNotExist())
+                .andExpect(jsonPath("$.data[?(@.name == '测试财务')]").doesNotExist())
+                .andExpect(jsonPath("$.data[?(@.name == '测试库存')]").doesNotExist())
+                .andExpect(jsonPath("$.data[?(@.name == '禁用销售')]").doesNotExist())
+                .andExpect(jsonPath("$.data[?(@.name == '锁定销售')]").doesNotExist());
     }
 
     // ==================== Helpers ====================
@@ -344,14 +364,28 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
      * want to assert on the create path.
      */
     private void insertTestUser(int id, String loginAct, String name) {
+        insertTestUser(id, loginAct, name, 1, 1);
+    }
+
+    private void insertTestUser(int id, String loginAct, String name,
+                                int accountNoLocked, int accountEnabled) {
         jdbcTemplate.update(
                 "INSERT INTO t_user (id, login_act, login_pwd, name, account_no_expired, "
                         + "credentials_no_expired, account_no_locked, account_enabled, create_time, create_by) "
-                        + "VALUES (?, ?, ?, ?, 1, 1, 1, 1, CURRENT_TIMESTAMP, 1)",
+                        + "VALUES (?, ?, ?, ?, 1, 1, ?, ?, CURRENT_TIMESTAMP, 1)",
                 id,
                 loginAct,
                 "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", // BCrypt("password")
-                name);
+                name,
+                accountNoLocked,
+                accountEnabled);
+    }
+
+    private void assignTestRole(int userId, String roleCode) {
+        jdbcTemplate.update(
+                "INSERT INTO t_user_role (user_id, role_id) "
+                        + "SELECT ?, id FROM t_role WHERE role = ?",
+                userId, roleCode);
     }
 
     private Integer findUserIdByLoginAct(String token, String loginAct) throws Exception {
