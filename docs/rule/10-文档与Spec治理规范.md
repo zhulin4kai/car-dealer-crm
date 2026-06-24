@@ -11,7 +11,8 @@ globs: "docs/**/*"
 - `docs/plan/`：方针计划，说明当前现状、目标方案、实施阶段、风险约束和验收标准。
 - `docs/task/`：具体执行任务，说明前置阅读、修改范围、文件落点、执行步骤、完成条件、验证命令和交付说明。
 - `docs/rule/`：长期有效且可执行的开发约束，不记录一次任务过程。
-- `docs/api.md`：请求、响应、HTTP 状态、业务错误码和兼容变化。
+- `docs/api/openapi.yaml`：接口路径、HTTP 方法、参数、请求体、响应体和错误响应契约。
+- `docs/api/api-conventions.md`：API 路径、分页、响应、HTTP 状态、业务错误码、时间格式和兼容规则。
 - `docs/backend.md`：后端模块、分层、基础设施和关键运行机制。
 - `docs/frontend.md`：前端目录、模块、状态、路由和共享能力。
 - `docs/integration.md`：前后端联调、认证、环境变量和本地协作流程。
@@ -47,7 +48,7 @@ globs: "docs/**/*"
 
 ## 更新触发
 
-- API 字段、状态码、错误码变化：更新 `docs/api.md` 和必要联调说明。
+- API 字段、状态码、错误码变化：更新 `docs/api/openapi.yaml`、`docs/api/api-conventions.md` 和必要联调说明。
 - 后端目录、分层、认证、缓存和基础设施变化：更新 `docs/backend.md`。
 - 前端模块、路由、Store、共享 API 和构建命令变化：更新 `docs/frontend.md`。
 - 环境变量、代理、端口和认证联调流程变化：更新 `docs/integration.md`。

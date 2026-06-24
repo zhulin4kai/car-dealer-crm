@@ -1,0 +1,3024 @@
+openapi: 3.0.3
+info:
+  title: 汽车经销商 CRM API
+  version: 1.0.0
+  description: 当前后端 Controller 暴露接口契约。统一规则见 docs/api/api-conventions.md。
+servers:
+  - url: http://localhost:8089
+    description: 本地后端服务
+security:
+  - BearerAuth: []
+tags:
+  - name: Auth
+    description: 登录态与当前用户
+  - name: User
+    description: 用户、角色和负责人
+  - name: Clue
+    description: 线索与线索备注
+  - name: Customer
+    description: 客户与线索转客户
+  - name: Activity
+    description: 市场活动与活动备注
+  - name: Dictionary
+    description: 数据字典类型和值
+  - name: Product
+    description: 车辆商品
+  - name: ProductCategory
+    description: 车辆商品分类
+  - name: ProductPromotion
+    description: 促销政策
+  - name: ProductStock
+    description: 商品库存调整记录
+  - name: Transaction
+    description: 交易、结算、审批、发票、收款和退款
+  - name: Statistic
+    description: 经营统计
+
+paths:
+  /api/login/info:
+    get:
+      tags: [Auth]
+      operationId: getLoginInfo
+      summary: 获取当前登录用户信息
+      responses:
+        "200":
+          $ref: "#/components/responses/UserObject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/login/free:
+    get:
+      tags: [Auth]
+      operationId: checkLoginFree
+      summary: 校验当前登录态是否有效
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/owner:
+    get:
+      tags: [User]
+      operationId: listOwners
+      summary: 查询可选负责人列表
+      responses:
+        "200":
+          description: 查询成功，data 为用户对象数组。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/users:
+    get:
+      tags: [User]
+      operationId: listUsers
+      summary: 分页查询用户列表
+      parameters:
+        - $ref: "#/components/parameters/Current"
+        - name: loginAct
+          in: query
+          schema:
+            type: string
+          description: 登录账号，模糊查询。
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: 用户姓名，模糊查询。
+        - name: phone
+          in: query
+          schema:
+            type: string
+          description: 手机号，模糊查询。
+        - name: email
+          in: query
+          schema:
+            type: string
+          description: 邮箱，模糊查询。
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/user:
+    post:
+      tags: [User]
+      operationId: createUser
+      summary: 新增用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/UserDetailObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [User]
+      operationId: updateUser
+      summary: 更新用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/UserDetailObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/user/{id}:
+    get:
+      tags: [User]
+      operationId: getUser
+      summary: 查询用户详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/UserDetailObject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/user/{id}/disable:
+    put:
+      tags: [User]
+      operationId: disableUser
+      summary: 禁用用户
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/user/{id}/enable:
+    put:
+      tags: [User]
+      operationId: enableUser
+      summary: 启用用户
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/user/{id}/lock:
+    put:
+      tags: [User]
+      operationId: lockUser
+      summary: 锁定用户
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/user/{id}/unlock:
+    put:
+      tags: [User]
+      operationId: unlockUser
+      summary: 解锁用户
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/users/batch-disable:
+    put:
+      tags: [User]
+      operationId: batchDisableUsers
+      summary: 批量禁用用户
+      requestBody:
+        $ref: "#/components/requestBodies/BatchIds"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/user/{id}/roles:
+    put:
+      tags: [User]
+      operationId: assignUserRoles
+      summary: 分配用户角色
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignUserRolesRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/user/{id}/password:
+    put:
+      tags: [User]
+      operationId: changeUserPassword
+      summary: 修改用户密码
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clues:
+    get:
+      tags: [Clue]
+      operationId: listClues
+      summary: 分页查询线索
+      parameters:
+        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/importExcel:
+    post:
+      tags: [Clue]
+      operationId: importCluesFromExcel
+      summary: 导入线索 Excel
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 仅支持 .xlsx，默认最大 5MB。
+      responses:
+        "200":
+          description: 导入成功。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ImportResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: 文件可解析但存在行级导入错误，data 返回 ImportResult。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ImportResult"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue:
+    post:
+      tags: [Clue]
+      operationId: createClue
+      summary: 新增线索
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ClueQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [Clue]
+      operationId: updateClue
+      summary: 更新线索
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ClueQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/{phone}:
+    get:
+      tags: [Clue]
+      operationId: checkCluePhone
+      summary: 校验线索手机号是否可用
+      parameters:
+        - name: phone
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 手机号。
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [Clue]
+      operationId: deleteClue
+      summary: 删除线索
+      parameters:
+        - name: phone
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: 当前实现路径变量名为 phone，删除语义实际传线索 ID。
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/detail/{id}:
+    get:
+      tags: [Clue]
+      operationId: getClue
+      summary: 查询线索详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/batch:
+    post:
+      tags: [Clue]
+      operationId: batchDeleteClues
+      summary: 批量删除线索
+      requestBody:
+        $ref: "#/components/requestBodies/IntegerArray"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/remark:
+    get:
+      tags: [Clue]
+      operationId: listClueRemarks
+      summary: 分页查询线索备注
+      parameters:
+        - $ref: "#/components/parameters/Current"
+        - name: clueId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Clue]
+      operationId: createClueRemark
+      summary: 新增线索备注
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClueRemarkRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/customer/list:
+    get:
+      tags: [Customer]
+      operationId: listCustomers
+      summary: 分页查询客户列表
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: customerName
+          in: query
+          schema:
+            type: string
+        - name: productId
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/customer/options:
+    get:
+      tags: [Customer]
+      operationId: listCustomerOptions
+      summary: 查询客户下拉选项
+      responses:
+        "200":
+          $ref: "#/components/responses/ArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/customer/{id}:
+    get:
+      tags: [Customer]
+      operationId: getCustomer
+      summary: 查询客户详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/customer:
+    post:
+      tags: [Customer]
+      operationId: convertClueToCustomer
+      summary: 线索转客户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConvertCustomerRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/customers:
+    get:
+      tags: [Customer]
+      operationId: listCustomersDeprecated
+      summary: 分页查询客户列表，历史接口
+      deprecated: true
+      parameters:
+        - $ref: "#/components/parameters/Current"
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/exportExcel:
+    get:
+      tags: [Customer]
+      operationId: exportCustomers
+      summary: 导出客户 Excel
+      parameters:
+        - name: ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 逗号分隔客户 ID；为空时导出可见范围内客户。
+      responses:
+        "200":
+          description: Excel 文件。
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/activitys:
+    get:
+      tags: [Activity]
+      operationId: listActivities
+      summary: 分页查询市场活动
+      parameters:
+        - $ref: "#/components/parameters/Current"
+        - name: ownerId
+          in: query
+          schema:
+            type: integer
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/activity:
+    post:
+      tags: [Activity]
+      operationId: createActivity
+      summary: 新增市场活动
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActivityQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [Activity]
+      operationId: updateActivity
+      summary: 更新市场活动
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActivityQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/activity/{id}:
+    get:
+      tags: [Activity]
+      operationId: getActivity
+      summary: 查询市场活动详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [Activity]
+      operationId: deleteActivity
+      summary: 删除市场活动
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/activity/batch:
+    post:
+      tags: [Activity]
+      operationId: batchDeleteActivities
+      summary: 批量删除市场活动
+      requestBody:
+        $ref: "#/components/requestBodies/IntegerArray"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/activity/remark:
+    get:
+      tags: [Activity]
+      operationId: listActivityRemarks
+      summary: 分页查询活动备注
+      parameters:
+        - $ref: "#/components/parameters/Current"
+        - name: activityId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Activity]
+      operationId: createActivityRemark
+      summary: 新增活动备注
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActivityRemarkRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [Activity]
+      operationId: updateActivityRemark
+      summary: 更新活动备注
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityRemarkQuery"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/activity/remark/{id}:
+    get:
+      tags: [Activity]
+      operationId: getActivityRemark
+      summary: 查询活动备注详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [Activity]
+      operationId: deleteActivityRemark
+      summary: 删除活动备注
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/types:
+    get:
+      tags: [Dictionary]
+      operationId: listDictionaryTypes
+      summary: 分页查询字典类型
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: typeCode
+          in: query
+          schema:
+            type: string
+        - name: typeName
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/type/get/{id}:
+    get:
+      tags: [Dictionary]
+      operationId: getDictionaryType
+      summary: 查询字典类型详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/type/create:
+    post:
+      tags: [Dictionary]
+      operationId: createDictionaryType
+      summary: 新增字典类型
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DicTypeRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/type/update/{id}:
+    put:
+      tags: [Dictionary]
+      operationId: updateDictionaryType
+      summary: 更新字典类型
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DicTypeRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/type/delete/{id}:
+    delete:
+      tags: [Dictionary]
+      operationId: deleteDictionaryType
+      summary: 删除字典类型
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/types/batch:
+    delete:
+      tags: [Dictionary]
+      operationId: batchDeleteDictionaryTypes
+      summary: 批量删除字典类型
+      requestBody:
+        $ref: "#/components/requestBodies/IntegerArray"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/values:
+    get:
+      tags: [Dictionary]
+      operationId: listDictionaryValues
+      summary: 分页查询字典值
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: typeCode
+          in: query
+          schema:
+            type: string
+        - name: typeValue
+          in: query
+          schema:
+            type: string
+        - name: valueCode
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/value/get/{id}:
+    get:
+      tags: [Dictionary]
+      operationId: getDictionaryValue
+      summary: 查询字典值详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/value/create:
+    post:
+      tags: [Dictionary]
+      operationId: createDictionaryValue
+      summary: 新增字典值
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DicValueRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/value/update/{id}:
+    put:
+      tags: [Dictionary]
+      operationId: updateDictionaryValue
+      summary: 更新字典值
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DicValueRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/value/delete/{id}:
+    delete:
+      tags: [Dictionary]
+      operationId: deleteDictionaryValue
+      summary: 删除字典值
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/value/batch:
+    delete:
+      tags: [Dictionary]
+      operationId: batchDeleteDictionaryValues
+      summary: 批量删除字典值
+      requestBody:
+        $ref: "#/components/requestBodies/IntegerArray"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/clear:
+    get:
+      tags: [Dictionary]
+      operationId: clearDictionaryCache
+      summary: 清理字典缓存
+      parameters:
+        - name: forceRefresh
+          in: query
+          schema:
+            type: boolean
+          description: 是否清理后立即刷新缓存。
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dict/refresh:
+    get:
+      tags: [Dictionary]
+      operationId: refreshDictionaryCache
+      summary: 刷新字典缓存
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [type, value]
+          description: 为空时刷新全部缓存。
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/products:
+    get:
+      tags: [Product]
+      operationId: listProducts
+      summary: 分页查询商品
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Product]
+      operationId: createProduct
+      summary: 新增商品
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/products/{id}:
+    get:
+      tags: [Product]
+      operationId: getProduct
+      summary: 查询商品详情
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [Product]
+      operationId: updateProduct
+      summary: 更新商品
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [Product]
+      operationId: deleteProduct
+      summary: 删除商品
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/products/stockalerts:
+    get:
+      tags: [Product]
+      operationId: listProductStockAlerts
+      summary: 查询库存预警商品
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: sku
+          in: query
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/product-categories:
+    get:
+      tags: [ProductCategory]
+      operationId: listProductCategories
+      summary: 分页查询商品分类
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [ProductCategory]
+      operationId: createProductCategory
+      summary: 新增商品分类
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCategoryRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/product-categories/{id}:
+    get:
+      tags: [ProductCategory]
+      operationId: getProductCategory
+      summary: 查询商品分类详情
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [ProductCategory]
+      operationId: updateProductCategory
+      summary: 更新商品分类
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCategoryRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [ProductCategory]
+      operationId: deleteProductCategory
+      summary: 删除商品分类
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/product-promotions:
+    get:
+      tags: [ProductPromotion]
+      operationId: listProductPromotions
+      summary: 分页查询促销政策
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [ProductPromotion]
+      operationId: createProductPromotion
+      summary: 新增促销政策
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPromotionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/product-promotions/{id}:
+    get:
+      tags: [ProductPromotion]
+      operationId: getProductPromotion
+      summary: 查询促销政策详情
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [ProductPromotion]
+      operationId: updateProductPromotion
+      summary: 更新促销政策
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPromotionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [ProductPromotion]
+      operationId: deleteProductPromotion
+      summary: 删除促销政策
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/productstock/restock:
+    post:
+      tags: [ProductStock]
+      operationId: restockProduct
+      summary: 商品入库或库存调整
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestockRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/productstock/records/{productId}:
+    get:
+      tags: [ProductStock]
+      operationId: listProductStockRecords
+      summary: 查询商品库存调整记录
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/list:
+    get:
+      tags: [Transaction]
+      operationId: listTransactions
+      summary: 分页查询交易
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: tranNo
+          in: query
+          schema:
+            type: string
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: customerName
+          in: query
+          schema:
+            type: string
+        - name: stage
+          in: query
+          schema:
+            $ref: "#/components/schemas/TranStage"
+        - name: minMoney
+          in: query
+          schema:
+            type: number
+        - name: maxMoney
+          in: query
+          schema:
+            type: number
+        - name: productId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: productName
+          in: query
+          schema:
+            type: string
+        - name: productionStatus
+          in: query
+          schema:
+            type: string
+        - name: invoiceStatus
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/{id}:
+    get:
+      tags: [Transaction]
+      operationId: getTransaction
+      summary: 查询交易详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [Transaction]
+      operationId: deleteTransaction
+      summary: 删除交易
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/StringOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/create:
+    post:
+      tags: [Transaction]
+      operationId: createTransaction
+      summary: 创建交易
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTranRequest"
+      responses:
+        "200":
+          description: 创建成功，data 为交易 ID。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: integer
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/update:
+    put:
+      tags: [Transaction]
+      operationId: updateTransaction
+      summary: 更新交易
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTranRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/BooleanOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/{id}/settlement-preview:
+    post:
+      tags: [Transaction]
+      operationId: previewTransactionSettlement
+      summary: 交易结算预览
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettlementPreviewRequest"
+      responses:
+        "200":
+          description: 预览成功，data 为结算预览。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SettlementPreviewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/{id}/available-promotions:
+    get:
+      tags: [Transaction]
+      operationId: listTransactionAvailablePromotions
+      summary: 查询交易可用促销政策
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/{id}/settle:
+    put:
+      tags: [Transaction]
+      operationId: settleTransaction
+      summary: 结算交易
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettleRequest"
+      responses:
+        "200":
+          description: 结算成功，data 为结算结果。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SettlementPreviewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/approve/{id}:
+    put:
+      tags: [Transaction]
+      operationId: approveTransaction
+      summary: 审批交易
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveTranRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/BooleanOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/approve/info/{tranId}:
+    get:
+      tags: [Transaction]
+      operationId: getTransactionApproveInfo
+      summary: 查询交易审批信息
+      parameters:
+        - $ref: "#/components/parameters/TranId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/invoice:
+    post:
+      tags: [Transaction]
+      operationId: createTransactionInvoice
+      summary: 创建交易发票
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTranInvoiceRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/BooleanOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/invoice/{tranId}:
+    get:
+      tags: [Transaction]
+      operationId: listTransactionInvoices
+      summary: 查询交易发票列表
+      parameters:
+        - $ref: "#/components/parameters/TranId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/invoice/{invoiceId}/status:
+    put:
+      tags: [Transaction]
+      operationId: updateTransactionInvoiceStatus
+      summary: 更新交易发票状态
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInvoiceStatusRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/BooleanOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/remarks/{tranId}:
+    get:
+      tags: [Transaction]
+      operationId: listTransactionRemarks
+      summary: 查询交易备注
+      parameters:
+        - $ref: "#/components/parameters/TranId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/products/{id}:
+    get:
+      tags: [Transaction]
+      operationId: listTransactionProducts
+      summary: 查询交易商品明细
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/batch-delete:
+    post:
+      tags: [Transaction]
+      operationId: batchDeleteTransactions
+      summary: 批量删除交易
+      requestBody:
+        $ref: "#/components/requestBodies/BatchIds"
+      responses:
+        "200":
+          $ref: "#/components/responses/StringOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/resubmit/{id}:
+    put:
+      tags: [Transaction]
+      operationId: resubmitTransaction
+      summary: 审批拒绝后重新提交交易
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/BooleanOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/payment:
+    post:
+      tags: [Transaction]
+      operationId: recordTransactionPayment
+      summary: 记录交易收款
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/payment/{tranId}:
+    get:
+      tags: [Transaction]
+      operationId: listTransactionPayments
+      summary: 查询交易收款记录
+      parameters:
+        - $ref: "#/components/parameters/TranId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/payment/{id}/refund:
+    post:
+      tags: [Transaction]
+      operationId: refundTransactionPayment
+      summary: 对收款记录发起退款
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/summary/data:
+    get:
+      tags: [Statistic]
+      operationId: getSummaryData
+      summary: 查询经营摘要指标
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/saleFunnel/data:
+    get:
+      tags: [Statistic]
+      operationId: getSaleFunnelData
+      summary: 查询销售漏斗数据
+      responses:
+        "200":
+          $ref: "#/components/responses/NameValueArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/sourcePie/data:
+    get:
+      tags: [Statistic]
+      operationId: getSourcePieData
+      summary: 查询线索来源占比数据
+      responses:
+        "200":
+          $ref: "#/components/responses/NameValueArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    LongId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    TranId:
+      name: tranId
+      in: path
+      required: true
+      schema:
+        type: integer
+    Current:
+      name: current
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+      description: 历史分页页码。
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+      description: 历史分页大小。
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+      description: 分页页码。
+    Size:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+      description: 分页大小。
+
+  requestBodies:
+    IntegerArray:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: integer
+    BatchIds:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BatchIdsRequest"
+
+  responses:
+    EmptyOk:
+      description: 操作成功，无业务数据。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/R"
+    BooleanOk:
+      description: 操作成功，data 为布尔结果。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: boolean
+    StringOk:
+      description: 操作成功，data 为字符串结果。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: string
+    ObjectOk:
+      description: 查询成功，data 为对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+    ArrayOk:
+      description: 查询成功，data 为数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+    NameValueArrayOk:
+      description: 查询成功，data 为名称数值数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NameValue"
+    PageOk:
+      description: 分页查询成功，data 为 PageInfo。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PageInfo"
+    UserObject:
+      description: 查询成功，data 为当前用户对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+    UserDetailObject:
+      description: 查询成功，data 为用户详情对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/UserDetailResponse"
+    BadRequest:
+      description: 请求参数错误。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorR"
+    Unauthorized:
+      description: 未认证、Token 无效或 Token 过期。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorR"
+    Forbidden:
+      description: 功能权限或数据权限不足。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorR"
+    NotFound:
+      description: 资源不存在。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorR"
+    Conflict:
+      description: 重复、并发冲突或非法状态迁移。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorR"
+    Unprocessable:
+      description: 请求格式正确但业务对象无法处理。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorR"
+    ServerError:
+      description: 未预期系统异常。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorR"
+
+  schemas:
+    R:
+      type: object
+      required: [code, msg]
+      properties:
+        code:
+          type: integer
+          example: 200
+        msg:
+          type: string
+          example: 操作成功
+        data:
+          nullable: true
+    ErrorR:
+      type: object
+      required: [code, msg]
+      properties:
+        code:
+          type: integer
+          example: 501
+        msg:
+          type: string
+          example: 请求参数格式有误
+        data:
+          nullable: true
+    PageInfo:
+      type: object
+      properties:
+        pageNum:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+          format: int64
+        pages:
+          type: integer
+        list:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        loginAct:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        roleList:
+          type: array
+          items:
+            type: string
+        permissionList:
+          type: array
+          items:
+            type: string
+    UserDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            accountNoExpired:
+              type: integer
+            credentialsNoExpired:
+              type: integer
+            accountNoLocked:
+              type: integer
+            accountEnabled:
+              type: integer
+            createTime:
+              type: string
+              format: date-time
+            editTime:
+              type: string
+              format: date-time
+            lastLoginTime:
+              type: string
+              format: date-time
+    CreateUserRequest:
+      type: object
+      required: [loginAct, loginPwd, name]
+      properties:
+        loginAct:
+          type: string
+        loginPwd:
+          type: string
+          format: password
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+    UpdateUserRequest:
+      type: object
+      required: [id, loginAct, name]
+      properties:
+        id:
+          type: integer
+        loginAct:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+    BatchIdsRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+    AssignUserRolesRequest:
+      type: object
+      required: [roleIds]
+      properties:
+        userId:
+          type: integer
+          description: 由路径 ID 覆盖，客户端无需提交。
+        roleIds:
+          type: array
+          items:
+            type: integer
+    ChangePasswordRequest:
+      type: object
+      required: [newPassword]
+      properties:
+        userId:
+          type: integer
+          description: 由路径 ID 覆盖，客户端无需提交。
+        newPassword:
+          type: string
+          format: password
+    ClueQuery:
+      type: object
+      properties:
+        id:
+          type: integer
+        ownerId:
+          type: integer
+        activityId:
+          type: integer
+        fullName:
+          type: string
+        appellation:
+          type: integer
+        phone:
+          type: string
+        weixin:
+          type: string
+        qq:
+          type: string
+        email:
+          type: string
+          format: email
+        age:
+          type: integer
+        job:
+          type: string
+        yearIncome:
+          type: number
+        address:
+          type: string
+        needLoan:
+          type: integer
+        intentionState:
+          type: integer
+        intentionProduct:
+          type: integer
+        state:
+          type: integer
+        source:
+          type: integer
+        description:
+          type: string
+        nextContactTime:
+          type: string
+          format: date-time
+    CreateClueRemarkRequest:
+      type: object
+      required: [clueId, noteContent]
+      properties:
+        clueId:
+          type: integer
+        noteWay:
+          type: integer
+        noteContent:
+          type: string
+    ConvertCustomerRequest:
+      type: object
+      required: [clueId]
+      properties:
+        clueId:
+          type: integer
+        product:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          default: 1
+        description:
+          type: string
+        nextContactTime:
+          type: string
+          format: date-time
+    ActivityQuery:
+      type: object
+      properties:
+        id:
+          type: integer
+        ownerId:
+          type: integer
+        name:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        cost:
+          type: number
+        description:
+          type: string
+    CreateActivityRemarkRequest:
+      type: object
+      required: [activityId, noteContent]
+      properties:
+        activityId:
+          type: integer
+        noteContent:
+          type: string
+    ActivityRemarkQuery:
+      type: object
+      properties:
+        id:
+          type: integer
+        activityId:
+          type: integer
+        noteContent:
+          type: string
+    DicTypeRequest:
+      type: object
+      required: [typeCode, typeName]
+      properties:
+        typeCode:
+          type: string
+        typeName:
+          type: string
+        remark:
+          type: string
+    DicValueRequest:
+      type: object
+      required: [typeCode, typeValue, valueCode]
+      properties:
+        typeCode:
+          type: string
+        typeValue:
+          type: string
+        valueCode:
+          type: string
+        order:
+          type: integer
+        remark:
+          type: string
+    ProductRequest:
+      type: object
+      required: [sku, name, price]
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        categoryId:
+          type: integer
+          format: int64
+        specification:
+          type: string
+        price:
+          type: number
+        stock:
+          type: integer
+        minStock:
+          type: integer
+        status:
+          type: string
+    ProductCategoryRequest:
+      type: object
+      required: [name, code]
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        sort:
+          type: integer
+        status:
+          type: string
+    ProductPromotionRequest:
+      type: object
+      required: [productId, name, type, discount]
+      properties:
+        productId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        type:
+          type: string
+        discount:
+          type: number
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+    RestockRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+        remark:
+          type: string
+    TranStage:
+      type: string
+      enum:
+        - QUOTATION
+        - PENDING
+        - APPROVED
+        - PAYMENT
+        - COMPLETED
+        - LOST
+        - CANCELLED
+      description: 当前枚举以后端 TranStage 为准。
+    TranProductItemRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          minimum: 1
+    CreateTranRequest:
+      type: object
+      required: [customerId, products]
+      properties:
+        customerId:
+          type: integer
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranProductItemRequest"
+        description:
+          type: string
+        expectedDeliveryDate:
+          type: string
+          format: date-time
+    UpdateTranRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateTranRequest"
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+    SettlementPreviewRequest:
+      type: object
+      properties:
+        promotionId:
+          type: integer
+          format: int64
+    SettleRequest:
+      type: object
+      properties:
+        promotionId:
+          type: integer
+          format: int64
+        expectedVersion:
+          type: integer
+        pricingFingerprint:
+          type: string
+    SettlementPreviewResponse:
+      type: object
+      properties:
+        tranId:
+          type: integer
+        promotionId:
+          type: integer
+          format: int64
+        originalAmount:
+          type: number
+        discountAmount:
+          type: number
+        finalAmount:
+          type: number
+        transactionVersion:
+          type: integer
+        pricingFingerprint:
+          type: string
+        promotion:
+          type: object
+          additionalProperties: true
+    ApproveTranRequest:
+      type: object
+      required: [approved]
+      properties:
+        approved:
+          type: boolean
+        comment:
+          type: string
+    CreateTranInvoiceRequest:
+      type: object
+      required: [tranId, amount, type, title]
+      properties:
+        tranId:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        taxNumber:
+          type: string
+        bankName:
+          type: string
+        bankAccount:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        amount:
+          type: number
+        remark:
+          type: string
+    UpdateInvoiceStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+    CreatePaymentRequest:
+      type: object
+      required: [tranId, amount, paymentMethod, paymentType]
+      properties:
+        tranId:
+          type: integer
+        amount:
+          type: number
+        paymentMethod:
+          type: string
+        paymentType:
+          type: string
+        transactionRef:
+          type: string
+        remark:
+          type: string
+    ImportResult:
+      type: object
+      properties:
+        totalRows:
+          type: integer
+        validRows:
+          type: integer
+        failedRows:
+          type: integer
+        importedCount:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              column:
+                type: string
+              reason:
+                type: string
+    NameValue:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: number

@@ -17,7 +17,7 @@ globs: "dealer-*/src/**/*"
 
 - 写接口使用用途明确的 Request DTO 和 Bean Validation，禁止直接接收持久化 Model。
 - 必填、可空、默认值、长度、金额精度、日期格式和枚举范围必须在契约中明确。
-- JSON 时间字段统一使用 `yyyy-MM-dd HH:mm:ss`；后端必须通过统一 Jackson 配置同时覆盖 `Date` 和 `LocalDateTime`，禁止依赖单个字段临时注解或前端私有格式。
+- 新增或重构接口的 JSON 时间字段统一使用 ISO-8601 带时区字符串；历史接口仍返回 `yyyy-MM-dd HH:mm:ss` 时必须在 `docs/api/openapi.yaml` 标注兼容格式，禁止依赖单个字段临时注解或前端私有格式。
 - 未提供字段与显式 `null` 的语义必须区分；更新接口禁止把未提交字段覆盖为空。
 - 客户端不得提交可信操作人、权限范围、金额汇总和服务端决定的业务状态。
 - 前端必须使用模块 API 和对应 TypeScript 类型，不得在页面临时拼装另一套请求结构。
@@ -65,7 +65,7 @@ globs: "dealer-*/src/**/*"
 - `msg` 用于用户展示，可以优化文案；前端业务分支只能依赖 HTTP 状态和 code。
 - 登录失败对未认证调用方统一返回 `AUTH_LOGIN_FAILED`，不得暴露账号是否存在、锁定或禁用。
 - 未识别 code 由前端统一兜底，不得默认为成功或根据中文 message 猜测。
-- 新增或修改 code 必须同步后端测试、前端错误码映射和 `docs/api.md`。
+- 新增或修改 code 必须同步后端测试、前端错误码映射、`docs/api/openapi.yaml` 和 `docs/api/api-conventions.md`。
 
 ## 兼容与验证
 

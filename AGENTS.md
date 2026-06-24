@@ -12,7 +12,8 @@
 
 ### 顶层文档
 
-- `docs/api.md`：前后端 API、请求响应和错误契约。
+- `docs/api/openapi.yaml`：前后端 API 路径、参数、请求体、响应体和错误响应契约。
+- `docs/api/api-conventions.md`：API 路径、分页、响应、错误码、时间格式和兼容规则。
 - `docs/backend.md`：后端分层、模块和基础设施说明。
 - `docs/frontend.md`：前端目录、状态管理和页面组织说明。
 - `docs/integration.md`：前后端联调、认证和环境协作说明。
