@@ -35,6 +35,53 @@ tags:
     description: 经营统计
 
 paths:
+  /api/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: 登录并获取 JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [loginAct, loginPwd]
+              properties:
+                loginAct:
+                  type: string
+                  description: 登录账号。
+                loginPwd:
+                  type: string
+                  format: password
+                  description: 登录密码。
+                rememberMe:
+                  type: boolean
+                  description: 是否延长登录有效期。
+      responses:
+        "200":
+          $ref: "#/components/responses/StringOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: 退出登录并清理当前 JWT
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/login/info:
     get:
       tags: [Auth]
@@ -425,6 +472,9 @@ paths:
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ClueQuery"
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/ClueQuery"
@@ -448,6 +498,9 @@ paths:
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ClueQuery"
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/ClueQuery"
@@ -776,6 +829,9 @@ paths:
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ActivityQuery"
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/ActivityQuery"
@@ -797,6 +853,9 @@ paths:
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ActivityQuery"
           application/x-www-form-urlencoded:
             schema:
               $ref: "#/components/schemas/ActivityQuery"

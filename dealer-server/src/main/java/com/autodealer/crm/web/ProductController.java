@@ -28,7 +28,7 @@ public class ProductController {
         return R.OK(productService.getProductList(page, size));
     }
 
-    @GetMapping("/{id:[0-9]+}")
+    @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_VIEW + "')")
     public R<TProduct> getProductById(@PathVariable Long id) {
         return R.OK(productService.getProductById(id));
