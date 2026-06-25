@@ -21,9 +21,11 @@ public interface TCustomerMapper {
                                           @Param("maxRows") Integer maxRows);
     int countCustomerByExcel(@Param("idList") List<String> idList,
                              @Param("dataScopeUserId") Integer dataScopeUserId);
-    Integer selectByCount();
+    Integer selectByCount(@Param("dataScopeUserId") Integer dataScopeUserId);
     @DataScope(tableAlias = "tc", tableField = "owner_id")
     List<TCustomer> selectByQuery(CustomerListQuery query);
     List<CustomerOption> selectCustomerOptions(Integer dataScopeUserId);
     TCustomer selectScopedById(@Param("id") Integer id, @Param("dataScopeUserId") Integer dataScopeUserId);
+    int countByClueId(@Param("clueId") Integer clueId);
+    int countByProductId(@Param("productId") Long productId);
 }

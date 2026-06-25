@@ -95,6 +95,11 @@
     </association>
   </resultMap>
 
+  <resultMap id="NameValueResultMap" type="com.autodealer.crm.result.NameValue">
+    <result column="source_name" jdbcType="VARCHAR" property="name" />
+    <result column="source_count" jdbcType="INTEGER" property="value" />
+  </resultMap>
+
   <sql id="Base_Column_List">
     id, owner_id, activity_id, full_name, appellation, phone, weixin, qq, email, age,
     job, year_income, address, need_loan, intention_state, intention_product, `state`,
@@ -141,6 +146,11 @@
     select
       count(0)
     from t_clue
+    <where>
+      <if test="dataScopeUserId != null">
+        owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
+    </where>
   </select>
 
   <select id="selectDetailById" parameterType="java.lang.Integer" resultMap="ClueResultMap">
@@ -188,17 +198,20 @@
     </if>
   </select>
 
-  <select id="selectBySource" resultType="com.autodealer.crm.result.NameValue">
+  <select id="selectBySource" resultMap="NameValueResultMap">
     SELECT
-      count( tc.id ) value,
-      tdv.type_value name
+      count(tc.id) as source_count,
+      tdv.type_value as source_name
     FROM
       t_clue tc
         LEFT JOIN t_dic_value tdv ON tc.source = tdv.id
     WHERE
       tdv.type_value IS NOT NULL
+      <if test="dataScopeUserId != null">
+        AND tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
     GROUP BY
-      tc.source
+      tc.source, tdv.type_value
   </select>
 
   <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
@@ -520,5 +533,11 @@
     <foreach collection="phones" item="phone" open="(" separator="," close=")">
       #{phone,jdbcType=VARCHAR}
     </foreach>
+  </select>
+
+  <select id="countByIntentionProductId" resultType="int">
+    SELECT count(1)
+    FROM t_clue
+    WHERE intention_product = #{productId,jdbcType=BIGINT}
   </select>
 </mapper>

@@ -137,7 +137,14 @@
   </select>
 
   <select id="selectByCount" resultType="java.lang.Integer">
-    select count(0) from t_customer
+    select count(0)
+    from t_customer tct
+      left join t_clue tc on tct.clue_id = tc.id
+    <where>
+      <if test="dataScopeUserId != null">
+        tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
+    </where>
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -241,6 +248,18 @@
     where tc.full_name is not null and tc.full_name != ''
     <if test="dataScopeUserId != null">and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
     order by tc.full_name
+  </select>
+
+  <select id="countByClueId" resultType="int">
+    select count(1)
+    from t_customer
+    where clue_id = #{clueId,jdbcType=INTEGER}
+  </select>
+
+  <select id="countByProductId" resultType="int">
+    select count(1)
+    from t_customer
+    where product = #{productId,jdbcType=BIGINT}
   </select>
 
   <select id="selectScopedById" resultMap="CustomerResultMap">

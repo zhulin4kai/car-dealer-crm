@@ -6,10 +6,13 @@ import com.autodealer.crm.mapper.DicMapper;
 import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TClueRemarkMapper;
+import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TUserMapper;
 import com.autodealer.crm.model.TClue;
+import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.query.ClueQuery;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.ClueServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,6 +41,9 @@ class ClueServiceImplTest {
 
     @Mock
     private TClueRemarkMapper tClueRemarkMapper;
+
+    @Mock
+    private TCustomerMapper tCustomerMapper;
 
     @Mock
     private DicMapper dicMapper;
@@ -101,11 +108,31 @@ class ClueServiceImplTest {
 
         when(tClueMapper.selectByCount("13800138000")).thenReturn(1);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        BusinessException exception = assertThrows(BusinessException.class,
                 () -> clueService.saveClue(query));
 
+        assertEquals(CodeEnum.DUPLICATE, exception.getCodeEnum());
         assertEquals("该手机号已经录入过了，不能再录入", exception.getMessage());
         verify(tClueMapper, never()).insertSelective(any());
+    }
+
+    @Test
+    void saveClue_concurrentDuplicatePhone_shouldReturnDuplicateCode() {
+        ClueQuery query = new ClueQuery();
+        query.setPhone("13800138000");
+        query.setFullName("John Doe");
+
+        when(tClueMapper.selectByCount("13800138000")).thenReturn(0);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1);
+        when(tClueMapper.insertSelective(any(TClue.class)))
+                .thenThrow(new DuplicateKeyException("uk_clue_phone"));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> clueService.saveClue(query));
+
+        assertEquals(CodeEnum.DUPLICATE, exception.getCodeEnum());
+        assertEquals("该手机号已经录入过了，不能再录入", exception.getMessage());
+        verify(auditRecorder, never()).record(any(), any());
     }
 
     @Test
@@ -172,6 +199,7 @@ class ClueServiceImplTest {
     @Test
     void delClueById_success_shouldReturnOne() {
         when(tClueMapper.selectScopedByPrimaryKey(1, null)).thenReturn(clue(1));
+        when(tCustomerMapper.countByClueId(1)).thenReturn(0);
         when(tClueRemarkMapper.deleteByClueId(1)).thenReturn(1);
         when(tClueMapper.deleteByPrimaryKey(1)).thenReturn(1);
 
@@ -198,6 +226,19 @@ class ClueServiceImplTest {
         verify(tClueMapper, never()).deleteByPrimaryKey(999);
     }
 
+    @Test
+    void delClueById_convertedClue_shouldRejectWithoutDeletingHistory() {
+        when(tClueMapper.selectScopedByPrimaryKey(1, null)).thenReturn(clue(1));
+        when(tCustomerMapper.countByClueId(1)).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> clueService.delClueById(1));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(tClueRemarkMapper, never()).deleteByClueId(anyInt());
+        verify(tClueMapper, never()).deleteByPrimaryKey(anyInt());
+    }
+
     // ==================== batchDelClueByIds ====================
 
     @Test
@@ -206,6 +247,7 @@ class ClueServiceImplTest {
 
         when(tClueMapper.selectScopedByPrimaryKey(anyInt(), isNull()))
                 .thenAnswer(invocation -> clue(invocation.getArgument(0)));
+        when(tCustomerMapper.countByClueId(anyInt())).thenReturn(0);
         when(tClueRemarkMapper.deleteByClueId(anyInt())).thenReturn(1);
         when(tClueMapper.batchDeleteByIds(ids)).thenReturn(3);
 
@@ -213,6 +255,22 @@ class ClueServiceImplTest {
 
         assertEquals(3, result);
         verify(tClueMapper).batchDeleteByIds(ids);
+    }
+
+    @Test
+    void batchDelClueByIds_convertedClue_shouldRejectWholeBatchWithoutDeletingHistory() {
+        List<Integer> ids = Arrays.asList(1, 2, 3);
+        when(tClueMapper.selectScopedByPrimaryKey(anyInt(), isNull()))
+                .thenAnswer(invocation -> clue(invocation.getArgument(0)));
+        when(tCustomerMapper.countByClueId(1)).thenReturn(0);
+        when(tCustomerMapper.countByClueId(2)).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> clueService.batchDelClueByIds(ids));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(tClueRemarkMapper, never()).deleteByClueId(anyInt());
+        verify(tClueMapper, never()).batchDeleteByIds(anyList());
     }
 
     @Test

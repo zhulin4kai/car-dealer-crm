@@ -15,6 +15,7 @@ import com.autodealer.crm.mapper.DicMapper;
 import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TClueRemarkMapper;
+import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TUserMapper;
 import com.autodealer.crm.model.TActivity;
@@ -61,6 +62,9 @@ public class ClueServiceImpl implements ClueService {
 
     @Resource
     private TClueRemarkMapper tClueRemarkMapper;
+
+    @Resource
+    private TCustomerMapper tCustomerMapper;
 
     @Resource
     private DicMapper dicMapper;
@@ -187,7 +191,7 @@ public class ClueServiceImpl implements ClueService {
             auditRecorder.record(AuditActionEnum.CLUE_IMPORT, String.valueOf(validClues.size()));
         } catch (DuplicateKeyException e) {
             throw new com.autodealer.crm.exception.BusinessException(
-                    com.autodealer.crm.result.CodeEnum.FAIL,
+                    com.autodealer.crm.result.CodeEnum.DUPLICATE,
                     "导入数据存在唯一键冲突，已全部回滚");
         }
 
@@ -262,7 +266,12 @@ public class ClueServiceImpl implements ClueService {
             tClue.setCreateTime(new Date()); //创建时间
             tClue.setCreateBy(operatorId); //创建人id
 
-            int rows = tClueMapper.insertSelective(tClue);
+            int rows;
+            try {
+                rows = tClueMapper.insertSelective(tClue);
+            } catch (DuplicateKeyException e) {
+                throw new BusinessException(CodeEnum.DUPLICATE, "该手机号已经录入过了，不能再录入", e);
+            }
             if (rows > 0) {
                 auditRecorder.record(AuditActionEnum.CLUE_CREATE, String.valueOf(tClue.getId()));
             }
@@ -308,6 +317,7 @@ public class ClueServiceImpl implements ClueService {
             return 0;
         }
         requireAccessibleClue(id);
+        requireClueNotReferenced(id);
         // 先删除关联的线索备注
         tClueRemarkMapper.deleteByClueId(id);
         // 再删除线索
@@ -326,6 +336,7 @@ public class ClueServiceImpl implements ClueService {
         }
         List<Integer> distinctIds = ids.stream().distinct().sorted().toList();
         distinctIds.forEach(this::requireAccessibleClue);
+        distinctIds.forEach(this::requireClueNotReferenced);
         // 先删除关联的线索备注
         for (Integer id : distinctIds) {
             tClueRemarkMapper.deleteByClueId(id);
@@ -345,5 +356,11 @@ public class ClueServiceImpl implements ClueService {
             throw new BusinessException(CodeEnum.NOT_FOUND, "线索不存在或无权访问");
         }
         return clue;
+    }
+
+    private void requireClueNotReferenced(Integer id) {
+        if (tCustomerMapper.countByClueId(id) > 0) {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, "线索已转客户或存在客户引用，不能删除");
+        }
     }
 }

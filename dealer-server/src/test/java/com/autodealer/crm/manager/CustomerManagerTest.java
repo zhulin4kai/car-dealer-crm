@@ -9,7 +9,6 @@ import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TCustomer;
-import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.service.TranService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,10 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -58,7 +54,7 @@ class CustomerManagerTest {
     }
 
     @Test
-    void testConvertCustomerSuccess() {
+    void convertCustomer_shouldOnlyCreateCustomerFact() {
         ConvertCustomerRequest request = new ConvertCustomerRequest();
         request.setClueId(1);
         request.setProduct(5L);
@@ -68,18 +64,19 @@ class CustomerManagerTest {
         TProduct product = new TProduct();
         product.setId(5L);
         product.setName("比亚迪e2");
-        product.setPrice(new BigDecimal("100000"));
 
         when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
         when(productMapper.selectById(5L)).thenReturn(product);
-        when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
         assertDoesNotThrow(() -> customerManager.convertCustomer(request));
 
         verify(tClueMapper).updateStateToConverted(1, 10, 10);
-        verify(tCustomerMapper).insertSelective(any(TCustomer.class));
-        verify(tranService).createTransaction(any(TTran.class), anyList());
+        verify(tCustomerMapper).insertSelective(argThat(customer ->
+                customer.getClueId().equals(1)
+                        && customer.getProduct().equals(5L)
+                        && "测试客户".equals(customer.getDescription())));
+        verify(tranService, never()).createTransaction(any(), anyList());
     }
 
     @Test
@@ -99,7 +96,7 @@ class CustomerManagerTest {
     }
 
     @Test
-    void testConvertCustomerWithNullProduct() {
+    void convertCustomer_withoutProduct_shouldNotCreateTransaction() {
         ConvertCustomerRequest request = new ConvertCustomerRequest();
         request.setClueId(1);
         request.setProduct(null);
@@ -107,12 +104,11 @@ class CustomerManagerTest {
 
         when(tClueMapper.updateStateToConverted(1, 10, 10)).thenReturn(1);
         when(tCustomerMapper.insertSelective(any(TCustomer.class))).thenReturn(1);
-        when(tranService.createTransaction(any(TTran.class), anyList())).thenReturn(1);
 
         assertDoesNotThrow(() -> customerManager.convertCustomer(request));
 
         verify(tCustomerMapper).insertSelective(any(TCustomer.class));
-        verify(tranService).createTransaction(any(TTran.class), argThat(products -> ((List<?>) products).isEmpty()));
+        verify(tranService, never()).createTransaction(any(), anyList());
     }
 
     @Test

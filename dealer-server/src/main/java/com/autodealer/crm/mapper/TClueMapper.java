@@ -32,11 +32,11 @@ public interface TClueMapper {
 
     int selectByCount(String phone);
 
-    int selectClueByCount();
+    int selectClueByCount(@Param("dataScopeUserId") Integer dataScopeUserId);
 
     TClue selectDetailById(@Param("id") Integer id, @Param("dataScopeUserId") Integer dataScopeUserId);
 
-    List<NameValue> selectBySource();
+    List<NameValue> selectBySource(@Param("dataScopeUserId") Integer dataScopeUserId);
 
     int batchDeleteByIds(List<Integer> ids);
 
@@ -48,4 +48,6 @@ public interface TClueMapper {
      * 批量查询已存在的手机号，用于 Excel 导入时检测数据库重复。
      */
     List<String> selectExistingPhones(@Param("phones") List<String> phones);
+
+    int countByIntentionProductId(@Param("productId") Long productId);
 }
