@@ -106,6 +106,7 @@
     <Card
       class="mb-5"
       v-if="tranDetail.stage === TRAN_STAGE.PAYMENT
+        || tranDetail.stage === TRAN_STAGE.DELIVERY
         || tranDetail.stage === TRAN_STAGE.COMPLETED
         || tranDetail.stage === TRAN_STAGE.CANCELLED"
     >
@@ -115,7 +116,9 @@
           交易已取消，已退款: &yen;{{ totalRefunded.toFixed(2) }}
         </span>
         <span v-else class="text-sm text-muted-foreground">
-          已收: &yen;{{ totalPaid.toFixed(2) }} / 应收: &yen;{{ tranDetail.amount }}
+          已确认: &yen;{{ totalPaid.toFixed(2) }} / 应收: &yen;{{ tranDetail.amount }}
+          <span v-if="pendingAmount > 0" class="text-yellow-600 ml-2">待确认: &yen;{{ pendingAmount.toFixed(2) }}</span>
+          <span v-if="totalRefunded > 0" class="text-red-500 ml-2">已退: &yen;{{ totalRefunded.toFixed(2) }}</span>
           <span v-if="balance > 0" class="text-red-500 ml-2">待收: &yen;{{ balance.toFixed(2) }}</span>
           <span v-else class="text-green-600 ml-2">已收齐</span>
         </span>
@@ -147,12 +150,28 @@
               <TableCell>{{ pay.paymentTime || pay.createTime }}</TableCell>
               <TableCell>
                 <Button
-                  v-if="canRefundPayment(pay)"
-                  v-has-permission="PERMISSIONS.tran.refund"
-                  variant="destructive"
+                  v-if="pay.paymentStatus === 'PENDING'"
+                  v-has-permission="PERMISSIONS.tran.paymentConfirm"
+                  variant="secondary"
                   size="sm"
-                  @click="handleRefund(pay.id)"
-                >退款</Button>
+                  class="mr-2"
+                  @click="handleConfirmPayment(pay)"
+                >确认到账</Button>
+                <Button
+                  v-if="pay.paymentStatus === 'PENDING'"
+                  v-has-permission="PERMISSIONS.tran.paymentConfirm"
+                  variant="outline"
+                  size="sm"
+                  class="mr-2"
+                  @click="openRejectPaymentDialog(pay)"
+                >退回</Button>
+                <Button
+                  v-if="canRequestRefund(pay)"
+                  v-has-permission="PERMISSIONS.tran.refund"
+                  variant="outline"
+                  size="sm"
+                  @click="openRefundRequestDialog(pay)"
+                >申请退款</Button>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -161,21 +180,88 @@
       </CardContent>
     </Card>
 
+    <!-- Refund Requests -->
+    <Card
+      class="mb-5"
+      v-if="refundRequestList.length > 0"
+    >
+      <CardHeader>
+        <CardTitle>退款申请</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>类型</TableHead>
+              <TableHead>金额</TableHead>
+              <TableHead>原因</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>申请时间</TableHead>
+              <TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="request in refundRequestList" :key="request.id">
+              <TableCell>{{ getRefundTypeText(request.refundType) }}</TableCell>
+              <TableCell>&yen;{{ request.amount }}</TableCell>
+              <TableCell>{{ request.reason }}</TableCell>
+              <TableCell>
+                <Badge :class="getRefundStatusClass(request.status)">
+                  {{ getRefundStatusText(request.status) }}
+                </Badge>
+              </TableCell>
+              <TableCell>{{ request.requestedTime || '-' }}</TableCell>
+              <TableCell>
+                <Button
+                  v-if="request.status === 'PENDING_APPROVAL'"
+                  v-has-permission="PERMISSIONS.tran.refundApprove"
+                  variant="secondary"
+                  size="sm"
+                  class="mr-2"
+                  @click="openRefundApprovalDialog(request, true)"
+                >通过</Button>
+                <Button
+                  v-if="request.status === 'PENDING_APPROVAL'"
+                  v-has-permission="PERMISSIONS.tran.refundApprove"
+                  variant="outline"
+                  size="sm"
+                  class="mr-2"
+                  @click="openRefundApprovalDialog(request, false)"
+                >驳回</Button>
+                <Button
+                  v-if="request.status === 'APPROVED'"
+                  v-has-permission="PERMISSIONS.tran.refundExecute"
+                  variant="outline"
+                  size="sm"
+                  @click="openRefundExecuteDialog(request)"
+                >执行退款</Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+
     <!-- Collection Dialog -->
-    <div v-if="showCollectionDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-background p-6 rounded-lg w-[400px] space-y-4">
-        <h3 class="text-lg font-bold">记录收款</h3>
-        <div class="space-y-3">
-          <div>
-            <Label>收款金额</Label>
-            <Input
-              v-model.number="collectionForm.amount"
-              type="number"
-              :min="0.01"
-              :max="balance"
-              step="0.01"
-              placeholder="请输入收款金额"
-            />
+    <Dialog v-model:open="showCollectionDialog">
+      <DialogContent class="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle>登记收款</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-4">
+          <div class="rounded-md border p-3 text-sm">
+            <div class="flex justify-between py-1">
+              <span class="text-muted-foreground">应收金额</span>
+              <span>&yen;{{ tranDetail.amount.toFixed(2) }}</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-muted-foreground">已确认金额</span>
+              <span>&yen;{{ totalPaid.toFixed(2) }}</span>
+            </div>
+            <div class="flex justify-between py-1 font-medium">
+              <span>本次登记金额</span>
+              <span>&yen;{{ balance.toFixed(2) }}</span>
+            </div>
           </div>
           <div>
             <Label>支付方式</Label>
@@ -187,25 +273,113 @@
             </Select>
           </div>
           <div>
-            <Label>收款类型</Label>
-            <Select v-model="collectionForm.paymentType">
-              <SelectTrigger><SelectValue placeholder="选择收款类型" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="t in PAYMENT_TYPES" :key="t.value" :value="t.value">{{ t.label }}</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>外部流水号</Label>
+            <Input v-model="collectionForm.transactionRef" placeholder="银行或第三方支付参考号" />
           </div>
           <div>
             <Label>备注</Label>
             <Input v-model="collectionForm.remark" placeholder="备注（可选）" />
           </div>
         </div>
-        <div class="flex justify-end gap-3">
+        <DialogFooter>
           <Button variant="outline" @click="showCollectionDialog = false">取消</Button>
-          <Button v-has-permission="PERMISSIONS.tran.payment" @click="submitCollection">确认收款</Button>
+          <Button v-has-permission="PERMISSIONS.tran.payment" @click="submitCollection">登记收款</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="paymentRejectDialogOpen">
+      <DialogContent class="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>退回收款</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-3">
+          <Label>退回原因</Label>
+          <Textarea v-model="paymentRejectComment" :rows="4" placeholder="请输入退回原因" />
         </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" @click="paymentRejectDialogOpen = false">取消</Button>
+          <Button v-has-permission="PERMISSIONS.tran.paymentConfirm" variant="secondary" @click="submitRejectPayment">确认退回</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="refundRequestDialogOpen">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>退款申请</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-4">
+          <div class="rounded-md border p-3 text-sm">
+            <div class="flex justify-between py-1">
+              <span class="text-muted-foreground">原收款金额</span>
+              <span>&yen;{{ selectedPayment?.amount?.toFixed(2) || '0.00' }}</span>
+            </div>
+          </div>
+          <div>
+            <Label>退款类型</Label>
+            <Select v-model="refundForm.refundType">
+              <SelectTrigger><SelectValue placeholder="选择退款类型" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="t in REFUND_TYPES" :key="t.value" :value="t.value">{{ t.label }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>退款金额</Label>
+            <Input v-model.number="refundForm.amount" type="number" min="0.01" step="0.01" />
+          </div>
+          <div>
+            <Label>退款原因</Label>
+            <Textarea v-model="refundForm.reason" :rows="4" placeholder="请输入退款原因" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="refundRequestDialogOpen = false">取消</Button>
+          <Button v-has-permission="PERMISSIONS.tran.refund" @click="submitRefundRequest">提交申请</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="refundApprovalDialogOpen">
+      <DialogContent class="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle>{{ refundApprovalApproved ? '审批通过退款' : '驳回退款申请' }}</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-3">
+          <Label>审批意见</Label>
+          <Textarea v-model="refundApprovalComment" :rows="4" :placeholder="refundApprovalApproved ? '审批意见（可选）' : '请输入驳回原因'" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="refundApprovalDialogOpen = false">取消</Button>
+          <Button v-has-permission="PERMISSIONS.tran.refundApprove" @click="submitRefundApproval">
+            {{ refundApprovalApproved ? '确认通过' : '确认驳回' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="refundExecuteDialogOpen">
+      <DialogContent class="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle>执行退款</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-3">
+          <div>
+            <Label>退款参考号</Label>
+            <Input v-model="refundExecuteForm.transactionRef" placeholder="银行或第三方退款参考号" />
+          </div>
+          <div>
+            <Label>执行备注</Label>
+            <Textarea v-model="refundExecuteForm.remark" :rows="3" placeholder="备注（可选）" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="refundExecuteDialogOpen = false">取消</Button>
+          <Button v-has-permission="PERMISSIONS.tran.refundExecute" @click="submitRefundExecute">执行退款</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <!-- Action Buttons -->
     <div class="flex justify-center gap-5 mt-5">
@@ -233,7 +407,7 @@
         variant="secondary"
         @click="showCollectionDialog = true"
         v-if="tranDetail.stage === TRAN_STAGE.PAYMENT"
-      >收款</Button>
+      >登记收款</Button>
     </div>
 
     <SettlementDialog
@@ -251,8 +425,21 @@ import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
-import { getTranDetail, getTranInvoiceList, getTranProducts, getTranPayments, recordPayment, refundPayment } from '@/modules/tran/api/tran-api'
+import {
+  approveRefundRequest,
+  confirmPayment,
+  createRefundRequest,
+  executeRefundRequest,
+  fetchTranRefundRequests,
+  getTranDetail,
+  getTranInvoiceList,
+  getTranPayments,
+  getTranProducts,
+  recordPayment,
+} from '@/modules/tran/api/tran-api'
 import type {
+  RefundType,
+  TRefundRequest,
   TPayment,
   TranInvoice,
   TranProduct,
@@ -267,6 +454,14 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 const route = useRoute()
 const router = useRouter()
@@ -378,6 +573,7 @@ const loadTranPageData = async () => {
     fetchProducts(),
     fetchInvoiceInfo(),
     fetchPaymentList(),
+    fetchRefundRequestList(),
   ])
 }
 
@@ -393,12 +589,30 @@ const fetchInvoiceInfo = async () => {
 
 // Payment
 const paymentList = ref<TPayment[]>([])
+const refundRequestList = ref<TRefundRequest[]>([])
 const showCollectionDialog = ref(false)
 const collectionForm = ref({
-  amount: 0,
   paymentMethod: '',
-  paymentType: 'FULL',
+  transactionRef: '',
   remark: ''
+})
+const paymentRejectDialogOpen = ref(false)
+const selectedPayment = ref<TPayment | null>(null)
+const paymentRejectComment = ref('')
+const refundRequestDialogOpen = ref(false)
+const refundForm = ref<{ refundType: RefundType; amount: number; reason: string }>({
+  refundType: 'ORDER_CANCEL',
+  amount: 0,
+  reason: '',
+})
+const refundApprovalDialogOpen = ref(false)
+const selectedRefundRequest = ref<TRefundRequest | null>(null)
+const refundApprovalApproved = ref(true)
+const refundApprovalComment = ref('')
+const refundExecuteDialogOpen = ref(false)
+const refundExecuteForm = ref({
+  transactionRef: '',
+  remark: '',
 })
 
 const PAYMENT_METHODS = [
@@ -414,12 +628,30 @@ const PAYMENT_TYPES = [
   { value: 'DEPOSIT', label: '定金' },
   { value: 'INSTALLMENT', label: '分期款' },
   { value: 'FULL', label: '全款' },
-  { value: 'BALANCE', label: '尾款' }
+  { value: 'BALANCE', label: '尾款' },
+  { value: 'REFUND', label: '退款' }
+]
+
+const REFUND_TYPES: Array<{ value: RefundType; label: string }> = [
+  { value: 'ORDER_CANCEL', label: '订单取消退款' },
+  { value: 'OVERPAY', label: '多收退款' },
+  { value: 'PRICE_ADJUSTMENT', label: '价格调整退款' },
+  { value: 'CUSTOMER_BREACH', label: '客户违约部分退款' },
+  { value: 'INTERNAL_CORRECTION', label: '内部纠错退款' }
 ]
 
 const totalPaid = computed(() => {
   return paymentList.value
-    .filter(p => p.paymentStatus === 'COMPLETED' && p.paymentType !== 'REFUND')
+    .filter(p => (p.paymentStatus === 'COMPLETED' || p.paymentStatus === 'REFUNDED') && p.paymentType !== 'REFUND')
+    .reduce((sum, p) => sum + (p.amount || 0), 0)
+    + paymentList.value
+      .filter(p => p.paymentStatus === 'COMPLETED' && p.paymentType === 'REFUND')
+      .reduce((sum, p) => sum + (p.amount || 0), 0)
+})
+
+const pendingAmount = computed(() => {
+  return paymentList.value
+    .filter(p => p.paymentStatus === 'PENDING' && p.paymentType !== 'REFUND')
     .reduce((sum, p) => sum + (p.amount || 0), 0)
 })
 
@@ -433,28 +665,45 @@ const balance = computed(() => {
   return Math.max((tranDetail.value.amount || 0) - totalPaid.value, 0)
 })
 
-const completedReceipts = computed(() => paymentList.value.filter(
-  p => p.paymentStatus === 'COMPLETED' && p.paymentType !== 'REFUND'
-))
-
-const canRefundPayment = (payment) => {
-  return tranDetail.value.stage === TRAN_STAGE.COMPLETED
-    && completedReceipts.value.length === 1
-    && completedReceipts.value[0].id === payment.id
-    && Number(payment.amount) === Number(tranDetail.value.amount)
+const canRequestRefund = (payment: TPayment) => {
+  return (tranDetail.value.stage === TRAN_STAGE.PAYMENT || tranDetail.value.stage === TRAN_STAGE.DELIVERY)
+    && payment.paymentStatus === 'COMPLETED'
+    && payment.paymentType !== 'REFUND'
 }
 
 const getPaymentMethodText = (m) => PAYMENT_METHODS.find(p => p.value === m)?.label || m
 const getPaymentTypeText = (t) => PAYMENT_TYPES.find(p => p.value === t)?.label || t
 
 const getPaymentStatusText = (s) => {
-  const map = { PENDING: '待确认', COMPLETED: '已到账', FAILED: '失败', REFUNDED: '已退款' }
+  const map = { PENDING: '待确认', COMPLETED: '已到账', FAILED: '已退回', REFUNDED: '已退款' }
   return map[s] || s
 }
 
 const getPaymentStatusClass = (s) => {
   const map = { COMPLETED: 'bg-green-600 text-white', REFUNDED: 'bg-red-600 text-white', PENDING: 'bg-yellow-600 text-white', FAILED: 'bg-red-600 text-white' }
   return map[s] || ''
+}
+
+const getRefundTypeText = (type) => REFUND_TYPES.find(item => item.value === type)?.label || type
+
+const getRefundStatusText = (status) => {
+  const map = {
+    PENDING_APPROVAL: '待审批',
+    APPROVED: '已审批',
+    REJECTED: '已驳回',
+    EXECUTED: '已退款'
+  }
+  return map[status] || status
+}
+
+const getRefundStatusClass = (status) => {
+  const map = {
+    PENDING_APPROVAL: 'bg-yellow-600 text-white',
+    APPROVED: 'bg-blue-600 text-white',
+    REJECTED: 'bg-red-600 text-white',
+    EXECUTED: 'bg-green-600 text-white'
+  }
+  return map[status] || ''
 }
 
 const fetchPaymentList = async () => {
@@ -466,13 +715,18 @@ const fetchPaymentList = async () => {
   }
 }
 
-const submitCollection = async () => {
-  if (!collectionForm.value.amount || collectionForm.value.amount <= 0) {
-    messageTip('请输入有效的收款金额', 'error')
-    return
+const fetchRefundRequestList = async () => {
+  try {
+    const res = await fetchTranRefundRequests(route.params.id)
+    refundRequestList.value = res || []
+  } catch {
+    messageTip('获取退款申请失败', 'error')
   }
-  if (collectionForm.value.amount > balance.value) {
-    messageTip('收款金额不能超过剩余应收金额', 'error')
+}
+
+const submitCollection = async () => {
+  if (balance.value <= 0) {
+    messageTip('交易已收齐，无需登记收款', 'warning')
     return
   }
   if (!collectionForm.value.paymentMethod) {
@@ -482,14 +736,13 @@ const submitCollection = async () => {
   try {
     await recordPayment({
       tranId: Number(route.params.id),
-      amount: collectionForm.value.amount,
       paymentMethod: collectionForm.value.paymentMethod,
-      paymentType: collectionForm.value.paymentType,
+      transactionRef: collectionForm.value.transactionRef || undefined,
       remark: collectionForm.value.remark
     })
-    messageTip('收款记录成功', 'success')
+    messageTip('收款已登记，待财务确认', 'success')
     showCollectionDialog.value = false
-    collectionForm.value = { amount: 0, paymentMethod: '', paymentType: 'FULL', remark: '' }
+    collectionForm.value = { paymentMethod: '', transactionRef: '', remark: '' }
     await fetchPaymentList()
     await fetchTranDetail()
   } catch (error) {
@@ -497,16 +750,124 @@ const submitCollection = async () => {
   }
 }
 
-const handleRefund = async (paymentId) => {
-  const confirmResult = await messageConfirm('确认退款？退款后将取消该交易并恢复库存').catch(() => false)
-  if (!confirmResult) return
+const handleConfirmPayment = async (payment: TPayment) => {
+  const confirmResult = await messageConfirm('确认该笔收款已到账？').catch(() => false)
+  if (!confirmResult) {
+    return
+  }
   try {
-    await refundPayment(paymentId)
-    messageTip('退款成功', 'success')
+    await confirmPayment(payment.id, { approved: true, comment: '确认到账' })
+    messageTip('收款已确认', 'success')
     await fetchPaymentList()
     await fetchTranDetail()
   } catch (error) {
-    messageTip('退款失败: ' + (error.message || ''), 'error')
+    messageTip('确认收款失败: ' + (error.message || ''), 'error')
+  }
+}
+
+const openRejectPaymentDialog = (payment: TPayment) => {
+  selectedPayment.value = payment
+  paymentRejectComment.value = ''
+  paymentRejectDialogOpen.value = true
+}
+
+const submitRejectPayment = async () => {
+  if (!selectedPayment.value) return
+  if (!paymentRejectComment.value.trim()) {
+    messageTip('请输入退回原因', 'error')
+    return
+  }
+  try {
+    await confirmPayment(selectedPayment.value.id, {
+      approved: false,
+      comment: paymentRejectComment.value.trim()
+    })
+    messageTip('收款已退回', 'success')
+    paymentRejectDialogOpen.value = false
+    await fetchPaymentList()
+  } catch (error) {
+    messageTip('退回收款失败: ' + (error.message || ''), 'error')
+  }
+}
+
+const openRefundRequestDialog = (payment: TPayment) => {
+  selectedPayment.value = payment
+  refundForm.value = {
+    refundType: 'ORDER_CANCEL',
+    amount: Math.max(Number(payment.amount || 0), 0),
+    reason: ''
+  }
+  refundRequestDialogOpen.value = true
+}
+
+const submitRefundRequest = async () => {
+  if (!selectedPayment.value) return
+  if (!refundForm.value.amount || refundForm.value.amount <= 0) {
+    messageTip('请输入有效的退款金额', 'error')
+    return
+  }
+  if (!refundForm.value.reason.trim()) {
+    messageTip('请输入退款原因', 'error')
+    return
+  }
+  try {
+    await createRefundRequest(selectedPayment.value.id, {
+      refundType: refundForm.value.refundType,
+      amount: refundForm.value.amount,
+      reason: refundForm.value.reason.trim()
+    })
+    messageTip('退款申请已提交', 'success')
+    refundRequestDialogOpen.value = false
+    await fetchRefundRequestList()
+  } catch (error) {
+    messageTip('提交退款申请失败: ' + (error.message || ''), 'error')
+  }
+}
+
+const openRefundApprovalDialog = (request: TRefundRequest, approved: boolean) => {
+  selectedRefundRequest.value = request
+  refundApprovalApproved.value = approved
+  refundApprovalComment.value = ''
+  refundApprovalDialogOpen.value = true
+}
+
+const submitRefundApproval = async () => {
+  if (!selectedRefundRequest.value) return
+  if (!refundApprovalApproved.value && !refundApprovalComment.value.trim()) {
+    messageTip('请输入驳回原因', 'error')
+    return
+  }
+  try {
+    await approveRefundRequest(selectedRefundRequest.value.id, {
+      approved: refundApprovalApproved.value,
+      comment: refundApprovalComment.value.trim() || undefined
+    })
+    messageTip(refundApprovalApproved.value ? '退款申请已通过' : '退款申请已驳回', 'success')
+    refundApprovalDialogOpen.value = false
+    await fetchRefundRequestList()
+  } catch (error) {
+    messageTip('退款审批失败: ' + (error.message || ''), 'error')
+  }
+}
+
+const openRefundExecuteDialog = (request: TRefundRequest) => {
+  selectedRefundRequest.value = request
+  refundExecuteForm.value = { transactionRef: '', remark: '' }
+  refundExecuteDialogOpen.value = true
+}
+
+const submitRefundExecute = async () => {
+  if (!selectedRefundRequest.value) return
+  try {
+    await executeRefundRequest(selectedRefundRequest.value.id, {
+      transactionRef: refundExecuteForm.value.transactionRef || undefined,
+      remark: refundExecuteForm.value.remark || undefined
+    })
+    messageTip('退款已执行', 'success')
+    refundExecuteDialogOpen.value = false
+    await Promise.all([fetchPaymentList(), fetchRefundRequestList(), fetchTranDetail()])
+  } catch (error) {
+    messageTip('执行退款失败: ' + (error.message || ''), 'error')
   }
 }
 

@@ -31,7 +31,10 @@ export const PERMISSIONS = {
     approve: 'tran:approve',
     invoice: 'tran:invoice',
     payment: 'tran:payment',
+    paymentConfirm: 'tran:payment:confirm',
     refund: 'tran:refund',
+    refundApprove: 'tran:refund:approve',
+    refundExecute: 'tran:refund:execute',
   },
   product: {
     list: 'product:list',

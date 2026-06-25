@@ -99,13 +99,22 @@ export interface CreateInvoiceRequest {
   remark?: string
 }
 
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
+export type RefundRequestStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'EXECUTED'
+export type RefundType = 'ORDER_CANCEL' | 'OVERPAY' | 'PRICE_ADJUSTMENT' | 'CUSTOMER_BREACH' | 'INTERNAL_CORRECTION'
+
 export interface PaymentRequest {
   tranId: number
-  amount: number
+  amount?: number
   paymentMethod: string
-  paymentType: string
+  paymentType?: string
   transactionRef?: string
   remark?: string
+}
+
+export interface ConfirmPaymentRequest {
+  approved: boolean
+  comment?: string
 }
 
 export interface TPayment {
@@ -115,11 +124,42 @@ export interface TPayment {
   amount: number
   paymentMethod?: string
   paymentType?: string
-  paymentStatus?: string
+  paymentStatus?: PaymentStatus
   paymentTime?: string
   transactionRef?: string
   remark?: string
   createTime?: string
+}
+
+export interface CreateRefundRequest {
+  refundType: RefundType
+  amount: number
+  reason: string
+}
+
+export interface ApproveRefundRequest {
+  approved: boolean
+  comment?: string
+}
+
+export interface ExecuteRefundRequest {
+  transactionRef?: string
+  remark?: string
+}
+
+export interface TRefundRequest {
+  id: EntityId
+  tranId?: EntityId
+  originalPaymentId: EntityId
+  refundPaymentId?: EntityId
+  amount: number
+  refundType: RefundType
+  reason: string
+  status: RefundRequestStatus
+  requestedTime?: string
+  approvedTime?: string
+  approveComment?: string
+  executedTime?: string
 }
 
 export interface SettlementPreviewRequest {

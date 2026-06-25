@@ -3,14 +3,19 @@ import type { PageResult } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
 import type {
   ApproveTranRequest,
+  ApproveRefundRequest,
+  ConfirmPaymentRequest,
   CreateInvoiceRequest,
+  CreateRefundRequest,
   CreateTranRequest,
+  ExecuteRefundRequest,
   InvoiceStatusCommand,
   PaymentRequest,
   SettleRequest,
   SettlementPromotionOption,
   SettlementPreviewRequest,
   SettlementPreviewResponse,
+  TRefundRequest,
   TPayment,
   Tran,
   TranApproval,
@@ -88,12 +93,28 @@ export function recordPayment(data: PaymentRequest): Promise<TPayment> {
   return httpClient.post<TPayment>('/api/tran/payment', data)
 }
 
+export function confirmPayment(id: EntityId, data: ConfirmPaymentRequest): Promise<TPayment> {
+  return httpClient.put<TPayment>(`/api/tran/payment/${id}/confirm`, data)
+}
+
 export function fetchTranPayments(tranId: EntityId): Promise<TPayment[]> {
   return httpClient.get<TPayment[]>(`/api/tran/payment/${tranId}`)
 }
 
-export function refundPayment(id: EntityId): Promise<TPayment> {
-  return httpClient.post<TPayment>(`/api/tran/payment/${id}/refund`)
+export function fetchTranRefundRequests(tranId: EntityId): Promise<TRefundRequest[]> {
+  return httpClient.get<TRefundRequest[]>(`/api/tran/refund-requests/${tranId}`)
+}
+
+export function createRefundRequest(id: EntityId, data: CreateRefundRequest): Promise<TRefundRequest> {
+  return httpClient.post<TRefundRequest>(`/api/tran/payment/${id}/refund-requests`, data)
+}
+
+export function approveRefundRequest(id: EntityId, data: ApproveRefundRequest): Promise<TRefundRequest> {
+  return httpClient.put<TRefundRequest>(`/api/tran/refund-requests/${id}/approve`, data)
+}
+
+export function executeRefundRequest(id: EntityId, data: ExecuteRefundRequest): Promise<TPayment> {
+  return httpClient.post<TPayment>(`/api/tran/refund-requests/${id}/execute`, data)
 }
 
 export const getTranList = fetchTranPage
