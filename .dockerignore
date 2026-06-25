@@ -1,0 +1,10 @@
+.git
+.idea
+.codegraph
+.qoder
+dealer-server/target
+dealer-web/node_modules
+dealer-web/dist
+dealer-web/coverage
+**/.DS_Store
+**/*.log

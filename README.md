@@ -109,44 +109,102 @@ car-dealer-crm/
 
 ## 快速开始
 
-**环境要求**
+### 一键运行
+
+一键运行只要求脚本能够安装或检测到 Docker / Docker Desktop。Maven、JDK、Node.js、MySQL、Redis 都在容器中构建或运行，不要求用户电脑预装。
+
+macOS / Linux / fish：
+
+```bash
+bash scripts/demo-bootstrap.sh
+fish scripts/demo-bootstrap.fish
+```
+
+Windows PowerShell：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/demo-bootstrap.ps1
+```
+
+脚本会检测系统和 Shell，按菜单引导安装或启动 Docker，测试 Docker Hub 镜像源，拉取 MySQL/Redis 镜像，构建后端与前端镜像，并在启动前检查端口冲突。
+
+默认访问地址：
+
+```text
+前端：http://localhost:8080
+后端：http://localhost:8089
+MySQL：localhost:13306
+Redis：localhost:16379
+```
+
+默认容器环境变量见 `.env.demo`：
+
+```text
+DB_USERNAME=root
+DB_PASSWORD=123456
+JWT_SECRET=car-dealer-crm-local-secret
+```
+
+### 清理与卸载
+
+如果只是试运行，或运行后不想保留项目残留，可以执行清理脚本：
+
+macOS / Linux / fish：
+
+```bash
+bash scripts/demo-cleanup.sh
+fish scripts/demo-cleanup.fish
+```
+
+Windows PowerShell：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/demo-cleanup.ps1
+```
+
+清理脚本会先列出即将删除的项目，再让用户选择全部删除或部分删除，最后要求输入 `DELETE` 二次确认。可删除内容包括：
+
+- 当前项目的容器、网络、数据卷和本地构建镜像。
+- 启动脚本拉取过的 MySQL / Redis 镜像。
+- 启动脚本主动安装过的 Docker / Docker Desktop / Docker Compose。
+- 启动脚本主动写入过的 Linux Docker daemon 镜像配置。
+- 安装记录目录 `~/.car-dealer-crm-demo`。
+
+Docker 本体只会在启动脚本记录到“由脚本主动安装”时才出现在卸载列表中。
+
+### 本地开发启动
+
+如果要做本地开发，而不是容器一键运行，需要准备：
 
 - JDK 17+
 - Node.js 18+
 - MariaDB / MySQL
 - Redis
 
-**后端启动**
+后端启动：
 
 ```bash
 cd dealer-server
 
-# 创建数据库
 mysql -u root -p < src/main/resources/CarDealerCRM.sql
 
-# 配置数据库连接 (src/main/resources/application.yml)
-# 设置环境变量或修改配置文件中的 DB_USERNAME / DB_PASSWORD
 export DB_USERNAME='your-username'
 export DB_PASSWORD='your-local-password'
 export JWT_SECRET='replace-with-a-long-random-local-secret'
 
-# 启动
 ./mvnw spring-boot:run
 ```
 
-**前端启动**
+前端启动：
 
 ```bash
 cd dealer-web
 
-# 安装依赖
 npm install
-
-# 启动开发服务器 (http://localhost:8081)
 npm run dev
 ```
 
-**测试**
+### 测试
 
 ```bash
 # 后端测试
