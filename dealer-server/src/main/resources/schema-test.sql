@@ -324,7 +324,35 @@ CREATE TABLE IF NOT EXISTS t_payment
     edit_by         INTEGER,
     PRIMARY KEY (id),
     CONSTRAINT uk_payment_no UNIQUE (payment_no),
+    CONSTRAINT uk_payment_transaction_ref UNIQUE (transaction_ref),
     CONSTRAINT fk_payment_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_refund_request
+(
+    id                  INTEGER NOT NULL AUTO_INCREMENT,
+    tran_id             INTEGER NOT NULL,
+    original_payment_id INTEGER NOT NULL,
+    refund_payment_id   INTEGER,
+    amount              DECIMAL(10,2) NOT NULL,
+    refund_type         VARCHAR(32) NOT NULL,
+    reason              VARCHAR(500) NOT NULL,
+    status              VARCHAR(32) NOT NULL,
+    requested_by        INTEGER,
+    requested_time      TIMESTAMP,
+    approved_by         INTEGER,
+    approved_time       TIMESTAMP,
+    approve_comment     VARCHAR(500),
+    executed_by         INTEGER,
+    executed_time       TIMESTAMP,
+    create_time         TIMESTAMP,
+    create_by           INTEGER,
+    edit_time           TIMESTAMP,
+    edit_by             INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_refund_request_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_refund_request_original_payment FOREIGN KEY (original_payment_id) REFERENCES t_payment(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_refund_request_refund_payment FOREIGN KEY (refund_payment_id) REFERENCES t_payment(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_operation_log

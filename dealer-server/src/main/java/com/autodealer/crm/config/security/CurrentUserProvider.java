@@ -17,7 +17,8 @@ public class CurrentUserProvider {
     private static final String ROLE_SALES_MANAGER = "sales_manager";
     private static final String ROLE_FINANCE_SPECIALIST = "finance_specialist";
     private static final List<TranStage> FINANCE_STAGES = List.of(
-            TranStage.APPROVED, TranStage.PAYMENT, TranStage.COMPLETED, TranStage.CANCELLED);
+            TranStage.APPROVED, TranStage.PAYMENT, TranStage.DELIVERY,
+            TranStage.COMPLETED, TranStage.CANCELLED);
 
     public TUser getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

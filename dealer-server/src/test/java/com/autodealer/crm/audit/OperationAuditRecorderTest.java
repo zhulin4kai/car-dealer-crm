@@ -187,7 +187,7 @@ class OperationAuditRecorderTest {
         verify(tOperationLogMapper).insert(captor.capture());
 
         assertEquals("PAYMENT_REFUND", captor.getValue().getActionCode());
-        assertEquals("支付管理", captor.getValue().getModuleName());
+        assertEquals("退款管理", captor.getValue().getModuleName());
     }
 
     @Test

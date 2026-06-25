@@ -276,6 +276,17 @@ public class TranController {
     }
 
     /**
+     * 确认或退回收款
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_PAYMENT_CONFIRM + "')")
+    @PutMapping("/payment/{id}/confirm")
+    public R<TPayment> confirmPayment(
+            @PathVariable Integer id,
+            @Valid @RequestBody ConfirmPaymentRequest request) {
+        return R.OK(tranService.confirmPayment(id, request.getApproved(), request.getComment()));
+    }
+
+    /**
      * 获取交易收款记录
      */
     @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_VIEW + "')")
@@ -285,7 +296,53 @@ public class TranController {
     }
 
     /**
-     * 退款（交易取消）
+     * 查询交易退款申请
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_VIEW + "')")
+    @GetMapping("/refund-requests/{tranId}")
+    public R<List<TRefundRequest>> getRefundRequests(@PathVariable Integer tranId) {
+        return R.OK(tranService.getTransactionRefundRequests(tranId));
+    }
+
+    /**
+     * 创建退款申请
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_REFUND + "')")
+    @PostMapping("/payment/{id}/refund-requests")
+    public R<TRefundRequest> createRefundRequest(
+            @PathVariable Integer id,
+            @Valid @RequestBody CreateRefundRequest request) {
+        TRefundRequest refundRequest = new TRefundRequest();
+        refundRequest.setRefundType(request.getRefundType());
+        refundRequest.setAmount(request.getAmount());
+        refundRequest.setReason(request.getReason());
+        return R.OK(tranService.createRefundRequest(id, refundRequest));
+    }
+
+    /**
+     * 审批退款申请
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_REFUND_APPROVE + "')")
+    @PutMapping("/refund-requests/{id}/approve")
+    public R<TRefundRequest> approveRefundRequest(
+            @PathVariable Integer id,
+            @Valid @RequestBody ApproveRefundRequest request) {
+        return R.OK(tranService.approveRefundRequest(id, request.getApproved(), request.getComment()));
+    }
+
+    /**
+     * 执行退款
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_REFUND_EXECUTE + "')")
+    @PostMapping("/refund-requests/{id}/execute")
+    public R<TPayment> executeRefundRequest(
+            @PathVariable Integer id,
+            @Valid @RequestBody ExecuteRefundRequest request) {
+        return R.OK(tranService.executeRefundRequest(id, request.getTransactionRef(), request.getRemark()));
+    }
+
+    /**
+     * 旧退款接口保留兼容，不再直接执行退款。
      */
     @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_REFUND + "')")
     @PostMapping("/payment/{id}/refund")

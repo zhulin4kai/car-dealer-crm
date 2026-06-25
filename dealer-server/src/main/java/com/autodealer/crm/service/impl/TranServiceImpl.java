@@ -3,7 +3,10 @@ package com.autodealer.crm.service.impl;
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.enums.PaymentMethod;
+import com.autodealer.crm.enums.PaymentStatus;
 import com.autodealer.crm.enums.PaymentType;
+import com.autodealer.crm.enums.RefundRequestStatus;
+import com.autodealer.crm.enums.RefundType;
 import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.*;
@@ -64,6 +67,9 @@ public class TranServiceImpl implements TranService {
 
     @Resource
     private TPaymentMapper paymentMapper;
+
+    @Resource
+    private TRefundRequestMapper refundRequestMapper;
 
     @Resource
     private TTranHistoryMapper tranHistoryMapper;
@@ -786,6 +792,7 @@ public class TranServiceImpl implements TranService {
         tranRemarkMapper.deleteByTranId(id);
         tranInvoiceMapper.deleteByTranId(id);
         tranApproveMapper.deleteByTranId(id);
+        refundRequestMapper.deleteByTranId(id);
         paymentMapper.deleteByTranId(id);
         if (tranMapper.deleteByPrimaryKey(id) != 1) {
             throw new BusinessException(CodeEnum.FAIL, "交易删除失败: " + id);
@@ -889,14 +896,10 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TPayment recordPayment(TPayment payment) {
-        if (payment == null || payment.getTranId() == null || payment.getAmount() == null) {
+        if (payment == null || payment.getTranId() == null) {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "支付信息不完整");
         }
-        if (payment.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "支付金额必须大于0");
-        }
         validatePaymentMethod(payment.getPaymentMethod());
-        validatePaymentType(payment.getPaymentType());
 
         requireAccessibleTransaction(payment.getTranId());
         TTran tran = tranMapper.selectByPrimaryKeyForUpdate(payment.getTranId());
@@ -911,36 +914,106 @@ public class TranServiceImpl implements TranService {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "交易金额无效，无法收款");
         }
 
+        String transactionRef = normalizeBlank(payment.getTransactionRef());
+        if (transactionRef != null) {
+            TPayment sameRefPayment = paymentMapper.selectByTransactionRef(transactionRef);
+            if (sameRefPayment != null) {
+                if (payment.getTranId().equals(sameRefPayment.getTranId())
+                        && !PaymentType.REFUND.name().equals(sameRefPayment.getPaymentType())) {
+                    return sameRefPayment;
+                }
+                throw new BusinessException(CodeEnum.DUPLICATE, "支付参考号已存在");
+            }
+            payment.setTransactionRef(transactionRef);
+        }
+
         List<TPayment> existingPayments = paymentMapper.selectByTranId(payment.getTranId());
-        BigDecimal paidAmount = (existingPayments == null ? List.<TPayment>of() : existingPayments).stream()
-                .filter(existing -> "COMPLETED".equals(existing.getPaymentStatus()))
-                .filter(existing -> !PaymentType.REFUND.name().equals(existing.getPaymentType()))
-                .map(TPayment::getAmount)
-                .filter(amount -> amount != null && amount.compareTo(BigDecimal.ZERO) > 0)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalAfterPayment = paidAmount.add(payment.getAmount());
-        if (totalAfterPayment.compareTo(tran.getMoney()) > 0) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "收款总额不能超过交易金额");
+        boolean hasPendingReceipt = normalizePayments(existingPayments).stream()
+                .anyMatch(existing -> PaymentStatus.PENDING.name().equals(existing.getPaymentStatus())
+                        && !PaymentType.REFUND.name().equals(existing.getPaymentType()));
+        if (hasPendingReceipt) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "存在待确认收款，请先确认或退回后再登记");
+        }
+        BigDecimal paidAmount = calculateNetConfirmedPaid(existingPayments);
+        BigDecimal remaining = tran.getMoney().subtract(paidAmount).setScale(2, RoundingMode.HALF_UP);
+        if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易已收齐，无需再次登记收款");
         }
 
         Date now = new Date();
         payment.setPaymentNo(generatePaymentNo());
-        payment.setPaymentStatus("COMPLETED");
-        payment.setPaymentTime(now);
+        payment.setAmount(remaining);
+        payment.setPaymentType(paidAmount.compareTo(BigDecimal.ZERO) > 0
+                ? PaymentType.BALANCE.name() : PaymentType.FULL.name());
+        payment.setPaymentStatus(PaymentStatus.PENDING.name());
+        payment.setPaymentTime(null);
         payment.setCreateTime(now);
 
         if (paymentMapper.insertSelective(payment) != 1) {
             throw new BusinessException(CodeEnum.FAIL, "收款记录创建失败");
         }
 
-        if (totalAfterPayment.compareTo(tran.getMoney()) == 0) {
-            int rows = tranMapper.updateStageToCompleted(payment.getTranId(), payment.getCreateBy());
-            if (rows != 1) {
-                throw new BusinessException(CodeEnum.FAIL, "交易完成状态更新失败");
+        auditRecorder.record(AuditActionEnum.PAYMENT_CREATE, String.valueOf(payment.getTranId()));
+        clearTransactionCache(payment.getTranId());
+        return payment;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TPayment confirmPayment(Integer paymentId, Boolean approved, String comment) {
+        if (approved == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "确认结果不能为空");
+        }
+        TPayment payment = paymentMapper.selectByPrimaryKeyForUpdate(paymentId);
+        if (payment == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "支付记录不存在");
+        }
+        if (PaymentType.REFUND.name().equals(payment.getPaymentType())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款流水不能执行收款确认");
+        }
+        if (!PaymentStatus.PENDING.name().equals(payment.getPaymentStatus())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "只能确认待确认收款");
+        }
+
+        requireAccessibleTransaction(payment.getTranId());
+        TTran tran = tranMapper.selectByPrimaryKeyForUpdate(payment.getTranId());
+        if (tran == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "交易记录不存在");
+        }
+        if (approved && tran.getStage() != TranStage.PAYMENT) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许确认收款");
+        }
+        Integer userId = currentUserProvider.getCurrentUserId();
+        Date now = new Date();
+        String newStatus = approved ? PaymentStatus.COMPLETED.name() : PaymentStatus.FAILED.name();
+        String remark = mergeRemark(payment.getRemark(), approved ? comment : requireNonBlank(comment, "退回原因不能为空"));
+        int updated = paymentMapper.updateStatusIfCurrent(paymentId, PaymentStatus.PENDING.name(), newStatus,
+                approved ? now : null, remark, now, userId);
+        if (updated != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "收款状态已变更，请刷新后重试");
+        }
+
+        payment.setPaymentStatus(newStatus);
+        payment.setPaymentTime(approved ? now : null);
+        payment.setRemark(remark);
+        payment.setEditBy(userId);
+        payment.setEditTime(now);
+
+        if (approved) {
+            List<TPayment> payments = mergePaymentSnapshot(paymentMapper.selectByTranId(payment.getTranId()), payment);
+            BigDecimal confirmedAmount = calculateNetConfirmedPaid(payments);
+            if (confirmedAmount.compareTo(tran.getMoney()) >= 0) {
+                int stageRows = tranMapper.updateStageAtomic(payment.getTranId(),
+                        TranStage.DELIVERY, TranStage.PAYMENT, userId);
+                if (stageRows != 1) {
+                    throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态不允许进入待交付");
+                }
+                writeHistory(payment.getTranId(), TranStage.DELIVERY,
+                        tran.getMoney(), tran.getExpectedDate(), userId);
             }
-            writeHistory(payment.getTranId(), TranStage.COMPLETED,
-                    tran.getMoney(), tran.getExpectedDate(), payment.getCreateBy());
-            auditRecorder.record(AuditActionEnum.PAYMENT_CREATE, String.valueOf(payment.getTranId()));
+            auditRecorder.record(AuditActionEnum.PAYMENT_CONFIRM, String.valueOf(paymentId));
+        } else {
+            auditRecorder.record(AuditActionEnum.PAYMENT_REJECT, String.valueOf(paymentId));
         }
 
         clearTransactionCache(payment.getTranId());
@@ -950,67 +1023,171 @@ public class TranServiceImpl implements TranService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TPayment refundPayment(Integer paymentId) {
-        TPayment original = paymentMapper.selectByPrimaryKey(paymentId);
-        if (original == null) {
-            throw new BusinessException(CodeEnum.NOT_FOUND, "支付记录不存在");
+        throw new BusinessException(CodeEnum.OPERATION_FAILED, "退款必须先提交申请，并在审批通过后执行");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TRefundRequest createRefundRequest(Integer paymentId, TRefundRequest request) {
+        if (request == null || request.getAmount() == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "退款申请信息不完整");
         }
-        if (!"COMPLETED".equals(original.getPaymentStatus())) {
-            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "只能对已到账的收款进行退款");
+        if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "退款金额必须大于0");
+        }
+        String reason = requireNonBlank(request.getReason(), "退款原因不能为空");
+        RefundType refundType = parseRefundType(request.getRefundType());
+
+        TPayment original = paymentMapper.selectByPrimaryKeyForUpdate(paymentId);
+        if (original == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "原收款记录不存在");
+        }
+        if (!PaymentStatus.COMPLETED.name().equals(original.getPaymentStatus())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "只能对已确认到账的收款申请退款");
         }
         if (PaymentType.REFUND.name().equals(original.getPaymentType())) {
-            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款记录不能再次退款");
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款流水不能再次申请退款");
         }
 
         TTran tran = requireAccessibleTransaction(original.getTranId());
+        if (tran.getStage() != TranStage.PAYMENT && tran.getStage() != TranStage.DELIVERY) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许申请退款");
+        }
+
+        BigDecimal refundable = calculateAvailableRefundAmount(original.getId(), original.getAmount(), true);
+        if (request.getAmount().compareTo(refundable) > 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "退款金额不能超过可退金额");
+        }
+
         Integer userId = currentUserProvider.getCurrentUserId();
-        List<TPayment> transactionPayments = paymentMapper.selectByTranId(original.getTranId());
-        List<TPayment> completedPayments = (transactionPayments == null
-                ? List.<TPayment>of() : transactionPayments).stream()
-                .filter(payment -> "COMPLETED".equals(payment.getPaymentStatus()))
-                .filter(payment -> !PaymentType.REFUND.name().equals(payment.getPaymentType()))
-                .toList();
-        if (tran.getStage() != TranStage.COMPLETED
-                || completedPayments.size() != 1
-                || !paymentId.equals(completedPayments.get(0).getId())
-                || original.getAmount().compareTo(tran.getMoney()) != 0) {
-            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前仅支持单笔全额支付的整单退款");
-        }
-
         Date now = new Date();
+        TRefundRequest refundRequest = new TRefundRequest();
+        refundRequest.setTranId(original.getTranId());
+        refundRequest.setOriginalPaymentId(original.getId());
+        refundRequest.setAmount(request.getAmount().setScale(2, RoundingMode.HALF_UP));
+        refundRequest.setRefundType(refundType.name());
+        refundRequest.setReason(reason);
+        refundRequest.setStatus(RefundRequestStatus.PENDING_APPROVAL.name());
+        refundRequest.setRequestedBy(userId);
+        refundRequest.setRequestedTime(now);
+        refundRequest.setCreateBy(userId);
+        refundRequest.setCreateTime(now);
+        if (refundRequestMapper.insertSelective(refundRequest) != 1) {
+            throw new BusinessException(CodeEnum.FAIL, "退款申请创建失败");
+        }
+        auditRecorder.record(AuditActionEnum.PAYMENT_REFUND_REQUEST, String.valueOf(refundRequest.getId()));
+        clearTransactionCache(original.getTranId());
+        return refundRequest;
+    }
 
-        int stageRows = tranMapper.updateStageAtomic(original.getTranId(),
-                TranStage.CANCELLED, TranStage.COMPLETED, userId);
-        if (stageRows != 1) {
-            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易已退款或状态不允许退款");
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TRefundRequest approveRefundRequest(Integer requestId, Boolean approved, String comment) {
+        if (approved == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "审批结果不能为空");
+        }
+        TRefundRequest request = refundRequestMapper.selectByPrimaryKeyForUpdate(requestId);
+        if (request == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "退款申请不存在");
+        }
+        requireAccessibleTransaction(request.getTranId());
+        String approveComment = approved ? normalizeBlank(comment) : requireNonBlank(comment, "驳回原因不能为空");
+        String newStatus = approved
+                ? RefundRequestStatus.APPROVED.name()
+                : RefundRequestStatus.REJECTED.name();
+        Integer userId = currentUserProvider.getCurrentUserId();
+        Date now = new Date();
+        int rows = refundRequestMapper.updateApprovalIfPending(requestId, newStatus, userId,
+                now, approveComment, userId, now);
+        if (rows != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款申请状态已变更，请刷新后重试");
+        }
+        request.setStatus(newStatus);
+        request.setApprovedBy(userId);
+        request.setApprovedTime(now);
+        request.setApproveComment(approveComment);
+        request.setEditBy(userId);
+        request.setEditTime(now);
+        auditRecorder.record(AuditActionEnum.PAYMENT_REFUND_APPROVE, String.valueOf(requestId));
+        clearTransactionCache(request.getTranId());
+        return request;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TPayment executeRefundRequest(Integer requestId, String transactionRef, String remark) {
+        TRefundRequest request = refundRequestMapper.selectByPrimaryKeyForUpdate(requestId);
+        if (request == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "退款申请不存在");
+        }
+        if (!RefundRequestStatus.APPROVED.name().equals(request.getStatus())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "只有已审批退款申请可以执行");
         }
 
-        int marked = paymentMapper.markRefundedIfCompleted(paymentId, now, userId);
-        if (marked != 1) {
-            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "该收款已退款或状态已变更");
+        TPayment original = paymentMapper.selectByPrimaryKeyForUpdate(request.getOriginalPaymentId());
+        if (original == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "原收款记录不存在");
+        }
+        if (!PaymentStatus.COMPLETED.name().equals(original.getPaymentStatus())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "原收款状态不允许执行退款");
         }
 
-        // 创建退款记录（负金额）
+        requireAccessibleTransaction(request.getTranId());
+        TTran tran = tranMapper.selectByPrimaryKeyForUpdate(request.getTranId());
+        if (tran == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "交易记录不存在");
+        }
+        if (tran.getStage() != TranStage.PAYMENT && tran.getStage() != TranStage.DELIVERY) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许执行退款");
+        }
+
+        BigDecimal refundable = calculateAvailableRefundAmount(original.getId(), original.getAmount(), false);
+        if (request.getAmount().compareTo(refundable) > 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "退款金额不能超过当前可退金额");
+        }
+
+        String normalizedRef = normalizeBlank(transactionRef);
+        if (normalizedRef != null) {
+            TPayment sameRefPayment = paymentMapper.selectByTransactionRef(normalizedRef);
+            if (sameRefPayment != null) {
+                throw new BusinessException(CodeEnum.DUPLICATE, "退款参考号已存在");
+            }
+        }
+
+        Integer userId = currentUserProvider.getCurrentUserId();
+        Date now = new Date();
         TPayment refund = new TPayment();
         refund.setTranId(original.getTranId());
-        refund.setAmount(original.getAmount().negate());
+        refund.setAmount(request.getAmount().negate());
         refund.setPaymentMethod(original.getPaymentMethod());
         refund.setPaymentType(PaymentType.REFUND.name());
-        refund.setPaymentStatus("COMPLETED");
+        refund.setPaymentStatus(PaymentStatus.COMPLETED.name());
         refund.setPaymentTime(now);
         refund.setPaymentNo(generatePaymentNo());
+        refund.setTransactionRef(normalizedRef);
         refund.setCreateTime(now);
         refund.setCreateBy(userId);
-        refund.setRemark("退款 - 交易取消，原收款ID: " + original.getId());
+        refund.setRemark(buildRefundRemark(request, remark));
         if (paymentMapper.insertSelective(refund) != 1) {
             throw new BusinessException(CodeEnum.FAIL, "退款记录创建失败");
         }
 
-        restoreTransactionStock(original.getTranId());
+        int executed = refundRequestMapper.markExecutedIfApproved(requestId, refund.getId(), userId, now, userId, now);
+        if (executed != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款申请状态已变更，请刷新后重试");
+        }
 
-        writeHistory(original.getTranId(), TranStage.CANCELLED,
-                tran.getMoney(), tran.getExpectedDate(), userId);
+        BigDecimal remainingForOriginal = refundable.subtract(request.getAmount());
+        if (remainingForOriginal.compareTo(BigDecimal.ZERO) == 0) {
+            int marked = paymentMapper.markRefundedIfCompleted(original.getId(), now, userId);
+            if (marked != 1) {
+                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "原收款状态已变更，请刷新后重试");
+            }
+        }
 
-        auditRecorder.record(AuditActionEnum.PAYMENT_REFUND, String.valueOf(paymentId));
+        reconcileTransactionAfterRefund(tran, request, userId);
+
+        auditRecorder.record(AuditActionEnum.PAYMENT_REFUND, String.valueOf(requestId));
         clearTransactionCache(original.getTranId());
         return refund;
     }
@@ -1019,6 +1196,132 @@ public class TranServiceImpl implements TranService {
     public List<TPayment> getTransactionPayments(Integer tranId) {
         requireAccessibleTransaction(tranId);
         return paymentMapper.selectByTranId(tranId);
+    }
+
+    @Override
+    public List<TRefundRequest> getTransactionRefundRequests(Integer tranId) {
+        requireAccessibleTransaction(tranId);
+        return refundRequestMapper.selectByTranId(tranId);
+    }
+
+    private List<TPayment> normalizePayments(List<TPayment> payments) {
+        return payments == null ? List.of() : payments;
+    }
+
+    private List<TPayment> mergePaymentSnapshot(List<TPayment> payments, TPayment current) {
+        List<TPayment> merged = new ArrayList<>(normalizePayments(payments));
+        if (current == null || current.getId() == null) {
+            return merged;
+        }
+        for (int i = 0; i < merged.size(); i++) {
+            if (current.getId().equals(merged.get(i).getId())) {
+                merged.set(i, current);
+                return merged;
+            }
+        }
+        merged.add(current);
+        return merged;
+    }
+
+    private BigDecimal calculateNetConfirmedPaid(List<TPayment> payments) {
+        return normalizePayments(payments).stream()
+                .filter(payment -> payment.getAmount() != null)
+                .filter(payment -> PaymentStatus.COMPLETED.name().equals(payment.getPaymentStatus())
+                        || (PaymentStatus.REFUNDED.name().equals(payment.getPaymentStatus())
+                            && !PaymentType.REFUND.name().equals(payment.getPaymentType())))
+                .map(TPayment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateAvailableRefundAmount(Integer originalPaymentId,
+                                                       BigDecimal originalAmount,
+                                                       boolean includeOpenRequests) {
+        BigDecimal executed = refundRequestMapper.sumExecutedAmountByOriginalPaymentId(originalPaymentId);
+        BigDecimal open = includeOpenRequests
+                ? refundRequestMapper.sumOpenAmountByOriginalPaymentId(originalPaymentId)
+                : BigDecimal.ZERO;
+        BigDecimal used = nullToZero(executed).add(nullToZero(open));
+        return nullToZero(originalAmount).subtract(used).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private void reconcileTransactionAfterRefund(TTran tran, TRefundRequest request, Integer userId) {
+        List<TPayment> payments = paymentMapper.selectByTranId(tran.getId());
+        BigDecimal netPaid = calculateNetConfirmedPaid(payments);
+        RefundType refundType = parseRefundType(request.getRefundType());
+        if (refundType == RefundType.ORDER_CANCEL && netPaid.compareTo(BigDecimal.ZERO) <= 0) {
+            int stageRows = tranMapper.updateStageAtomic(tran.getId(),
+                    TranStage.CANCELLED, tran.getStage(), userId);
+            if (stageRows != 1) {
+                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态不允许取消");
+            }
+            restoreTransactionStock(tran.getId());
+            writeHistory(tran.getId(), TranStage.CANCELLED,
+                    tran.getMoney(), tran.getExpectedDate(), userId);
+            return;
+        }
+
+        if (refundType != RefundType.ORDER_CANCEL
+                && tran.getStage() == TranStage.DELIVERY
+                && netPaid.compareTo(tran.getMoney()) < 0) {
+            int stageRows = tranMapper.updateStageAtomic(tran.getId(),
+                    TranStage.PAYMENT, TranStage.DELIVERY, userId);
+            if (stageRows != 1) {
+                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态不允许回退到待收款");
+            }
+            writeHistory(tran.getId(), TranStage.PAYMENT,
+                    tran.getMoney(), tran.getExpectedDate(), userId);
+        }
+    }
+
+    private BigDecimal nullToZero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private String normalizeBlank(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String requireNonBlank(String value, String message) {
+        String normalized = normalizeBlank(value);
+        if (normalized == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, message);
+        }
+        return normalized;
+    }
+
+    private String mergeRemark(String originalRemark, String comment) {
+        String normalizedComment = normalizeBlank(comment);
+        if (normalizedComment == null) {
+            return originalRemark;
+        }
+        String normalizedRemark = normalizeBlank(originalRemark);
+        return normalizedRemark == null
+                ? normalizedComment
+                : normalizedRemark + "；" + normalizedComment;
+    }
+
+    private RefundType parseRefundType(String refundType) {
+        try {
+            return RefundType.valueOf(requireNonBlank(refundType, "退款类型不能为空"));
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "不支持的退款类型: " + refundType);
+        }
+    }
+
+    private String buildRefundRemark(TRefundRequest request, String executeRemark) {
+        StringBuilder remark = new StringBuilder();
+        remark.append("退款原因: ").append(request.getReason())
+                .append("；原收款ID: ").append(request.getOriginalPaymentId());
+        String normalizedExecuteRemark = normalizeBlank(executeRemark);
+        if (normalizedExecuteRemark != null) {
+            remark.append("；执行备注: ").append(normalizedExecuteRemark);
+        }
+        return remark.toString();
     }
 
     private void restoreTransactionStock(Integer tranId) {

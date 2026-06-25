@@ -8,6 +8,7 @@ public enum TranStage {
     PENDING("待审批"),
     APPROVED("已审批"),
     PAYMENT("待收款"),
+    DELIVERY("待交付"),
     COMPLETED("已完成"),
     LOST("丢失关闭"),
     CANCELLED("已取消");

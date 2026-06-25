@@ -14,6 +14,10 @@ public interface TPaymentMapper {
 
     TPayment selectByPrimaryKey(Integer id);
 
+    TPayment selectByPrimaryKeyForUpdate(Integer id);
+
+    TPayment selectByTransactionRef(@Param("transactionRef") String transactionRef);
+
     List<TPayment> selectByTranId(@Param("tranId") Integer tranId);
 
     int updateByPrimaryKeySelective(TPayment record);
@@ -21,6 +25,14 @@ public interface TPaymentMapper {
     int markRefundedIfCompleted(@Param("id") Integer id,
                                 @Param("editTime") Date editTime,
                                 @Param("editBy") Integer editBy);
+
+    int updateStatusIfCurrent(@Param("id") Integer id,
+                              @Param("expectedStatus") String expectedStatus,
+                              @Param("newStatus") String newStatus,
+                              @Param("paymentTime") Date paymentTime,
+                              @Param("remark") String remark,
+                              @Param("editTime") Date editTime,
+                              @Param("editBy") Integer editBy);
 
     int deleteByPrimaryKey(Integer id);
 

@@ -550,7 +550,13 @@ SELECT '交易管理-发票', 'tran:invoice', NULL, 'button', id, NULL, NULL, 1 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '交易管理-收款', 'tran:payment', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-收款确认', 'tran:payment:confirm', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '交易管理-退款', 'tran:refund', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-退款审批', 'tran:refund:approve', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交易管理-退款执行', 'tran:refund:execute', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:tran:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '车型商品-列表', 'product:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -693,7 +699,7 @@ WHERE r.role = 'marketing_specialist' AND p.code IN ('menu:dashboard', 'menu:act
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'finance_specialist' AND p.code IN ('menu:dashboard', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:invoice', 'tran:payment', 'tran:refund', 'statistic:view');
+WHERE r.role = 'finance_specialist' AND p.code IN ('menu:dashboard', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:invoice', 'tran:payment', 'tran:payment:confirm', 'tran:refund', 'tran:refund:approve', 'tran:refund:execute', 'statistic:view');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
@@ -1278,6 +1284,7 @@ CREATE TABLE `t_payment`
     `edit_by`         int            NULL DEFAULT NULL COMMENT '编辑人',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_payment_no` (`payment_no` ASC) USING BTREE,
+    UNIQUE INDEX `uk_payment_transaction_ref` (`transaction_ref` ASC) USING BTREE,
     INDEX `idx_tran_id` (`tran_id` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -1308,5 +1315,55 @@ VALUES
 (5, 8, 'TK202606160001', -20000.00, 'WECHAT', 'REFUND', 'COMPLETED',
  '2026-06-16 14:16:00', 'WXRF2026061614160921', '定金原路退回。',
  '2026-06-16 14:18:00', 6, NULL, NULL);
+
+-- ----------------------------
+-- Table structure for t_refund_request
+-- ----------------------------
+DROP TABLE IF EXISTS `t_refund_request`;
+CREATE TABLE `t_refund_request`
+(
+    `id`                  int            NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `tran_id`             int            NOT NULL COMMENT '交易ID',
+    `original_payment_id` int            NOT NULL COMMENT '原收款ID',
+    `refund_payment_id`   int            NULL DEFAULT NULL COMMENT '退款流水ID',
+    `amount`              decimal(10, 2) NOT NULL COMMENT '退款金额',
+    `refund_type`         varchar(32)    NOT NULL COMMENT '退款类型',
+    `reason`              varchar(500)   NOT NULL COMMENT '退款原因',
+    `status`              varchar(32)    NOT NULL COMMENT '申请状态',
+    `requested_by`        int            NULL DEFAULT NULL COMMENT '申请人',
+    `requested_time`      datetime       NULL DEFAULT NULL COMMENT '申请时间',
+    `approved_by`         int            NULL DEFAULT NULL COMMENT '审批人',
+    `approved_time`       datetime       NULL DEFAULT NULL COMMENT '审批时间',
+    `approve_comment`     varchar(500)   NULL DEFAULT NULL COMMENT '审批意见',
+    `executed_by`         int            NULL DEFAULT NULL COMMENT '执行人',
+    `executed_time`       datetime       NULL DEFAULT NULL COMMENT '执行时间',
+    `create_time`         datetime       NULL DEFAULT NULL COMMENT '创建时间',
+    `create_by`           int            NULL DEFAULT NULL COMMENT '创建人',
+    `edit_time`           datetime       NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`             int            NULL DEFAULT NULL COMMENT '编辑人',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_refund_tran_id` (`tran_id` ASC) USING BTREE,
+    INDEX `idx_refund_original_payment` (`original_payment_id` ASC) USING BTREE,
+    CONSTRAINT `fk_refund_request_tran` FOREIGN KEY (`tran_id`) REFERENCES `t_tran` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_refund_request_original_payment` FOREIGN KEY (`original_payment_id`) REFERENCES `t_payment` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_refund_request_refund_payment` FOREIGN KEY (`refund_payment_id`) REFERENCES `t_payment` (`id`) ON DELETE RESTRICT
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = '退款申请表'
+  ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of t_refund_request
+-- ----------------------------
+INSERT INTO `t_refund_request`
+(`id`, `tran_id`, `original_payment_id`, `refund_payment_id`, `amount`, `refund_type`,
+ `reason`, `status`, `requested_by`, `requested_time`, `approved_by`, `approved_time`,
+ `approve_comment`, `executed_by`, `executed_time`, `create_time`, `create_by`, `edit_time`, `edit_by`)
+VALUES
+(1, 8, 4, 5, 20000.00, 'ORDER_CANCEL', '客户取消订单，定金原路退回。', 'EXECUTED',
+ 3, '2026-06-16 14:10:00', 4, '2026-06-16 14:12:00',
+ '同意按取消订单流程退款。', 6, '2026-06-16 14:18:00',
+ '2026-06-16 14:10:00', 3, '2026-06-16 14:18:00', 6);
 
 SET FOREIGN_KEY_CHECKS = 1;

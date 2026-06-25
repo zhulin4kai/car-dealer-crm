@@ -64,7 +64,7 @@ public interface TTranMapper {
     int selectCountByCustomerId(Integer customerId);
 
     /**
-     * 查询客户非终态交易数量（QUOTATION/PENDING/APPROVED/PAYMENT）
+     * 查询客户非终态交易数量。
      */
     int selectActiveCountByCustomerId(@Param("customerId") Integer customerId);
 
@@ -89,8 +89,4 @@ public interface TTranMapper {
                          @Param("expectedVersion") Integer expectedVersion,
                          @Param("editBy") Integer editBy);
 
-    /**
-     * 原子更新交易阶段为已完成，需验证已收款 >= 交易金额
-     */
-    int updateStageToCompleted(@Param("id") Integer id, @Param("editBy") Integer editBy);
 }

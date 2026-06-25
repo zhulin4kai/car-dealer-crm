@@ -51,6 +51,8 @@ class TranServiceImplTest {
     @Mock
     private TPaymentMapper paymentMapper;
     @Mock
+    private TRefundRequestMapper refundRequestMapper;
+    @Mock
     private TTranHistoryMapper tranHistoryMapper;
     @Mock
     private CurrentUserProvider currentUserProvider;
@@ -634,55 +636,66 @@ class TranServiceImplTest {
     }
 
     @Test
-    void recordPayment_completedAmount_shouldCompleteTransaction() {
+    void recordPayment_shouldCreatePendingPaymentWithServerCalculatedAmount() {
         TTran tran = newTran(1, TranStage.PAYMENT);
         TPayment payment = new TPayment();
         payment.setTranId(1);
-        payment.setAmount(tran.getMoney());
+        payment.setAmount(BigDecimal.ONE);
         payment.setPaymentMethod("CASH");
-        payment.setPaymentType("FULL");
 
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
         when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(tran);
         when(paymentMapper.insertSelective(payment)).thenReturn(1);
         when(paymentMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
-        when(tranMapper.updateStageToCompleted(1, 7)).thenReturn(1);
 
         TPayment result = tranService.recordPayment(payment);
 
-        assertEquals("COMPLETED", result.getPaymentStatus());
-        verify(tranMapper).updateStageToCompleted(1, 7);
-        verify(tranHistoryMapper).insert(argThat(history ->
+        assertEquals("PENDING", result.getPaymentStatus());
+        assertEquals(tran.getMoney().setScale(2), result.getAmount());
+        assertEquals("FULL", result.getPaymentType());
+        verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.COMPLETED), any(), anyInt());
+        verify(tranHistoryMapper, never()).insert(argThat(history ->
                 history.getTranId().equals(1) && "COMPLETED".equals(history.getStage())));
     }
 
     @Test
-    void refundPayment_shouldAtomicallyMarkPaymentBeforeSideEffects() {
-        TPayment original = new TPayment();
-        original.setId(10);
-        original.setTranId(1);
-        original.setAmount(BigDecimal.valueOf(100000));
-        original.setPaymentStatus("COMPLETED");
-        original.setPaymentType("FULL");
+    void confirmPayment_fullAmount_shouldMoveTransactionToDeliveryOnly() {
+        TTran tran = newTran(1, TranStage.PAYMENT);
+        TPayment payment = new TPayment();
+        payment.setId(10);
+        payment.setTranId(1);
+        payment.setAmount(tran.getMoney());
+        payment.setPaymentStatus("PENDING");
+        payment.setPaymentType("FULL");
 
-        when(paymentMapper.selectByPrimaryKey(10)).thenReturn(original);
-        when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.COMPLETED));
-        when(paymentMapper.selectByTranId(1)).thenReturn(Collections.singletonList(original));
-        when(tranMapper.updateStageAtomic(1, TranStage.CANCELLED, TranStage.COMPLETED, 7)).thenReturn(1);
-        when(paymentMapper.markRefundedIfCompleted(eq(10), any(Date.class), eq(7))).thenReturn(1);
-        when(paymentMapper.insertSelective(any(TPayment.class))).thenReturn(1);
-        when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
+        when(paymentMapper.selectByPrimaryKeyForUpdate(10)).thenReturn(payment);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(tran);
+        when(paymentMapper.updateStatusIfCurrent(eq(10), eq("PENDING"), eq("COMPLETED"),
+                any(Date.class), any(), any(Date.class), eq(7))).thenReturn(1);
+        when(paymentMapper.selectByTranId(1)).thenReturn(Collections.singletonList(payment));
+        when(tranMapper.updateStageAtomic(1, TranStage.DELIVERY, TranStage.PAYMENT, 7)).thenReturn(1);
 
-        TPayment refund = tranService.refundPayment(10);
+        TPayment result = tranService.confirmPayment(10, true, "到账");
 
-        assertEquals(BigDecimal.valueOf(-100000), refund.getAmount());
-        assertEquals("REFUND", refund.getPaymentType());
-        verify(paymentMapper).markRefundedIfCompleted(eq(10), any(Date.class), eq(7));
-        verify(paymentMapper).insertSelective(refund);
+        assertEquals("COMPLETED", result.getPaymentStatus());
+        verify(tranMapper).updateStageAtomic(1, TranStage.DELIVERY, TranStage.PAYMENT, 7);
+        verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.COMPLETED), any(), anyInt());
+        verify(tranHistoryMapper).insert(argThat(history ->
+                history.getTranId().equals(1) && "DELIVERY".equals(history.getStage())));
     }
 
     @Test
-    void refundPayment_concurrentRefund_shouldStopBeforeSideEffects() {
+    void refundPayment_directCall_shouldRejectWorkflowBypass() {
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> tranService.refundPayment(10));
+
+        assertEquals(CodeEnum.OPERATION_FAILED, exception.getCodeEnum());
+        verify(paymentMapper, never()).insertSelective(any());
+    }
+
+    @Test
+    void createRefundRequest_shouldRequireReasonAndCreatePendingApproval() {
         TPayment original = new TPayment();
         original.setId(10);
         original.setTranId(1);
@@ -690,15 +703,80 @@ class TranServiceImplTest {
         original.setPaymentStatus("COMPLETED");
         original.setPaymentType("FULL");
 
-        when(paymentMapper.selectByPrimaryKey(10)).thenReturn(original);
-        when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.COMPLETED));
-        when(paymentMapper.selectByTranId(1)).thenReturn(Collections.singletonList(original));
-        when(tranMapper.updateStageAtomic(1, TranStage.CANCELLED, TranStage.COMPLETED, 7)).thenReturn(0);
+        TRefundRequest request = new TRefundRequest();
+        request.setRefundType("ORDER_CANCEL");
+        request.setAmount(BigDecimal.valueOf(100000));
+        request.setReason("客户取消订单");
 
-        assertThrows(RuntimeException.class, () -> tranService.refundPayment(10));
+        when(paymentMapper.selectByPrimaryKeyForUpdate(10)).thenReturn(original);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.DELIVERY));
+        when(refundRequestMapper.sumExecutedAmountByOriginalPaymentId(10)).thenReturn(BigDecimal.ZERO);
+        when(refundRequestMapper.sumOpenAmountByOriginalPaymentId(10)).thenReturn(BigDecimal.ZERO);
+        when(refundRequestMapper.insertSelective(any(TRefundRequest.class))).thenAnswer(inv -> {
+            TRefundRequest inserted = inv.getArgument(0);
+            inserted.setId(99);
+            return 1;
+        });
 
-        verify(paymentMapper, never()).insertSelective(any());
-        verify(productMapper, never()).updateStock(anyLong(), anyInt());
-        verify(paymentMapper, never()).markRefundedIfCompleted(anyInt(), any(), anyInt());
+        TRefundRequest created = tranService.createRefundRequest(10, request);
+
+        assertEquals("PENDING_APPROVAL", created.getStatus());
+        assertEquals("ORDER_CANCEL", created.getRefundType());
+        assertEquals(10, created.getOriginalPaymentId());
+    }
+
+    @Test
+    void executeRefundRequest_orderCancelFullRefund_shouldCancelTransactionAfterApproval() {
+        TPayment original = new TPayment();
+        original.setId(10);
+        original.setTranId(1);
+        original.setAmount(BigDecimal.valueOf(100000));
+        original.setPaymentStatus("COMPLETED");
+        original.setPaymentType("FULL");
+        original.setPaymentMethod("CASH");
+
+        TRefundRequest request = new TRefundRequest();
+        request.setId(99);
+        request.setTranId(1);
+        request.setOriginalPaymentId(10);
+        request.setAmount(BigDecimal.valueOf(100000));
+        request.setRefundType("ORDER_CANCEL");
+        request.setReason("客户取消订单");
+        request.setStatus("APPROVED");
+
+        TTran tran = newTran(1, TranStage.DELIVERY);
+
+        when(refundRequestMapper.selectByPrimaryKeyForUpdate(99)).thenReturn(request);
+        when(paymentMapper.selectByPrimaryKeyForUpdate(10)).thenReturn(original);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(tran);
+        when(refundRequestMapper.sumExecutedAmountByOriginalPaymentId(10)).thenReturn(BigDecimal.ZERO);
+        when(paymentMapper.insertSelective(any(TPayment.class))).thenAnswer(inv -> {
+            TPayment refund = inv.getArgument(0);
+            refund.setId(20);
+            return 1;
+        });
+        when(refundRequestMapper.markExecutedIfApproved(eq(99), eq(20), eq(7), any(Date.class), eq(7), any(Date.class))).thenReturn(1);
+        when(paymentMapper.markRefundedIfCompleted(eq(10), any(Date.class), eq(7))).thenReturn(1);
+        when(paymentMapper.selectByTranId(1)).thenAnswer(inv -> {
+            TPayment refund = new TPayment();
+            refund.setId(20);
+            refund.setTranId(1);
+            refund.setAmount(BigDecimal.valueOf(-100000));
+            refund.setPaymentStatus("COMPLETED");
+            refund.setPaymentType("REFUND");
+            original.setPaymentStatus("REFUNDED");
+            return List.of(original, refund);
+        });
+        when(tranMapper.updateStageAtomic(1, TranStage.CANCELLED, TranStage.DELIVERY, 7)).thenReturn(1);
+        when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
+
+        TPayment refund = tranService.executeRefundRequest(99, "RF001", "已原路退回");
+
+        assertEquals(BigDecimal.valueOf(-100000), refund.getAmount());
+        assertEquals("REFUND", refund.getPaymentType());
+        verify(tranMapper).updateStageAtomic(1, TranStage.CANCELLED, TranStage.DELIVERY, 7);
+        verify(tranHistoryMapper).insert(argThat(history ->
+                history.getTranId().equals(1) && "CANCELLED".equals(history.getStage())));
     }
 }

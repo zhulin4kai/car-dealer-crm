@@ -185,15 +185,25 @@ public interface TranService {
      */
     TPayment recordPayment(TPayment payment);
 
+    TPayment confirmPayment(Integer paymentId, Boolean approved, String comment);
+
     /**
-     * 退款（交易取消，恢复库存）
+     * 退款（旧接口保留兼容，业务应使用退款申请/审批/执行流程）
      */
     TPayment refundPayment(Integer paymentId);
+
+    TRefundRequest createRefundRequest(Integer paymentId, TRefundRequest request);
+
+    TRefundRequest approveRefundRequest(Integer requestId, Boolean approved, String comment);
+
+    TPayment executeRefundRequest(Integer requestId, String transactionRef, String remark);
 
     /**
      * 获取交易收款记录
      */
     List<TPayment> getTransactionPayments(Integer tranId);
+
+    List<TRefundRequest> getTransactionRefundRequests(Integer tranId);
 
     SettlementPreviewResponse getSettlementPreview(Integer tranId, Long promotionId);
 

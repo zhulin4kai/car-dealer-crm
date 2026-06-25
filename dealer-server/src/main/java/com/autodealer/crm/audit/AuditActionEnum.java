@@ -28,8 +28,12 @@ public enum AuditActionEnum {
     TRAN_DELETE("TRAN_DELETE", "删除交易", "交易管理"),
     TRAN_RESUBMIT("TRAN_RESUBMIT", "交易重提", "交易管理"),
 
-    PAYMENT_CREATE("PAYMENT_CREATE", "创建收款", "支付管理"),
-    PAYMENT_REFUND("PAYMENT_REFUND", "退款", "支付管理"),
+    PAYMENT_CREATE("PAYMENT_CREATE", "登记收款", "支付管理"),
+    PAYMENT_CONFIRM("PAYMENT_CONFIRM", "确认收款", "支付管理"),
+    PAYMENT_REJECT("PAYMENT_REJECT", "退回收款", "支付管理"),
+    PAYMENT_REFUND_REQUEST("PAYMENT_REFUND_REQUEST", "申请退款", "退款管理"),
+    PAYMENT_REFUND_APPROVE("PAYMENT_REFUND_APPROVE", "审批退款", "退款管理"),
+    PAYMENT_REFUND("PAYMENT_REFUND", "执行退款", "退款管理"),
     INVOICE_CREATE("INVOICE_CREATE", "创建发票", "发票管理"),
     INVOICE_STATUS("INVOICE_STATUS", "发票状态变更", "发票管理"),
 

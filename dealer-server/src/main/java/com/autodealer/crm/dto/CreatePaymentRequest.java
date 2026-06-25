@@ -1,6 +1,5 @@
 package com.autodealer.crm.dto;
 
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -16,14 +15,14 @@ public class CreatePaymentRequest {
     @NotNull(message = "交易ID不能为空")
     private Integer tranId;
 
-    @NotNull(message = "收款金额不能为空")
-    @DecimalMin(value = "0", inclusive = false, message = "收款金额必须大于0")
+    /**
+     * 兼容旧客户端字段。当前收款金额由服务端按交易剩余应收计算，不信任客户端提交值。
+     */
     private BigDecimal amount;
 
     @NotBlank(message = "支付方式不能为空")
     private String paymentMethod;
 
-    @NotBlank(message = "支付类型不能为空")
     private String paymentType;
 
     private String transactionRef;

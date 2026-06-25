@@ -30,6 +30,20 @@
         WHERE id = #{id,jdbcType=INTEGER}
     </select>
 
+    <select id="selectByPrimaryKeyForUpdate" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_payment
+        WHERE id = #{id,jdbcType=INTEGER}
+        FOR UPDATE
+    </select>
+
+    <select id="selectByTransactionRef" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_payment
+        WHERE transaction_ref = #{transactionRef,jdbcType=VARCHAR}
+        LIMIT 1
+    </select>
+
     <select id="selectByTranId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
         FROM t_payment
@@ -95,6 +109,17 @@
         UPDATE t_payment
         SET payment_status = 'REFUNDED', edit_time = #{editTime}, edit_by = #{editBy}
         WHERE id = #{id} AND payment_status = 'COMPLETED'
+    </update>
+
+    <update id="updateStatusIfCurrent">
+        UPDATE t_payment
+        SET payment_status = #{newStatus,jdbcType=VARCHAR},
+            payment_time = #{paymentTime,jdbcType=TIMESTAMP},
+            remark = #{remark,jdbcType=VARCHAR},
+            edit_time = #{editTime,jdbcType=TIMESTAMP},
+            edit_by = #{editBy,jdbcType=INTEGER}
+        WHERE id = #{id,jdbcType=INTEGER}
+          AND payment_status = #{expectedStatus,jdbcType=VARCHAR}
     </update>
 
     <delete id="deleteByPrimaryKey">

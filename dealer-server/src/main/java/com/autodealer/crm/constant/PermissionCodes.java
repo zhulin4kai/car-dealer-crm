@@ -36,7 +36,10 @@ public final class PermissionCodes {
     public static final String TRAN_APPROVE = "tran:approve";
     public static final String TRAN_INVOICE = "tran:invoice";
     public static final String TRAN_PAYMENT = "tran:payment";
+    public static final String TRAN_PAYMENT_CONFIRM = "tran:payment:confirm";
     public static final String TRAN_REFUND = "tran:refund";
+    public static final String TRAN_REFUND_APPROVE = "tran:refund:approve";
+    public static final String TRAN_REFUND_EXECUTE = "tran:refund:execute";
 
     public static final String PRODUCT_LIST = "product:list";
     public static final String PRODUCT_VIEW = "product:view";
