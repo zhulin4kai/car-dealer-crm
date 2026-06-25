@@ -2237,13 +2237,45 @@ paths:
     post:
       tags: [Transaction]
       operationId: recordTransactionPayment
-      summary: 记录交易收款
+      summary: 登记交易收款
+      description: 登记后收款状态为待确认，金额由服务端按交易剩余应收计算，不以客户端提交金额为准。
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/payment/{id}/confirm:
+    put:
+      tags: [Transaction]
+      operationId: confirmTransactionPayment
+      summary: 确认或退回交易收款
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmPaymentRequest"
       responses:
         "200":
           $ref: "#/components/responses/ObjectOk"
@@ -2285,12 +2317,126 @@ paths:
     post:
       tags: [Transaction]
       operationId: refundTransactionPayment
-      summary: 对收款记录发起退款
+      summary: 旧退款接口
+      deprecated: true
+      description: 兼容旧客户端，服务端会拒绝直接退款；新流程使用退款申请、审批和执行接口。
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
           $ref: "#/components/responses/ObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/refund-requests/{tranId}:
+    get:
+      tags: [Transaction]
+      operationId: listTransactionRefundRequests
+      summary: 查询交易退款申请
+      parameters:
+        - $ref: "#/components/parameters/TranId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/payment/{id}/refund-requests:
+    post:
+      tags: [Transaction]
+      operationId: createTransactionRefundRequest
+      summary: 创建退款申请
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRefundRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/refund-requests/{id}/approve:
+    put:
+      tags: [Transaction]
+      operationId: approveTransactionRefundRequest
+      summary: 审批退款申请
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveRefundRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/refund-requests/{id}/execute:
+    post:
+      tags: [Transaction]
+      operationId: executeTransactionRefundRequest
+      summary: 执行退款
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteRefundRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2924,6 +3070,7 @@ components:
         - PENDING
         - APPROVED
         - PAYMENT
+        - DELIVERY
         - COMPLETED
         - LOST
         - CANCELLED
@@ -3038,16 +3185,68 @@ components:
           type: string
     CreatePaymentRequest:
       type: object
-      required: [tranId, amount, paymentMethod, paymentType]
+      required: [tranId, paymentMethod]
       properties:
         tranId:
           type: integer
         amount:
           type: number
+          description: 兼容旧客户端字段，服务端不信任此值，按剩余应收计算本次登记金额。
         paymentMethod:
           type: string
         paymentType:
           type: string
+          description: 兼容旧客户端字段，服务端按资金事实派生收款类型。
+        transactionRef:
+          type: string
+        remark:
+          type: string
+    ConfirmPaymentRequest:
+      type: object
+      required: [approved]
+      properties:
+        approved:
+          type: boolean
+        comment:
+          type: string
+          description: 退回收款时必填。
+    RefundType:
+      type: string
+      enum:
+        - ORDER_CANCEL
+        - OVERPAY
+        - PRICE_ADJUSTMENT
+        - CUSTOMER_BREACH
+        - INTERNAL_CORRECTION
+    RefundRequestStatus:
+      type: string
+      enum:
+        - PENDING_APPROVAL
+        - APPROVED
+        - REJECTED
+        - EXECUTED
+    CreateRefundRequest:
+      type: object
+      required: [refundType, amount, reason]
+      properties:
+        refundType:
+          $ref: "#/components/schemas/RefundType"
+        amount:
+          type: number
+        reason:
+          type: string
+    ApproveRefundRequest:
+      type: object
+      required: [approved]
+      properties:
+        approved:
+          type: boolean
+        comment:
+          type: string
+          description: 驳回退款申请时必填。
+    ExecuteRefundRequest:
+      type: object
+      properties:
         transactionRef:
           type: string
         remark:
