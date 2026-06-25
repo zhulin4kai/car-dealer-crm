@@ -86,10 +86,11 @@ dealer-server/src/main/java/com/autodealer/crm/
 4. 密码校验（BCryptPasswordEncoder）
 5. 登录成功 → MyAuthenticationSuccessHandler
    → JWTUtils.createJWT() 生成 JWT
-   → RedisService.setValue() 存储 JWT 到 Redis（key: cdrm:user:login:{userId}）
+   → RedisManager.set() 存储 JWT 到 Redis（key: cdrm:user:login:{userId}）
    → 设置过期时间：rememberMe=true → 7天，否则 30分钟
-   → 返回 JWT 给前端
-6. 登录失败 → MyAuthenticationFailureHandler → 返回错误信息
+   → Redis 写入成功后返回 JWT 给前端
+6. Redis 写入失败 → 返回 HTTP 500 和 SYSTEM_ERROR，不返回 JWT
+7. 登录失败 → MyAuthenticationFailureHandler → 返回 HTTP 401 和稳定错误码
 ```
 
 #### Token 验证流程（TokenVerifyFilter）
@@ -97,21 +98,22 @@ dealer-server/src/main/java/com/autodealer/crm/
 1. 请求进入 Filter
 2. 判断是否为 /api/login 请求 → 放行
 3. 从 Header 或参数中获取 Authorization token
-4. token 为空 → 返回 TOKEN_IS_EMPTY
-5. JWTUtils.verifyJWT() 验证签名 → 返回 TOKEN_IS_ERROR
+4. token 为空 → 返回 HTTP 401 和 TOKEN_IS_EMPTY
+5. JWTUtils.verifyJWT() 验证签名失败 → 返回 HTTP 401 和 TOKEN_IS_ERROR
 6. JWTUtils.parseUserFromJWT() 解析用户信息
-7. Redis 查询 token → 不存在返回 TOKEN_IS_EXPIRED
-8. Redis token 与请求 token 不匹配 → 返回 TOKEN_IS_NONE_MATCH
+7. Redis 查询 token → 不存在返回 HTTP 401 和 TOKEN_IS_EXPIRED
+8. Redis token 与请求 token 不匹配 → 返回 HTTP 401 和 TOKEN_IS_NONE_MATCH
 9. 验证通过 → 设置 SecurityContext
-10. 异步刷新 token 过期时间（线程池）
+10. 用户已被停用、锁定或删除时，必须删除 Redis 会话；删除失败返回 HTTP 500 和 SYSTEM_ERROR
 ```
 
 #### 退出流程
 ```
-1. 前端 GET /api/logout
+1. 前端 POST /api/logout
 2. MyLogoutSuccessHandler
    → 删除 Redis 中的 JWT
-   → 返回退出成功信息
+   → 删除成功后返回退出成功信息
+   → 删除失败返回 HTTP 500 和 SYSTEM_ERROR
 ```
 
 ### 2.4 权限控制
@@ -256,10 +258,11 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **接口**: `POST /api/clue`
 - **权限**: `@PreAuthorize("hasAuthority('clue:add')")`
 - **流程**: `ClueController.addClue()` → `ClueServiceImpl.saveClue()`
-  - 手机号查重
+  - 手机号查重，生产和测试 Schema 均通过 `uk_clue_phone` 唯一约束兜底。
   - `BeanUtils.copyProperties()` 复制属性
-  - `JWTUtils.parseUserFromJWT()` 解析创建人
+  - `CurrentUserProvider` 解析创建人和负责人
   - `TClueMapper.insertSelective()` 插入
+  - 插入并发命中唯一约束时返回稳定 `DUPLICATE`，HTTP 409。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 线索详情
@@ -276,13 +279,20 @@ dealer-server/src/main/java/com/autodealer/crm/
 #### 删除线索
 - **接口**: `DELETE /api/clue/{id}`
 - **权限**: `@PreAuthorize("hasAuthority('clue:delete')")`
-- **流程**: `ClueController.delClue()` → `ClueServiceImpl.delClueById()` → `TClueMapper.deleteByPrimaryKey()`
+- **流程**: `ClueController.delClue()` → `ClueServiceImpl.delClueById()`
+  - 先按数据范围校验线索可访问。
+  - 再通过 `TCustomerMapper.countByClueId()` 检查客户引用。
+  - 已转客户或存在客户引用时返回 `RESOURCE_IN_USE`，不删除线索备注和线索主体。
+  - 未被引用时删除线索备注，再删除线索主体。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 批量删除线索
 - **接口**: `POST /api/clue/batch`
 - **权限**: `@PreAuthorize("hasAuthority('clue:delete')")`
-- **流程**: `ClueController.batchDelClue()` → `ClueServiceImpl.batchDelClueByIds()` → `TClueMapper.batchDeleteByIds()`
+- **流程**: `ClueController.batchDelClue()` → `ClueServiceImpl.batchDelClueByIds()`
+  - 批量删除先对全部 ID 完成访问权限和客户引用检查。
+  - 任一线索已转客户或存在客户引用时，整个批次返回 `RESOURCE_IN_USE`，不删除任何历史。
+  - 全部可删除时删除备注并调用 `TClueMapper.batchDeleteByIds()`。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 线索备注
@@ -333,11 +343,9 @@ dealer-server/src/main/java/com/autodealer/crm/
 #### 线索转客户（核心业务）
 - **接口**: `POST /api/clue/customer`
 - **流程**: `CustomerController.convertCustomer()` → `CustomerServiceImpl.convertCustomer()` → `CustomerManager.convertCustomer()`
-  1. 验证线索是否已转客户（state == -1 则已转）
-  2. `TCustomerMapper.insertSelective()` 插入客户记录
-  3. `TClueMapper.updateByPrimaryKeySelective()` 更新线索状态为 -1
-  4. 自动创建交易记录：`TranService.createTransaction()`
-  5. 关联产品信息
+  1. 按当前用户数据范围将线索状态更新为已转客户，重复转化或越权返回失败。
+  2. `TCustomerMapper.insertSelective()` 插入客户记录，保留线索来源、意向产品、描述和下次跟进时间。
+  3. 转客户只创建客户事实，不自动创建交易、报价、订单、收款、发票或库存占用。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 客户分页查询（旧版）
@@ -353,8 +361,6 @@ dealer-server/src/main/java/com/autodealer/crm/
 ### 5.3 涉及数据库表
 - `t_customer` - 客户表
 - `t_clue` - 线索表（关联）
-- `t_tran` - 交易表（自动创建）
-- `t_tran_product` - 交易产品关联表
 
 ---
 
@@ -374,9 +380,11 @@ dealer-server/src/main/java/com/autodealer/crm/
 ### 6.2 交易状态流转
 
 ```
-待报价(41) → 待审批(42) → 已审批(43) → 待收款(45) → 已完成(46)
+待报价(41) → 待审批(42) → 已审批(43) → 待交付(44) → 已完成(46)
                                     ↘ 丢失关闭(21)
 ```
+
+`PAYMENT` 仍作为兼容的待收款阶段保留；发票开具不再把交易推入 `PAYMENT`，收款登记和财务确认可在 `APPROVED` 或 `PAYMENT` 阶段处理。
 
 ### 6.3 接口方法及业务流程
 
@@ -393,17 +401,18 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **接口**: `POST /api/tran/create`
 - **流程**: `TranController.create()` → `TranServiceImpl.createTransaction()`
   1. 生成交易编号（TN + 年月日 + 6位随机数）
-  2. `TTranMapper.insertSelective()` 插入交易
-  3. 遍历产品列表：`TTranProductMapper.insertSelective()` 插入产品关联
-  4. `ProductMapper.updateStock()` 扣减库存
+  2. 服务端校验客户数据范围和商品可售状态，并按数据库商品价格计算报价金额
+  3. `TTranMapper.insertSelective()` 插入待报价交易
+  4. 遍历产品列表：`TTranProductMapper.insertSelective()` 插入商品快照关联
   5. 清除 Redis 缓存
+- **库存边界**: 报价阶段不扣减、不占用、不恢复商品库存；库存占用由订单成立或明确锁车任务处理。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 更新交易
 - **接口**: `PUT /api/tran/update`
 - **流程**: `TranController.update()` → `TranServiceImpl.updateTransaction()`
   - 更新交易基本信息
-  - 删除旧产品关联（恢复库存）→ 插入新产品关联（扣减库存）
+  - 替换商品行项时删除旧产品关联、插入新产品关联并重算金额，不触发库存加减。
 
 #### 结算交易
 - **接口**: `POST /api/tran/{id}/settlement-preview`、`PUT /api/tran/{id}/settle`
@@ -427,7 +436,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **流程**: `TranController.createInvoice()` → `TranServiceImpl.createTranInvoice()`
   1. 生成发票号码（INV + 年月日 + 6位随机数）
   2. `TTranInvoiceMapper.insertSelective()` 插入发票
-  3. 更新交易状态为待收款(45)
+  3. 发票创建只写发票事实，不更新交易阶段
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 获取发票列表
@@ -437,7 +446,38 @@ dealer-server/src/main/java/com/autodealer/crm/
 #### 更新发票状态
 - **接口**: `PUT /api/tran/invoice/{invoiceId}/status`
 - **流程**: → `TranServiceImpl.updateTranInvoiceStatus()`
-  - 发票状态变为 ISSUED 时，更新交易状态为已完成(46)
+  - 发票状态变为 `ISSUED` 时，只更新发票为已开具。
+  - 发票状态变为 `VOID` 时，只更新发票为已作废。
+  - 发票状态不得覆盖收款状态、交付状态或交易履约阶段。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 登记收款
+- **接口**: `POST /api/tran/payment`
+- **流程**: → `TranServiceImpl.recordPayment()`
+  - 校验交易处于已审批或兼容待收款阶段，发票状态不得作为收款入口的前置状态机。
+  - 服务端按交易应收和已确认收款计算本次登记金额，不信任客户端提交金额。
+  - 写入 `PENDING` 收款记录；登记不等于财务确认到账。
+  - 外部支付渠道必须提交外部流水号；现金或其他手工渠道由服务端生成幂等键。
+  - `transaction_ref` 和 `idempotency_key` 均有唯一约束；重复相同请求返回已有收款，不同请求复用键返回冲突。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 确认收款
+- **接口**: `PUT /api/tran/payment/{id}/confirm`
+- **流程**: → `TranServiceImpl.confirmPayment()`
+  - 仅 `PENDING` 收款可以确认或退回。
+  - 确认成功后状态变为 `COMPLETED` 并记录确认时间。
+  - 确认退回后状态变为 `FAILED` 并保留退回原因。
+  - 已确认收款达到应收金额时，交易从当前已审批或兼容待收款阶段进入待交付，不直接完成交易。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 退款申请、审批与执行
+- **接口**: `POST /api/tran/payment/{id}/refund-requests`、`PUT /api/tran/refund-requests/{id}/approve`、`POST /api/tran/refund-requests/{id}/execute`
+- **流程**: → `TranServiceImpl.createRefundRequest()/approveRefundRequest()/executeRefundRequest()`
+  - 退款必须先基于已确认原收款创建申请，申请记录保留退款原因、金额、申请人和状态。
+  - 可退金额由已确认原收款、已完成退款和待审批/已审批冻结退款共同计算，超额返回冲突或参数错误。
+  - 审批通过后进入待执行，驳回保留申请和驳回原因。
+  - 执行退款只新增负数退款流水并把退款申请标记为 `EXECUTED`。
+  - 原收款保留原始金额、渠道、凭证和 `COMPLETED` 确认状态；退款执行不直接取消交易、不释放库存。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 获取交易备注
@@ -447,13 +487,14 @@ dealer-server/src/main/java/com/autodealer/crm/
 #### 获取交易产品详情
 - **接口**: `GET /api/tran/products/{id}`
 - **流程**: → `TranServiceImpl.getTransactionProductDetails()` → `TTranMapper.selectTranProductsByTranId()`
+- **历史展示**: 返回 `t_tran_product` 中保存的商品编码、名称、配置和指导价快照，不再联表读取当前 `t_product.name`。
 
 #### 删除交易
 - **接口**: `DELETE /api/tran/{id}`
 - **流程**: → `TranServiceImpl.deleteTransaction()`
-  1. 恢复产品库存
+  1. 校验交易仍处于待报价阶段
   2. 删除交易产品关联
-  3. 删除交易备注
+  3. 删除交易备注、发票、审批、退款申请和收款记录
   4. 删除交易主记录
   5. 清除缓存
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
@@ -567,7 +608,12 @@ dealer-server/src/main/java/com/autodealer/crm/
 | `PUT /api/products/{id}` | 更新产品 | `@Transactional` |
 | `DELETE /api/products/{id}` | 删除产品 | `@Transactional` |
 | `GET /api/products/stockalerts` | 库存预警列表 | 无 |
-| `POST /api/products/stock/restock` | 入库补货 | `@Transactional` |
+
+商品新增可以设置初始库存；商品编辑只维护资料字段，不通过 `PUT /api/products/{id}` 修改库存数量。库存变动必须走库存命令接口并写入库存流水。
+
+商品状态在接口和数据库中统一使用稳定编码 `ON_SALE`、`OFF_SALE`；中文“上架/下架”只用于前端展示。`TProductMapper.selectAllOnSale()` 只查询 `ON_SALE`，后端 DTO 和 `t_product` CHECK 约束都会拒绝中文状态或历史别名。
+
+商品删除由 `ProductServiceImpl.deleteProduct()` 统一检查引用：交易商品快照、库存流水、促销、客户选购商品和线索意向商品任一存在时返回 `RESOURCE_IN_USE`，不执行物理删除；商品不存在时返回 `NOT_FOUND`。
 
 #### 产品分类管理
 | 接口 | 方法 | 事务 |
@@ -577,6 +623,8 @@ dealer-server/src/main/java/com/autodealer/crm/
 | `POST /api/product-categories` | 新增分类 | `@Transactional` |
 | `PUT /api/product-categories/{id}` | 更新分类 | `@Transactional` |
 | `DELETE /api/product-categories/{id}` | 删除分类 | `@Transactional` |
+
+分类删除由 `ProductCategoryServiceImpl.deleteCategory()` 统一检查：分类不存在返回 `NOT_FOUND`；存在商品引用时返回 `RESOURCE_IN_USE`，不执行物理删除，确保历史商品和交易展示仍可追溯。
 
 #### 产品促销管理
 | 接口 | 方法 | 事务 |
@@ -680,9 +728,11 @@ deleteDicType(id):
 
 ### 11.2 接口方法及业务流程
 
+统计接口由后端从当前登录用户解析数据范围：管理员查看全局数据，非管理员仅统计与其明细权限一致的活动、线索、客户和交易数据。前端不得传入范围参数扩大查询。
+
 #### 汇总数据
 - **接口**: `GET /api/summary/data`
-- **流程**: `StatisticController.summaryData()` → `StatisticServiceImpl.loadSummaryData()` → `StatisticManager.loadSummaryData()`
+- **流程**: `StatisticController.summaryData()` → `StatisticServiceImpl.loadSummaryData()` → `StatisticManager.loadSummaryData()` → `CurrentUserProvider` 提供数据范围 → Mapper 聚合
 - **返回数据**:
   - 有效市场活动数
   - 总市场活动数
@@ -693,12 +743,12 @@ deleteDicType(id):
 
 #### 销售漏斗
 - **接口**: `GET /api/saleFunnel/data`
-- **流程**: → `StatisticManager.loadSaleFunnelData()`
+- **流程**: → `StatisticManager.loadSaleFunnelData()` → 按当前用户数据范围聚合
 - **返回数据**: 线索→客户→交易→成交 的数量漏斗
 
 #### 来源饼图
 - **接口**: `GET /api/sourcePie/data`
-- **流程**: → `StatisticManager.loadSourcePieData()` → `TClueMapper.selectBySource()`
+- **流程**: → `StatisticManager.loadSourcePieData()` → `TClueMapper.selectBySource(dataScopeUserId)`
 - **返回数据**: 按线索来源分组统计
 
 ### 11.3 涉及数据库表
@@ -939,10 +989,10 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 |--------|------|------|
 | `selectClueByPage` | SELECT | 线索分页查询（多表关联） |
 | `selectByCount` | SELECT | 按手机号查重 |
-| `selectClueByCount` | SELECT | 线索总数统计 |
+| `selectClueByCount` | SELECT | 按当前数据范围统计线索总数 |
 | `selectDetailById` | SELECT | 线索详情（多表关联） |
 | `selectByPrimaryKey` | SELECT | 按主键查询 |
-| `selectBySource` | SELECT | 按来源分组统计（饼图） |
+| `selectBySource` | SELECT | 按当前数据范围和来源分组统计（饼图） |
 | `deleteByPrimaryKey` | DELETE | 删除线索 |
 | `saveClue` | INSERT | 批量保存线索（Excel 导入） |
 | `insert` | INSERT | 插入线索 |
@@ -957,7 +1007,7 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 |--------|------|------|
 | `selectCustomerPage` | SELECT | 客户分页查询（多表关联） |
 | `selectCustomerByExcel` | SELECT | 导出 Excel 查询 |
-| `selectByCount` | SELECT | 客户总数统计 |
+| `selectByCount` | SELECT | 按当前数据范围统计客户总数 |
 | `selectByPrimaryKey` | SELECT | 按主键查询 |
 | `selectByQuery` | SELECT | 按条件查询客户 |
 | `selectCustomerOptions` | SELECT | 客户选项（下拉框） |
@@ -977,7 +1027,7 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `selectByTotalTranCount` | SELECT | 交易客户数 |
 | `selectBySuccessTranCount` | SELECT | 成交客户数 |
 | `selectByPrimaryKey` | SELECT | 交易详情 |
-| `selectTranProductsByTranId` | SELECT | 交易产品列表 |
+| `selectTranProductsByTranId` | SELECT | 交易产品历史快照列表 |
 | `selectTranWithApproveByTranId` | SELECT | 交易+审批联合查询 |
 | `deleteByPrimaryKey` | DELETE | 删除交易 |
 | `deleteByIds` | DELETE | 批量删除交易 |
@@ -1122,7 +1172,7 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `t_customer` | 客户表 | id, clue_id, product, description |
 | `t_customer_remark` | 客户跟踪记录表 | id, customer_id, note_way, note_content |
 | `t_tran` | 交易表 | id, tran_no, customer_id, money, stage |
-| `t_tran_product` | 交易产品关联表 | id, tran_id, product_id, quantity, price |
+| `t_tran_product` | 交易产品关联表 | id, tran_id, product_id, quantity, price, product_sku, product_name, product_specification, guide_price |
 | `t_tran_invoice` | 交易发票表 | id, tran_id, invoice_no, amount, status |
 | `t_tran_approve` | 交易审批表 | id, tran_id, approve_result, approve_comment |
 | `t_tran_remark` | 交易跟踪记录表 | id, tran_id, note_way, note_content |

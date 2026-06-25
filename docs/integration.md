@@ -65,20 +65,24 @@
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
 | getProductList | GET | /api/products | params: {page, size} | Result\<PageInfo\<Product\>\> | ProductController.getProductList | 分页查询产品列表 |
 | getProductDetail | GET | /api/products/{id} | 路径参数: id | Result\<Product\> | ProductController.getProductById | 获取产品详情 |
-| createProduct | POST | /api/products | data: Product对象 (JSON) | Result\<Void\> | ProductController.addProduct | 新增产品 |
-| updateProduct | PUT | /api/products/{id} | 路径参数: id, data: Product对象 (JSON) | Result\<Void\> | ProductController.updateProduct | 编辑产品 |
-| deleteProduct | DELETE | /api/products/{id} | 路径参数: id | Result\<Void\> | ProductController.deleteProduct | 删除产品 |
+| createProduct | POST | /api/products | data: CreateProductRequest (JSON, 含初始库存) | Result\<Void\> | ProductController.addProduct | 新增产品 |
+| updateProduct | PUT | /api/products/{id} | 路径参数: id, data: UpdateProductRequest (JSON, 不含库存数量) | Result\<Void\> | ProductController.updateProduct | 编辑产品资料 |
+| deleteProduct | DELETE | /api/products/{id} | 路径参数: id | Result\<Void\> | ProductController.deleteProduct | 删除产品；存在交易、库存流水、促销、客户或线索引用时返回 422 RESOURCE_IN_USE |
 | getStockAlerts | GET | /api/products/stockalerts | params: {page, size, sku, name, category} | Result\<PageInfo\<Product\>\> | ProductController.getStockAlerts | 获取库存预警列表 |
 | restockProduct | POST | /api/productstock/restock | data: {productId, quantity, remark} (JSON) | Result\<Void\> | ProductStockController.restock | 产品补货 |
 | getStockRecords | GET | /api/productstock/records/{id} | 路径参数: id, params: {page, size} | Result\<PageInfo\<ProductStockRecord\>\> | ProductStockController.getStockRecords | 获取库存变动记录 |
 | getPromotionList | GET | /api/product-promotions | params: {page, size} | Result\<PageInfo\<ProductPromotion\>\> | ProductPromotionController.getPromotionList | 分页查询促销列表 |
 | createPromotion | POST | /api/product-promotions | data: ProductPromotion对象 (JSON) | Result\<Void\> | ProductPromotionController.addPromotion | 新增促销 |
+
+产品 `status` 请求值必须使用 `ON_SALE` 或 `OFF_SALE`，前端只把“上架/下架”作为展示 label。
+商品删除失败时前端按 `ApiError.code === 422` 映射“已被业务引用，不能直接删除”，不匹配中文 msg 或数据库外键文案。
+分类删除失败时前端同样按 `ApiError.code === 422` 映射“已被商品或历史记录引用，不能直接删除”。
 | updatePromotion | PUT | /api/product-promotions/{id} | 路径参数: id, data: ProductPromotion对象 (JSON) | Result\<Void\> | ProductPromotionController.updatePromotion | 编辑促销 |
 | deletePromotion | DELETE | /api/product-promotions/{id} | 路径参数: id | Result\<Void\> | ProductPromotionController.deletePromotion | 删除促销 |
 | getCategoryList | GET | /api/product-categories | params: {page, size} | Result\<PageInfo\<ProductCategory\>\> | ProductCategoryController.getCategoryList | 分页查询分类列表 |
 | createCategory | POST | /api/product-categories | data: ProductCategory对象 (JSON) | Result\<Void\> | ProductCategoryController.addCategory | 新增分类 |
 | updateCategory | PUT | /api/product-categories/{id} | 路径参数: id, data: ProductCategory对象 (JSON) | Result\<Void\> | ProductCategoryController.updateCategory | 编辑分类 |
-| deleteCategory | DELETE | /api/product-categories/{id} | 路径参数: id | Result\<Void\> | ProductCategoryController.deleteCategory | 删除分类 |
+| deleteCategory | DELETE | /api/product-categories/{id} | 路径参数: id | Result\<Void\> | ProductCategoryController.deleteCategory | 删除分类；存在商品或历史引用时返回 422 RESOURCE_IN_USE |
 
 ### 1.6 交易管理模块 (tran.js)
 
@@ -86,7 +90,7 @@
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
 | getTranList | GET | /api/tran/list | params: {page, size, ...query} | R\<PageInfo\<TTran\>\> | TranController.list | 分页查询交易列表 |
 | getTranDetail | GET | /api/tran/{id} | 路径参数: id | R\<TTran\> | TranController.detail | 获取交易详情 |
-| getTranProducts | GET | /api/tran/products/{id} | 路径参数: id | R\<List\<TTranProduct\>\> | TranController.getTransactionProducts | 获取交易产品列表 |
+| getTranProducts | GET | /api/tran/products/{id} | 路径参数: id | R\<List\<TTranProduct\>\> | TranController.getTransactionProducts | 获取交易产品历史快照列表；商品主档修改后名称、编码、配置和指导价不随之变化 |
 | createTran | POST | /api/tran/create | data: TranCreateRequest对象 (JSON) | R\<Integer\> | TranController.create | 创建交易 |
 | updateTran | PUT | /api/tran/update | data: TranCreateRequest对象 (JSON) | R\<Boolean\> | TranController.update | 更新交易 |
 | fetchSettlementPreview | POST | /api/tran/{id}/settlement-preview | 路径参数: id, data: {promotionId?} | R\<SettlementPreviewResponse\> | TranController.settlementPreview | 服务端结算预览 |
@@ -124,13 +128,15 @@
 
 旧系统配置与系统监控接口已下线，不再提供 `/api/system/*` 和 `/api/monitor/*`。
 
-### 1.9 统计模块 (后端提供，前端未定义API文件)
+### 1.9 统计模块
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|
-| /api/summary/data | GET | StatisticController.summaryData | R\<SummaryData\> | **前端未发现API调用** |
-| /api/saleFunnel/data | GET | StatisticController.saleFunnelData | R\<List\<NameValue\>\> | **前端未发现API调用** |
-| /api/sourcePie/data | GET | StatisticController.sourcePieData | R\<List\<NameValue\>\> | **前端未发现API调用** |
+| /api/summary/data | GET | StatisticController.summaryData | R\<SummaryData\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
+| /api/saleFunnel/data | GET | StatisticController.saleFunnelData | R\<List\<NameValue\>\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
+| /api/sourcePie/data | GET | StatisticController.sourcePieData | R\<List\<NameValue\>\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
+
+统计接口不接收前端范围参数，后端按当前登录用户的数据范围聚合；非管理员统计结果必须能由同范围明细反算。
 
 ### 1.10 活动备注模块 (后端提供，前端未定义API文件)
 
@@ -150,7 +156,6 @@
 
 | 问题类型 | 前端路径 | 后端路径 | 问题描述 | 严重程度 |
 |---------|---------|---------|---------|---------|
-| **路径不匹配** | /api/productstock/restock | /api/products/stock/restock | 前端调用补货接口路径与后端不一致 | **高** |
 | **路径不匹配** | /api/tran/status/{id} | 无对应接口 | 前端调用获取交易状态接口，后端未实现 | **高** |
 | 路径命名不一致 | /api/activitys | /api/activitys | 前后端一致，但命名不规范(应为activities) | 低 |
 
@@ -196,9 +201,6 @@
 
 | 后端接口 | 后端Controller | 说明 | 严重程度 |
 |---------|---------------|------|---------|
-| GET /api/summary/data | StatisticController | 统计汇总数据 | 中 |
-| GET /api/saleFunnel/data | StatisticController | 销售漏斗数据 | 中 |
-| GET /api/sourcePie/data | StatisticController | 来源饼图数据 | 中 |
 | POST /api/activity/remark | ActivityRemarkController | 添加活动备注 | 中 |
 | GET /api/activity/remark | ActivityRemarkController | 查询活动备注列表 | 中 |
 | GET /api/activity/remark/{id} | ActivityRemarkController | 获取活动备注详情 | 中 |
@@ -260,7 +262,8 @@
 | 4 | 生成JWT | JWTUtils.createJWT(userJSON), 负载为用户信息JSON |
 | 5 | 存储到Redis | key: `cdrm:user:login:{userId}`, value: jwt |
 | 6 | 设置过期时间 | rememberMe=true: 7天, rememberMe=false: 30分钟 |
-| 7 | 返回JWT给前端 | R.OK(jwt) → {code:200, msg:"操作成功", data:"jwt字符串"} |
+| 7 | 返回JWT给前端 | 仅 Redis 写入成功后返回 R.OK(jwt) |
+| 8 | Redis 写入失败 | 返回 HTTP 500 和 SYSTEM_ERROR，不返回 JWT |
 
 ### 3.3 请求携带Token
 
@@ -419,10 +422,12 @@ axios.interceptors.response.use((response) => {
                             ┌───────────────────┼───────────────────┐
                             ▼                   ▼                   ▼
                     ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-                    │ 1.获取用户   │   │ 2.删除Redis  │   │ 3.返回成功   │
-                    │ 信息         │   │ 中的Token    │   │ 响应         │
+                    │ 1.获取用户   │   │ 2.删除Redis  │   │ 3.返回结果   │
+                    │ 信息         │   │ 中的Token    │   │ 成功或失败   │
                     └──────────────┘   └──────────────┘   └──────────────┘
 ```
+
+Redis 删除成功后返回退出成功；删除失败或抛出异常时返回 HTTP 500 和 SYSTEM_ERROR，不得让前端误认为会话已经失效。
 
 ---
 
@@ -710,10 +715,10 @@ apiFunction(params).then(response => {
 |-------|------|
 | 前端API函数总数 | 68 |
 | 后端Controller接口总数 | 72 |
-| 前后端匹配接口数 | 55 |
+| 前后端匹配接口数 | 56 |
 | 前端调用但后端未实现 | 1 (getTranStatus) |
 | 后端提供但前端未调用 | 16 |
-| 路径不匹配 | 1 (restockProduct) |
+| 路径不匹配 | 0 |
 | 使用R类响应的模块 | 用户/线索/活动/字典/交易/统计 |
 | 使用Result类响应的模块 | 产品/分类/促销/库存 |
 

@@ -469,6 +469,7 @@ paths:
       tags: [Clue]
       operationId: createClue
       summary: 新增线索
+      description: 手机号由生产和测试 Schema 的唯一约束兜底；并发重复手机号返回 409 DUPLICATE。
       requestBody:
         required: true
         content:
@@ -547,6 +548,7 @@ paths:
       tags: [Clue]
       operationId: deleteClue
       summary: 删除线索
+      description: 删除前校验客户引用；已转客户或存在客户引用的线索返回 422 RESOURCE_IN_USE，不删除线索备注和线索主体。
       parameters:
         - name: phone
           in: path
@@ -592,6 +594,7 @@ paths:
       tags: [Clue]
       operationId: batchDeleteClues
       summary: 批量删除线索
+      description: 批量删除先完成全部访问权限和客户引用检查；任一线索被客户引用时整个批次返回 422 RESOURCE_IN_USE，不删除任何历史。
       requestBody:
         $ref: "#/components/requestBodies/IntegerArray"
       responses:
@@ -685,7 +688,18 @@ paths:
       summary: 查询客户下拉选项
       responses:
         "200":
-          $ref: "#/components/responses/ArrayOk"
+          description: 查询成功，data 为交易商品历史快照数组。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/TranProduct"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -717,6 +731,7 @@ paths:
       tags: [Customer]
       operationId: convertClueToCustomer
       summary: 线索转客户
+      description: 将有权访问的线索转为客户主档事实；不自动创建交易、报价、订单、收款、发票或库存占用。
       requestBody:
         required: true
         content:
@@ -1389,7 +1404,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProductRequest"
+              $ref: "#/components/schemas/CreateProductRequest"
       responses:
         "200":
           $ref: "#/components/responses/EmptyOk"
@@ -1433,7 +1448,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProductRequest"
+              $ref: "#/components/schemas/UpdateProductRequest"
       responses:
         "200":
           $ref: "#/components/responses/EmptyOk"
@@ -1453,6 +1468,7 @@ paths:
       tags: [Product]
       operationId: deleteProduct
       summary: 删除商品
+      description: 删除前校验交易商品快照、库存流水、促销、客户和线索意向引用；存在任一引用时返回 422 RESOURCE_IN_USE，不物理删除商品。
       parameters:
         - $ref: "#/components/parameters/LongId"
       responses:
@@ -1590,6 +1606,7 @@ paths:
       tags: [ProductCategory]
       operationId: deleteProductCategory
       summary: 删除商品分类
+      description: 删除前校验商品引用；存在商品或历史记录引用时返回 422 RESOURCE_IN_USE，不物理删除分类。
       parameters:
         - $ref: "#/components/parameters/LongId"
       responses:
@@ -1869,6 +1886,7 @@ paths:
       tags: [Transaction]
       operationId: createTransaction
       summary: 创建交易
+      description: 创建待报价交易并保存商品价格快照；报价创建不扣减、不占用商品库存。
       requestBody:
         required: true
         content:
@@ -1905,6 +1923,7 @@ paths:
       tags: [Transaction]
       operationId: updateTransaction
       summary: 更新交易
+      description: 更新待报价交易资料或商品行项；商品行项替换会重算金额，但不扣减、不恢复商品库存。
       requestBody:
         required: true
         content:
@@ -2123,6 +2142,7 @@ paths:
       tags: [Transaction]
       operationId: updateTransactionInvoiceStatus
       summary: 更新交易发票状态
+      description: 仅更新发票处理状态；ISSUED、VOID 不得推进或回退交易履约阶段。
       parameters:
         - name: invoiceId
           in: path
@@ -2238,7 +2258,7 @@ paths:
       tags: [Transaction]
       operationId: recordTransactionPayment
       summary: 登记交易收款
-      description: 登记后收款状态为待确认，金额由服务端按交易剩余应收计算，不以客户端提交金额为准。
+      description: 交易处于 APPROVED 或兼容 PAYMENT 阶段时可登记收款；登记后收款状态为待确认，金额由服务端按交易剩余应收计算，不以客户端提交金额为准。BANK_TRANSFER、WECHAT、ALIPAY、CHECK 必须提交 transactionRef；CASH、OTHER 未提交 transactionRef 时由服务端按交易、渠道和本次金额生成幂等键。相同幂等请求返回已有收款，不同请求复用同一幂等键或外部流水号返回 409。
       requestBody:
         required: true
         content:
@@ -2268,6 +2288,7 @@ paths:
       tags: [Transaction]
       operationId: confirmTransactionPayment
       summary: 确认或退回交易收款
+      description: 仅 PENDING 收款可确认或退回；确认到账后计入有效收款，若累计有效收款达到交易应收，交易从当前 APPROVED 或兼容 PAYMENT 阶段进入 DELIVERY，不直接完成交易。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -2424,6 +2445,7 @@ paths:
       tags: [Transaction]
       operationId: executeTransactionRefundRequest
       summary: 执行退款
+      description: 仅执行已审批退款申请，新增负数退款流水并将退款申请标记为 EXECUTED；不覆盖原收款确认状态，不直接取消交易或释放库存。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -2455,6 +2477,7 @@ paths:
       tags: [Statistic]
       operationId: getSummaryData
       summary: 查询经营摘要指标
+      description: 指标由后端按当前登录用户的数据范围聚合，前端不能传入范围参数扩大查询。
       responses:
         "200":
           $ref: "#/components/responses/ObjectOk"
@@ -2470,6 +2493,7 @@ paths:
       tags: [Statistic]
       operationId: getSaleFunnelData
       summary: 查询销售漏斗数据
+      description: 漏斗数量由后端按当前登录用户的数据范围聚合，必须与同范围明细可反算。
       responses:
         "200":
           $ref: "#/components/responses/NameValueArrayOk"
@@ -2485,6 +2509,7 @@ paths:
       tags: [Statistic]
       operationId: getSourcePieData
       summary: 查询线索来源占比数据
+      description: 来源占比由后端按当前登录用户可访问线索范围聚合。
       responses:
         "200":
           $ref: "#/components/responses/NameValueArrayOk"
@@ -2996,9 +3021,9 @@ components:
           type: integer
         remark:
           type: string
-    ProductRequest:
+    CreateProductRequest:
       type: object
-      required: [sku, name, price]
+      required: [sku, name, price, status]
       properties:
         sku:
           type: string
@@ -3017,6 +3042,30 @@ components:
           type: integer
         status:
           type: string
+          enum: [ON_SALE, OFF_SALE]
+          description: 商品状态稳定编码，中文只用于页面展示。
+    UpdateProductRequest:
+      type: object
+      description: 商品资料编辑请求；库存数量不得通过该接口修改，必须走库存命令和流水。
+      required: [sku, name, price, status]
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        categoryId:
+          type: integer
+          format: int64
+        specification:
+          type: string
+        price:
+          type: number
+        minStock:
+          type: integer
+        status:
+          type: string
+          enum: [ON_SALE, OFF_SALE]
+          description: 商品状态稳定编码，中文只用于页面展示。
     ProductCategoryRequest:
       type: object
       required: [name, code]
@@ -3085,6 +3134,33 @@ components:
         quantity:
           type: integer
           minimum: 1
+    TranProduct:
+      type: object
+      description: 交易商品历史快照。商品主档修改后，本对象中的名称、编码、配置和指导价不随主档变化。
+      properties:
+        id:
+          type: integer
+        tranId:
+          type: integer
+        productId:
+          type: integer
+          format: int64
+        productSku:
+          type: string
+        productName:
+          type: string
+        productSpecification:
+          type: string
+        guidePrice:
+          type: number
+        quantity:
+          type: integer
+        price:
+          type: number
+          description: 成交或报价行项单价快照。
+        createTime:
+          type: string
+          format: date-time
     CreateTranRequest:
       type: object
       required: [customerId, products]
@@ -3199,6 +3275,7 @@ components:
           description: 兼容旧客户端字段，服务端按资金事实派生收款类型。
         transactionRef:
           type: string
+          description: 外部支付参考号；银行转账、微信、支付宝和支票必填，用于幂等识别。
         remark:
           type: string
     ConfirmPaymentRequest:

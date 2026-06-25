@@ -87,6 +87,7 @@ HTTP 层集中处理：
 - `rememberMe` 请求头
 - `code !== 200` 抛出 `ApiError`
 - 会话失效（code 510-513）通过 `shared/auth/session-invalid-handler.ts` 单飞处理：应用启动时注册处理器，`notifySessionInvalid` 持有 `inFlight` Promise 守卫，并发失效只触发一次 `authStore.forceLogout()` + `permissionStore.clearPermissions()` + `router.replace({ name: 'login' })`
+- 业务页只能按 `ApiError.code` 和 HTTP 状态处理稳定业务分支；商品删除等引用保护场景按 `RESOURCE_IN_USE(422)` 映射提示，不解析中文 `msg` 或数据库约束文案。
 - 403（code 520）和网络错误不清会话
 - `ApiError` 携带 `isSessionInvalid` 标志，页面可据此跳过重复提示
 - 文件下载使用 `httpClient.download()`，返回 `{ blob, filename }`，自动解析 `Content-Disposition`；Blob 错误响应转换为 `ApiError` 并进入统一会话失效流程
@@ -163,6 +164,8 @@ modules/<module>/
 - `user`
 
 页面统一放在 `src/pages`，并通过路由懒加载。
+
+`product` 模块商品状态提交值固定为 `ON_SALE`、`OFF_SALE`，页面只将其展示为“上架/下架”。
 
 ## 列表请求基础设施
 
