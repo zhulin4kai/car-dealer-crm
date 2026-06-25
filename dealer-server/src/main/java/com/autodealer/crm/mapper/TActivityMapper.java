@@ -29,7 +29,7 @@ public interface TActivityMapper {
 
     List<TActivity> selecOngoingActivity(Integer dataScopeUserId);
 
-    Integer selectByCount();
+    Integer selectByCount(@Param("dataScopeUserId") Integer dataScopeUserId);
 
     int batchDeleteByIds(List<Integer> ids);
 }

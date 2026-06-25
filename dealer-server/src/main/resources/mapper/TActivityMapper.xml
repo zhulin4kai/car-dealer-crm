@@ -109,6 +109,11 @@
     select
         count(0)
     from t_activity
+    <where>
+      <if test="dataScopeUserId != null">
+        owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
+    </where>
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
