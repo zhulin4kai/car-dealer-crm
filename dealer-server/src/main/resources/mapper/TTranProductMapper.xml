@@ -7,12 +7,17 @@
         <result column="product_id" jdbcType="BIGINT" property="productId" />
         <result column="quantity" jdbcType="INTEGER" property="quantity" />
         <result column="price" jdbcType="DECIMAL" property="price" />
+        <result column="product_sku" jdbcType="VARCHAR" property="productSku" />
+        <result column="product_name" jdbcType="VARCHAR" property="productName" />
+        <result column="product_specification" jdbcType="VARCHAR" property="productSpecification" />
+        <result column="guide_price" jdbcType="DECIMAL" property="guidePrice" />
         <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
         <result column="create_by" jdbcType="INTEGER" property="createBy" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, tran_id, product_id, quantity, price, create_time, create_by
+        id, tran_id, product_id, quantity, price, product_sku, product_name,
+        product_specification, guide_price, create_time, create_by
     </sql>
 
     <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -39,12 +44,21 @@
         where tran_id = #{tranId,jdbcType=INTEGER}
     </delete>
 
+    <select id="countByProductId" parameterType="java.lang.Long" resultType="int">
+        select count(*)
+        from t_tran_product
+        where product_id = #{productId,jdbcType=BIGINT}
+    </select>
+
     <insert id="insert" parameterType="com.autodealer.crm.model.TTranProduct">
         insert into t_tran_product (id, tran_id, product_id,
-            quantity, price, create_time,
+            quantity, price, product_sku, product_name,
+            product_specification, guide_price, create_time,
             create_by)
         values (#{id,jdbcType=INTEGER}, #{tranId,jdbcType=INTEGER}, #{productId,jdbcType=BIGINT},
-            #{quantity,jdbcType=INTEGER}, #{price,jdbcType=DECIMAL}, #{createTime,jdbcType=TIMESTAMP},
+            #{quantity,jdbcType=INTEGER}, #{price,jdbcType=DECIMAL}, #{productSku,jdbcType=VARCHAR},
+            #{productName,jdbcType=VARCHAR}, #{productSpecification,jdbcType=VARCHAR},
+            #{guidePrice,jdbcType=DECIMAL}, #{createTime,jdbcType=TIMESTAMP},
             #{createBy,jdbcType=INTEGER})
     </insert>
 
@@ -65,6 +79,18 @@
             </if>
             <if test="price != null">
                 price,
+            </if>
+            <if test="productSku != null">
+                product_sku,
+            </if>
+            <if test="productName != null">
+                product_name,
+            </if>
+            <if test="productSpecification != null">
+                product_specification,
+            </if>
+            <if test="guidePrice != null">
+                guide_price,
             </if>
             <if test="createTime != null">
                 create_time,
@@ -88,6 +114,18 @@
             </if>
             <if test="price != null">
                 #{price,jdbcType=DECIMAL},
+            </if>
+            <if test="productSku != null">
+                #{productSku,jdbcType=VARCHAR},
+            </if>
+            <if test="productName != null">
+                #{productName,jdbcType=VARCHAR},
+            </if>
+            <if test="productSpecification != null">
+                #{productSpecification,jdbcType=VARCHAR},
+            </if>
+            <if test="guidePrice != null">
+                #{guidePrice,jdbcType=DECIMAL},
             </if>
             <if test="createTime != null">
                 #{createTime,jdbcType=TIMESTAMP},
@@ -113,6 +151,18 @@
             <if test="price != null">
                 price = #{price,jdbcType=DECIMAL},
             </if>
+            <if test="productSku != null">
+                product_sku = #{productSku,jdbcType=VARCHAR},
+            </if>
+            <if test="productName != null">
+                product_name = #{productName,jdbcType=VARCHAR},
+            </if>
+            <if test="productSpecification != null">
+                product_specification = #{productSpecification,jdbcType=VARCHAR},
+            </if>
+            <if test="guidePrice != null">
+                guide_price = #{guidePrice,jdbcType=DECIMAL},
+            </if>
             <if test="createTime != null">
                 create_time = #{createTime,jdbcType=TIMESTAMP},
             </if>
@@ -129,6 +179,10 @@
             product_id = #{productId,jdbcType=BIGINT},
             quantity = #{quantity,jdbcType=INTEGER},
             price = #{price,jdbcType=DECIMAL},
+            product_sku = #{productSku,jdbcType=VARCHAR},
+            product_name = #{productName,jdbcType=VARCHAR},
+            product_specification = #{productSpecification,jdbcType=VARCHAR},
+            guide_price = #{guidePrice,jdbcType=DECIMAL},
             create_time = #{createTime,jdbcType=TIMESTAMP},
             create_by = #{createBy,jdbcType=INTEGER}
         where id = #{id,jdbcType=INTEGER}

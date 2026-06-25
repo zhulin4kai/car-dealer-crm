@@ -12,6 +12,7 @@
         <result column="payment_status" property="paymentStatus" />
         <result column="payment_time" property="paymentTime" />
         <result column="transaction_ref" property="transactionRef" />
+        <result column="idempotency_key" property="idempotencyKey" />
         <result column="remark" property="remark" />
         <result column="create_time" property="createTime" />
         <result column="create_by" property="createBy" />
@@ -21,7 +22,7 @@
 
     <sql id="Base_Column_List">
         id, tran_id, payment_no, amount, payment_method, payment_type, payment_status,
-        payment_time, transaction_ref, remark, create_time, create_by, edit_time, edit_by
+        payment_time, transaction_ref, idempotency_key, remark, create_time, create_by, edit_time, edit_by
     </sql>
 
     <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -44,6 +45,13 @@
         LIMIT 1
     </select>
 
+    <select id="selectByIdempotencyKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_payment
+        WHERE idempotency_key = #{idempotencyKey,jdbcType=VARCHAR}
+        LIMIT 1
+    </select>
+
     <select id="selectByTranId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />
         FROM t_payment
@@ -53,9 +61,9 @@
 
     <insert id="insert" parameterType="com.autodealer.crm.model.TPayment" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_payment (tran_id, payment_no, amount, payment_method, payment_type, payment_status,
-            payment_time, transaction_ref, remark, create_time, create_by, edit_time, edit_by)
+            payment_time, transaction_ref, idempotency_key, remark, create_time, create_by, edit_time, edit_by)
         VALUES (#{tranId}, #{paymentNo}, #{amount}, #{paymentMethod}, #{paymentType}, #{paymentStatus},
-            #{paymentTime}, #{transactionRef}, #{remark}, #{createTime}, #{createBy}, #{editTime}, #{editBy})
+            #{paymentTime}, #{transactionRef}, #{idempotencyKey}, #{remark}, #{createTime}, #{createBy}, #{editTime}, #{editBy})
     </insert>
 
     <insert id="insertSelective" parameterType="com.autodealer.crm.model.TPayment" useGeneratedKeys="true" keyProperty="id">
@@ -69,6 +77,7 @@
             <if test="paymentStatus != null">payment_status,</if>
             <if test="paymentTime != null">payment_time,</if>
             <if test="transactionRef != null">transaction_ref,</if>
+            <if test="idempotencyKey != null">idempotency_key,</if>
             <if test="remark != null">remark,</if>
             <if test="createTime != null">create_time,</if>
             <if test="createBy != null">create_by,</if>
@@ -84,6 +93,7 @@
             <if test="paymentStatus != null">#{paymentStatus},</if>
             <if test="paymentTime != null">#{paymentTime},</if>
             <if test="transactionRef != null">#{transactionRef},</if>
+            <if test="idempotencyKey != null">#{idempotencyKey},</if>
             <if test="remark != null">#{remark},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="createBy != null">#{createBy},</if>
@@ -98,6 +108,7 @@
             <if test="paymentStatus != null">payment_status = #{paymentStatus},</if>
             <if test="paymentTime != null">payment_time = #{paymentTime},</if>
             <if test="transactionRef != null">transaction_ref = #{transactionRef},</if>
+            <if test="idempotencyKey != null">idempotency_key = #{idempotencyKey},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="editTime != null">edit_time = #{editTime},</if>
             <if test="editBy != null">edit_by = #{editBy},</if>

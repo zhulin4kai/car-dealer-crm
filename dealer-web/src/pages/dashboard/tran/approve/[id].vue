@@ -47,7 +47,15 @@
           <TableBody>
             <TableRow v-for="(product, index) in tranDetail.products" :key="index">
               <TableCell>{{ index + 1 }}</TableCell>
-              <TableCell>{{ product.productName }}</TableCell>
+              <TableCell>
+                <div>{{ product.productName }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ [product.productSku, product.productSpecification].filter(Boolean).join(' / ') }}
+                </div>
+                <div v-if="product.guidePrice" class="text-xs text-muted-foreground">
+                  指导价 &yen;{{ product.guidePrice }}
+                </div>
+              </TableCell>
               <TableCell>{{ product.quantity }}</TableCell>
               <TableCell>&yen;{{ product.price }}</TableCell>
               <TableCell>&yen;{{ product.price * product.quantity }}</TableCell>

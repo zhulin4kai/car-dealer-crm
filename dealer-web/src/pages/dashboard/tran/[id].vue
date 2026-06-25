@@ -55,7 +55,15 @@
           <TableBody>
             <TableRow v-for="(product, index) in tranDetail.products" :key="index">
               <TableCell>{{ index + 1 }}</TableCell>
-              <TableCell>{{ product.productName }}</TableCell>
+              <TableCell>
+                <div>{{ product.productName }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ [product.productSku, product.productSpecification].filter(Boolean).join(' / ') }}
+                </div>
+                <div v-if="product.guidePrice" class="text-xs text-muted-foreground">
+                  指导价 &yen;{{ product.guidePrice }}
+                </div>
+              </TableCell>
               <TableCell>{{ product.quantity }}</TableCell>
               <TableCell>&yen;{{ product.price }}</TableCell>
               <TableCell>&yen;{{ (product.price * product.quantity).toFixed(2) }}</TableCell>
@@ -105,10 +113,7 @@
     <!-- Payment Records -->
     <Card
       class="mb-5"
-      v-if="tranDetail.stage === TRAN_STAGE.PAYMENT
-        || tranDetail.stage === TRAN_STAGE.DELIVERY
-        || tranDetail.stage === TRAN_STAGE.COMPLETED
-        || tranDetail.stage === TRAN_STAGE.CANCELLED"
+      v-if="canShowPaymentRecords"
     >
       <CardHeader>
         <CardTitle>收款记录</CardTitle>
@@ -273,8 +278,12 @@
             </Select>
           </div>
           <div>
-            <Label>外部流水号</Label>
-            <Input v-model="collectionForm.transactionRef" placeholder="银行或第三方支付参考号" />
+            <Label>{{ requiresCollectionTransactionRef ? '外部流水号' : '外部流水号（可选）' }}</Label>
+            <Input
+              v-model="collectionForm.transactionRef"
+              :placeholder="requiresCollectionTransactionRef ? '请输入支付参考号' : '银行或第三方支付参考号'"
+              :required="requiresCollectionTransactionRef"
+            />
           </div>
           <div>
             <Label>备注</Label>
@@ -406,7 +415,7 @@
         v-has-permission="PERMISSIONS.tran.payment"
         variant="secondary"
         @click="showCollectionDialog = true"
-        v-if="tranDetail.stage === TRAN_STAGE.PAYMENT"
+        v-if="canRecordPayment"
       >登记收款</Button>
     </div>
 
@@ -624,6 +633,20 @@ const PAYMENT_METHODS = [
   { value: 'OTHER', label: '其他' }
 ]
 
+const EXTERNAL_REF_PAYMENT_METHODS = new Set(['BANK_TRANSFER', 'WECHAT', 'ALIPAY', 'CHECK'])
+const requiresCollectionTransactionRef = computed(() =>
+  EXTERNAL_REF_PAYMENT_METHODS.has(collectionForm.value.paymentMethod),
+)
+const canRecordPayment = computed(() =>
+  tranDetail.value.stage === TRAN_STAGE.APPROVED || tranDetail.value.stage === TRAN_STAGE.PAYMENT,
+)
+const canShowPaymentRecords = computed(() =>
+  canRecordPayment.value
+  || tranDetail.value.stage === TRAN_STAGE.DELIVERY
+  || tranDetail.value.stage === TRAN_STAGE.COMPLETED
+  || tranDetail.value.stage === TRAN_STAGE.CANCELLED,
+)
+
 const PAYMENT_TYPES = [
   { value: 'DEPOSIT', label: '定金' },
   { value: 'INSTALLMENT', label: '分期款' },
@@ -733,12 +756,16 @@ const submitCollection = async () => {
     messageTip('请选择支付方式', 'error')
     return
   }
+  if (requiresCollectionTransactionRef.value && !collectionForm.value.transactionRef.trim()) {
+    messageTip('请输入外部流水号', 'error')
+    return
+  }
   try {
     await recordPayment({
       tranId: Number(route.params.id),
       paymentMethod: collectionForm.value.paymentMethod,
-      transactionRef: collectionForm.value.transactionRef || undefined,
-      remark: collectionForm.value.remark
+      transactionRef: collectionForm.value.transactionRef.trim() || undefined,
+      remark: collectionForm.value.remark.trim() || undefined
     })
     messageTip('收款已登记，待财务确认', 'success')
     showCollectionDialog.value = false
@@ -912,7 +939,7 @@ const handleInvoice = () => {
 
 function openCollectionIfRequested(): void {
   if (route.query.collect !== '1') return
-  if (tranDetail.value.stage === TRAN_STAGE.PAYMENT) {
+  if (canRecordPayment.value) {
     showCollectionDialog.value = true
     return
   }

@@ -47,6 +47,8 @@ class TranServiceImplTest {
     @Mock
     private TProductMapper productMapper;
     @Mock
+    private TCustomerMapper customerMapper;
+    @Mock
     private RedisManager redisManager;
     @Mock
     private TPaymentMapper paymentMapper;
@@ -68,6 +70,10 @@ class TranServiceImplTest {
         lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
         lenient().when(currentUserProvider.getTransactionDataScope())
                 .thenReturn(CurrentUserProvider.TransactionDataScope.all());
+        TCustomer accessibleCustomer = new TCustomer();
+        accessibleCustomer.setId(10);
+        lenient().when(customerMapper.selectScopedById(eq(10), nullable(Integer.class)))
+                .thenReturn(accessibleCustomer);
         lenient().when(tranHistoryMapper.insert(any())).thenReturn(1);
         lenient().when(tranMapper.incrementVersion(anyInt(), anyInt(), anyInt())).thenReturn(1);
     }
@@ -77,6 +83,7 @@ class TranServiceImplTest {
         t.setId(id);
         t.setMoney(BigDecimal.valueOf(100000));
         t.setStage(stage);
+        t.setCustomerId(10);
         t.setCreateBy(1);
         t.setVersion(0);
         return t;
@@ -115,15 +122,15 @@ class TranServiceImplTest {
     }
 
     @Test
-    void getTransactionById_salesManagerCanAccessPendingApprovalScope() {
+    void getTransactionById_nonAdminUsesSelfDataScopeOnly() {
         TTran tran = newTran(1, TranStage.PENDING);
         when(currentUserProvider.getTransactionDataScope())
-                .thenReturn(CurrentUserProvider.TransactionDataScope.limited(7, true, List.of()));
-        when(tranMapper.selectScopedById(eq(1), eq(7), eq(true), anyList())).thenReturn(tran);
+                .thenReturn(CurrentUserProvider.TransactionDataScope.limited(7, false, List.of()));
+        when(tranMapper.selectScopedById(eq(1), eq(7), eq(false), anyList())).thenReturn(tran);
 
         assertEquals(1, tranService.getTransactionById(1).getId());
 
-        verify(tranMapper).selectScopedById(eq(1), eq(7), eq(true), anyList());
+        verify(tranMapper).selectScopedById(eq(1), eq(7), eq(false), anyList());
     }
 
     @Test
@@ -133,13 +140,14 @@ class TranServiceImplTest {
         // 模拟数据库商品查询 — 价格来自数据库，不接受客户端传入
         TProduct dbProduct = new TProduct();
         dbProduct.setId(1L);
+        dbProduct.setSku("SKU-001");
         dbProduct.setName("测试商品");
+        dbProduct.setSpecification("2026款");
         dbProduct.setPrice(new BigDecimal("569800.00"));
-        dbProduct.setStatus("on_sale");
+        dbProduct.setStatus("ON_SALE");
         dbProduct.setStock(100);
         when(productMapper.selectById(1L)).thenReturn(dbProduct);
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
-        when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(1);
         TTranProduct p = new TTranProduct();
         p.setProductId(1L);
         p.setQuantity(1);
@@ -147,25 +155,46 @@ class TranServiceImplTest {
         assertEquals(1, tranService.createTransaction(tran, Collections.singletonList(p)));
         // 验证落库价格来自数据库
         assertEquals(new BigDecimal("569800.00"), p.getPrice());
+        assertEquals("SKU-001", p.getProductSku());
+        assertEquals("测试商品", p.getProductName());
+        assertEquals("2026款", p.getProductSpecification());
+        assertEquals(new BigDecimal("569800.00"), p.getGuidePrice());
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
     }
 
     @Test
-    void createTransaction_stockInsufficient_shouldThrow() {
+    void createTransaction_inaccessibleCustomer_shouldRejectBeforeAnyWrite() {
+        TTran tran = newTran(null, TranStage.QUOTATION);
+        tran.setCustomerId(99);
+        when(customerMapper.selectScopedById(99, null)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> tranService.createTransaction(tran, Collections.emptyList()));
+
+        assertEquals(CodeEnum.ACCESS_DENIED, ex.getCodeEnum());
+        verify(tranMapper, never()).insertSelective(any());
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
+        verify(auditRecorder, never()).record(any(), anyString());
+    }
+
+    @Test
+    void createTransaction_quotationDoesNotRequireStockDeduction() {
         TTran tran = newTran(null, TranStage.QUOTATION);
         when(tranMapper.insertSelective(any())).thenAnswer(inv -> { ((TTran)inv.getArgument(0)).setId(1); return 1; });
         TProduct dbProduct = new TProduct();
         dbProduct.setId(1L);
         dbProduct.setName("测试商品");
         dbProduct.setPrice(BigDecimal.TEN);
-        dbProduct.setStatus("on_sale");
+        dbProduct.setStatus("ON_SALE");
         dbProduct.setStock(0);
         when(productMapper.selectById(1L)).thenReturn(dbProduct);
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
-        when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(0);
         TTranProduct p = new TTranProduct();
         p.setProductId(1L);
         p.setQuantity(1);
-        assertThrows(RuntimeException.class, () -> tranService.createTransaction(tran, Collections.singletonList(p)));
+
+        assertEquals(1, tranService.createTransaction(tran, Collections.singletonList(p)));
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
     }
 
     @Test
@@ -182,11 +211,10 @@ class TranServiceImplTest {
         dbProduct.setId(1L);
         dbProduct.setName("宝马X5");
         dbProduct.setPrice(new BigDecimal("569800.00"));
-        dbProduct.setStatus("on_sale");
+        dbProduct.setStatus("ON_SALE");
         dbProduct.setStock(100);
         when(productMapper.selectById(1L)).thenReturn(dbProduct);
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
-        when(productMapper.updateStock(anyLong(), anyInt())).thenReturn(1);
         TTranProduct p = new TTranProduct();
         p.setProductId(1L);
         p.setQuantity(2);
@@ -197,6 +225,7 @@ class TranServiceImplTest {
         assertEquals(new BigDecimal("569800.00"), p.getPrice());
         // 交易总金额 = 569800 × 2 = 1139600
         assertEquals(new BigDecimal("1139600.00"), tran.getMoney());
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
     }
 
     @Test
@@ -217,6 +246,45 @@ class TranServiceImplTest {
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
         when(tranMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
         assertTrue(tranService.updateTransaction(newTran(1, null)));
+    }
+
+    @Test
+    void updateTransactionWithProducts_rebindingToInaccessibleCustomer_shouldRejectBeforeUpdate() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        existing.setCustomerId(10);
+        TTran update = newTran(1, null);
+        update.setCustomerId(99);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(customerMapper.selectScopedById(99, null)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> tranService.updateTransactionWithProducts(update, null));
+
+        assertEquals(CodeEnum.ACCESS_DENIED, ex.getCodeEnum());
+        verify(tranMapper, never()).updateByPrimaryKeySelective(any());
+    }
+
+    @Test
+    void updateTransactionWithProducts_shouldIgnoreClientOwnedFields() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        TTran update = newTran(1, null);
+        update.setTranNo("CLIENT-NO");
+        update.setCreateBy(999);
+        update.setCreateTime(new Date(0));
+        update.setMoney(BigDecimal.ONE);
+        update.setStage(TranStage.PAYMENT);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
+
+        assertTrue(tranService.updateTransactionWithProducts(update, null));
+
+        verify(tranMapper).updateByPrimaryKeySelective(argThat(argument ->
+                argument.getTranNo() == null
+                        && argument.getCreateBy() == null
+                        && argument.getCreateTime() == null
+                        && argument.getMoney() == null
+                        && argument.getStage() == null
+                        && Integer.valueOf(7).equals(argument.getEditBy())));
     }
 
     @Test
@@ -450,13 +518,11 @@ class TranServiceImplTest {
     }
 
     @Test
-    void createTranInvoice_financeScopeCanAccessApprovedTransaction() {
+    void createTranInvoice_nonAdminScopeDoesNotExpandByFinanceStage() {
         TTran existing = newTran(1, TranStage.APPROVED);
-        List<TranStage> financeStages = List.of(
-                TranStage.APPROVED, TranStage.PAYMENT, TranStage.COMPLETED, TranStage.CANCELLED);
         when(currentUserProvider.getTransactionDataScope())
-                .thenReturn(CurrentUserProvider.TransactionDataScope.limited(null, false, financeStages));
-        when(tranMapper.selectScopedById(eq(1), isNull(), eq(false), eq(financeStages))).thenReturn(existing);
+                .thenReturn(CurrentUserProvider.TransactionDataScope.limited(7, false, List.of()));
+        when(tranMapper.selectScopedById(eq(1), eq(7), eq(false), eq(List.of()))).thenReturn(existing);
         when(tranInvoiceMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
         when(tranInvoiceMapper.insertSelective(any())).thenReturn(1);
 
@@ -465,7 +531,7 @@ class TranServiceImplTest {
         inv.setAmount(BigDecimal.valueOf(100000));
 
         assertTrue(tranService.createTranInvoice(inv));
-        verify(tranMapper).selectScopedById(eq(1), isNull(), eq(false), eq(financeStages));
+        verify(tranMapper).selectScopedById(eq(1), eq(7), eq(false), eq(List.of()));
         verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), any());
     }
 
@@ -494,7 +560,7 @@ class TranServiceImplTest {
     }
 
     @Test
-    void updateTranInvoiceStatus_issued_shouldSetStageToPayment() {
+    void updateTranInvoiceStatus_issued_shouldNotChangeTransactionStage() {
         TTranInvoice inv = new TTranInvoice();
         inv.setId(1);
         inv.setTranId(1);
@@ -503,13 +569,16 @@ class TranServiceImplTest {
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.APPROVED));
         when(tranInvoiceMapper.updateStatusIfCurrent(eq(1), eq("PENDING"), eq("ISSUED"),
                 any(Date.class), any(Date.class), eq(7))).thenReturn(1);
-        when(tranMapper.updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), eq(7))).thenReturn(1);
+
         assertTrue(tranService.updateTranInvoiceStatus(1, "ISSUED"));
-        verify(tranMapper).updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), eq(7));
+
+        verify(tranMapper, never()).updateStageAtomic(anyInt(), any(), any(), anyInt());
+        verify(tranHistoryMapper, never()).insert(argThat(history ->
+                history.getTranId().equals(1) && "PAYMENT".equals(history.getStage())));
     }
 
     @Test
-    void updateTranInvoiceStatus_void_shouldRevertStage() {
+    void updateTranInvoiceStatus_void_shouldNotChangeTransactionStage() {
         TTran existing = newTran(1, TranStage.PAYMENT);
         TTranInvoice inv = new TTranInvoice();
         inv.setId(1);
@@ -519,8 +588,12 @@ class TranServiceImplTest {
         when(tranInvoiceMapper.updateStatusIfCurrent(eq(1), eq("ISSUED"), eq("VOID"),
                 any(), any(Date.class), eq(7))).thenReturn(1);
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
-        when(tranMapper.updateStageAtomic(eq(1), eq(TranStage.APPROVED), eq(TranStage.PAYMENT), any())).thenReturn(1);
+
         assertTrue(tranService.updateTranInvoiceStatus(1, "VOID"));
+
+        verify(tranMapper, never()).updateStageAtomic(anyInt(), any(), any(), anyInt());
+        verify(tranHistoryMapper, never()).insert(argThat(history ->
+                history.getTranId().equals(1) && "APPROVED".equals(history.getStage())));
     }
 
     @Test
@@ -540,6 +613,17 @@ class TranServiceImplTest {
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
         when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(existing);
         assertThrows(RuntimeException.class, () -> tranService.deleteTransaction(1));
+    }
+
+    @Test
+    void deleteTransactionProducts_quotationShouldNotRestoreStock() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+
+        assertTrue(tranService.deleteTransactionProducts(1));
+
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
+        verify(tranProductMapper).deleteByTranId(1);
     }
 
     @Test
@@ -591,6 +675,34 @@ class TranServiceImplTest {
     }
 
     @Test
+    void addTransactionProducts_quotationShouldNotDeductStock() {
+        TTran existing = newTran(1, TranStage.QUOTATION);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        TProduct dbProduct = new TProduct();
+        dbProduct.setId(1L);
+        dbProduct.setSku("SKU-ADD");
+        dbProduct.setName("测试商品");
+        dbProduct.setSpecification("增配版");
+        dbProduct.setPrice(BigDecimal.TEN);
+        dbProduct.setStatus("ON_SALE");
+        when(productMapper.selectById(1L)).thenReturn(dbProduct);
+        when(tranProductMapper.insertSelective(any())).thenReturn(1);
+        when(tranMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
+        TTranProduct product = new TTranProduct();
+        product.setProductId(1L);
+        product.setQuantity(2);
+
+        assertTrue(tranService.addTransactionProducts(1, List.of(product)));
+
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
+        assertEquals(new BigDecimal("10"), product.getPrice());
+        assertEquals("SKU-ADD", product.getProductSku());
+        assertEquals("测试商品", product.getProductName());
+        assertEquals("增配版", product.getProductSpecification());
+        assertEquals(BigDecimal.TEN, product.getGuidePrice());
+    }
+
+    @Test
     void updateTransactionWithProducts_emptyProducts_shouldRejectWithoutDeletingExistingProducts() {
         TTran existing = newTran(1, TranStage.QUOTATION);
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
@@ -608,16 +720,14 @@ class TranServiceImplTest {
         TTran existing = newTran(1, TranStage.QUOTATION);
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
         when(tranMapper.updateByPrimaryKeySelective(any())).thenReturn(1, 0);
-        when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
 
         TProduct dbProduct = new TProduct();
         dbProduct.setId(1L);
         dbProduct.setName("测试商品");
         dbProduct.setPrice(BigDecimal.TEN);
-        dbProduct.setStatus("on_sale");
+        dbProduct.setStatus("ON_SALE");
         when(productMapper.selectById(1L)).thenReturn(dbProduct);
         when(tranProductMapper.insertSelective(any())).thenReturn(1);
-        when(productMapper.updateStock(1L, -1)).thenReturn(1);
 
         TTranProduct product = new TTranProduct();
         product.setProductId(1L);
@@ -626,6 +736,8 @@ class TranServiceImplTest {
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> tranService.updateTransactionWithProducts(newTran(1, null), List.of(product)));
         assertEquals(CodeEnum.OPERATION_FAILED, exception.getCodeEnum());
+        assertEquals("交易金额更新失败", exception.getMessage());
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
     }
 
     @Test
@@ -659,6 +771,79 @@ class TranServiceImplTest {
     }
 
     @Test
+    void recordPayment_approvedTransaction_shouldCreatePendingPayment() {
+        TTran tran = newTran(1, TranStage.APPROVED);
+        TPayment payment = new TPayment();
+        payment.setTranId(1);
+        payment.setPaymentMethod("CASH");
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(tran);
+        when(paymentMapper.insertSelective(payment)).thenReturn(1);
+        when(paymentMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
+
+        TPayment result = tranService.recordPayment(payment);
+
+        assertEquals("PENDING", result.getPaymentStatus());
+        assertEquals(tran.getMoney().setScale(2), result.getAmount());
+        verify(tranMapper, never()).updateStageAtomic(anyInt(), any(), any(), anyInt());
+    }
+
+    @Test
+    void recordPayment_sameTransactionRefDifferentChannel_shouldConflict() {
+        TTran tran = newTran(1, TranStage.PAYMENT);
+        TPayment existing = new TPayment();
+        existing.setId(10);
+        existing.setTranId(1);
+        existing.setAmount(tran.getMoney().setScale(2));
+        existing.setPaymentMethod("BANK_TRANSFER");
+        existing.setPaymentType("FULL");
+        existing.setPaymentStatus("PENDING");
+        existing.setTransactionRef("PAY-REF-001");
+
+        TPayment payment = new TPayment();
+        payment.setTranId(1);
+        payment.setPaymentMethod("WECHAT");
+        payment.setTransactionRef("PAY-REF-001");
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(tran);
+        when(paymentMapper.selectByTransactionRef("PAY-REF-001")).thenReturn(existing);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> tranService.recordPayment(payment));
+
+        assertEquals(CodeEnum.DUPLICATE, exception.getCodeEnum());
+        verify(paymentMapper, never()).insertSelective(any());
+    }
+
+    @Test
+    void recordPayment_manualDuplicate_shouldReturnExistingPayment() {
+        TTran tran = newTran(1, TranStage.PAYMENT);
+        TPayment existing = new TPayment();
+        existing.setId(10);
+        existing.setTranId(1);
+        existing.setAmount(tran.getMoney().setScale(2));
+        existing.setPaymentMethod("CASH");
+        existing.setPaymentType("FULL");
+        existing.setPaymentStatus("PENDING");
+        existing.setIdempotencyKey("PAYMENT:MANUAL:1:CASH:100000.00");
+
+        TPayment payment = new TPayment();
+        payment.setTranId(1);
+        payment.setPaymentMethod("CASH");
+
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(tran);
+        when(paymentMapper.selectByTranId(1)).thenReturn(List.of(existing));
+
+        TPayment result = tranService.recordPayment(payment);
+
+        assertSame(existing, result);
+        verify(paymentMapper, never()).insertSelective(any());
+    }
+
+    @Test
     void confirmPayment_fullAmount_shouldMoveTransactionToDeliveryOnly() {
         TTran tran = newTran(1, TranStage.PAYMENT);
         TPayment payment = new TPayment();
@@ -680,6 +865,33 @@ class TranServiceImplTest {
 
         assertEquals("COMPLETED", result.getPaymentStatus());
         verify(tranMapper).updateStageAtomic(1, TranStage.DELIVERY, TranStage.PAYMENT, 7);
+        verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.COMPLETED), any(), anyInt());
+        verify(tranHistoryMapper).insert(argThat(history ->
+                history.getTranId().equals(1) && "DELIVERY".equals(history.getStage())));
+    }
+
+    @Test
+    void confirmPayment_approvedTransaction_shouldMoveTransactionToDeliveryOnly() {
+        TTran tran = newTran(1, TranStage.APPROVED);
+        TPayment payment = new TPayment();
+        payment.setId(10);
+        payment.setTranId(1);
+        payment.setAmount(tran.getMoney());
+        payment.setPaymentStatus("PENDING");
+        payment.setPaymentType("FULL");
+
+        when(paymentMapper.selectByPrimaryKeyForUpdate(10)).thenReturn(payment);
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran);
+        when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(tran);
+        when(paymentMapper.updateStatusIfCurrent(eq(10), eq("PENDING"), eq("COMPLETED"),
+                any(Date.class), any(), any(Date.class), eq(7))).thenReturn(1);
+        when(paymentMapper.selectByTranId(1)).thenReturn(Collections.singletonList(payment));
+        when(tranMapper.updateStageAtomic(1, TranStage.DELIVERY, TranStage.APPROVED, 7)).thenReturn(1);
+
+        TPayment result = tranService.confirmPayment(10, true, "到账");
+
+        assertEquals("COMPLETED", result.getPaymentStatus());
+        verify(tranMapper).updateStageAtomic(1, TranStage.DELIVERY, TranStage.APPROVED, 7);
         verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.COMPLETED), any(), anyInt());
         verify(tranHistoryMapper).insert(argThat(history ->
                 history.getTranId().equals(1) && "DELIVERY".equals(history.getStage())));
@@ -726,7 +938,7 @@ class TranServiceImplTest {
     }
 
     @Test
-    void executeRefundRequest_orderCancelFullRefund_shouldCancelTransactionAfterApproval() {
+    void executeRefundRequest_orderCancelFullRefund_shouldPreserveOriginalPaymentAndTransactionStage() {
         TPayment original = new TPayment();
         original.setId(10);
         original.setTranId(1);
@@ -757,26 +969,16 @@ class TranServiceImplTest {
             return 1;
         });
         when(refundRequestMapper.markExecutedIfApproved(eq(99), eq(20), eq(7), any(Date.class), eq(7), any(Date.class))).thenReturn(1);
-        when(paymentMapper.markRefundedIfCompleted(eq(10), any(Date.class), eq(7))).thenReturn(1);
-        when(paymentMapper.selectByTranId(1)).thenAnswer(inv -> {
-            TPayment refund = new TPayment();
-            refund.setId(20);
-            refund.setTranId(1);
-            refund.setAmount(BigDecimal.valueOf(-100000));
-            refund.setPaymentStatus("COMPLETED");
-            refund.setPaymentType("REFUND");
-            original.setPaymentStatus("REFUNDED");
-            return List.of(original, refund);
-        });
-        when(tranMapper.updateStageAtomic(1, TranStage.CANCELLED, TranStage.DELIVERY, 7)).thenReturn(1);
-        when(tranProductMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
 
         TPayment refund = tranService.executeRefundRequest(99, "RF001", "已原路退回");
 
         assertEquals(BigDecimal.valueOf(-100000), refund.getAmount());
         assertEquals("REFUND", refund.getPaymentType());
-        verify(tranMapper).updateStageAtomic(1, TranStage.CANCELLED, TranStage.DELIVERY, 7);
-        verify(tranHistoryMapper).insert(argThat(history ->
+        assertEquals("COMPLETED", original.getPaymentStatus());
+        verify(paymentMapper, never()).markRefundedIfCompleted(anyInt(), any(Date.class), anyInt());
+        verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.CANCELLED), any(), anyInt());
+        verify(productMapper, never()).updateStock(anyLong(), anyInt());
+        verify(tranHistoryMapper, never()).insert(argThat(history ->
                 history.getTranId().equals(1) && "CANCELLED".equals(history.getStage())));
     }
 }

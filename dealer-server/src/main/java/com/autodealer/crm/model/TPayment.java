@@ -20,6 +20,7 @@ public class TPayment implements Serializable {
     private String paymentStatus;
     private Date paymentTime;
     private String transactionRef;
+    private String idempotencyKey;
     private String remark;
     private Date createTime;
     private Integer createBy;

@@ -7,6 +7,9 @@ export interface TranProduct {
   id?: EntityId
   productId: EntityId
   productName?: string
+  productSku?: string
+  productSpecification?: string
+  guidePrice?: number
   quantity: number
   price: number
 }
@@ -127,6 +130,7 @@ export interface TPayment {
   paymentStatus?: PaymentStatus
   paymentTime?: string
   transactionRef?: string
+  idempotencyKey?: string
   remark?: string
   createTime?: string
 }

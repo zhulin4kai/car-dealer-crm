@@ -30,13 +30,19 @@ public interface TTranMapper {
 
     int updateByPrimaryKey(TTran record);
 
-    BigDecimal selectBySuccessTranAmount(@Param("successStage") TranStage successStage);
+    BigDecimal selectBySuccessTranAmount(@Param("successStage") TranStage successStage,
+                                         @Param("transactionAllScope") boolean transactionAllScope,
+                                         @Param("dataScopeUserId") Integer dataScopeUserId);
 
-    BigDecimal selectByTotalTranAmount();
+    BigDecimal selectByTotalTranAmount(@Param("transactionAllScope") boolean transactionAllScope,
+                                       @Param("dataScopeUserId") Integer dataScopeUserId);
 
-    int selectByTotalTranCount();
+    int selectByTotalTranCount(@Param("transactionAllScope") boolean transactionAllScope,
+                               @Param("dataScopeUserId") Integer dataScopeUserId);
 
-    int selectBySuccessTranCount(@Param("successStage") TranStage successStage);
+    int selectBySuccessTranCount(@Param("successStage") TranStage successStage,
+                                 @Param("transactionAllScope") boolean transactionAllScope,
+                                 @Param("dataScopeUserId") Integer dataScopeUserId);
 
     /**
      * 根据查询条件查询交易列表

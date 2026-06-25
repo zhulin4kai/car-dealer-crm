@@ -18,6 +18,8 @@ public interface TPaymentMapper {
 
     TPayment selectByTransactionRef(@Param("transactionRef") String transactionRef);
 
+    TPayment selectByIdempotencyKey(@Param("idempotencyKey") String idempotencyKey);
+
     List<TPayment> selectByTranId(@Param("tranId") Integer tranId);
 
     int updateByPrimaryKeySelective(TPayment record);

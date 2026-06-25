@@ -28,6 +28,9 @@
     <result column="tran_id" jdbcType="INTEGER" property="tranId" />
     <result column="product_id" jdbcType="INTEGER" property="productId" />
     <result column="product_name" jdbcType="VARCHAR" property="productName" />
+    <result column="product_sku" jdbcType="VARCHAR" property="productSku" />
+    <result column="product_specification" jdbcType="VARCHAR" property="productSpecification" />
+    <result column="guide_price" jdbcType="DECIMAL" property="guidePrice" />
     <result column="quantity" jdbcType="INTEGER" property="quantity" />
     <result column="price" jdbcType="DECIMAL" property="price" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
@@ -41,23 +44,8 @@
 
   <sql id="Transaction_Limited_Data_Scope">
     <choose>
-      <when test="dataScopeUserId != null or transactionApprovalScope or (transactionFinanceStages != null and transactionFinanceStages.size() > 0)">
-        (
-        <trim prefixOverrides="OR">
-          <if test="dataScopeUserId != null">
-            OR t.create_by = #{dataScopeUserId,jdbcType=INTEGER}
-          </if>
-          <if test="transactionApprovalScope">
-            OR t.stage = 'PENDING'
-          </if>
-          <if test="transactionFinanceStages != null and transactionFinanceStages.size() > 0">
-            OR t.stage IN
-            <foreach collection="transactionFinanceStages" item="financeStage" open="(" close=")" separator=",">
-              #{financeStage,jdbcType=VARCHAR}
-            </foreach>
-          </if>
-        </trim>
-        )
+      <when test="dataScopeUserId != null">
+        (t.create_by = #{dataScopeUserId,jdbcType=INTEGER})
       </when>
       <otherwise>
         (1 = 0)
@@ -72,7 +60,6 @@
     LEFT JOIN t_customer c ON t.customer_id = c.id
     LEFT JOIN t_clue cl ON c.clue_id = cl.id
     LEFT JOIN t_tran_product tp ON t.id = tp.tran_id
-    LEFT JOIN t_product p ON tp.product_id = p.id
     LEFT JOIN t_tran_invoice ti ON t.id = ti.tran_id
     <where>
       <if test="tranNo != null and tranNo != ''">
@@ -112,7 +99,7 @@
         AND tp.product_id = #{productId}
       </if>
       <if test="productName != null and productName != ''">
-        AND p.name LIKE CONCAT('%', #{productName}, '%')
+        AND tp.product_name LIKE CONCAT('%', #{productName}, '%')
       </if>
       <if test="invoiceStatus != null and invoiceStatus != ''">
         AND ti.status = #{invoiceStatus}
@@ -126,9 +113,12 @@
 
   <select id="selectBySuccessTranAmount" resultType="java.math.BigDecimal">
     select
-        sum(money)
-    from t_tran
-    where stage = #{successStage,jdbcType=VARCHAR}
+        sum(t.money)
+    from t_tran t
+    where t.stage = #{successStage,jdbcType=VARCHAR}
+    <if test="transactionAllScope == false">
+      AND <include refid="Transaction_Limited_Data_Scope" />
+    </if>
   </select>
 
   <select id="selectScopedById" resultMap="BaseResultMap">
@@ -143,22 +133,38 @@
 
   <select id="selectByTotalTranAmount" resultType="java.math.BigDecimal">
     select
-      sum(money)
-    from t_tran
+      sum(t.money)
+    from t_tran t
+    <where>
+      <if test="transactionAllScope == false">
+        AND <include refid="Transaction_Limited_Data_Scope" />
+      </if>
+    </where>
   </select>
 
   <select id="selectByTotalTranCount" resultType="java.lang.Integer">
     SELECT
       count( 0 )
     FROM
-        ( SELECT DISTINCT customer_id FROM t_tran ) t
+        ( SELECT DISTINCT t.customer_id FROM t_tran t
+          <where>
+            <if test="transactionAllScope == false">
+              AND <include refid="Transaction_Limited_Data_Scope" />
+            </if>
+          </where>
+        ) scoped_tran
   </select>
 
   <select id="selectBySuccessTranCount" resultType="java.lang.Integer">
     SELECT
       count( 0 )
     FROM
-        ( SELECT DISTINCT customer_id FROM t_tran where stage = #{successStage,jdbcType=VARCHAR} ) t
+        ( SELECT DISTINCT t.customer_id FROM t_tran t
+          WHERE t.stage = #{successStage,jdbcType=VARCHAR}
+          <if test="transactionAllScope == false">
+            AND <include refid="Transaction_Limited_Data_Scope" />
+          </if>
+        ) scoped_tran
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -327,13 +333,15 @@
       tp.id,
       tp.tran_id,
       tp.product_id,
-      p.name as product_name,
+      tp.product_sku,
+      tp.product_name,
+      tp.product_specification,
+      tp.guide_price,
       tp.quantity,
       tp.price,
       tp.create_time,
       tp.create_by
     FROM t_tran_product tp
-    LEFT JOIN t_product p ON tp.product_id = p.id
     WHERE tp.tran_id = #{tranId,jdbcType=INTEGER}
     ORDER BY tp.id
   </select>

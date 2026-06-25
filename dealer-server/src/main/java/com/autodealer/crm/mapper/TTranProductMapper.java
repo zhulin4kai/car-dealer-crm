@@ -28,5 +28,7 @@ public interface TTranProductMapper {
      */
     int deleteByTranId(Integer tranId);
 
+    int countByProductId(Long productId);
+
     int selectClueNameByTranId(Integer tranId);
-} 
+}

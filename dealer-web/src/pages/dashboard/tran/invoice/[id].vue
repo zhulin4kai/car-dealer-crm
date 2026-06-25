@@ -5,7 +5,7 @@
         <CardTitle>交易开票</CardTitle>
         <div class="flex items-center gap-2">
           <Button
-            v-if="tranDetail.stage === TRAN_STAGE.PAYMENT"
+            v-if="canRecordPayment"
             v-has-permission="PERMISSIONS.tran.payment"
             variant="secondary"
             size="sm"
@@ -54,7 +54,15 @@
           <TableBody>
             <TableRow v-for="(product, index) in tranDetail.products" :key="index">
               <TableCell>{{ index + 1 }}</TableCell>
-              <TableCell>{{ product.productName }}</TableCell>
+              <TableCell>
+                <div>{{ product.productName }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ [product.productSku, product.productSpecification].filter(Boolean).join(' / ') }}
+                </div>
+                <div v-if="product.guidePrice" class="text-xs text-muted-foreground">
+                  指导价 &yen;{{ product.guidePrice }}
+                </div>
+              </TableCell>
               <TableCell>{{ product.quantity }}</TableCell>
               <TableCell>&yen;{{ product.price }}</TableCell>
               <TableCell>&yen;{{ product.price * product.quantity }}</TableCell>
@@ -309,6 +317,9 @@ let tranId = null
 // Check if invoice has been issued (one invoice per transaction)
 const hasAnyInvoice = computed(() => invoiceList.value.length > 0)
 const invoiceLoading = ref(false)
+const canRecordPayment = computed(() =>
+  tranDetail.value.stage === TRAN_STAGE.APPROVED || tranDetail.value.stage === TRAN_STAGE.PAYMENT,
+)
 
 // Invoice type mapping
 const getInvoiceTypeText = (type) => {

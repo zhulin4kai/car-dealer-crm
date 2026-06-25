@@ -695,7 +695,7 @@ const handleBatchDelete = async () => {
 const handleResubmit = async (row: Record<string, unknown>) => {
   try {
     await messageConfirm(
-      '确定要重新提交该交易吗？将重新占用库存并清除旧审批记录，如不改动请先进入详情编辑。',
+      '确定要重新提交该交易吗？将清除旧审批记录，如不改动请先进入详情编辑。',
     )
   } catch {
     messageTip('取消重新提交', 'warning')
@@ -710,7 +710,7 @@ const handleResubmit = async (row: Record<string, unknown>) => {
       messageTip('重新提交已成功，但列表刷新失败', 'warning')
     }
   } catch {
-    messageTip('重新提交失败，可能是库存不足或状态已变更', 'error')
+    messageTip('重新提交失败，可能是状态已变更', 'error')
   }
 }
 
