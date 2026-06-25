@@ -3,6 +3,7 @@ package com.autodealer.crm.config.handler;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.util.JSONUtils;
 import com.autodealer.crm.util.JWTUtils;
@@ -33,11 +34,26 @@ public class MyAuthenticationSuccessHandler implements AuthenticationSuccessHand
 
         String jwt = JWTUtils.createJWT(tUser.getId(), tUser.getLoginAct(), expirationSeconds);
 
-        redisManager.set(Constants.REDIS_JWT_KEY + tUser.getId(), jwt, expirationSeconds);
+        boolean stored;
+        try {
+            stored = redisManager.set(Constants.REDIS_JWT_KEY + tUser.getId(), jwt, expirationSeconds);
+        } catch (RuntimeException exception) {
+            writeSystemFailure(response);
+            return;
+        }
+        if (!stored) {
+            writeSystemFailure(response);
+            return;
+        }
 
         R result = R.OK(jwt);
 
         // 把 R 以 json 返回给前端
         ResponseUtils.write(response, JSONUtils.toJSON(result));
+    }
+
+    private void writeSystemFailure(HttpServletResponse response) {
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        ResponseUtils.write(response, JSONUtils.toJSON(R.FAIL(CodeEnum.SYSTEM_ERROR)));
     }
 }

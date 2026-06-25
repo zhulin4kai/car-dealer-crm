@@ -67,7 +67,9 @@ public class TokenVerifyFilter extends OncePerRequestFilter {
 
         TUser currentUser = userService.getLoginUserById(userId);
         if (!isUsable(currentUser)) {
-            redisManager.delete(Constants.REDIS_JWT_KEY + userId);
+            if (!revokeSession(response, userId)) {
+                return;
+            }
             writeAuthFailure(response, CodeEnum.TOKEN_IS_ERROR);
             return;
         }
@@ -87,6 +89,20 @@ public class TokenVerifyFilter extends OncePerRequestFilter {
     }
 
     private void writeAuthFailure(HttpServletResponse response, CodeEnum codeEnum) {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         ResponseUtils.write(response, JSONUtils.toJSON(R.FAIL(codeEnum)));
+    }
+
+    private boolean revokeSession(HttpServletResponse response, Integer userId) {
+        try {
+            if (redisManager.delete(Constants.REDIS_JWT_KEY + userId)) {
+                return true;
+            }
+        } catch (RuntimeException ignored) {
+            // The response below is intentionally generic; Redis details must not leak to clients.
+        }
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        ResponseUtils.write(response, JSONUtils.toJSON(R.FAIL(CodeEnum.SYSTEM_ERROR)));
+        return false;
     }
 }

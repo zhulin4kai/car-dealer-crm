@@ -441,8 +441,17 @@ public class UserServiceImpl implements UserService {
     }
 
     private void invalidateUserSession(Integer userId) {
-        try { redisManager.delete(RedisKeys.userLogin(userId)); }
-        catch (Exception e) { log.warn("event=user_session_invalidate result=failed userId={}", userId, e); }
+        try {
+            if (!redisManager.delete(RedisKeys.userLogin(userId))) {
+                log.warn("event=user_session_invalidate result=failed userId={}", userId);
+                throw new BusinessException(CodeEnum.SYSTEM_ERROR, "用户会话撤销失败");
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("event=user_session_invalidate result=failed userId={}", userId, e);
+            throw new BusinessException(CodeEnum.SYSTEM_ERROR, "用户会话撤销失败", e);
+        }
     }
 
     private void clearOwnerListCache() {

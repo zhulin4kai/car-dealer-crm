@@ -3,6 +3,7 @@ package com.autodealer.crm.config.filter;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.UserService;
 import com.autodealer.crm.util.JWTUtils;
 import jakarta.servlet.FilterChain;
@@ -56,6 +57,7 @@ class TokenVerifyFilterTest {
     void missingTokenShouldFailClosed() throws Exception {
         request.setRequestURI("/api/users");
         filter.doFilterInternal(request, response, filterChain);
+        assertEquals(401, response.getStatus());
         assertTrue(response.getContentAsString().contains("510"));
         verifyNoInteractions(filterChain);
     }
@@ -65,6 +67,7 @@ class TokenVerifyFilterTest {
         request.setRequestURI("/api/users");
         request.addHeader("Authorization", "bad-token");
         filter.doFilterInternal(request, response, filterChain);
+        assertEquals(401, response.getStatus());
         assertTrue(response.getContentAsString().contains("511"));
         verifyNoInteractions(filterChain);
     }
@@ -73,6 +76,7 @@ class TokenVerifyFilterTest {
     void missingRedisSessionShouldBeExpired() throws Exception {
         try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
             invokeProtectedPath();
+            assertEquals(401, response.getStatus());
             assertTrue(response.getContentAsString().contains("512"));
             verifyNoInteractions(filterChain);
         }
@@ -83,6 +87,7 @@ class TokenVerifyFilterTest {
         try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
             when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("other-token");
             invokeProtectedPath();
+            assertEquals(401, response.getStatus());
             assertTrue(response.getContentAsString().contains("513"));
             verifyNoInteractions(filterChain);
         }
@@ -112,12 +117,34 @@ class TokenVerifyFilterTest {
             user.setAccountEnabled(0);
             when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid-token");
             when(userService.getLoginUserById(1)).thenReturn(user);
+            when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenReturn(true);
 
             invokeProtectedPath();
 
             verify(redisManager).delete(Constants.REDIS_JWT_KEY + 1);
             verifyNoInteractions(filterChain);
             assertNull(SecurityContextHolder.getContext().getAuthentication());
+            assertEquals(401, response.getStatus());
+            assertTrue(response.getContentAsString().contains("511"));
+        }
+    }
+
+    @Test
+    void disabledUserSessionRevokeFailureShouldFailWithSystemError() throws Exception {
+        try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
+            TUser user = usableUser();
+            user.setAccountEnabled(0);
+            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid-token");
+            when(userService.getLoginUserById(1)).thenReturn(user);
+            when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenReturn(false);
+
+            invokeProtectedPath();
+
+            verify(redisManager).delete(Constants.REDIS_JWT_KEY + 1);
+            verifyNoInteractions(filterChain);
+            assertNull(SecurityContextHolder.getContext().getAuthentication());
+            assertEquals(500, response.getStatus());
+            assertTrue(response.getContentAsString().contains("\"code\":" + CodeEnum.SYSTEM_ERROR.getCode()));
         }
     }
 

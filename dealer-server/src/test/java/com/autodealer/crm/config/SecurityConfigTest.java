@@ -38,7 +38,7 @@ class SecurityConfigTest extends BackendIntegrationTestBase {
     @DisplayName("unauthenticated request to /api/users must be rejected by the real Security filter chain")
     void unauthenticatedRequestToProtectedEndpointIsRejected() throws Exception {
         mockMvc.perform(get("/api/users"))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(510));
     }
 
@@ -114,7 +114,7 @@ class SecurityConfigTest extends BackendIntegrationTestBase {
 
         mockMvc.perform(get("/api/login/info")
                         .header(HttpHeaders.AUTHORIZATION, token))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(512));
     }
 

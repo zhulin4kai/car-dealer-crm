@@ -13,12 +13,6 @@ import java.util.List;
 @Component
 public class CurrentUserProvider {
     private static final String ROLE_ADMIN = "admin";
-    private static final String ROLE_SALES_CONSULTANT = "sales_consultant";
-    private static final String ROLE_SALES_MANAGER = "sales_manager";
-    private static final String ROLE_FINANCE_SPECIALIST = "finance_specialist";
-    private static final List<TranStage> FINANCE_STAGES = List.of(
-            TranStage.APPROVED, TranStage.PAYMENT, TranStage.DELIVERY,
-            TranStage.COMPLETED, TranStage.CANCELLED);
 
     public TUser getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -57,11 +51,7 @@ public class CurrentUserProvider {
             return TransactionDataScope.all();
         }
 
-        boolean salesManager = hasRole(currentUser, ROLE_SALES_MANAGER);
-        boolean finance = hasRole(currentUser, ROLE_FINANCE_SPECIALIST);
-        boolean sales = hasRole(currentUser, ROLE_SALES_CONSULTANT) || salesManager;
-        Integer selfUserId = sales || !finance ? userId : null;
-        return TransactionDataScope.limited(selfUserId, salesManager, finance ? FINANCE_STAGES : List.of());
+        return TransactionDataScope.limited(userId, false, List.of());
     }
 
     public void applyTransactionDataScope(TranQuery query) {

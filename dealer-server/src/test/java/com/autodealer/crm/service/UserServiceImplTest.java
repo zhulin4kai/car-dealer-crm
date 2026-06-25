@@ -1,6 +1,7 @@
 package com.autodealer.crm.service;
 
 import com.autodealer.crm.config.security.CurrentUserProvider;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.dto.*;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.manager.RedisManager;
@@ -135,6 +136,21 @@ class UserServiceImplTest {
     }
 
     @Test
+    void disableUser_sessionInvalidationFailure_shouldRejectOperation() {
+        TUser user = new TUser(); user.setId(2); user.setAccountEnabled(1);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.countBusinessReferences(2)).thenReturn(0);
+        when(tUserMapper.disableById(2)).thenReturn(1);
+        when(redisManager.delete(RedisKeys.userLogin(2))).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.disableUser(2));
+
+        assertEquals(CodeEnum.SYSTEM_ERROR, ex.getCodeEnum());
+        verify(tUserMapper).disableById(2);
+        verify(auditRecorder, never()).record(any(), anyString());
+    }
+
+    @Test
     void testDisableUser_selfOperation() {
         when(currentUserProvider.getCurrentUserId()).thenReturn(2);
         BusinessException ex = assertThrows(BusinessException.class, () -> userService.disableUser(2));
@@ -175,6 +191,20 @@ class UserServiceImplTest {
         userService.lockUser(2);
         verify(tUserMapper).lockById(2);
         verify(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, "2");
+    }
+
+    @Test
+    void lockUser_sessionInvalidationException_shouldRejectOperation() {
+        TUser user = new TUser(); user.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.lockById(2)).thenReturn(1);
+        when(redisManager.delete(RedisKeys.userLogin(2))).thenThrow(new IllegalStateException("redis unavailable"));
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.lockUser(2));
+
+        assertEquals(CodeEnum.SYSTEM_ERROR, ex.getCodeEnum());
+        verify(tUserMapper).lockById(2);
+        verify(auditRecorder, never()).record(any(), anyString());
     }
 
     @Test
@@ -262,6 +292,21 @@ class UserServiceImplTest {
         when(redisManager.delete(anyString())).thenReturn(true);
         userService.changePassword(r);
         verify(tUserMapper).updatePassword(2, "encoded");
+    }
+
+    @Test
+    void changePassword_sessionInvalidationFailure_shouldRejectOperation() {
+        ChangePasswordRequest r = new ChangePasswordRequest(); r.setUserId(2); r.setNewPassword("newpass123");
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(new TUser());
+        when(passwordEncoder.encode("newpass123")).thenReturn("encoded");
+        when(tUserMapper.updatePassword(eq(2), eq("encoded"))).thenReturn(1);
+        when(redisManager.delete(RedisKeys.userLogin(2))).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.changePassword(r));
+
+        assertEquals(CodeEnum.SYSTEM_ERROR, ex.getCodeEnum());
+        verify(tUserMapper).updatePassword(2, "encoded");
+        verify(auditRecorder, never()).record(any(), anyString());
     }
 
     @Test

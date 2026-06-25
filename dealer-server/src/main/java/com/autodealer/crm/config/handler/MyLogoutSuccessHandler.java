@@ -31,10 +31,25 @@ public class MyLogoutSuccessHandler implements LogoutSuccessHandler {
     public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
         // 退出成功，执行该方法，在该方法中返回 json 给前端就行了
         if (authentication != null && authentication.getPrincipal() instanceof TUser user) {
-            redisManager.delete(Constants.REDIS_JWT_KEY + user.getId());
+            boolean deleted;
+            try {
+                deleted = redisManager.delete(Constants.REDIS_JWT_KEY + user.getId());
+            } catch (RuntimeException exception) {
+                writeSystemFailure(response);
+                return;
+            }
+            if (!deleted) {
+                writeSystemFailure(response);
+                return;
+            }
         }
 
         R result = R.OK(CodeEnum.USER_LOGOUT);
         ResponseUtils.write(response, JSONUtils.toJSON(result));
+    }
+
+    private void writeSystemFailure(HttpServletResponse response) {
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        ResponseUtils.write(response, JSONUtils.toJSON(R.FAIL(CodeEnum.SYSTEM_ERROR)));
     }
 }

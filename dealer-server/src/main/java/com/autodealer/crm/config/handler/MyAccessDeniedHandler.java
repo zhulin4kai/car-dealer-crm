@@ -31,6 +31,7 @@ public class MyAccessDeniedHandler implements AccessDeniedHandler {
         String resultJSON = JSONUtils.toJSON(result);
 
         //把R以json返回给前端
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         ResponseUtils.write(response, resultJSON);
     }
 }

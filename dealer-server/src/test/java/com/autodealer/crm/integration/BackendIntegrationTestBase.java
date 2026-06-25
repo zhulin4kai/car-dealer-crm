@@ -70,7 +70,7 @@ public abstract class BackendIntegrationTestBase {
             String key = invocation.getArgument(0);
             Object value = invocation.getArgument(1);
             tokenStore.put(key, String.valueOf(value));
-            return null;
+            return Boolean.TRUE;
         }).when(redisManager).set(anyString(), anyString(), anyLong());
 
         lenient().when(redisManager.get(anyString())).thenAnswer(invocation -> {
