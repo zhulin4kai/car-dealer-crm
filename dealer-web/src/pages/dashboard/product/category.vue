@@ -217,7 +217,10 @@ import {
   getCategoryList,
   updateCategory,
 } from '@/modules/product/api/product-api'
-import type { ProductCategory } from '@/modules/product/model/product.types'
+import {
+  getProductCategoryMutationErrorMessage,
+  type ProductCategory,
+} from '@/modules/product/model/product.types'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
@@ -332,7 +335,7 @@ async function handleDelete(row: ProductCategory): Promise<void> {
     messageTip('删除成功', 'success')
     await loadCategories()
   } catch (error) {
-    if (error !== 'cancel') messageTip('删除失败', 'error')
+    if (error !== 'cancel') messageTip(getProductCategoryMutationErrorMessage(error, '删除失败'), 'error')
   }
 }
 

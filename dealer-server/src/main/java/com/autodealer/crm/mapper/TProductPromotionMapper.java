@@ -14,6 +14,8 @@ public interface TProductPromotionMapper {
                                                         @Param("now") LocalDateTime now);
     
     Integer selectCount();
+
+    int countByProductId(@Param("productId") Long productId);
     
     TProductPromotion selectById(@Param("id") Long id);
     

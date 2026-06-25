@@ -218,6 +218,7 @@ CREATE TABLE IF NOT EXISTS t_tran
     discount_amount   DECIMAL(10, 2) NOT NULL DEFAULT 0,
     promotion_snapshot TEXT,
     PRIMARY KEY (id),
+    CONSTRAINT uk_tran_no UNIQUE (tran_no),
     CONSTRAINT fk_tran_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT
 );
 
@@ -244,13 +245,14 @@ CREATE TABLE IF NOT EXISTS t_product
     price         DECIMAL(10, 2) NOT NULL DEFAULT 0,
     stock         INTEGER NOT NULL DEFAULT 0,
     min_stock     INTEGER,
-    status        VARCHAR(50) NOT NULL DEFAULT 'off_sale',
+    status        VARCHAR(50) NOT NULL DEFAULT 'OFF_SALE',
     create_time   TIMESTAMP,
     update_time   TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT uk_sku UNIQUE (sku),
     CONSTRAINT chk_product_price_nonneg CHECK (price >= 0),
-    CONSTRAINT chk_product_stock_nonneg CHECK (stock >= 0)
+    CONSTRAINT chk_product_stock_nonneg CHECK (stock >= 0),
+    CONSTRAINT chk_product_status_code CHECK (status IN ('ON_SALE', 'OFF_SALE'))
 );
 
 CREATE TABLE IF NOT EXISTS t_tran_product
@@ -260,6 +262,10 @@ CREATE TABLE IF NOT EXISTS t_tran_product
     product_id  BIGINT NOT NULL,
     quantity    INTEGER NOT NULL,
     price       DECIMAL(10, 2) NOT NULL,
+    product_sku VARCHAR(100),
+    product_name VARCHAR(255),
+    product_specification VARCHAR(255),
+    guide_price DECIMAL(10, 2),
     create_time TIMESTAMP,
     create_by   INTEGER,
     PRIMARY KEY (id),
@@ -303,6 +309,7 @@ CREATE TABLE IF NOT EXISTS t_tran_approve
     create_time     TIMESTAMP,
     create_by       INTEGER,
     PRIMARY KEY (id),
+    CONSTRAINT uk_tran_id UNIQUE (tran_id),
     CONSTRAINT fk_tran_approve_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
 );
 
@@ -317,6 +324,7 @@ CREATE TABLE IF NOT EXISTS t_payment
     payment_status  VARCHAR(32) NOT NULL DEFAULT 'PENDING',
     payment_time    TIMESTAMP,
     transaction_ref VARCHAR(128),
+    idempotency_key VARCHAR(160),
     remark          VARCHAR(255),
     create_time     TIMESTAMP,
     create_by       INTEGER,
@@ -325,6 +333,7 @@ CREATE TABLE IF NOT EXISTS t_payment
     PRIMARY KEY (id),
     CONSTRAINT uk_payment_no UNIQUE (payment_no),
     CONSTRAINT uk_payment_transaction_ref UNIQUE (transaction_ref),
+    CONSTRAINT uk_payment_idempotency_key UNIQUE (idempotency_key),
     CONSTRAINT fk_payment_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
 );
 

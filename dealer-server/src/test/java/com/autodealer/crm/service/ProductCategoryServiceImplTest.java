@@ -1,7 +1,10 @@
 package com.autodealer.crm.service;
 
+import com.autodealer.crm.exception.BusinessException;
+import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TProductCategoryMapper;
 import com.autodealer.crm.model.TProductCategory;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.ProductCategoryServiceImpl;
 import com.github.pagehelper.PageInfo;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,9 @@ class ProductCategoryServiceImplTest {
 
     @Mock
     private TProductCategoryMapper categoryMapper;
+
+    @Mock
+    private TProductMapper productMapper;
 
     @Test
     void testGetCategoryList() {
@@ -114,11 +120,35 @@ class ProductCategoryServiceImplTest {
 
     @Test
     void testDeleteCategory() {
+        when(categoryMapper.selectById(1L)).thenReturn(createCategory(1L, "Sedan", "SEDAN"));
         when(categoryMapper.deleteById(1L)).thenReturn(1);
 
         categoryService.deleteCategory(1L);
 
         verify(categoryMapper).deleteById(1L);
+    }
+
+    @Test
+    void deleteCategory_notFound_shouldRejectWithoutPhysicalDelete() {
+        when(categoryMapper.selectById(1L)).thenReturn(null);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> categoryService.deleteCategory(1L));
+
+        assertEquals(CodeEnum.NOT_FOUND, exception.getCodeEnum());
+        verify(categoryMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void deleteCategory_referencedByProduct_shouldRejectWithoutPhysicalDelete() {
+        when(categoryMapper.selectById(1L)).thenReturn(createCategory(1L, "Sedan", "SEDAN"));
+        when(productMapper.countByCategoryId(1L)).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> categoryService.deleteCategory(1L));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(categoryMapper, never()).deleteById(anyLong());
     }
 
     private TProductCategory createCategory(Long id, String name, String code) {

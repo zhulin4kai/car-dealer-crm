@@ -32,6 +32,21 @@ public class TTranProduct implements Serializable {
     private String productName;
 
     /**
+     * 产品编码快照
+     */
+    private String productSku;
+
+    /**
+     * 产品规格快照
+     */
+    private String productSpecification;
+
+    /**
+     * 指导价快照
+     */
+    private BigDecimal guidePrice;
+
+    /**
      * 数量
      */
     private Integer quantity;

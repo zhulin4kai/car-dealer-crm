@@ -317,19 +317,19 @@ VALUES (3, '电动轿车', 'ELECTRIC_SEDAN', '纯电动驱动的三厢式乘用�
 
 -- ==================== Products ====================
 MERGE INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time) KEY(id)
-VALUES (1, 'BMW-X5-2023', '宝马 X5', 1, '2023款 xDrive40i 尊享型', 569800.00, 15, 5, 'on_sale', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+VALUES (1, 'BMW-X5-2023', '宝马 X5', 1, '2023款 xDrive40i 尊享型', 569800.00, 15, 5, 'ON_SALE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 MERGE INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time) KEY(id)
-VALUES (2, 'BENZ-E-2023', '奔驰 E级', 2, '2023款 E 300 L 运动豪华型', 499800.00, 15, 6, 'on_sale', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+VALUES (2, 'BENZ-E-2023', '奔驰 E级', 2, '2023款 E 300 L 运动豪华型', 499800.00, 15, 6, 'ON_SALE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 MERGE INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time) KEY(id)
-VALUES (3, 'AUDI-Q5-2023', '奥迪 Q5L', 1, '2023款 40 TFSI 荣享时尚型', 399800.00, 16, 6, 'on_sale', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+VALUES (3, 'AUDI-Q5-2023', '奥迪 Q5L', 1, '2023款 40 TFSI 荣享时尚型', 399800.00, 16, 6, 'ON_SALE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 MERGE INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time) KEY(id)
-VALUES (4, 'BMW-5-2023', '宝马 5系', 2, '2023款 530Li 行政型', 459800.00, 18, 7, 'on_sale', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+VALUES (4, 'BMW-5-2023', '宝马 5系', 2, '2023款 530Li 行政型', 459800.00, 18, 7, 'ON_SALE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 MERGE INTO t_product (id, sku, name, category_id, specification, price, stock, min_stock, status, create_time, update_time) KEY(id)
-VALUES (5, 'TESLA-MODEL3-2023', '特斯拉 Model 3', 3, '2023款 后轮驱动版', 259900.00, 30, 15, 'on_sale', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+VALUES (5, 'TESLA-MODEL3-2023', '特斯拉 Model 3', 3, '2023款 后轮驱动版', 259900.00, 30, 15, 'ON_SALE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ==================== Activities ====================
 MERGE INTO t_activity (id, owner_id, name, start_time, end_time, cost, description, create_time, create_by, edit_time, edit_by) KEY(id)
@@ -406,14 +406,14 @@ MERGE INTO t_tran_history (id, tran_id, stage, money, expected_date, create_time
 VALUES (3, 2, 'PAYMENT', 499800.00, '2025-08-01 00:00:00', CURRENT_TIMESTAMP, 2);
 
 -- ==================== Transaction Products ====================
-MERGE INTO t_tran_product (id, tran_id, product_id, quantity, price, create_time, create_by) KEY(id)
-VALUES (1, 1, 1, 1, 569800.00, CURRENT_TIMESTAMP, 1);
+MERGE INTO t_tran_product (id, tran_id, product_id, quantity, price, product_sku, product_name, product_specification, guide_price, create_time, create_by) KEY(id)
+VALUES (1, 1, 1, 1, 569800.00, 'BMW-X5-2023', '宝马 X5', '2023款 xDrive40i 尊享型', 569800.00, CURRENT_TIMESTAMP, 1);
 
-MERGE INTO t_tran_product (id, tran_id, product_id, quantity, price, create_time, create_by) KEY(id)
-VALUES (2, 2, 2, 1, 499800.00, CURRENT_TIMESTAMP, 2);
+MERGE INTO t_tran_product (id, tran_id, product_id, quantity, price, product_sku, product_name, product_specification, guide_price, create_time, create_by) KEY(id)
+VALUES (2, 2, 2, 1, 499800.00, 'BENZ-E-2023', '奔驰 E级', '2023款 E 300 L 运动豪华型', 499800.00, CURRENT_TIMESTAMP, 2);
 
-MERGE INTO t_tran_product (id, tran_id, product_id, quantity, price, create_time, create_by) KEY(id)
-VALUES (3, 3, 3, 1, 399800.00, CURRENT_TIMESTAMP, 1);
+MERGE INTO t_tran_product (id, tran_id, product_id, quantity, price, product_sku, product_name, product_specification, guide_price, create_time, create_by) KEY(id)
+VALUES (3, 3, 3, 1, 399800.00, 'AUDI-Q5-2023', '奥迪 Q5L', '2023款 40 TFSI 荣享时尚型', 399800.00, CURRENT_TIMESTAMP, 1);
 
 -- ==================== Transaction Remarks ====================
 MERGE INTO t_tran_remark (id, tran_id, note_way, note_content, create_time, create_by, edit_time, edit_by, deleted) KEY(id)

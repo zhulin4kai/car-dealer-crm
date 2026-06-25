@@ -4,6 +4,7 @@ export const API_ERROR_CODE = {
   TOKEN_INVALID: 511,
   TOKEN_EXPIRED: 512,
   TOKEN_MISMATCH: 513,
+  RESOURCE_IN_USE: 422,
 } as const
 
 const SESSION_INVALID_CODES = new Set<number>([

@@ -36,4 +36,6 @@ public interface TProductMapper {
     int updateStock(@Param("id") Long id, @Param("quantity") Integer quantity);
     
     List<TProduct> selectAllOnSale();
-} 
+
+    int countByCategoryId(@Param("categoryId") Long categoryId);
+}

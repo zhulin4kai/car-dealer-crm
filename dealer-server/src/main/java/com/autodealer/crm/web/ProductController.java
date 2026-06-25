@@ -60,7 +60,6 @@ public class ProductController {
         product.setCategoryId(req.getCategoryId());
         product.setSpecification(req.getSpecification());
         product.setPrice(req.getPrice());
-        product.setStock(req.getStock());
         product.setMinStock(req.getMinStock());
         product.setStatus(req.getStatus());
         productService.updateProduct(product);

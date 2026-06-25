@@ -116,6 +116,7 @@ CREATE TABLE `t_clue`
     `edit_time`         datetime                                                      NULL DEFAULT NULL COMMENT '编辑时间',
     `edit_by`           int                                                           NULL DEFAULT NULL COMMENT '编辑人',
     PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE KEY `uk_clue_phone` (`phone`),
     INDEX `appellation` (`appellation` ASC) USING BTREE,
     INDEX `state` (`state` ASC) USING BTREE,
     INDEX `source` (`source` ASC) USING BTREE,
@@ -729,6 +730,7 @@ CREATE TABLE `t_tran`
     `discount_amount`   decimal(10, 2)                                                NOT NULL DEFAULT 0 COMMENT '结算优惠金额',
     `promotion_snapshot` text                                                         NULL DEFAULT NULL COMMENT '结算时促销快照JSON',
     PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE KEY `uk_tran_no` (`tran_no`),
     INDEX `t_tran_ibfk_1` (`customer_id` ASC) USING BTREE,
     INDEX `t_tran_ibfk_2` (`stage` ASC) USING BTREE,
     INDEX `t_tran_ibfk_3` (`create_by` ASC) USING BTREE,
@@ -831,6 +833,10 @@ CREATE TABLE `t_tran_product`
     `product_id`  bigint         NOT NULL COMMENT '产品ID',
     `quantity`    int            NOT NULL COMMENT '数量',
     `price`       decimal(10, 2) NOT NULL COMMENT '单价',
+    `product_sku` varchar(100)   NULL DEFAULT NULL COMMENT '商品编码快照',
+    `product_name` varchar(255)  NULL DEFAULT NULL COMMENT '商品名称快照',
+    `product_specification` varchar(255) NULL DEFAULT NULL COMMENT '商品配置快照',
+    `guide_price` decimal(10, 2) NULL DEFAULT NULL COMMENT '指导价快照',
     `create_time` datetime       NULL DEFAULT NULL COMMENT '创建时间',
     `create_by`   int            NULL DEFAULT NULL COMMENT '创建人',
     PRIMARY KEY (`id`) USING BTREE,
@@ -848,16 +854,16 @@ CREATE TABLE `t_tran_product`
 -- ----------------------------
 
 INSERT INTO `t_tran_product`
-(`id`, `tran_id`, `product_id`, `quantity`, `price`, `create_time`, `create_by`)
+(`id`, `tran_id`, `product_id`, `quantity`, `price`, `product_sku`, `product_name`, `product_specification`, `guide_price`, `create_time`, `create_by`)
 VALUES
-(1, 1, 6, 1, 386800.00, '2026-04-08 10:12:00', 2),
-(2, 2, 1, 1, 579800.00, '2026-05-22 14:25:00', 2),
-(3, 3, 4, 1, 439900.00, '2026-06-03 09:45:00', 3),
-(4, 4, 9, 1, 509800.00, '2026-06-12 11:06:00', 8),
-(5, 5, 7, 1, 469800.00, '2026-06-18 13:40:00', 3),
-(6, 6, 12, 1, 398800.00, '2026-05-15 10:30:00', 8),
-(7, 7, 7, 1, 455800.00, '2026-03-11 15:20:00', 2),
-(8, 8, 10, 1, 488000.00, '2026-05-30 12:10:00', 3);
+(1, 1, 6, 1, 386800.00, 'AUDI-Q5L-FY-25-40', '奥迪 Q5L', '2025款 40 TFSI 豪华动感型', 426800.00, '2026-04-08 10:12:00', 2),
+(2, 2, 1, 1, 579800.00, 'BMW-X5-G05-25-30LI', '宝马 X5', '2025款 xDrive30Li 尊享型 M运动套装', 599000.00, '2026-05-22 14:25:00', 2),
+(3, 3, 4, 1, 439900.00, 'BMW-530LI-G68-25-L', '宝马 5系', '2025款 530Li 领先型 豪华套装', 485900.00, '2026-06-03 09:45:00', 3),
+(4, 4, 9, 1, 509800.00, 'BENZ-E300L-W214-25', '奔驰 E级', '2025款 E 300 L 豪华型', 529800.00, '2026-06-12 11:06:00', 8),
+(5, 5, 7, 1, 469800.00, 'AUDI-A6L-C8-25-45', '奥迪 A6L', '2025款 45 TFSI 臻选动感型', 479900.00, '2026-06-18 13:40:00', 3),
+(6, 6, 12, 1, 398800.00, 'LEXUS-NX350H-25-C', '雷克萨斯 NX', '2025款 350h 创驰版', 388800.00, '2026-05-15 10:30:00', 8),
+(7, 7, 7, 1, 455800.00, 'AUDI-A6L-C8-25-45', '奥迪 A6L', '2025款 45 TFSI 臻选动感型', 479900.00, '2026-03-11 15:20:00', 2),
+(8, 8, 10, 1, 488000.00, 'BENZ-GLC300L-X254-25', '奔驰 GLC', '2025款 GLC 300 L 4MATIC 动感型', 479300.00, '2026-05-30 12:10:00', 3);
 
 -- ----------------------------
 -- Table structure for t_tran_invoice
@@ -926,13 +932,14 @@ CREATE TABLE `t_product`
     `price`         DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '商品价格',
     `stock`         INT          NOT NULL DEFAULT 0 COMMENT '当前商品库存量',
     `min_stock`     INT            DEFAULT NULL COMMENT '商品的最低库存警戒值',
-    `status`        VARCHAR(50)  NOT NULL DEFAULT 'off_sale' COMMENT '商品状态，如on_sale、off_sale',
+    `status`        VARCHAR(50)  NOT NULL DEFAULT 'OFF_SALE' COMMENT '商品状态，如ON_SALE、OFF_SALE',
     `create_time`   DATETIME       DEFAULT NULL COMMENT '商品信息的创建时间',
     `update_time`   DATETIME       DEFAULT NULL COMMENT '商品信息的最后更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_product_sku` (`sku`),
     CONSTRAINT `chk_product_price_nonneg` CHECK (`price` >= 0),
-    CONSTRAINT `chk_product_stock_nonneg` CHECK (`stock` >= 0)
+    CONSTRAINT `chk_product_stock_nonneg` CHECK (`stock` >= 0),
+    CONSTRAINT `chk_product_status_code` CHECK (`status` IN ('ON_SALE', 'OFF_SALE'))
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='商品表';
 
@@ -940,18 +947,18 @@ CREATE TABLE `t_product`
 INSERT INTO `t_product`
 (`id`, `sku`, `name`, `category_id`, `specification`, `price`, `stock`, `min_stock`, `status`, `create_time`, `update_time`)
 VALUES
-(1, 'BMW-X5-G05-25-30LI', '宝马 X5', 1, '2025款 xDrive30Li 尊享型 M运动套装', 599000.00, 3, 2, 'on_sale', '2025-09-05 10:00:00', '2026-06-18 15:20:00'),
-(2, 'BMW-X3-G48-25-30LI', '宝马 X3', 1, '2025款 xDrive30Li 尊享型', 449900.00, 5, 2, 'on_sale', '2025-11-12 10:00:00', '2026-06-18 15:20:00'),
-(3, 'BMW-325LI-G28-25-M', '宝马 3系', 2, '2025款 325Li M运动曜夜套装', 369900.00, 4, 2, 'on_sale', '2025-08-18 10:00:00', '2026-06-18 15:20:00'),
-(4, 'BMW-530LI-G68-25-L', '宝马 5系', 2, '2025款 530Li 领先型 豪华套装', 485900.00, 2, 2, 'on_sale', '2025-10-09 10:00:00', '2026-06-18 15:20:00'),
-(5, 'AUDI-A4L-B9-25-40', '奥迪 A4L', 2, '2025款 40 TFSI 豪华动感型', 343800.00, 6, 2, 'on_sale', '2025-07-21 10:00:00', '2026-06-18 15:20:00'),
-(6, 'AUDI-Q5L-FY-25-40', '奥迪 Q5L', 1, '2025款 40 TFSI 豪华动感型', 426800.00, 4, 2, 'on_sale', '2025-07-21 10:00:00', '2026-06-18 15:20:00'),
-(7, 'AUDI-A6L-C8-25-45', '奥迪 A6L', 2, '2025款 45 TFSI 臻选动感型', 479900.00, 3, 2, 'on_sale', '2025-09-16 10:00:00', '2026-06-18 15:20:00'),
-(8, 'BENZ-C260L-W206-25', '奔驰 C级', 2, '2025款 C 260 L 运动版', 353300.00, 5, 2, 'on_sale', '2025-08-08 10:00:00', '2026-06-18 15:20:00'),
-(9, 'BENZ-E300L-W214-25', '奔驰 E级', 2, '2025款 E 300 L 豪华型', 529800.00, 2, 2, 'on_sale', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
-(10, 'BENZ-GLC300L-X254-25', '奔驰 GLC', 1, '2025款 GLC 300 L 4MATIC 动感型', 479300.00, 4, 2, 'on_sale', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
-(11, 'LEXUS-ES300H-25-P', '雷克萨斯 ES', 4, '2025款 300h 尊享版', 399900.00, 3, 1, 'on_sale', '2025-12-02 10:00:00', '2026-06-18 15:20:00'),
-(12, 'LEXUS-NX350H-25-C', '雷克萨斯 NX', 4, '2025款 350h 创驰版', 388800.00, 2, 1, 'on_sale', '2025-12-02 10:00:00', '2026-06-18 15:20:00');
+(1, 'BMW-X5-G05-25-30LI', '宝马 X5', 1, '2025款 xDrive30Li 尊享型 M运动套装', 599000.00, 3, 2, 'ON_SALE', '2025-09-05 10:00:00', '2026-06-18 15:20:00'),
+(2, 'BMW-X3-G48-25-30LI', '宝马 X3', 1, '2025款 xDrive30Li 尊享型', 449900.00, 5, 2, 'ON_SALE', '2025-11-12 10:00:00', '2026-06-18 15:20:00'),
+(3, 'BMW-325LI-G28-25-M', '宝马 3系', 2, '2025款 325Li M运动曜夜套装', 369900.00, 4, 2, 'ON_SALE', '2025-08-18 10:00:00', '2026-06-18 15:20:00'),
+(4, 'BMW-530LI-G68-25-L', '宝马 5系', 2, '2025款 530Li 领先型 豪华套装', 485900.00, 2, 2, 'ON_SALE', '2025-10-09 10:00:00', '2026-06-18 15:20:00'),
+(5, 'AUDI-A4L-B9-25-40', '奥迪 A4L', 2, '2025款 40 TFSI 豪华动感型', 343800.00, 6, 2, 'ON_SALE', '2025-07-21 10:00:00', '2026-06-18 15:20:00'),
+(6, 'AUDI-Q5L-FY-25-40', '奥迪 Q5L', 1, '2025款 40 TFSI 豪华动感型', 426800.00, 4, 2, 'ON_SALE', '2025-07-21 10:00:00', '2026-06-18 15:20:00'),
+(7, 'AUDI-A6L-C8-25-45', '奥迪 A6L', 2, '2025款 45 TFSI 臻选动感型', 479900.00, 3, 2, 'ON_SALE', '2025-09-16 10:00:00', '2026-06-18 15:20:00'),
+(8, 'BENZ-C260L-W206-25', '奔驰 C级', 2, '2025款 C 260 L 运动版', 353300.00, 5, 2, 'ON_SALE', '2025-08-08 10:00:00', '2026-06-18 15:20:00'),
+(9, 'BENZ-E300L-W214-25', '奔驰 E级', 2, '2025款 E 300 L 豪华型', 529800.00, 2, 2, 'ON_SALE', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
+(10, 'BENZ-GLC300L-X254-25', '奔驰 GLC', 1, '2025款 GLC 300 L 4MATIC 动感型', 479300.00, 4, 2, 'ON_SALE', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
+(11, 'LEXUS-ES300H-25-P', '雷克萨斯 ES', 4, '2025款 300h 尊享版', 399900.00, 3, 1, 'ON_SALE', '2025-12-02 10:00:00', '2026-06-18 15:20:00'),
+(12, 'LEXUS-NX350H-25-C', '雷克萨斯 NX', 4, '2025款 350h 创驰版', 388800.00, 2, 1, 'ON_SALE', '2025-12-02 10:00:00', '2026-06-18 15:20:00');
 
 -- ----------------------------
 -- Table structure for t_product_category
@@ -1277,6 +1284,7 @@ CREATE TABLE `t_payment`
     `payment_status`  varchar(32)    NOT NULL DEFAULT 'PENDING' COMMENT '支付状态',
     `payment_time`    datetime       NULL DEFAULT NULL COMMENT '支付时间',
     `transaction_ref` varchar(128)   NULL DEFAULT NULL COMMENT '第三方交易参考号',
+    `idempotency_key` varchar(160)   NULL DEFAULT NULL COMMENT '收款退款幂等键',
     `remark`          varchar(255)   NULL DEFAULT NULL COMMENT '备注',
     `create_time`     datetime       NULL DEFAULT NULL COMMENT '创建时间',
     `create_by`       int            NULL DEFAULT NULL COMMENT '创建人',
@@ -1285,6 +1293,7 @@ CREATE TABLE `t_payment`
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_payment_no` (`payment_no` ASC) USING BTREE,
     UNIQUE INDEX `uk_payment_transaction_ref` (`transaction_ref` ASC) USING BTREE,
+    UNIQUE INDEX `uk_payment_idempotency_key` (`idempotency_key` ASC) USING BTREE,
     INDEX `idx_tran_id` (`tran_id` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -1297,23 +1306,23 @@ CREATE TABLE `t_payment`
 -- ----------------------------
 INSERT INTO `t_payment`
 (`id`, `tran_id`, `payment_no`, `amount`, `payment_method`, `payment_type`,
- `payment_status`, `payment_time`, `transaction_ref`, `remark`, `create_time`,
+ `payment_status`, `payment_time`, `transaction_ref`, `idempotency_key`, `remark`, `create_time`,
  `create_by`, `edit_time`, `edit_by`)
 VALUES
 (1, 1, 'SK202604100001', 386800.00, 'BANK_TRANSFER', 'FULL', 'COMPLETED',
- '2026-04-10 10:08:00', 'CMB2026041008392101', '全款到账，付款人为客户本人。',
+ '2026-04-10 10:08:00', 'CMB2026041008392101', 'PAYMENT:REF:BANK_TRANSFER:CMB2026041008392101', '全款到账，付款人为客户本人。',
  '2026-04-10 10:10:00', 6, NULL, NULL),
 (2, 2, 'SK202606160001', 50000.00, 'BANK_TRANSFER', 'DEPOSIT', 'COMPLETED',
- '2026-06-16 14:03:00', 'CMB2026061614075532', '购车定金到账，待支付首付款。',
+ '2026-06-16 14:03:00', 'CMB2026061614075532', 'PAYMENT:REF:BANK_TRANSFER:CMB2026061614075532', '购车定金到账，待支付首付款。',
  '2026-06-16 14:05:00', 6, NULL, NULL),
 (3, 7, 'SK202603180001', 455800.00, 'BANK_TRANSFER', 'FULL', 'COMPLETED',
- '2026-03-18 16:12:00', 'BOC2026031816129088', '企业账户全款到账。',
+ '2026-03-18 16:12:00', 'BOC2026031816129088', 'PAYMENT:REF:BANK_TRANSFER:BOC2026031816129088', '企业账户全款到账。',
  '2026-03-18 16:15:00', 6, NULL, NULL),
 (4, 8, 'SK202606020001', 20000.00, 'WECHAT', 'DEPOSIT', 'REFUNDED',
- '2026-06-02 11:22:00', 'WX202606021122384921', '订单取消，原支付记录已退款。',
+ '2026-06-02 11:22:00', 'WX202606021122384921', 'PAYMENT:REF:WECHAT:WX202606021122384921', '订单取消，原支付记录已退款。',
  '2026-06-02 11:24:00', 6, '2026-06-16 14:18:00', 6),
 (5, 8, 'TK202606160001', -20000.00, 'WECHAT', 'REFUND', 'COMPLETED',
- '2026-06-16 14:16:00', 'WXRF2026061614160921', '定金原路退回。',
+ '2026-06-16 14:16:00', 'WXRF2026061614160921', 'REFUND:REF:WECHAT:WXRF2026061614160921', '定金原路退回。',
  '2026-06-16 14:18:00', 6, NULL, NULL);
 
 -- ----------------------------
@@ -1365,5 +1374,24 @@ VALUES
  3, '2026-06-16 14:10:00', 4, '2026-06-16 14:12:00',
  '同意按取消订单流程退款。', 6, '2026-06-16 14:18:00',
  '2026-06-16 14:10:00', 3, '2026-06-16 14:18:00', 6);
+
+ALTER TABLE `t_customer`
+    ADD CONSTRAINT `fk_customer_clue` FOREIGN KEY (`clue_id`) REFERENCES `t_clue` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_tran`
+    ADD CONSTRAINT `fk_tran_customer` FOREIGN KEY (`customer_id`) REFERENCES `t_customer` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_tran_history`
+    ADD CONSTRAINT `fk_tran_history_tran` FOREIGN KEY (`tran_id`) REFERENCES `t_tran` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_tran_product`
+    ADD CONSTRAINT `fk_tran_product_tran` FOREIGN KEY (`tran_id`) REFERENCES `t_tran` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_tran_product`
+    ADD CONSTRAINT `fk_tran_product_product` FOREIGN KEY (`product_id`) REFERENCES `t_product` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_tran_invoice`
+    ADD CONSTRAINT `fk_tran_invoice_tran` FOREIGN KEY (`tran_id`) REFERENCES `t_tran` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_tran_approve`
+    ADD CONSTRAINT `fk_tran_approve_tran` FOREIGN KEY (`tran_id`) REFERENCES `t_tran` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_payment`
+    ADD CONSTRAINT `fk_payment_tran` FOREIGN KEY (`tran_id`) REFERENCES `t_tran` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_product_stock_record`
+    ADD CONSTRAINT `fk_stock_record_product` FOREIGN KEY (`product_id`) REFERENCES `t_product` (`id`) ON DELETE RESTRICT;
 
 SET FOREIGN_KEY_CHECKS = 1;

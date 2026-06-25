@@ -94,7 +94,7 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
                   "price": 99.50,
                   "stock": 10,
                   "minStock": 1,
-                  "status": "ON_SHELF"
+                  "status": "ON_SALE"
                 }
                 """.formatted(sku);
 
@@ -140,7 +140,7 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
                   "price": 75.0,
                   "stock": 5,
                   "minStock": 1,
-                  "status": "ON_SHELF"
+                  "status": "ON_SALE"
                 }
                 """.formatted(sku);
 
@@ -156,7 +156,8 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.name").value("新名称"))
-                .andExpect(jsonPath("$.data.price").value(75.0));
+                .andExpect(jsonPath("$.data.price").value(75.0))
+                .andExpect(jsonPath("$.data.stock").value(10));
     }
 
     @Test
@@ -185,7 +186,7 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
     @DisplayName("unauthenticated request to /api/products is rejected by the real Security chain")
     void unauthenticatedRequest_rejected() throws Exception {
         mockMvc.perform(get("/api/products"))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(510));
     }
 
@@ -198,7 +199,7 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
                   "price": %s,
                   "stock": 10,
                   "minStock": 1,
-                  "status": "ON_SHELF"
+                  "status": "ON_SALE"
                 }
                 """.formatted(sku, name, price);
         mockMvc.perform(post("/api/products")

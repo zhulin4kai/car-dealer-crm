@@ -62,7 +62,6 @@
             category_id = #{categoryId},
             specification = #{specification},
             price = #{price},
-            stock = #{stock},
             min_stock = #{minStock},
             status = #{status},
             update_time = #{updateTime}
@@ -118,7 +117,13 @@
         SELECT p.id, p.sku, p.name, p.category_id, tpc.name as category_name,
                p.specification, p.price, p.stock, p.min_stock, p.status, p.create_time, p.update_time
         FROM t_product p LEFT JOIN t_product_category tpc ON p.category_id = tpc.id
-        WHERE p.status = 'on_sale'
+        WHERE p.status = 'ON_SALE'
         ORDER BY p.create_time DESC
+    </select>
+
+    <select id="countByCategoryId" resultType="int">
+        SELECT COUNT(*)
+        FROM t_product
+        WHERE category_id = #{categoryId}
     </select>
 </mapper>

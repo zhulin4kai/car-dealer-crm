@@ -378,7 +378,7 @@
             </NumberField>
             <p v-if="formErrors.price" class="text-sm text-destructive">{{ formErrors.price }}</p>
           </div>
-          <div class="space-y-2">
+          <div v-if="dialogType === 'add'" class="space-y-2">
             <Label>库存</Label>
             <NumberField v-model="productForm.stock" :min="0">
               <NumberFieldContent>
@@ -409,8 +409,8 @@
                 <SelectValue placeholder="请选择状态" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="上架">上架</SelectItem>
-                <SelectItem value="下架">下架</SelectItem>
+                <SelectItem value="ON_SALE">上架</SelectItem>
+                <SelectItem value="OFF_SALE">下架</SelectItem>
               </SelectContent>
             </Select>
             <p v-if="formErrors.status" class="text-sm text-destructive">{{ formErrors.status }}</p>
@@ -476,11 +476,18 @@ import {
   fetchProductPage,
   updateProduct,
 } from '@/modules/product/api/product-api'
+import {
+  PRODUCT_STATUS,
+  getProductMutationErrorMessage,
+  toCreateProductRequest,
+  toUpdateProductRequest,
+} from '@/modules/product/model/product.types'
 import type {
   Product,
   ProductCategory,
-  ProductForm,
+  ProductFormValues,
   ProductQuery,
+  ProductStatus,
 } from '@/modules/product/model/product.types'
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import type { EntityId } from '@/shared/types/id'
@@ -518,7 +525,7 @@ type ProductFormState = {
   price: number
   stock: number
   minStock: number
-  status: string
+  status: ProductStatus
 }
 
 const productList = ref<Product[]>([])
@@ -548,7 +555,7 @@ const productForm = reactive<ProductFormState>({
   price: 0,
   stock: 0,
   minStock: 0,
-  status: '上架',
+  status: PRODUCT_STATUS.ON_SALE,
 })
 
 const formErrors = reactive<Record<keyof ProductFormState, string>>({
@@ -784,11 +791,11 @@ function formatProductStatus(status?: string): string {
 }
 
 function isListedStatus(status?: string): boolean {
-  return ['上架', 'ON_SHELF', 'ENABLED', 'on_sale', 'ON_SALE'].includes(status ?? '')
+  return status === PRODUCT_STATUS.ON_SALE
 }
 
 function isUnlistedStatus(status?: string): boolean {
-  return ['下架', 'OFF_SHELF', 'DISABLED', 'off_sale', 'OFF_SALE'].includes(status ?? '')
+  return status === PRODUCT_STATUS.OFF_SALE
 }
 
 function resolveProductIcon(categoryName?: string): Component {
@@ -813,7 +820,7 @@ function resetProductForm(row?: Product): void {
     price: toNumber(row?.price) ?? 0,
     stock: row?.stock ?? 0,
     minStock: row?.minStock ?? 0,
-    status: row?.status ?? '上架',
+    status: row?.status ?? PRODUCT_STATUS.ON_SALE,
   })
   clearFormErrors()
 }
@@ -838,7 +845,7 @@ function validateProductForm(): boolean {
   if (productForm.price <= 0) {
     formErrors.price = '请输入价格'
   }
-  if (productForm.stock < 0) {
+  if (dialogType.value === 'add' && productForm.stock < 0) {
     formErrors.stock = '请输入库存'
   }
   if (productForm.minStock < 0) {
@@ -851,15 +858,11 @@ function validateProductForm(): boolean {
   return Object.values(formErrors).every((message) => !message)
 }
 
-function normalizeEntityId(value: string): EntityId {
-  return /^\d+$/.test(value) ? Number(value) : value
-}
-
-function toProductPayload(): ProductForm {
+function toProductFormValues(): ProductFormValues {
   return {
     sku: productForm.sku.trim(),
     name: productForm.name.trim(),
-    categoryId: normalizeEntityId(productForm.categoryId),
+    categoryId: productForm.categoryId,
     specification: productForm.specification.trim(),
     price: productForm.price,
     stock: productForm.stock,
@@ -931,12 +934,12 @@ async function onSubmit(): Promise<void> {
 
   submitting.value = true
   try {
-    const payload = toProductPayload()
+    const values = toProductFormValues()
     if (dialogType.value === 'add') {
-      await createProduct(payload)
+      await createProduct(toCreateProductRequest(values))
       messageTip('新增成功', 'success')
     } else if (editingProductId.value != null) {
-      await updateProduct(editingProductId.value, payload)
+      await updateProduct(editingProductId.value, toUpdateProductRequest(values))
       messageTip('编辑成功', 'success')
     }
     dialogVisible.value = false
@@ -946,14 +949,6 @@ async function onSubmit(): Promise<void> {
   } finally {
     submitting.value = false
   }
-}
-
-function getProductMutationErrorMessage(error: unknown, fallback: string): string {
-  const message = error instanceof Error ? error.message : ''
-  if (message.includes('foreign key') || message.includes('约束') || message.includes('引用')) {
-    return '该产品已被客户、线索或交易引用，不能直接删除'
-  }
-  return message || fallback
 }
 
 function handleCurrentChange(page: number): void {

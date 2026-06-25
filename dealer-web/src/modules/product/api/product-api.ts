@@ -5,6 +5,8 @@ import type {
   Product,
   ProductCategory,
   ProductForm,
+  CreateProductRequest,
+  UpdateProductRequest,
   ProductPromotion,
   ProductQuery,
   CreatePromotionRequest,
@@ -23,11 +25,11 @@ export function fetchProductDetail(id: EntityId): Promise<Product> {
   return httpClient.get<Product>(`/api/products/${id}`)
 }
 
-export function createProduct(data: ProductForm): Promise<unknown> {
+export function createProduct(data: CreateProductRequest): Promise<unknown> {
   return httpClient.post('/api/products', data)
 }
 
-export function updateProduct(id: EntityId, data: ProductForm): Promise<unknown> {
+export function updateProduct(id: EntityId, data: UpdateProductRequest): Promise<unknown> {
   return httpClient.put(`/api/products/${id}`, data)
 }
 

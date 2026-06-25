@@ -3,8 +3,12 @@ package com.autodealer.crm.service.impl;
 import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.dto.ProductSimpleDTO;
+import com.autodealer.crm.mapper.TClueMapper;
+import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TProductMapper;
+import com.autodealer.crm.mapper.TProductPromotionMapper;
 import com.autodealer.crm.mapper.TProductStockRecordMapper;
+import com.autodealer.crm.mapper.TTranProductMapper;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TProductStockRecord;
 import com.autodealer.crm.service.ProductService;
@@ -21,16 +25,31 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
+
+    private static final Set<String> VALID_PRODUCT_STATUSES = Set.of("ON_SALE", "OFF_SALE");
 
     @Autowired
     private TProductMapper productMapper;
 
     @Autowired
     private TProductStockRecordMapper stockRecordMapper;
+
+    @Autowired
+    private TTranProductMapper tranProductMapper;
+
+    @Autowired
+    private TProductPromotionMapper promotionMapper;
+
+    @Autowired
+    private TCustomerMapper customerMapper;
+
+    @Autowired
+    private TClueMapper clueMapper;
 
     @Resource
     private OperationAuditRecorder auditRecorder;
@@ -55,6 +74,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void addProduct(TProduct product) {
+        requireValidProductStatus(product);
         product.setCreateTime(LocalDateTime.now());
         product.setUpdateTime(LocalDateTime.now());
         productMapper.insert(product);
@@ -64,6 +84,8 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void updateProduct(TProduct product) {
+        requireValidProductStatus(product);
+        product.setStock(null);
         product.setUpdateTime(LocalDateTime.now());
         productMapper.update(product);
     }
@@ -71,6 +93,12 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void deleteProduct(Long id) {
+        if (productMapper.selectById(id) == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "商品不存在");
+        }
+        if (hasProductReferences(id)) {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, "商品已被业务引用，不能删除");
+        }
         productMapper.deleteById(id);
     }
 
@@ -138,9 +166,28 @@ public class ProductServiceImpl implements ProductService {
         dto.setGuidePriceS(product.getPrice());
         dto.setGuidePriceE(product.getPrice());
         dto.setQuotation(product.getPrice());
-        dto.setState("on_sale".equals(product.getStatus()) ? 0 : 1);
+        dto.setState("ON_SALE".equals(product.getStatus()) ? 0 : 1);
         dto.setCreateTime(Date.from(product.getCreateTime().atZone(ZoneId.systemDefault()).toInstant()));
         dto.setEditTime(Date.from(product.getUpdateTime().atZone(ZoneId.systemDefault()).toInstant()));
         return dto;
+    }
+
+    private void requireValidProductStatus(TProduct product) {
+        if (product == null || product.getStatus() == null
+                || !VALID_PRODUCT_STATUSES.contains(product.getStatus())) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "商品状态必须使用 ON_SALE 或 OFF_SALE");
+        }
+    }
+
+    private boolean hasProductReferences(Long productId) {
+        return tranProductMapper.countByProductId(productId) > 0
+                || safeCount(stockRecordMapper.selectCountByProductId(productId)) > 0
+                || promotionMapper.countByProductId(productId) > 0
+                || customerMapper.countByProductId(productId) > 0
+                || clueMapper.countByIntentionProductId(productId) > 0;
+    }
+
+    private int safeCount(Integer count) {
+        return count == null ? 0 : count;
     }
 }

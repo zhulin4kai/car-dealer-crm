@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -34,5 +35,7 @@ public class CreateProductRequest {
     @Min(value = 0, message = "最低库存不能为负数")
     private Integer minStock;
 
+    @NotBlank(message = "商品状态不能为空")
+    @Pattern(regexp = "ON_SALE|OFF_SALE", message = "商品状态必须使用ON_SALE或OFF_SALE")
     private String status;
 }

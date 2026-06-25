@@ -2,9 +2,15 @@ package com.autodealer.crm.service;
 
 import com.autodealer.crm.dto.ProductSimpleDTO;
 import com.autodealer.crm.audit.OperationAuditRecorder;
+import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TProductMapper;
+import com.autodealer.crm.mapper.TProductPromotionMapper;
 import com.autodealer.crm.mapper.TProductStockRecordMapper;
+import com.autodealer.crm.mapper.TTranProductMapper;
+import com.autodealer.crm.mapper.TCustomerMapper;
+import com.autodealer.crm.mapper.TClueMapper;
 import com.autodealer.crm.model.TProduct;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.ProductServiceImpl;
 import com.github.pagehelper.PageInfo;
 import org.junit.jupiter.api.Test;
@@ -36,6 +42,18 @@ class ProductServiceImplTest {
     private TProductStockRecordMapper stockRecordMapper;
 
     @Mock
+    private TTranProductMapper tranProductMapper;
+
+    @Mock
+    private TProductPromotionMapper promotionMapper;
+
+    @Mock
+    private TCustomerMapper customerMapper;
+
+    @Mock
+    private TClueMapper clueMapper;
+
+    @Mock
     private OperationAuditRecorder auditRecorder;
 
     private TProduct createSampleProduct(Long id, String name, String status) {
@@ -55,7 +73,7 @@ class ProductServiceImplTest {
 
     @Test
     void testGetProductList() {
-        TProduct product = createSampleProduct(1L, "Model X", "on_sale");
+        TProduct product = createSampleProduct(1L, "Model X", "ON_SALE");
         List<TProduct> products = Collections.singletonList(product);
 
         when(productMapper.selectList(0, 10)).thenReturn(products);
@@ -80,7 +98,7 @@ class ProductServiceImplTest {
 
     @Test
     void testGetProductById() {
-        TProduct product = createSampleProduct(1L, "Model X", "on_sale");
+        TProduct product = createSampleProduct(1L, "Model X", "ON_SALE");
         when(productMapper.selectById(1L)).thenReturn(product);
 
         TProduct result = productService.getProductById(1L);
@@ -102,7 +120,7 @@ class ProductServiceImplTest {
 
     @Test
     void testGetProductBySku() {
-        TProduct product = createSampleProduct(1L, "Model X", "on_sale");
+        TProduct product = createSampleProduct(1L, "Model X", "ON_SALE");
         when(productMapper.selectBySku("SKU-1")).thenReturn(product);
 
         TProduct result = productService.getProductBySku("SKU-1");
@@ -123,7 +141,7 @@ class ProductServiceImplTest {
 
     @Test
     void testAddProduct() {
-        TProduct product = createSampleProduct(null, "New Model", "on_sale");
+        TProduct product = createSampleProduct(null, "New Model", "ON_SALE");
 
         productService.addProduct(product);
 
@@ -133,8 +151,19 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void addProduct_chineseStatus_shouldRejectBeforeInsert() {
+        TProduct product = createSampleProduct(null, "New Model", "上架");
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.addProduct(product));
+
+        assertEquals(CodeEnum.PARAM_ERROR, exception.getCodeEnum());
+        verify(productMapper, never()).insert(any());
+    }
+
+    @Test
     void testUpdateProduct() {
-        TProduct product = createSampleProduct(1L, "Updated Model", "on_sale");
+        TProduct product = createSampleProduct(1L, "Updated Model", "ON_SALE");
 
         productService.updateProduct(product);
 
@@ -143,15 +172,109 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void updateProduct_chineseStatus_shouldRejectBeforeUpdate() {
+        TProduct product = createSampleProduct(1L, "Updated Model", "下架");
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.updateProduct(product));
+
+        assertEquals(CodeEnum.PARAM_ERROR, exception.getCodeEnum());
+        verify(productMapper, never()).update(any());
+    }
+
+    @Test
+    void updateProduct_shouldNotPersistStockQuantityFromProductEdit() {
+        TProduct product = createSampleProduct(1L, "Updated Model", "ON_SALE");
+        product.setStock(999);
+
+        productService.updateProduct(product);
+
+        verify(productMapper).update(argThat(updated -> updated.getStock() == null));
+    }
+
+    @Test
     void testDeleteProduct() {
+        when(productMapper.selectById(1L)).thenReturn(createSampleProduct(1L, "Model X", "ON_SALE"));
+
         productService.deleteProduct(1L);
 
         verify(productMapper).deleteById(1L);
     }
 
     @Test
+    void deleteProduct_notFound_shouldRejectWithoutPhysicalDelete() {
+        when(productMapper.selectById(1L)).thenReturn(null);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.deleteProduct(1L));
+
+        assertEquals(CodeEnum.NOT_FOUND, exception.getCodeEnum());
+        verify(productMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void deleteProduct_referencedByTransaction_shouldRejectWithoutPhysicalDelete() {
+        when(productMapper.selectById(1L)).thenReturn(createSampleProduct(1L, "Model X", "ON_SALE"));
+        when(tranProductMapper.countByProductId(1L)).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.deleteProduct(1L));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(productMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void deleteProduct_referencedByStockRecord_shouldRejectWithoutPhysicalDelete() {
+        when(productMapper.selectById(1L)).thenReturn(createSampleProduct(1L, "Model X", "ON_SALE"));
+        when(stockRecordMapper.selectCountByProductId(1L)).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.deleteProduct(1L));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(productMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void deleteProduct_referencedByPromotion_shouldRejectWithoutPhysicalDelete() {
+        when(productMapper.selectById(1L)).thenReturn(createSampleProduct(1L, "Model X", "ON_SALE"));
+        when(promotionMapper.countByProductId(1L)).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.deleteProduct(1L));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(productMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void deleteProduct_referencedByCustomer_shouldRejectWithoutPhysicalDelete() {
+        when(productMapper.selectById(1L)).thenReturn(createSampleProduct(1L, "Model X", "ON_SALE"));
+        when(customerMapper.countByProductId(1L)).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.deleteProduct(1L));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(productMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void deleteProduct_referencedByClue_shouldRejectWithoutPhysicalDelete() {
+        when(productMapper.selectById(1L)).thenReturn(createSampleProduct(1L, "Model X", "ON_SALE"));
+        when(clueMapper.countByIntentionProductId(1L)).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.deleteProduct(1L));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(productMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
     void testGetStockAlerts() {
-        TProduct product = createSampleProduct(1L, "Low Stock Model", "on_sale");
+        TProduct product = createSampleProduct(1L, "Low Stock Model", "ON_SALE");
         product.setStock(2);
         product.setMinStock(5);
         List<TProduct> alerts = Collections.singletonList(product);
@@ -168,7 +291,7 @@ class ProductServiceImplTest {
 
     @Test
     void testGetStockAlertsWithFilter() {
-        TProduct product = createSampleProduct(1L, "Filtered Model", "on_sale");
+        TProduct product = createSampleProduct(1L, "Filtered Model", "ON_SALE");
         product.setStock(3);
         List<TProduct> alerts = Collections.singletonList(product);
 
@@ -208,8 +331,8 @@ class ProductServiceImplTest {
 
     @Test
     void testGetAllOnSaleProduct() {
-        TProduct product1 = createSampleProduct(1L, "Model X", "on_sale");
-        TProduct product2 = createSampleProduct(2L, "Model Y", "on_sale");
+        TProduct product1 = createSampleProduct(1L, "Model X", "ON_SALE");
+        TProduct product2 = createSampleProduct(2L, "Model Y", "ON_SALE");
         List<TProduct> products = Arrays.asList(product1, product2);
 
         when(productMapper.selectAllOnSale()).thenReturn(products);
@@ -238,7 +361,7 @@ class ProductServiceImplTest {
 
     @Test
     void testGetAllOnSaleProductConvertsStateOff() {
-        TProduct product = createSampleProduct(1L, "Sold Out Model", "off_sale");
+        TProduct product = createSampleProduct(1L, "Sold Out Model", "OFF_SALE");
 
         when(productMapper.selectAllOnSale()).thenReturn(Collections.singletonList(product));
 

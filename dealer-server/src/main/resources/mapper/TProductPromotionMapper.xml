@@ -42,6 +42,12 @@
         SELECT COUNT(*)
         FROM t_product_promotion
     </select>
+
+    <select id="countByProductId" resultType="int">
+        SELECT COUNT(*)
+        FROM t_product_promotion
+        WHERE product_id = #{productId}
+    </select>
     
     <select id="selectById" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List" />

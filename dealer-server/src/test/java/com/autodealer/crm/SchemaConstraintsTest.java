@@ -3,6 +3,7 @@ package com.autodealer.crm;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -130,11 +131,11 @@ class SchemaConstraintsTest {
     void testDuplicateSkuFails() {
         jdbcTemplate.execute(
             "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-            "VALUES (100, 'DUP-SKU-001', 'test product', 100.00, 10, 'on_sale')");
+            "VALUES (100, 'DUP-SKU-001', 'test product', 100.00, 10, 'ON_SALE')");
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-                "VALUES (101, 'DUP-SKU-001', 'test product 2', 200.00, 5, 'on_sale')"));
+                "VALUES (101, 'DUP-SKU-001', 'test product 2', 200.00, 5, 'ON_SALE')"));
     }
 
     @Test
@@ -281,7 +282,7 @@ class SchemaConstraintsTest {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-                "VALUES (200, 'NEG-STOCK-001', 'test', 100.00, -1, 'on_sale')"));
+                "VALUES (200, 'NEG-STOCK-001', 'test', 100.00, -1, 'ON_SALE')"));
     }
 
     @Test
@@ -291,7 +292,7 @@ class SchemaConstraintsTest {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-                "VALUES (201, 'NEG-PRICE-001', 'test', -1.00, 10, 'on_sale')"));
+                "VALUES (201, 'NEG-PRICE-001', 'test', -1.00, 10, 'ON_SALE')"));
     }
 
     @Test
@@ -301,7 +302,7 @@ class SchemaConstraintsTest {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-                "VALUES (202, NULL, 'test', 100.00, 10, 'on_sale')"));
+                "VALUES (202, NULL, 'test', 100.00, 10, 'ON_SALE')"));
     }
 
     @Test
@@ -311,7 +312,7 @@ class SchemaConstraintsTest {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-                "VALUES (203, 'NULL-NAME-001', NULL, 100.00, 10, 'on_sale')"));
+                "VALUES (203, 'NULL-NAME-001', NULL, 100.00, 10, 'ON_SALE')"));
     }
 
     // ==================== 级联删除测试 ====================
@@ -356,14 +357,23 @@ class SchemaConstraintsTest {
 
     @Test
     @Order(26)
-    @DisplayName("产品种子数据能用 status='on_sale' 查询")
+    @DisplayName("产品种子数据能用 status='ON_SALE' 查询")
     void testProductStatusOnSale() {
         List<Map<String, Object>> products = jdbcTemplate.queryForList(
-            "SELECT * FROM t_product WHERE status = 'on_sale'");
-        assertFalse(products.isEmpty(), "应存在 status='on_sale' 的产品");
+            "SELECT * FROM t_product WHERE status = 'ON_SALE'");
+        assertFalse(products.isEmpty(), "应存在 status='ON_SALE' 的产品");
         for (Map<String, Object> p : products) {
-            assertEquals("on_sale", p.get("STATUS"));
+            assertEquals("ON_SALE", p.get("STATUS"));
         }
+    }
+
+    @Test
+    @Order(27)
+    @DisplayName("产品状态必须使用稳定编码")
+    void testProductStatusRejectsChineseLabel() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+            "INSERT INTO t_product(id, sku, name, price, stock, status) " +
+                "VALUES (204, 'BAD-STATUS-001', 'test', 100.00, 10, '上架')"));
     }
 
     // ==================== 生产与测试 Schema 核心表字段对比 ====================
@@ -412,11 +422,11 @@ class SchemaConstraintsTest {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-                "VALUES (299, 'CHK-TEST-001', 'test', -1.00, 0, 'on_sale')"));
+                "VALUES (299, 'CHK-TEST-001', 'test', -1.00, 0, 'ON_SALE')"));
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-                "VALUES (298, 'CHK-TEST-002', 'test', 0, -1, 'on_sale')"));
+                "VALUES (298, 'CHK-TEST-002', 'test', 0, -1, 'ON_SALE')"));
     }
 
     @Test
@@ -427,7 +437,7 @@ class SchemaConstraintsTest {
         long bigId = 3000000000L;
         jdbcTemplate.execute(
             "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-            "VALUES (" + bigId + ", 'BIGINT-TEST-SKU', 'test', 100.00, 10, 'on_sale')");
+            "VALUES (" + bigId + ", 'BIGINT-TEST-SKU', 'test', 100.00, 10, 'ON_SALE')");
         jdbcTemplate.execute(
             "INSERT INTO t_tran (id, tran_no, customer_id, money) VALUES (200, 'TEST_BIGINT_001', 1, 100.00)");
         jdbcTemplate.execute(
