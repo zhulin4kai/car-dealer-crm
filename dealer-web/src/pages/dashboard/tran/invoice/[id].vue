@@ -4,8 +4,15 @@
       <CardHeader class="flex flex-row items-center justify-between space-y-0">
         <CardTitle>交易开票</CardTitle>
         <div class="flex items-center gap-2">
+          <Button
+            v-if="tranDetail.stage === TRAN_STAGE.PAYMENT"
+            v-has-permission="PERMISSIONS.tran.payment"
+            variant="secondary"
+            size="sm"
+            @click="handlePayment"
+          >去收款</Button>
           <Button variant="outline" size="sm" @click="goBack">返回</Button>
-          <Badge class="bg-green-600 text-white">已审批</Badge>
+          <Badge :class="getTranBadgeClass(tranDetail.stage)">{{ getTranStageText(tranDetail.stage) }}</Badge>
         </div>
       </CardHeader>
       <CardContent>
@@ -204,9 +211,9 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
 import { useRoute, useRouter } from 'vue-router'
-import { messageTip } from '@/shared/utils/feedback'
+import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import { getTranDetail, getTranProducts, createInvoice, getTranInvoiceList, updateInvoiceStatus } from '@/modules/tran/api/tran-api'
-import { normalizeTranStage } from '@/modules/tran/model/tran-stage'
+import { TRAN_STAGE, getTranStageText, getTranStageType, normalizeTranStage } from '@/modules/tran/model/tran-stage'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -329,6 +336,16 @@ const getInvoiceStatusVariant = (status: string): 'default' | 'secondary' | 'des
   }
   return map[status] || 'outline'
 }
+const getTranBadgeClass = (stage: string) => {
+  const type = getTranStageType(stage)
+  switch (type) {
+    case 'success': return 'bg-green-600 text-white'
+    case 'warning': return 'bg-yellow-600 text-white'
+    case 'danger': return 'bg-red-600 text-white'
+    case 'info': return ''
+    default: return ''
+  }
+}
 
 // Fetch transaction detail
 const fetchTranDetail = async () => {
@@ -435,6 +452,10 @@ const markAsIssued = async (invoice: { id: number | string }) => {
 
 function goBack(): void {
   router.push('/dashboard/tran')
+}
+
+function handlePayment(): void {
+  router.push(`/dashboard/tran/${route.params.id}?collect=1`)
 }
 
 // Void invoice

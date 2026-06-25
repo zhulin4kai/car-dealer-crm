@@ -549,10 +549,20 @@ const handleInvoice = () => {
   router.push(`/dashboard/tran/invoice/${route.params.id}`)
 }
 
+function openCollectionIfRequested(): void {
+  if (route.query.collect !== '1') return
+  if (tranDetail.value.stage === TRAN_STAGE.PAYMENT) {
+    showCollectionDialog.value = true
+    return
+  }
+  messageTip('当前交易状态不允许收款', 'warning')
+}
+
 // Watch route params change
 watch(() => route.params.id, async (newId) => {
-    if (newId) {
+  if (newId) {
     await loadTranPageData()
+    openCollectionIfRequested()
   }
 })
 
@@ -563,5 +573,6 @@ onMounted(async () => {
   }
 
   await loadTranPageData()
+  openCollectionIfRequested()
 })
 </script>

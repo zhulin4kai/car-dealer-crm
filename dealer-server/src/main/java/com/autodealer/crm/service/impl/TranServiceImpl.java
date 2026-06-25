@@ -648,10 +648,7 @@ public class TranServiceImpl implements TranService {
         if (existingInvoices != null && !existingInvoices.isEmpty()) {
             throw new BusinessException(CodeEnum.DUPLICATE, "该交易已开具发票，不可重复开票");
         }
-
-        int stageResult = tranMapper.updateStageAtomic(invoice.getTranId(),
-                TranStage.PAYMENT, TranStage.APPROVED, invoice.getCreateBy());
-        if (stageResult != 1) {
+        if (tran.getStage() != TranStage.APPROVED) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许创建发票");
         }
 
@@ -665,8 +662,6 @@ public class TranServiceImpl implements TranService {
         if (result != 1) {
             throw new BusinessException(CodeEnum.FAIL, "发票创建失败");
         }
-        writeHistory(invoice.getTranId(), TranStage.PAYMENT,
-                tran.getMoney(), tran.getExpectedDate(), invoice.getCreateBy());
         auditRecorder.record(AuditActionEnum.INVOICE_CREATE, String.valueOf(invoice.getTranId()));
         clearTransactionCache(invoice.getTranId());
         return true;
@@ -704,7 +699,17 @@ public class TranServiceImpl implements TranService {
             throw new BusinessException(CodeEnum.OPERATION_FAILED, "发票状态已变更，请刷新后重试");
         }
 
-        if ("VOID".equals(status)) {
+        if ("ISSUED".equals(status)) {
+            int stageRows = tranMapper.updateStageAtomic(currentInvoice.getTranId(),
+                    TranStage.PAYMENT, TranStage.APPROVED, updateBy);
+            if (stageRows != 1) {
+                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态不允许进入待收款");
+            }
+            TTran tran = tranMapper.selectByPrimaryKey(currentInvoice.getTranId());
+            writeHistory(currentInvoice.getTranId(), TranStage.PAYMENT,
+                    tran != null ? tran.getMoney() : null,
+                    tran != null ? tran.getExpectedDate() : null, updateBy);
+        } else if ("VOID".equals(status)) {
             int stageRows = tranMapper.updateStageAtomic(currentInvoice.getTranId(),
                     TranStage.APPROVED, TranStage.PAYMENT, updateBy);
             if (stageRows != 1) {

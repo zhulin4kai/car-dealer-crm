@@ -434,9 +434,8 @@ class TranServiceImplTest {
     }
 
     @Test
-    void createTranInvoice_shouldUseAtomicCAS() {
+    void createTranInvoice_shouldKeepApprovedStage() {
         TTran existing = newTran(1, TranStage.APPROVED);
-        when(tranMapper.updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), any())).thenReturn(1);
         when(tranInvoiceMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
         when(tranInvoiceMapper.insertSelective(any())).thenReturn(1);
@@ -445,6 +444,7 @@ class TranServiceImplTest {
         inv.setAmount(BigDecimal.valueOf(100000));
         inv.setCreateBy(1);
         assertTrue(tranService.createTranInvoice(inv));
+        verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), any());
     }
 
     @Test
@@ -455,7 +455,6 @@ class TranServiceImplTest {
         when(currentUserProvider.getTransactionDataScope())
                 .thenReturn(CurrentUserProvider.TransactionDataScope.limited(null, false, financeStages));
         when(tranMapper.selectScopedById(eq(1), isNull(), eq(false), eq(financeStages))).thenReturn(existing);
-        when(tranMapper.updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), any())).thenReturn(1);
         when(tranInvoiceMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
         when(tranInvoiceMapper.insertSelective(any())).thenReturn(1);
 
@@ -465,18 +464,19 @@ class TranServiceImplTest {
 
         assertTrue(tranService.createTranInvoice(inv));
         verify(tranMapper).selectScopedById(eq(1), isNull(), eq(false), eq(financeStages));
+        verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), any());
     }
 
     @Test
     void createTranInvoice_wrongStage_shouldThrow() {
-        when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.APPROVED));
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.PAYMENT));
         when(tranInvoiceMapper.selectByTranId(1)).thenReturn(Collections.emptyList());
-        when(tranMapper.updateStageAtomic(1, TranStage.PAYMENT, TranStage.APPROVED, 7)).thenReturn(0);
         TTranInvoice inv = new TTranInvoice();
         inv.setTranId(1);
         inv.setAmount(BigDecimal.valueOf(100000));
         inv.setCreateBy(1);
         assertThrows(RuntimeException.class, () -> tranService.createTranInvoice(inv));
+        verify(tranMapper, never()).updateStageAtomic(anyInt(), any(), any(), anyInt());
     }
 
     @Test
@@ -492,16 +492,18 @@ class TranServiceImplTest {
     }
 
     @Test
-    void updateTranInvoiceStatus_issued_shouldSetStageToPaymentThenCompleted() {
+    void updateTranInvoiceStatus_issued_shouldSetStageToPayment() {
         TTranInvoice inv = new TTranInvoice();
         inv.setId(1);
         inv.setTranId(1);
         inv.setStatus("PENDING");
         when(tranInvoiceMapper.selectByPrimaryKey(1)).thenReturn(inv);
-        when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.PAYMENT));
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(newTran(1, TranStage.APPROVED));
         when(tranInvoiceMapper.updateStatusIfCurrent(eq(1), eq("PENDING"), eq("ISSUED"),
                 any(Date.class), any(Date.class), eq(7))).thenReturn(1);
+        when(tranMapper.updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), eq(7))).thenReturn(1);
         assertTrue(tranService.updateTranInvoiceStatus(1, "ISSUED"));
+        verify(tranMapper).updateStageAtomic(eq(1), eq(TranStage.PAYMENT), eq(TranStage.APPROVED), eq(7));
     }
 
     @Test

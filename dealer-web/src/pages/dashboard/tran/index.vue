@@ -218,6 +218,14 @@
                       <FileText class="h-4 w-4" />
                     </RowActionButton>
                     <RowActionButton
+                      v-if="row.stage === TRAN_STAGE.PAYMENT"
+                      v-has-permission="PERMISSIONS.tran.payment"
+                      label="收款"
+                      @click="handlePayment(row)"
+                    >
+                      <Wallet class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
                       v-if="row.stage === TRAN_STAGE.QUOTATION"
                       v-has-permission="PERMISSIONS.tran.delete"
                       label="删除"
@@ -440,7 +448,7 @@ import StatusBadge from '@/shared/ui/StatusBadge.vue'
 import SettlementDialog from '@/modules/tran/components/SettlementDialog.vue'
 import { formatCurrency } from '@/shared/utils/display-format'
 import { useClientSort } from '@/shared/utils/table-sort'
-import { BadgeCheck, Calculator, Eye, FileText, Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
+import { BadgeCheck, Calculator, Eye, FileText, Pencil, Plus, RotateCcw, Search, Trash2, Wallet } from '@lucide/vue'
 
 const router = useRouter()
 interface TranListRow {
@@ -895,6 +903,10 @@ const handleApprove = (row) => {
 // Invoice transaction
 const handleInvoice = (row) => {
   router.push(`/dashboard/tran/invoice/${row.id}`)
+}
+
+const handlePayment = (row) => {
+  router.push(`/dashboard/tran/${row.id}?collect=1`)
 }
 
 const handleCurrentChange = (val) => {
