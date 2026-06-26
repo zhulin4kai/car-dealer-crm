@@ -1,24 +1,22 @@
-# 操作记录后端任务
+# OpenAPI 具体 Schema 任务
 
 ## 关联审计问题
-- 无直接主关闭审计问题；本任务只作为业务域内独立执行任务。
+- P1-18
 
 ## 权威依据
-- Spec：docs/spec/审计日志/00-业务范围与边界.md
-- Spec：docs/spec/审计日志/01-登录记录功能规格.md
-- Spec：docs/spec/审计日志/02-操作记录功能规格.md
-- Spec：docs/spec/审计日志/03-权限安全与数据治理规格.md
-- Plan：docs/plan/审计日志/00-审计日志落地总览.md
+- Spec：docs/spec/经营分析/00-业务范围与边界.md
+- Spec：docs/spec/经营分析/01-流程规则与验收规格.md
+- Plan：docs/plan/经营分析/01-经营指标口径与数据来源方案.md
 - Rule：docs/rule/01-开发流程与架构边界.md
 - Rule：docs/rule/05-API认证与错误响应规范.md
 - Rule：docs/rule/06-业务一致性与事务规范.md
 - Rule：docs/rule/07-测试编写执行与验收规范.md
 
 ## 当前错误行为
-- 当前操作审计缺少统一事实模型。
+- 当前多处响应复用泛化 ObjectOk、ArrayOk、PageOk，无法约束 DTO。
 
 ## 目标不变量
-- 关键业务写操作必须形成操作审计记录。
+- OpenAPI 必须用具体 Request/Response schema 约束接口。
 
 ## 前置依赖
 - 无前置依赖。
@@ -42,12 +40,12 @@
 - 前端类型：涉及前端页面时同步 TypeScript 类型、枚举映射和错误码处理。
 
 ## 执行步骤
-1. 定义操作审计字段：业务域、对象类型、对象 ID、动作、结果、操作人、时间、请求 ID。
-2. Controller 或 Service 关键命令完成后写审计。
-3. 失败操作按业务风险记录失败原因和错误码。
-4. 审计记录不得保存完整敏感请求体。
-5. 跨模块操作记录主业务对象和依赖对象。
-6. 补充创建、修改、审批、删除保护、失败操作审计测试。
+1. 盘点仍使用泛化 schema 的路径。
+2. 为每个业务接口补齐具体 request、response、error schema。
+3. 枚举字段列出稳定 code。
+4. 错误响应列出 HTTP 状态和业务 code。
+5. 契约测试覆盖 path、method、参数、body、schema、枚举和错误状态。
+6. 补充 OpenAPI validator 或等价契约测试。
 
 ## 测试
 - 原问题回归：按关联审计问题或业务缺口构造失败前用例。
