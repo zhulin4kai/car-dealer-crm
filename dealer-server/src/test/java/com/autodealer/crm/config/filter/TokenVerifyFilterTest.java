@@ -73,6 +73,20 @@ class TokenVerifyFilterTest {
     }
 
     @Test
+    void rawJwtHeaderShouldBeRejectedEvenIfTokenWouldVerify() throws Exception {
+        try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
+            request.setRequestURI("/api/users");
+            request.addHeader("Authorization", "valid-token");
+
+            filter.doFilterInternal(request, response, filterChain);
+
+            assertEquals(401, response.getStatus());
+            assertTrue(response.getContentAsString().contains("511"));
+            verifyNoInteractions(redisManager, userService, filterChain);
+        }
+    }
+
+    @Test
     void missingRedisSessionShouldBeExpired() throws Exception {
         try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
             invokeProtectedPath();

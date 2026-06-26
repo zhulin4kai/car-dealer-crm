@@ -105,11 +105,49 @@
   <select id="countBusinessReferences" parameterType="java.lang.Integer" resultType="int">
     select (select count(*) from t_activity where owner_id = #{userId, jdbcType=INTEGER})
     + (select count(*) from t_clue where owner_id = #{userId, jdbcType=INTEGER})
-    + (select count(*) from t_customer where create_by = #{userId, jdbcType=INTEGER})
-    + (select count(*) from t_tran where create_by = #{userId, jdbcType=INTEGER})
+    + (select count(*) from t_customer where owner_id = #{userId, jdbcType=INTEGER}
+        and coalesce(customer_status, 'INTENTION') != 'MERGED')
   </select>
+  <select id="selectOwnedActivityIds" parameterType="java.lang.Integer" resultType="int">
+    select id from t_activity
+    where owner_id = #{userId, jdbcType=INTEGER}
+    order by id asc
+  </select>
+  <select id="selectOwnedClueIds" parameterType="java.lang.Integer" resultType="int">
+    select id from t_clue
+    where owner_id = #{userId, jdbcType=INTEGER}
+    order by id asc
+  </select>
+  <select id="selectOwnedCustomerIds" parameterType="java.lang.Integer" resultType="int">
+    select id from t_customer
+    where owner_id = #{userId, jdbcType=INTEGER}
+      and coalesce(customer_status, 'INTENTION') != 'MERGED'
+    order by id asc
+  </select>
+  <update id="transferOwnedActivities">
+    update t_activity
+    set owner_id = #{toUserId, jdbcType=INTEGER},
+        edit_by = #{operatorId, jdbcType=INTEGER},
+        edit_time = CURRENT_TIMESTAMP
+    where owner_id = #{fromUserId, jdbcType=INTEGER}
+  </update>
+  <update id="transferOwnedClues">
+    update t_clue
+    set owner_id = #{toUserId, jdbcType=INTEGER},
+        edit_by = #{operatorId, jdbcType=INTEGER},
+        edit_time = CURRENT_TIMESTAMP
+    where owner_id = #{fromUserId, jdbcType=INTEGER}
+  </update>
+  <update id="transferOwnedCustomers">
+    update t_customer
+    set owner_id = #{toUserId, jdbcType=INTEGER},
+        edit_by = #{operatorId, jdbcType=INTEGER},
+        edit_time = CURRENT_TIMESTAMP
+    where owner_id = #{fromUserId, jdbcType=INTEGER}
+      and coalesce(customer_status, 'INTENTION') != 'MERGED'
+  </update>
   <select id="selectRolesByUserId" parameterType="java.lang.Integer" resultType="com.autodealer.crm.model.TRole">
-    select tr.id, tr.role, tr.role_name from t_role tr
+    select tr.id, tr.role, tr.role_name, tr.enabled from t_role tr
     inner join t_user_role tur on tr.id = tur.role_id where tur.user_id = #{userId, jdbcType=INTEGER}
   </select>
   <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer"> delete from t_user where id = #{id, jdbcType=INTEGER} </delete>

@@ -6,6 +6,8 @@ import com.autodealer.crm.dto.AssignUserRolesRequest;
 import com.autodealer.crm.dto.BatchDisableUsersRequest;
 import com.autodealer.crm.dto.ChangePasswordRequest;
 import com.autodealer.crm.dto.CreateUserRequest;
+import com.autodealer.crm.dto.HandoverUserResponsibilitiesRequest;
+import com.autodealer.crm.dto.HandoverUserResponsibilitiesResponse;
 import com.autodealer.crm.dto.UpdateUserRequest;
 import com.autodealer.crm.dto.UserDetailResponse;
 import com.autodealer.crm.dto.UserListQuery;
@@ -123,6 +125,14 @@ public class UserController {
         request.setUserId(id);
         userService.changePassword(request);
         return R.OK();
+    }
+
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.USER_STATUS + "')")
+    @PutMapping(value = "/api/user/{id}/handover")
+    public R<HandoverUserResponsibilitiesResponse> handoverResponsibilities(
+            @PathVariable(value = "id") Integer id,
+            @Valid @RequestBody HandoverUserResponsibilitiesRequest request) {
+        return R.OK(userService.handoverResponsibilities(id, request));
     }
 
     @GetMapping(value = "/api/owner")

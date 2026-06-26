@@ -40,11 +40,17 @@ public class TokenVerifyFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = request.getHeader("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
+        String authorization = request.getHeader("Authorization");
+        if (!StringUtils.hasText(authorization)) {
+            writeAuthFailure(response, CodeEnum.TOKEN_IS_EMPTY);
+            return;
+        }
+        if (!authorization.startsWith("Bearer ")) {
+            writeAuthFailure(response, CodeEnum.TOKEN_IS_ERROR);
+            return;
         }
 
+        String token = authorization.substring(7);
         if (!StringUtils.hasText(token)) {
             writeAuthFailure(response, CodeEnum.TOKEN_IS_EMPTY);
             return;

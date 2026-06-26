@@ -31,6 +31,18 @@ public interface TUserMapper {
     int updatePassword(@Param("id") Integer id, @Param("encodedPassword") String encodedPassword);
     int countAdminUsers();
     int countBusinessReferences(Integer userId);
+    List<Integer> selectOwnedActivityIds(Integer userId);
+    List<Integer> selectOwnedClueIds(Integer userId);
+    List<Integer> selectOwnedCustomerIds(Integer userId);
+    int transferOwnedActivities(@Param("fromUserId") Integer fromUserId,
+                                @Param("toUserId") Integer toUserId,
+                                @Param("operatorId") Integer operatorId);
+    int transferOwnedClues(@Param("fromUserId") Integer fromUserId,
+                           @Param("toUserId") Integer toUserId,
+                           @Param("operatorId") Integer operatorId);
+    int transferOwnedCustomers(@Param("fromUserId") Integer fromUserId,
+                               @Param("toUserId") Integer toUserId,
+                               @Param("operatorId") Integer operatorId);
     List<TRole> selectRolesByUserId(Integer userId);
     int deleteUserRoles(Integer userId);
     int insertUserRoles(@Param("userId") Integer userId, @Param("roleIds") List<Integer> roleIds);

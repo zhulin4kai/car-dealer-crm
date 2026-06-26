@@ -110,7 +110,7 @@ public abstract class BackendIntegrationTestBase {
         }
         // Make sure the token is in our fake Redis so TokenVerifyFilter can find it.
         tokenStore.put(Constants.REDIS_JWT_KEY + expectedUserId, token);
-        return token;
+        return "Bearer " + token;
     }
 
     /**
@@ -121,6 +121,6 @@ public abstract class BackendIntegrationTestBase {
     protected String buildDirectToken(TUser user) {
         String token = JWTUtils.createJWT(user.getId(), user.getLoginAct(), Constants.DEFAULT_EXPIRE_TIME);
         tokenStore.put(Constants.REDIS_JWT_KEY + user.getId(), token);
-        return token;
+        return "Bearer " + token;
     }
 }

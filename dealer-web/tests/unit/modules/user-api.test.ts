@@ -1,7 +1,13 @@
 import axios from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createUser, updateUser, disableUser, batchDisableUsers } from '@/modules/user/api/user-api'
+import {
+  createUser,
+  updateUser,
+  disableUser,
+  batchDisableUsers,
+  handoverUserResponsibilities,
+} from '@/modules/user/api/user-api'
 import {
   toCreateUserRequest,
   toUpdateUserRequest,
@@ -108,5 +114,20 @@ describe('user api request bodies', () => {
     expect(callArgs?.method).toBe('put')
     expect(callArgs?.url).toBe('/api/users/batch-disable')
     expect(callArgs?.data).toEqual({ ids: [1, 2, 3] })
+  })
+
+  it('handoverUserResponsibilities sends target owner and reason only', async () => {
+    await handoverUserResponsibilities(5, {
+      targetUserId: 8,
+      reason: '离职交接',
+    })
+
+    const callArgs = mockedAxios.request.mock.calls[0]?.[0] as Record<string, unknown> | undefined
+    expect(callArgs?.method).toBe('put')
+    expect(callArgs?.url).toBe('/api/user/5/handover')
+    expect(callArgs?.data).toEqual({
+      targetUserId: 8,
+      reason: '离职交接',
+    })
   })
 })

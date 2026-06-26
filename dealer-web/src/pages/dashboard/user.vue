@@ -141,6 +141,13 @@
                   </RowActionButton>
                   <RowActionButton
                     v-has-permission="PERMISSIONS.user.status"
+                    label="交接"
+                    @click="openHandoverDialog(row)"
+                  >
+                    <ArrowRightLeft class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.user.status"
                     :label="isAccountEnabled(row) ? '禁用' : '启用'"
                     :danger="isAccountEnabled(row)"
                     @click="toggleUserStatus(row)"
@@ -295,6 +302,56 @@
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog v-model:open="handoverDialogVisible">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>责任交接</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <Label>原负责人</Label>
+            <div class="w-full rounded-md bg-muted px-4 py-2 text-sm">
+              {{ handoverSourceUser?.name || handoverSourceUser?.loginAct || '--' }}
+            </div>
+          </div>
+          <div class="space-y-2">
+            <Label>目标负责人</Label>
+            <Select v-model="handoverTargetUserId" :disabled="loadingOwners">
+              <SelectTrigger class="w-full">
+                <SelectValue :placeholder="loadingOwners ? '加载中...' : '请选择目标负责人'" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="item in handoverOwnerOptions"
+                  :key="item.id"
+                  :value="String(item.id)"
+                >
+                  {{ item.name || item.loginAct }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="space-y-2">
+            <Label>交接原因</Label>
+            <Textarea v-model="handoverReason" :rows="5" placeholder="请输入交接原因" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            :disabled="handoverSubmitting"
+            @click="handoverDialogVisible = false"
+            >取 消</Button
+          >
+          <Button type="button" :disabled="handoverSubmitting || loadingOwners" @click="submitHandover">
+            <Loader2 v-if="handoverSubmitting" class="mr-1 h-4 w-4 animate-spin" />
+            确认交接
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -312,6 +369,8 @@ import {
   disableUser,
   enableUser,
   batchDisableUsers,
+  fetchOwnerList,
+  handoverUserResponsibilities,
 } from '@/modules/user/api/user-api'
 import type { User } from '@/modules/user/model/user.types'
 import {
@@ -323,6 +382,7 @@ import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -330,6 +390,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
@@ -344,7 +411,7 @@ import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
 import { formatDateTime, formatPhone } from '@/shared/utils/display-format'
 import { useClientSort } from '@/shared/utils/table-sort'
-import { Ban, Eye, Pencil, Plus, Power } from '@lucide/vue'
+import { ArrowRightLeft, Ban, Eye, Loader2, Pencil, Plus, Power } from '@lucide/vue'
 
 const userList = ref<User[]>([])
 const pageSize = ref(10)
@@ -373,6 +440,17 @@ const {
 
 const userDetailDialogVisible = ref(false)
 const userDetail = ref<User | null>(null)
+const handoverDialogVisible = ref(false)
+const handoverSourceUser = ref<User | null>(null)
+const handoverTargetUserId = ref('')
+const handoverReason = ref('')
+const handoverSubmitting = ref(false)
+const loadingOwners = ref(false)
+const ownerOptions = ref<User[]>([])
+const handoverOwnerOptions = computed(() => {
+  const sourceId = handoverSourceUser.value?.id
+  return ownerOptions.value.filter((owner) => String(owner.id) !== String(sourceId))
+})
 
 const createUserSchema = toTypedSchema(
   z.object({
@@ -594,6 +672,63 @@ async function toggleUserStatus(row: User) {
     await del(Number(row.id))
   } else {
     await enable(Number(row.id))
+  }
+}
+
+async function loadOwnerOptions() {
+  loadingOwners.value = true
+  try {
+    ownerOptions.value = await fetchOwnerList()
+  } catch {
+    ownerOptions.value = []
+    messageTip('加载负责人失败', 'error')
+  } finally {
+    loadingOwners.value = false
+  }
+}
+
+async function openHandoverDialog(row: User) {
+  if (row.id === undefined) {
+    messageTip('用户ID为空，无法交接', 'warning')
+    return
+  }
+  handoverSourceUser.value = row
+  handoverTargetUserId.value = ''
+  handoverReason.value = ''
+  handoverDialogVisible.value = true
+  await loadOwnerOptions()
+}
+
+async function submitHandover() {
+  if (!handoverSourceUser.value?.id) {
+    messageTip('原负责人不存在', 'error')
+    return
+  }
+  if (!handoverTargetUserId.value) {
+    messageTip('请选择目标负责人', 'warning')
+    return
+  }
+  const reason = handoverReason.value.trim()
+  if (!reason) {
+    messageTip('请输入交接原因', 'warning')
+    return
+  }
+  handoverSubmitting.value = true
+  try {
+    const response = await handoverUserResponsibilities(handoverSourceUser.value.id, {
+      targetUserId: Number(handoverTargetUserId.value),
+      reason,
+    })
+    messageTip(
+      `交接完成：活动${response.activityCount}条，线索${response.clueCount}条，客户${response.customerCount}条`,
+      'success',
+    )
+    handoverDialogVisible.value = false
+    await getData(currentPage.value)
+  } catch {
+    messageTip('交接失败', 'error')
+  } finally {
+    handoverSubmitting.value = false
   }
 }
 

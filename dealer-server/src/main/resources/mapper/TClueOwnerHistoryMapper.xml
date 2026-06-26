@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TClueOwnerHistoryMapper">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TClueOwnerHistory">
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="clue_id" jdbcType="INTEGER" property="clueId" />
+    <result column="from_owner_id" jdbcType="INTEGER" property="fromOwnerId" />
+    <result column="to_owner_id" jdbcType="INTEGER" property="toOwnerId" />
+    <result column="assigned_by" jdbcType="INTEGER" property="assignedBy" />
+    <result column="reason" jdbcType="VARCHAR" property="reason" />
+    <result column="assigned_time" jdbcType="TIMESTAMP" property="assignedTime" />
+    <result column="from_owner_name" jdbcType="VARCHAR" property="fromOwnerName" />
+    <result column="to_owner_name" jdbcType="VARCHAR" property="toOwnerName" />
+    <result column="assigned_by_name" jdbcType="VARCHAR" property="assignedByName" />
+  </resultMap>
+
+  <insert id="insert" keyColumn="id" keyProperty="id"
+          parameterType="com.autodealer.crm.model.TClueOwnerHistory"
+          useGeneratedKeys="true">
+    INSERT INTO t_clue_owner_history
+      (clue_id, from_owner_id, to_owner_id, assigned_by, reason, assigned_time)
+    VALUES
+      (#{clueId,jdbcType=INTEGER}, #{fromOwnerId,jdbcType=INTEGER},
+       #{toOwnerId,jdbcType=INTEGER}, #{assignedBy,jdbcType=INTEGER},
+       #{reason,jdbcType=VARCHAR}, #{assignedTime,jdbcType=TIMESTAMP})
+  </insert>
+
+  <select id="selectByClueId" resultMap="BaseResultMap">
+    SELECT
+      h.id,
+      h.clue_id,
+      h.from_owner_id,
+      h.to_owner_id,
+      h.assigned_by,
+      h.reason,
+      h.assigned_time,
+      from_user.name AS from_owner_name,
+      to_user.name AS to_owner_name,
+      assigned_user.name AS assigned_by_name
+    FROM t_clue_owner_history h
+      LEFT JOIN t_user from_user ON h.from_owner_id = from_user.id
+      LEFT JOIN t_user to_user ON h.to_owner_id = to_user.id
+      LEFT JOIN t_user assigned_user ON h.assigned_by = assigned_user.id
+    WHERE h.clue_id = #{clueId,jdbcType=INTEGER}
+    ORDER BY h.assigned_time DESC, h.id DESC
+  </select>
+</mapper>

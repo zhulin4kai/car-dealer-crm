@@ -5,9 +5,13 @@ import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.dto.*;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.manager.RedisManager;
+import com.autodealer.crm.mapper.TClueOwnerHistoryMapper;
+import com.autodealer.crm.mapper.TCustomerOwnerHistoryMapper;
 import com.autodealer.crm.mapper.TPermissionMapper;
 import com.autodealer.crm.mapper.TRoleMapper;
 import com.autodealer.crm.mapper.TUserMapper;
+import com.autodealer.crm.model.TClueOwnerHistory;
+import com.autodealer.crm.model.TCustomerOwnerHistory;
 import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
@@ -33,6 +37,8 @@ import static org.mockito.Mockito.*;
 class UserServiceImplTest {
 
     @Mock private TUserMapper tUserMapper;
+    @Mock private TClueOwnerHistoryMapper clueOwnerHistoryMapper;
+    @Mock private TCustomerOwnerHistoryMapper customerOwnerHistoryMapper;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private TRoleMapper tRoleMapper;
     @Mock private TPermissionMapper tPermissionMapper;
@@ -183,6 +189,19 @@ class UserServiceImplTest {
     }
 
     @Test
+    void enableUser_ownerCacheClearFailure_shouldRetryInvalidation() {
+        TUser user = new TUser(); user.setId(2);
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
+        when(tUserMapper.enableById(2)).thenReturn(1);
+        when(redisManager.delete(RedisKeys.ownerList())).thenReturn(false, true);
+
+        userService.enableUser(2);
+
+        verify(redisManager, times(2)).delete(RedisKeys.ownerList());
+        verify(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, "2");
+    }
+
+    @Test
     void testLockUser() {
         TUser user = new TUser(); user.setId(2);
         when(tUserMapper.selectByPrimaryKey(2)).thenReturn(user);
@@ -248,6 +267,26 @@ class UserServiceImplTest {
         when(redisManager.delete(anyString())).thenReturn(true);
         userService.assignRoles(r);
         verify(tUserMapper).deleteUserRoles(2);
+        verify(redisManager).delete(RedisKeys.userLogin(2));
+    }
+
+    @Test
+    void assignRoles_sessionInvalidationFailure_shouldRejectOperation() {
+        AssignUserRolesRequest request = new AssignUserRolesRequest();
+        request.setUserId(2);
+        request.setRoleIds(List.of(1));
+        when(tUserMapper.selectByPrimaryKey(2)).thenReturn(new TUser());
+        when(tUserMapper.deleteUserRoles(2)).thenReturn(1);
+        when(tUserMapper.insertUserRoles(2, List.of(1))).thenReturn(1);
+        when(redisManager.delete(RedisKeys.userLogin(2))).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> userService.assignRoles(request));
+
+        assertEquals(CodeEnum.SYSTEM_ERROR, ex.getCodeEnum());
+        verify(tUserMapper).deleteUserRoles(2);
+        verify(tUserMapper).insertUserRoles(2, List.of(1));
+        verify(auditRecorder, never()).record(any(), anyString());
+        verify(redisManager, never()).delete(RedisKeys.ownerList());
     }
 
     @Test
@@ -276,11 +315,122 @@ class UserServiceImplTest {
         when(tRoleMapper.selectByPrimaryKey(1)).thenReturn(adminRole());
         when(tUserMapper.deleteUserRoles(2)).thenReturn(1);
         when(tUserMapper.insertUserRoles(2, List.of(1))).thenReturn(1);
+        when(redisManager.delete(anyString())).thenReturn(true);
 
         userService.assignRoles(request);
 
         verify(tUserMapper).deleteUserRoles(2);
         verify(tUserMapper).insertUserRoles(2, List.of(1));
+        verify(redisManager).delete(RedisKeys.userLogin(2));
+    }
+
+    @Test
+    void getOwnerList_cacheHit_shouldNotQueryDatabaseOrRewriteListCache() {
+        TUser owner = new TUser();
+        owner.setId(2);
+        owner.setName("张三");
+        List<TUser> cachedOwners = List.of(owner);
+        when(redisManager.get(RedisKeys.ownerList())).thenReturn(cachedOwners);
+
+        List<TUser> result = userService.getOwnerList();
+
+        assertEquals(cachedOwners, result);
+        verify(tUserMapper, never()).selectByOwner();
+        verify(redisManager, never()).setList(anyString(), anyCollection());
+        verify(redisManager, never()).set(eq(RedisKeys.ownerList()), any(), anyLong());
+    }
+
+    @Test
+    void getOwnerList_cacheMiss_shouldStoreSingleValueWithTtl() {
+        TUser owner = new TUser();
+        owner.setId(2);
+        owner.setName("张三");
+        List<TUser> owners = List.of(owner);
+        when(redisManager.get(RedisKeys.ownerList())).thenReturn(null);
+        when(tUserMapper.selectByOwner()).thenReturn(owners);
+
+        List<TUser> result = userService.getOwnerList();
+
+        assertEquals(owners, result);
+        verify(redisManager).set(eq(RedisKeys.ownerList()), eq(owners), eq(300L));
+        verify(redisManager, never()).getList(anyString());
+        verify(redisManager, never()).setList(anyString(), anyCollection());
+    }
+
+    @Test
+    void handoverResponsibilities_success_shouldTransferCurrentResponsibilitiesAndWriteHistory() {
+        HandoverUserResponsibilitiesRequest request = new HandoverUserResponsibilitiesRequest();
+        request.setTargetUserId(30);
+        request.setReason("离职交接");
+        when(tUserMapper.selectByPrimaryKey(20)).thenReturn(enabledUser(20));
+        when(tUserMapper.selectByPrimaryKey(30)).thenReturn(enabledUser(30));
+        when(tUserMapper.selectRolesByUserId(30)).thenReturn(List.of(salesOwnerRole()));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10);
+        when(tUserMapper.selectOwnedActivityIds(20)).thenReturn(List.of(101, 102));
+        when(tUserMapper.selectOwnedClueIds(20)).thenReturn(List.of(201, 202));
+        when(tUserMapper.selectOwnedCustomerIds(20)).thenReturn(List.of(301));
+        when(tUserMapper.transferOwnedActivities(20, 30, 10)).thenReturn(2);
+        when(tUserMapper.transferOwnedClues(20, 30, 10)).thenReturn(2);
+        when(tUserMapper.transferOwnedCustomers(20, 30, 10)).thenReturn(1);
+        when(clueOwnerHistoryMapper.insert(any(TClueOwnerHistory.class))).thenReturn(1);
+        when(customerOwnerHistoryMapper.insert(any(TCustomerOwnerHistory.class))).thenReturn(1);
+
+        HandoverUserResponsibilitiesResponse response = userService.handoverResponsibilities(20, request);
+
+        assertEquals(20, response.getSourceUserId());
+        assertEquals(30, response.getTargetUserId());
+        assertEquals(2, response.getActivityCount());
+        assertEquals(2, response.getClueCount());
+        assertEquals(1, response.getCustomerCount());
+        verify(clueOwnerHistoryMapper, times(2)).insert(any(TClueOwnerHistory.class));
+        verify(customerOwnerHistoryMapper).insert(any(TCustomerOwnerHistory.class));
+        verify(auditRecorder).record(eq(AuditActionEnum.USER_HANDOVER), eq("20"),
+                eq("SUCCESS"), contains("\"targetUserId\":30"));
+    }
+
+    @Test
+    void handoverResponsibilities_invalidTargetOwner_shouldRejectBeforeTransfer() {
+        HandoverUserResponsibilitiesRequest request = new HandoverUserResponsibilitiesRequest();
+        request.setTargetUserId(30);
+        request.setReason("离职交接");
+        TUser disabledTarget = enabledUser(30);
+        disabledTarget.setAccountEnabled(0);
+        when(tUserMapper.selectByPrimaryKey(20)).thenReturn(enabledUser(20));
+        when(tUserMapper.selectByPrimaryKey(30)).thenReturn(disabledTarget);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> userService.handoverResponsibilities(20, request));
+
+        assertEquals(CodeEnum.ACCESS_DENIED, ex.getCodeEnum());
+        verify(tUserMapper, never()).transferOwnedActivities(anyInt(), anyInt(), any());
+        verify(tUserMapper, never()).transferOwnedClues(anyInt(), anyInt(), any());
+        verify(tUserMapper, never()).transferOwnedCustomers(anyInt(), anyInt(), any());
+        verify(auditRecorder, never()).record(eq(AuditActionEnum.USER_HANDOVER), anyString(), anyString(), any());
+    }
+
+    @Test
+    void handoverResponsibilities_concurrentOwnerChange_shouldRejectWithoutHistoryOrAudit() {
+        HandoverUserResponsibilitiesRequest request = new HandoverUserResponsibilitiesRequest();
+        request.setTargetUserId(30);
+        request.setReason("离职交接");
+        when(tUserMapper.selectByPrimaryKey(20)).thenReturn(enabledUser(20));
+        when(tUserMapper.selectByPrimaryKey(30)).thenReturn(enabledUser(30));
+        when(tUserMapper.selectRolesByUserId(30)).thenReturn(List.of(salesOwnerRole()));
+        when(currentUserProvider.getCurrentUserId()).thenReturn(10);
+        when(tUserMapper.selectOwnedActivityIds(20)).thenReturn(List.of(101, 102));
+        when(tUserMapper.selectOwnedClueIds(20)).thenReturn(Collections.emptyList());
+        when(tUserMapper.selectOwnedCustomerIds(20)).thenReturn(Collections.emptyList());
+        when(tUserMapper.transferOwnedActivities(20, 30, 10)).thenReturn(1);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> userService.handoverResponsibilities(20, request));
+
+        assertEquals(CodeEnum.OPERATION_FAILED, ex.getCodeEnum());
+        verify(tUserMapper, never()).transferOwnedClues(anyInt(), anyInt(), any());
+        verify(tUserMapper, never()).transferOwnedCustomers(anyInt(), anyInt(), any());
+        verify(clueOwnerHistoryMapper, never()).insert(any());
+        verify(customerOwnerHistoryMapper, never()).insert(any());
+        verify(auditRecorder, never()).record(eq(AuditActionEnum.USER_HANDOVER), anyString(), anyString(), any());
     }
 
     @Test
@@ -329,6 +479,22 @@ class UserServiceImplTest {
         doThrow(new IllegalStateException("审计写入失败"))
                 .when(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, "2");
         assertThrows(IllegalStateException.class, () -> userService.unlockUser(2));
+    }
+
+    private TUser enabledUser(Integer id) {
+        TUser user = new TUser();
+        user.setId(id);
+        user.setAccountEnabled(1);
+        user.setAccountNoLocked(1);
+        return user;
+    }
+
+    private TRole salesOwnerRole() {
+        TRole role = new TRole();
+        role.setId(2);
+        role.setRole("sales_consultant");
+        role.setEnabled(1);
+        return role;
     }
 
     private TRole adminRole() {

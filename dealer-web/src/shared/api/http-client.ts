@@ -17,7 +17,7 @@ axios.defaults.baseURL = env.apiBaseUrl
 axiosClient.interceptors.request.use((config) => {
   const storedToken = readStoredToken()
   if (storedToken) {
-    config.headers.Authorization = storedToken.token
+    config.headers.Authorization = `Bearer ${storedToken.token}`
     if (storedToken.rememberMe) {
       config.headers.rememberMe = true
     }

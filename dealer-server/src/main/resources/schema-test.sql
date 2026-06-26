@@ -81,7 +81,28 @@ CREATE TABLE IF NOT EXISTS t_customer
 (
     id                INTEGER NOT NULL AUTO_INCREMENT,
     clue_id           INTEGER,
+    owner_id          INTEGER,
+    activity_id       INTEGER,
+    customer_name     VARCHAR(128),
+    appellation       INTEGER,
+    phone             VARCHAR(32),
+    weixin            VARCHAR(128),
+    qq                VARCHAR(32),
+    email             VARCHAR(128),
+    age               INTEGER,
+    job               VARCHAR(64),
+    year_income       DECIMAL(10, 2),
+    address           VARCHAR(255),
+    need_loan         INTEGER,
+    intention_state   INTEGER,
+    source            INTEGER,
+    original_clue_source INTEGER,
     product           BIGINT,
+    customer_status   VARCHAR(32) DEFAULT 'INTENTION',
+    merged_to_customer_id INTEGER,
+    merge_reason      VARCHAR(255),
+    merge_time        TIMESTAMP,
+    merge_by          INTEGER,
     description       VARCHAR(255),
     next_contact_time TIMESTAMP,
     create_time       TIMESTAMP,
@@ -91,6 +112,10 @@ CREATE TABLE IF NOT EXISTS t_customer
     PRIMARY KEY (id),
     CONSTRAINT fk_customer_clue FOREIGN KEY (clue_id) REFERENCES t_clue(id) ON DELETE RESTRICT
 );
+
+CREATE INDEX IF NOT EXISTS idx_customer_owner_status ON t_customer(owner_id, customer_status);
+CREATE INDEX IF NOT EXISTS idx_customer_phone ON t_customer(phone);
+CREATE INDEX IF NOT EXISTS idx_customer_weixin ON t_customer(weixin);
 
 CREATE TABLE IF NOT EXISTS t_customer_remark
 (
@@ -104,7 +129,20 @@ CREATE TABLE IF NOT EXISTS t_customer_remark
     edit_by      INTEGER,
     deleted      INTEGER,
     PRIMARY KEY (id),
-    CONSTRAINT fk_customer_remark_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE CASCADE
+    CONSTRAINT fk_customer_remark_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_customer_owner_history
+(
+    id            INTEGER NOT NULL AUTO_INCREMENT,
+    customer_id   INTEGER NOT NULL,
+    from_owner_id INTEGER,
+    to_owner_id   INTEGER NOT NULL,
+    reason        VARCHAR(255) NOT NULL,
+    operator_id   INTEGER NOT NULL,
+    transfer_time TIMESTAMP NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_customer_owner_history_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_dic_type
@@ -187,6 +225,22 @@ CREATE TABLE IF NOT EXISTS t_user
     CONSTRAINT uk_user_login_act UNIQUE (login_act),
     CONSTRAINT uk_user_email UNIQUE (email),
     CONSTRAINT uk_user_phone UNIQUE (phone)
+);
+
+CREATE TABLE IF NOT EXISTS t_clue_owner_history
+(
+    id             INTEGER NOT NULL AUTO_INCREMENT,
+    clue_id        INTEGER NOT NULL,
+    from_owner_id  INTEGER,
+    to_owner_id    INTEGER NOT NULL,
+    assigned_by    INTEGER NOT NULL,
+    reason         VARCHAR(500) NOT NULL,
+    assigned_time  TIMESTAMP NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_clue_owner_history_clue FOREIGN KEY (clue_id) REFERENCES t_clue(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_clue_owner_history_from_owner FOREIGN KEY (from_owner_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_clue_owner_history_to_owner FOREIGN KEY (to_owner_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_clue_owner_history_assigned_by FOREIGN KEY (assigned_by) REFERENCES t_user(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_user_role
@@ -396,6 +450,16 @@ ALTER TABLE t_product
     ADD CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES t_product_category(id) ON DELETE RESTRICT;
 ALTER TABLE t_customer
     ADD CONSTRAINT fk_customer_product FOREIGN KEY (product) REFERENCES t_product(id) ON DELETE RESTRICT;
+ALTER TABLE t_customer
+    ADD CONSTRAINT fk_customer_owner FOREIGN KEY (owner_id) REFERENCES t_user(id) ON DELETE RESTRICT;
+ALTER TABLE t_customer
+    ADD CONSTRAINT fk_customer_merged_to FOREIGN KEY (merged_to_customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT;
+ALTER TABLE t_customer_owner_history
+    ADD CONSTRAINT fk_customer_owner_history_from_user FOREIGN KEY (from_owner_id) REFERENCES t_user(id) ON DELETE RESTRICT;
+ALTER TABLE t_customer_owner_history
+    ADD CONSTRAINT fk_customer_owner_history_to_user FOREIGN KEY (to_owner_id) REFERENCES t_user(id) ON DELETE RESTRICT;
+ALTER TABLE t_customer_owner_history
+    ADD CONSTRAINT fk_customer_owner_history_operator FOREIGN KEY (operator_id) REFERENCES t_user(id) ON DELETE RESTRICT;
 
 CREATE TABLE IF NOT EXISTS t_product_promotion
 (

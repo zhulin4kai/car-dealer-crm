@@ -38,15 +38,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout(): Promise<void> {
-    try {
-      await logoutRequest()
-    } finally {
-      clearStoredToken()
-      clearPermissionCodes()
-      token.value = null
-      rememberMe.value = false
-      currentUser.value = null
-    }
+    await logoutRequest()
+    clearStoredToken()
+    clearPermissionCodes()
+    token.value = null
+    rememberMe.value = false
+    currentUser.value = null
   }
 
   function forceLogout(): void {

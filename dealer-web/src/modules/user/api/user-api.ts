@@ -3,6 +3,7 @@ import type { PageResult } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
 import type {
   AssignUserRolesRequest, ChangePasswordRequest, CreateUserRequest,
+  HandoverUserResponsibilitiesRequest, HandoverUserResponsibilitiesResponse,
   LoginForm, UpdateUserRequest, User, UserListQuery,
 } from '@/modules/user/model/user.types'
 
@@ -30,6 +31,10 @@ export function fetchUserPage(params: UserListQuery): Promise<PageResult<User>> 
 
 export function fetchUserDetail(id: EntityId): Promise<User> {
   return httpClient.get<User>(`/api/user/${id}`)
+}
+
+export function fetchOwnerList(): Promise<User[]> {
+  return httpClient.get<User[]>('/api/owner')
 }
 
 export function createUser(data: CreateUserRequest): Promise<User> {
@@ -68,5 +73,13 @@ export function changeUserPassword(id: EntityId, data: ChangePasswordRequest): P
   return httpClient.put(`/api/user/${id}/password`, data)
 }
 
+export function handoverUserResponsibilities(
+  id: EntityId,
+  data: HandoverUserResponsibilitiesRequest,
+): Promise<HandoverUserResponsibilitiesResponse> {
+  return httpClient.put<HandoverUserResponsibilitiesResponse>(`/api/user/${id}/handover`, data)
+}
+
 export const getUserList = fetchUserPage
 export const getUserDetail = fetchUserDetail
+export const getOwnerList = fetchOwnerList

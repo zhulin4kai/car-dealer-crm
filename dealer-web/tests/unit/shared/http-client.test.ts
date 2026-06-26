@@ -65,6 +65,18 @@ describe('http client', () => {
     expect(localStorage.getItem('dlyk_token')).toBe('jwt-token')
   })
 
+  it('adds bearer authorization header from stored token', () => {
+    writeStoredToken('jwt-token', true)
+    const interceptor = mockedAxios.interceptors.request.use.mock.calls[0]?.[0] as
+      | ((config: { headers?: Record<string, unknown> }) => { headers?: Record<string, unknown> })
+      | undefined
+
+    const config = interceptor?.({ headers: {} })
+
+    expect(config?.headers?.Authorization).toBe('Bearer jwt-token')
+    expect(config?.headers?.rememberMe).toBe(true)
+  })
+
   it('distinguishes login failure from invalid sessions by stable code', () => {
     expect(isSessionInvalidCode(API_ERROR_CODE.AUTH_LOGIN_FAILED)).toBe(false)
     expect(isSessionInvalidCode(API_ERROR_CODE.TOKEN_EMPTY)).toBe(true)

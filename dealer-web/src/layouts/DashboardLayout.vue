@@ -388,10 +388,14 @@ function showMenu(): void {
 }
 
 async function logout(): Promise<void> {
-  await authStore.logout()
-  permissionStore.clearPermissions()
-  messageTip('退出成功', 'success')
-  await router.push('/')
+  try {
+    await authStore.logout()
+    permissionStore.clearPermissions()
+    messageTip('退出成功', 'success')
+    await router.push('/')
+  } catch {
+    messageTip('退出失败，请稍后重试', 'error')
+  }
 }
 
 function backToHome(): void {

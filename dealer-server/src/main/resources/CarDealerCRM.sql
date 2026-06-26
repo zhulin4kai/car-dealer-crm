@@ -234,7 +234,28 @@ CREATE TABLE `t_customer`
 (
     `id`                int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，客户ID',
     `clue_id`           int                                                           NULL DEFAULT NULL COMMENT '线索ID',
+    `owner_id`          int                                                           NULL DEFAULT NULL COMMENT '当前客户负责人ID',
+    `activity_id`       int                                                           NULL DEFAULT NULL COMMENT '来源活动ID',
+    `customer_name`     varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '客户姓名或组织名称',
+    `appellation`       int                                                           NULL DEFAULT NULL COMMENT '称呼',
+    `phone`             varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '手机号',
+    `weixin`            varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '微信号',
+    `qq`                varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT 'QQ号',
+    `email`             varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '邮箱',
+    `age`               int                                                           NULL DEFAULT NULL COMMENT '年龄',
+    `job`               varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '职业',
+    `year_income`       decimal(10, 2)                                                NULL DEFAULT NULL COMMENT '年收入',
+    `address`           varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '地址',
+    `need_loan`         int                                                           NULL DEFAULT NULL COMMENT '是否需要贷款',
+    `intention_state`   int                                                           NULL DEFAULT NULL COMMENT '意向状态',
+    `source`            int                                                           NULL DEFAULT NULL COMMENT '当前客户来源',
+    `original_clue_source` int                                                        NULL DEFAULT NULL COMMENT '原始线索来源快照',
     `product`           bigint                                                        NULL DEFAULT NULL COMMENT '选购产品ID',
+    `customer_status`   varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT 'INTENTION' COMMENT '客户经营状态',
+    `merged_to_customer_id` int                                                       NULL DEFAULT NULL COMMENT '合并目标客户ID',
+    `merge_reason`      varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '合并原因',
+    `merge_time`        datetime                                                      NULL DEFAULT NULL COMMENT '合并时间',
+    `merge_by`          int                                                           NULL DEFAULT NULL COMMENT '合并操作人',
     `description`       varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '客户描述',
     `next_contact_time` datetime                                                      NULL DEFAULT NULL COMMENT '下次联系时间',
     `create_time`       datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
@@ -245,7 +266,10 @@ CREATE TABLE `t_customer`
     INDEX `t_customer_ibfk_1` (`clue_id` ASC) USING BTREE,
     INDEX `t_customer_ibfk_2` (`product` ASC) USING BTREE,
     INDEX `t_customer_ibfk_3` (`create_by` ASC) USING BTREE,
-    INDEX `t_customer_ibfk_4` (`edit_by` ASC) USING BTREE
+    INDEX `t_customer_ibfk_4` (`edit_by` ASC) USING BTREE,
+    INDEX `idx_customer_owner_status` (`owner_id` ASC, `customer_status` ASC) USING BTREE,
+    INDEX `idx_customer_phone` (`phone` ASC) USING BTREE,
+    INDEX `idx_customer_weixin` (`weixin` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 12
   CHARACTER SET = utf8mb3
@@ -267,6 +291,26 @@ VALUES
 (6, 4, 12, '医生家庭用户，原意向雷克萨斯NX，因现车周期过长流失，保留后续换购跟进。', '2026-09-10 11:00:00', '2026-05-10 10:10:00', 8, '2026-06-10 18:05:00', 8),
 (7, 6, 7, '建筑设计公司负责人，奥迪A6L置换购车已交付，进入老客维系阶段。', '2026-09-28 15:30:00', '2026-02-26 09:20:00', 2, '2026-03-28 17:30:00', 2),
 (8, 8, 10, '市场管理人员，奔驰GLC订单已取消并完成退款，后续关注预算更低的SUV。', '2026-08-15 13:00:00', '2026-05-22 14:40:00', 3, '2026-06-16 14:20:00', 3);
+
+UPDATE `t_customer` c
+    JOIN `t_clue` cl ON c.`clue_id` = cl.`id`
+SET c.`owner_id` = cl.`owner_id`,
+    c.`activity_id` = cl.`activity_id`,
+    c.`customer_name` = cl.`full_name`,
+    c.`appellation` = cl.`appellation`,
+    c.`phone` = cl.`phone`,
+    c.`weixin` = cl.`weixin`,
+    c.`qq` = cl.`qq`,
+    c.`email` = cl.`email`,
+    c.`age` = cl.`age`,
+    c.`job` = cl.`job`,
+    c.`year_income` = cl.`year_income`,
+    c.`address` = cl.`address`,
+    c.`need_loan` = cl.`need_loan`,
+    c.`intention_state` = cl.`intention_state`,
+    c.`source` = cl.`source`,
+    c.`original_clue_source` = cl.`source`,
+    c.`customer_status` = 'INTENTION';
 
 -- ----------------------------
 -- Table structure for t_customer_remark
@@ -311,6 +355,29 @@ VALUES
 (8, 7, 64, '车辆完成交付，旧车置换资料和新车发票均已交接。', 2, '2026-03-28 17:30:00', NULL, NULL, 0),
 (9, 8, 61, '客户提出取消订单，已说明退款时效并提交财务处理。', 3, '2026-06-15 10:40:00', NULL, NULL, 0),
 (10, 8, 62, '通知客户定金已原路退回，客户确认到账。', 3, '2026-06-16 14:20:00', NULL, NULL, 0);
+
+-- ----------------------------
+-- Table structure for t_customer_owner_history
+-- ----------------------------
+DROP TABLE IF EXISTS `t_customer_owner_history`;
+CREATE TABLE `t_customer_owner_history`
+(
+    `id`            int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `customer_id`   int                                                           NOT NULL COMMENT '客户ID',
+    `from_owner_id` int                                                           NULL DEFAULT NULL COMMENT '原负责人ID',
+    `to_owner_id`   int                                                           NOT NULL COMMENT '新负责人ID',
+    `reason`        varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '转移原因',
+    `operator_id`   int                                                           NOT NULL COMMENT '操作人ID',
+    `transfer_time` datetime                                                      NOT NULL COMMENT '转移时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_customer_owner_history_customer` (`customer_id` ASC) USING BTREE,
+    INDEX `idx_customer_owner_history_from_owner` (`from_owner_id` ASC) USING BTREE,
+    INDEX `idx_customer_owner_history_to_owner` (`to_owner_id` ASC) USING BTREE,
+    INDEX `idx_customer_owner_history_operator` (`operator_id` ASC) USING BTREE
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = '客户归属转移历史表'
+  ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for t_dic_type
@@ -1131,6 +1198,30 @@ create table t_user
  COLLATE = utf8mb3_general_ci COMMENT = '用户表'
  ROW_FORMAT = DYNAMIC;
 
+CREATE TABLE `t_clue_owner_history`
+(
+    `id`             int auto_increment comment '主键，自动增长，线索责任历史ID'
+        primary key,
+    `clue_id`        int          not null comment '线索ID',
+    `from_owner_id`  int          null comment '原负责人ID',
+    `to_owner_id`    int          not null comment '新负责人ID',
+    `assigned_by`    int          not null comment '操作人ID',
+    `reason`         varchar(500) not null comment '分配或转派原因',
+    `assigned_time`  datetime     not null comment '分配或转派时间',
+    KEY `idx_clue_owner_history_clue` (`clue_id`),
+    KEY `idx_clue_owner_history_from_owner` (`from_owner_id`),
+    KEY `idx_clue_owner_history_to_owner` (`to_owner_id`),
+    KEY `idx_clue_owner_history_assigned_by` (`assigned_by`),
+    CONSTRAINT `fk_clue_owner_history_clue` FOREIGN KEY (`clue_id`) REFERENCES `t_clue` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_clue_owner_history_from_owner` FOREIGN KEY (`from_owner_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_clue_owner_history_to_owner` FOREIGN KEY (`to_owner_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_clue_owner_history_assigned_by` FOREIGN KEY (`assigned_by`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = '线索责任归属历史表'
+  ROW_FORMAT = DYNAMIC;
+
 
 INSERT INTO t_user
 (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired,
@@ -1146,6 +1237,12 @@ VALUES
 (8, 'wuyue', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '吴悦', '13800001008', 'wu.yue@qicheng-auto.example', 1, 1, 1, 1, '2025-06-09 10:10:00', 4, NULL, NULL, '2026-06-21 08:47:00'),
 (9, 'liujia', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '刘佳', '13800001009', 'liu.jia@qicheng-auto.example', 1, 1, 1, 1, '2025-08-04 15:30:00', 4, NULL, NULL, '2026-06-20 18:36:00'),
 (10, 'hejun', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '何军', '13800001010', 'he.jun@qicheng-auto.example', 1, 1, 0, 0, '2025-09-15 09:00:00', 1, '2026-06-10 18:00:00', 1, '2026-06-10 17:42:00');
+
+INSERT INTO `t_clue_owner_history`
+(`clue_id`, `from_owner_id`, `to_owner_id`, `assigned_by`, `reason`, `assigned_time`)
+SELECT id, NULL, owner_id, COALESCE(create_by, owner_id), '初始化线索责任归属', COALESCE(create_time, NOW())
+FROM `t_clue`
+WHERE owner_id IS NOT NULL;
 
 create table t_user_role
 (
@@ -1377,6 +1474,20 @@ VALUES
 
 ALTER TABLE `t_customer`
     ADD CONSTRAINT `fk_customer_clue` FOREIGN KEY (`clue_id`) REFERENCES `t_clue` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_customer`
+    ADD CONSTRAINT `fk_customer_owner` FOREIGN KEY (`owner_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_customer`
+    ADD CONSTRAINT `fk_customer_merged_to` FOREIGN KEY (`merged_to_customer_id`) REFERENCES `t_customer` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_customer_remark`
+    ADD CONSTRAINT `fk_customer_remark_customer` FOREIGN KEY (`customer_id`) REFERENCES `t_customer` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_customer_owner_history`
+    ADD CONSTRAINT `fk_customer_owner_history_customer` FOREIGN KEY (`customer_id`) REFERENCES `t_customer` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_customer_owner_history`
+    ADD CONSTRAINT `fk_customer_owner_history_from_user` FOREIGN KEY (`from_owner_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_customer_owner_history`
+    ADD CONSTRAINT `fk_customer_owner_history_to_user` FOREIGN KEY (`to_owner_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_customer_owner_history`
+    ADD CONSTRAINT `fk_customer_owner_history_operator` FOREIGN KEY (`operator_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT;
 ALTER TABLE `t_tran`
     ADD CONSTRAINT `fk_tran_customer` FOREIGN KEY (`customer_id`) REFERENCES `t_customer` (`id`) ON DELETE RESTRICT;
 ALTER TABLE `t_tran_history`

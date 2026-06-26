@@ -104,7 +104,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     @DisplayName("unauthenticated request to /api/users is rejected with 510 (unauthorized)")
     void unauthenticated_isUnauthorized() throws Exception {
         mockMvc.perform(get("/api/users"))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(510));
     }
 

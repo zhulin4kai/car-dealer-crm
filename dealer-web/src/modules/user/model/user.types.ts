@@ -67,6 +67,19 @@ export interface AssignUserRolesRequest {
   roleIds: number[]
 }
 
+export interface HandoverUserResponsibilitiesRequest {
+  targetUserId: number
+  reason: string
+}
+
+export interface HandoverUserResponsibilitiesResponse {
+  sourceUserId: number
+  targetUserId: number
+  activityCount: number
+  clueCount: number
+  customerCount: number
+}
+
 export interface UserListQuery {
   current?: number
   pageSize?: number

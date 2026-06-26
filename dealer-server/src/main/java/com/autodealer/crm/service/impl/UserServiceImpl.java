@@ -6,6 +6,8 @@ import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.dto.AssignUserRolesRequest;
 import com.autodealer.crm.dto.ChangePasswordRequest;
 import com.autodealer.crm.dto.CreateUserRequest;
+import com.autodealer.crm.dto.HandoverUserResponsibilitiesRequest;
+import com.autodealer.crm.dto.HandoverUserResponsibilitiesResponse;
 import com.autodealer.crm.dto.UpdateUserRequest;
 import com.autodealer.crm.dto.UserDetailResponse;
 import com.autodealer.crm.dto.UserListQuery;
@@ -13,19 +15,21 @@ import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.manager.RedisManager;
+import com.autodealer.crm.mapper.TClueOwnerHistoryMapper;
+import com.autodealer.crm.mapper.TCustomerOwnerHistoryMapper;
 import com.autodealer.crm.mapper.TPermissionMapper;
 import com.autodealer.crm.mapper.TRoleMapper;
 import com.autodealer.crm.mapper.TUserMapper;
+import com.autodealer.crm.model.TClueOwnerHistory;
+import com.autodealer.crm.model.TCustomerOwnerHistory;
 import com.autodealer.crm.model.TPermission;
 import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.UserService;
-import com.autodealer.crm.util.CacheUtils;
 import com.autodealer.crm.util.UserConverter;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
@@ -48,11 +52,17 @@ public class UserServiceImpl implements UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
     private static final String ROLE_ADMIN = "admin";
+    private static final String ROLE_SALES_CONSULTANT = "sales_consultant";
+    private static final String ROLE_SALES_MANAGER = "sales_manager";
     private static final int BUILTIN_ADMIN_ID = 1;
     private static final int MIN_PASSWORD_LENGTH = 6;
     private static final int MAX_PASSWORD_LENGTH = 16;
+    private static final long OWNER_LIST_CACHE_EXPIRE_SECONDS = 300L;
+    private static final int OWNER_LIST_CACHE_CLEAR_RETRY_TIMES = 2;
 
     private final TUserMapper tUserMapper;
+    private final TClueOwnerHistoryMapper clueOwnerHistoryMapper;
+    private final TCustomerOwnerHistoryMapper customerOwnerHistoryMapper;
     private final PasswordEncoder passwordEncoder;
     private final TRoleMapper tRoleMapper;
     private final TPermissionMapper tPermissionMapper;
@@ -63,8 +73,12 @@ public class UserServiceImpl implements UserService {
     public UserServiceImpl(TUserMapper tUserMapper, PasswordEncoder passwordEncoder,
                            TRoleMapper tRoleMapper, TPermissionMapper tPermissionMapper,
                            RedisManager redisManager, CurrentUserProvider currentUserProvider,
-                           OperationAuditRecorder auditRecorder) {
+                           OperationAuditRecorder auditRecorder,
+                           TClueOwnerHistoryMapper clueOwnerHistoryMapper,
+                           TCustomerOwnerHistoryMapper customerOwnerHistoryMapper) {
         this.tUserMapper = tUserMapper;
+        this.clueOwnerHistoryMapper = clueOwnerHistoryMapper;
+        this.customerOwnerHistoryMapper = customerOwnerHistoryMapper;
         this.passwordEncoder = passwordEncoder;
         this.tRoleMapper = tRoleMapper;
         this.tPermissionMapper = tPermissionMapper;
@@ -321,6 +335,7 @@ public class UserServiceImpl implements UserService {
                 throw new BusinessException(CodeEnum.FAIL, "角色分配失败");
             }
         }
+        invalidateUserSession(request.getUserId());
         clearOwnerListCache();
         log.info("event=user_role_assign result=success userId={} roleIds={} operatorId={}",
                 request.getUserId(), roleIds, currentUserProvider.getCurrentUserId());
@@ -346,16 +361,137 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public HandoverUserResponsibilitiesResponse handoverResponsibilities(
+            Integer sourceUserId, HandoverUserResponsibilitiesRequest request) {
+        if (sourceUserId == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "原负责人不能为空");
+        }
+        if (sourceUserId.equals(request.getTargetUserId())) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "目标负责人不能与原负责人相同");
+        }
+        requireUserAccess(sourceUserId);
+        if (tUserMapper.selectByPrimaryKey(sourceUserId) == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "原负责人不存在");
+        }
+        requireValidOwnerUser(request.getTargetUserId());
+
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        List<Integer> activityIds = safeIdList(tUserMapper.selectOwnedActivityIds(sourceUserId));
+        List<Integer> clueIds = safeIdList(tUserMapper.selectOwnedClueIds(sourceUserId));
+        List<Integer> customerIds = safeIdList(tUserMapper.selectOwnedCustomerIds(sourceUserId));
+
+        int activityRows = tUserMapper.transferOwnedActivities(sourceUserId, request.getTargetUserId(), operatorId);
+        assertHandoverRows("活动", activityIds.size(), activityRows);
+        int clueRows = tUserMapper.transferOwnedClues(sourceUserId, request.getTargetUserId(), operatorId);
+        assertHandoverRows("线索", clueIds.size(), clueRows);
+        int customerRows = tUserMapper.transferOwnedCustomers(sourceUserId, request.getTargetUserId(), operatorId);
+        assertHandoverRows("客户", customerIds.size(), customerRows);
+
+        Date transferTime = new Date();
+        for (Integer clueId : clueIds) {
+            insertClueOwnerHistory(clueId, sourceUserId, request.getTargetUserId(),
+                    operatorId, request.getReason(), transferTime);
+        }
+        for (Integer customerId : customerIds) {
+            insertCustomerOwnerHistory(customerId, sourceUserId, request.getTargetUserId(),
+                    operatorId, request.getReason(), transferTime);
+        }
+
+        HandoverUserResponsibilitiesResponse response = new HandoverUserResponsibilitiesResponse(
+                sourceUserId, request.getTargetUserId(), activityRows, clueRows, customerRows);
+        auditRecorder.record(AuditActionEnum.USER_HANDOVER, String.valueOf(sourceUserId),
+                "SUCCESS", buildHandoverSummary(response));
+        log.info("event=user_handover result=success sourceUserId={} targetUserId={} activityCount={} clueCount={} customerCount={} operatorId={}",
+                sourceUserId, request.getTargetUserId(), activityRows, clueRows, customerRows, operatorId);
+        return response;
+    }
+
+    @Override
     public List<TUser> getOwnerList() {
-        return CacheUtils.getCacheData(
-                () -> (List<TUser>) redisManager.getList(RedisKeys.ownerList()),
-                () -> (List<TUser>) tUserMapper.selectByOwner(),
-                (t) -> redisManager.setList(RedisKeys.ownerList(), t));
+        List<TUser> cachedOwners = redisManager.get(RedisKeys.ownerList());
+        if (cachedOwners != null && !cachedOwners.isEmpty()) {
+            return cachedOwners;
+        }
+
+        List<TUser> owners = tUserMapper.selectByOwner();
+        if (owners != null && !owners.isEmpty()) {
+            boolean cached = redisManager.set(RedisKeys.ownerList(), owners, OWNER_LIST_CACHE_EXPIRE_SECONDS);
+            if (!cached) {
+                log.warn("event=owner_list_cache_write result=failed ttlSeconds={}", OWNER_LIST_CACHE_EXPIRE_SECONDS);
+            }
+        }
+        return owners;
     }
 
     @Override
     public UserDetailResponse toDetailResponse(TUser tUser) {
         return UserConverter.toDetailResponse(tUser);
+    }
+
+    private void requireValidOwnerUser(Integer targetUserId) {
+        TUser targetUser = tUserMapper.selectByPrimaryKey(targetUserId);
+        if (targetUser == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "目标负责人不存在");
+        }
+        if (!Integer.valueOf(1).equals(targetUser.getAccountEnabled())
+                || !Integer.valueOf(1).equals(targetUser.getAccountNoLocked())) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "目标负责人不可用");
+        }
+        List<TRole> roles = tUserMapper.selectRolesByUserId(targetUserId);
+        boolean canOwnBusiness = roles != null && roles.stream()
+                .anyMatch(role -> isEnabledRole(role)
+                        && (ROLE_SALES_CONSULTANT.equals(role.getRole())
+                        || ROLE_SALES_MANAGER.equals(role.getRole())));
+        if (!canOwnBusiness) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "目标负责人不具备业务负责人资格");
+        }
+    }
+
+    private List<Integer> safeIdList(List<Integer> ids) {
+        return ids == null ? Collections.emptyList() : ids;
+    }
+
+    private void assertHandoverRows(String objectName, int expectedRows, int actualRows) {
+        if (actualRows != expectedRows) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED,
+                    objectName + "交接对象已变化，请刷新后重试");
+        }
+    }
+
+    private void insertClueOwnerHistory(Integer clueId, Integer sourceUserId, Integer targetUserId,
+                                        Integer operatorId, String reason, Date transferTime) {
+        TClueOwnerHistory history = new TClueOwnerHistory();
+        history.setClueId(clueId);
+        history.setFromOwnerId(sourceUserId);
+        history.setToOwnerId(targetUserId);
+        history.setAssignedBy(operatorId);
+        history.setReason(reason);
+        history.setAssignedTime(transferTime);
+        if (clueOwnerHistoryMapper.insert(history) != 1) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "线索交接历史写入失败");
+        }
+    }
+
+    private void insertCustomerOwnerHistory(Integer customerId, Integer sourceUserId, Integer targetUserId,
+                                            Integer operatorId, String reason, Date transferTime) {
+        TCustomerOwnerHistory history = new TCustomerOwnerHistory();
+        history.setCustomerId(customerId);
+        history.setFromOwnerId(sourceUserId);
+        history.setToOwnerId(targetUserId);
+        history.setOperatorId(operatorId);
+        history.setReason(reason);
+        history.setTransferTime(transferTime);
+        if (customerOwnerHistoryMapper.insert(history) != 1) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "客户交接历史写入失败");
+        }
+    }
+
+    private String buildHandoverSummary(HandoverUserResponsibilitiesResponse response) {
+        return "{\"targetUserId\":" + response.getTargetUserId()
+                + ",\"activityCount\":" + response.getActivityCount()
+                + ",\"clueCount\":" + response.getClueCount()
+                + ",\"customerCount\":" + response.getCustomerCount() + "}";
     }
 
     private void validatePasswordLength(String password) {
@@ -455,7 +591,16 @@ public class UserServiceImpl implements UserService {
     }
 
     private void clearOwnerListCache() {
-        try { redisManager.delete(RedisKeys.ownerList()); }
-        catch (Exception e) { log.warn("event=owner_list_cache_clear result=failed", e); }
+        for (int attempt = 1; attempt <= OWNER_LIST_CACHE_CLEAR_RETRY_TIMES; attempt++) {
+            try {
+                if (redisManager.delete(RedisKeys.ownerList())) {
+                    return;
+                }
+            } catch (Exception e) {
+                log.warn("event=owner_list_cache_clear result=failed attempt={}", attempt, e);
+            }
+        }
+        log.warn("event=owner_list_cache_clear result=not_deleted attempts={}",
+                OWNER_LIST_CACHE_CLEAR_RETRY_TIMES);
     }
 }

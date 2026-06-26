@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TCustomerOwnerHistoryMapper">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TCustomerOwnerHistory">
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="customer_id" jdbcType="INTEGER" property="customerId" />
+    <result column="from_owner_id" jdbcType="INTEGER" property="fromOwnerId" />
+    <result column="to_owner_id" jdbcType="INTEGER" property="toOwnerId" />
+    <result column="reason" jdbcType="VARCHAR" property="reason" />
+    <result column="operator_id" jdbcType="INTEGER" property="operatorId" />
+    <result column="transfer_time" jdbcType="TIMESTAMP" property="transferTime" />
+    <association property="fromOwnerDO" javaType="com.autodealer.crm.model.TUser">
+      <id column="fromOwnerId" jdbcType="INTEGER" property="id" />
+      <result column="fromOwnerName" jdbcType="VARCHAR" property="name" />
+    </association>
+    <association property="toOwnerDO" javaType="com.autodealer.crm.model.TUser">
+      <id column="toOwnerId" jdbcType="INTEGER" property="id" />
+      <result column="toOwnerName" jdbcType="VARCHAR" property="name" />
+    </association>
+    <association property="operatorDO" javaType="com.autodealer.crm.model.TUser">
+      <id column="operatorId" jdbcType="INTEGER" property="id" />
+      <result column="operatorName" jdbcType="VARCHAR" property="name" />
+    </association>
+  </resultMap>
+
+  <insert id="insert" keyColumn="id" keyProperty="id"
+          parameterType="com.autodealer.crm.model.TCustomerOwnerHistory"
+          useGeneratedKeys="true">
+    insert into t_customer_owner_history
+      (customer_id, from_owner_id, to_owner_id, reason, operator_id, transfer_time)
+    values
+      (#{customerId,jdbcType=INTEGER}, #{fromOwnerId,jdbcType=INTEGER},
+       #{toOwnerId,jdbcType=INTEGER}, #{reason,jdbcType=VARCHAR},
+       #{operatorId,jdbcType=INTEGER}, #{transferTime,jdbcType=TIMESTAMP})
+  </insert>
+
+  <select id="selectByCustomerId" resultMap="BaseResultMap">
+    select h.*,
+      fu.id fromOwnerId, fu.name fromOwnerName,
+      tu.id toOwnerId, tu.name toOwnerName,
+      ou.id operatorId, ou.name operatorName
+    from t_customer_owner_history h
+      left join t_user fu on h.from_owner_id = fu.id
+      left join t_user tu on h.to_owner_id = tu.id
+      left join t_user ou on h.operator_id = ou.id
+    where h.customer_id = #{customerId,jdbcType=INTEGER}
+    order by h.transfer_time desc, h.id desc
+  </select>
+</mapper>

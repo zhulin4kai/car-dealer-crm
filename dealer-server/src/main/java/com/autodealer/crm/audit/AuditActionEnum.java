@@ -12,6 +12,7 @@ public enum AuditActionEnum {
     USER_UPDATE("USER_UPDATE", "编辑用户", "用户管理"),
     USER_DELETE("USER_DELETE", "删除用户", "用户管理"),
     USER_STATUS_CHANGE("USER_STATUS_CHANGE", "用户状态变更", "用户管理"),
+    USER_HANDOVER("USER_HANDOVER", "用户责任交接", "用户管理"),
 
     CLUE_CREATE("CLUE_CREATE", "创建线索", "线索管理"),
     CLUE_IMPORT("CLUE_IMPORT", "导入线索", "线索管理"),
