@@ -18,6 +18,8 @@
         <result column="expected_amount" property="expectedAmount" />
         <result column="expected_close_date" property="expectedCloseDate" />
         <result column="next_action_time" property="nextActionTime" />
+        <result column="last_follow_time" property="lastFollowTime" />
+        <result column="last_follow_summary" property="lastFollowSummary" />
         <result column="lost_reason" property="lostReason" />
         <result column="lost_competitor" property="lostCompetitor" />
         <result column="result_remark" property="resultRemark" />
@@ -33,7 +35,8 @@
         o.id, o.opportunity_no, o.customer_id, c.customer_name, o.clue_id, o.owner_id,
         u.name AS owner_name, o.product_id, p.name AS product_name, o.source_type,
         o.stage, o.requirement, o.expected_amount, o.expected_close_date,
-        o.next_action_time, o.lost_reason, o.lost_competitor, o.result_remark,
+        o.next_action_time, o.last_follow_time, o.last_follow_summary,
+        o.lost_reason, o.lost_competitor, o.result_remark,
         o.order_tran_id, o.version, o.create_time, o.create_by, o.update_time, o.update_by
     </sql>
 
@@ -137,5 +140,19 @@
             version = version + 1
         WHERE id = #{id}
           AND stage = #{expectedStage}
+    </update>
+
+    <update id="updateRecentFollowFact">
+        UPDATE t_opportunity
+        SET last_follow_time = #{lastFollowTime},
+            last_follow_summary = #{lastFollowSummary},
+            next_action_time = #{nextActionTime},
+            update_time = CURRENT_TIMESTAMP,
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+        <if test="dataScopeUserId != null">
+          AND owner_id = #{dataScopeUserId}
+        </if>
     </update>
 </mapper>

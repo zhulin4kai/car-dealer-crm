@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TTestDriveVehicleHoldMapper">
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TTestDriveVehicleHold" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_test_drive_vehicle_hold (
+            test_drive_id, vehicle_id, start_time, end_time, status,
+            create_time, create_by, update_time, update_by
+        ) VALUES (
+            #{testDriveId}, #{vehicleId}, #{startTime}, #{endTime}, #{status},
+            #{createTime}, #{createBy}, #{updateTime}, #{updateBy}
+        )
+    </insert>
+
+    <select id="countActiveConflict" resultType="int">
+        SELECT COUNT(1)
+        FROM t_test_drive_vehicle_hold
+        WHERE vehicle_id = #{vehicleId}
+          AND status = 'ACTIVE'
+          AND start_time &lt; #{endTime}
+          AND end_time &gt; #{startTime}
+        <if test="excludeTestDriveId != null">
+          AND test_drive_id != #{excludeTestDriveId}
+        </if>
+    </select>
+
+    <update id="releaseActiveByTestDriveId">
+        UPDATE t_test_drive_vehicle_hold
+        SET status = 'RELEASED',
+            release_reason = #{reason},
+            release_time = #{releaseTime},
+            update_time = #{releaseTime},
+            update_by = #{updateBy}
+        WHERE test_drive_id = #{testDriveId}
+          AND status = 'ACTIVE'
+    </update>
+</mapper>

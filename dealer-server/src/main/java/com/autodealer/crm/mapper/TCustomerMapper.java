@@ -7,6 +7,7 @@ import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.query.CustomerListQuery;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TCustomerMapper {
@@ -58,4 +59,11 @@ public interface TCustomerMapper {
     int reassignQuotes(@Param("sourceCustomerId") Integer sourceCustomerId,
                        @Param("targetCustomerId") Integer targetCustomerId);
     int countBusinessReferences(@Param("id") Integer id);
+
+    int updateRecentFollowFact(@Param("id") Integer id,
+                               @Param("lastFollowTime") LocalDateTime lastFollowTime,
+                               @Param("lastFollowSummary") String lastFollowSummary,
+                               @Param("nextContactTime") LocalDateTime nextContactTime,
+                               @Param("editBy") Integer editBy,
+                               @Param("dataScopeUserId") Integer dataScopeUserId);
 }

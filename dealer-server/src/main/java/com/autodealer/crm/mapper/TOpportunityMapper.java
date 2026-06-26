@@ -32,4 +32,11 @@ public interface TOpportunityMapper {
                              @Param("orderTranId") Integer orderTranId,
                              @Param("updateTime") LocalDateTime updateTime,
                              @Param("updateBy") Integer updateBy);
+
+    int updateRecentFollowFact(@Param("id") Long id,
+                               @Param("lastFollowTime") LocalDateTime lastFollowTime,
+                               @Param("lastFollowSummary") String lastFollowSummary,
+                               @Param("nextActionTime") LocalDate nextActionTime,
+                               @Param("updateBy") Integer updateBy,
+                               @Param("dataScopeUserId") Integer dataScopeUserId);
 }

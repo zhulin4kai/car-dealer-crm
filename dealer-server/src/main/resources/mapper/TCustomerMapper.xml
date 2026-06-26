@@ -6,6 +6,7 @@
     <result column="clue_id" jdbcType="INTEGER" property="clueId" />
     <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
     <result column="activity_id" jdbcType="INTEGER" property="activityId" />
+    <result column="activity_name_snapshot" jdbcType="VARCHAR" property="activityNameSnapshot" />
     <result column="customer_name" jdbcType="VARCHAR" property="customerName" />
     <result column="appellation" jdbcType="INTEGER" property="appellation" />
     <result column="phone" jdbcType="VARCHAR" property="phone" />
@@ -28,6 +29,8 @@
     <result column="merge_by" jdbcType="INTEGER" property="mergeBy" />
     <result column="description" jdbcType="VARCHAR" property="description" />
     <result column="next_contact_time" jdbcType="TIMESTAMP" property="nextContactTime" />
+    <result column="last_follow_time" jdbcType="TIMESTAMP" property="lastFollowTime" />
+    <result column="last_follow_summary" jdbcType="VARCHAR" property="lastFollowSummary" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
     <result column="create_by" jdbcType="INTEGER" property="createBy" />
     <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
@@ -83,10 +86,11 @@
   </resultMap>
 
   <sql id="Base_Column_List">
-    id, clue_id, owner_id, activity_id, customer_name, appellation, phone, weixin, qq, email,
+    id, clue_id, owner_id, activity_id, activity_name_snapshot, customer_name, appellation, phone, weixin, qq, email,
     age, job, year_income, address, need_loan, intention_state, source, original_clue_source,
     product, customer_status, merged_to_customer_id, merge_reason, merge_time, merge_by,
-    description, next_contact_time, create_time, create_by, edit_time, edit_by
+    description, next_contact_time, last_follow_time, last_follow_summary,
+    create_time, create_by, edit_time, edit_by
   </sql>
 
   <sql id="Customer_Select_List">
@@ -175,12 +179,12 @@
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TCustomer" useGeneratedKeys="true">
     insert into t_customer (
-      clue_id, owner_id, activity_id, customer_name, appellation, phone, weixin, qq, email,
+      clue_id, owner_id, activity_id, activity_name_snapshot, customer_name, appellation, phone, weixin, qq, email,
       age, job, year_income, address, need_loan, intention_state, source, original_clue_source,
       product, customer_status, merged_to_customer_id, merge_reason, merge_time, merge_by,
       description, next_contact_time, create_time, create_by, edit_time, edit_by
     ) values (
-      #{clueId,jdbcType=INTEGER}, #{ownerId,jdbcType=INTEGER}, #{activityId,jdbcType=INTEGER},
+      #{clueId,jdbcType=INTEGER}, #{ownerId,jdbcType=INTEGER}, #{activityId,jdbcType=INTEGER}, #{activityNameSnapshot,jdbcType=VARCHAR},
       #{customerName,jdbcType=VARCHAR}, #{appellation,jdbcType=INTEGER}, #{phone,jdbcType=VARCHAR},
       #{weixin,jdbcType=VARCHAR}, #{qq,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR},
       #{age,jdbcType=INTEGER}, #{job,jdbcType=VARCHAR}, #{yearIncome,jdbcType=DECIMAL},
@@ -200,6 +204,7 @@
       <if test="clueId != null">clue_id,</if>
       <if test="ownerId != null">owner_id,</if>
       <if test="activityId != null">activity_id,</if>
+      <if test="activityNameSnapshot != null">activity_name_snapshot,</if>
       <if test="customerName != null">customer_name,</if>
       <if test="appellation != null">appellation,</if>
       <if test="phone != null">phone,</if>
@@ -231,6 +236,7 @@
       <if test="clueId != null">#{clueId,jdbcType=INTEGER},</if>
       <if test="ownerId != null">#{ownerId,jdbcType=INTEGER},</if>
       <if test="activityId != null">#{activityId,jdbcType=INTEGER},</if>
+      <if test="activityNameSnapshot != null">#{activityNameSnapshot,jdbcType=VARCHAR},</if>
       <if test="customerName != null">#{customerName,jdbcType=VARCHAR},</if>
       <if test="appellation != null">#{appellation,jdbcType=INTEGER},</if>
       <if test="phone != null">#{phone,jdbcType=VARCHAR},</if>
@@ -266,6 +272,7 @@
       <if test="clueId != null">clue_id = #{clueId,jdbcType=INTEGER},</if>
       <if test="ownerId != null">owner_id = #{ownerId,jdbcType=INTEGER},</if>
       <if test="activityId != null">activity_id = #{activityId,jdbcType=INTEGER},</if>
+      <if test="activityNameSnapshot != null">activity_name_snapshot = #{activityNameSnapshot,jdbcType=VARCHAR},</if>
       <if test="customerName != null">customer_name = #{customerName,jdbcType=VARCHAR},</if>
       <if test="appellation != null">appellation = #{appellation,jdbcType=INTEGER},</if>
       <if test="phone != null">phone = #{phone,jdbcType=VARCHAR},</if>
@@ -301,6 +308,7 @@
       clue_id = #{clueId,jdbcType=INTEGER},
       owner_id = #{ownerId,jdbcType=INTEGER},
       activity_id = #{activityId,jdbcType=INTEGER},
+      activity_name_snapshot = #{activityNameSnapshot,jdbcType=VARCHAR},
       customer_name = #{customerName,jdbcType=VARCHAR},
       appellation = #{appellation,jdbcType=INTEGER},
       phone = #{phone,jdbcType=VARCHAR},
@@ -464,4 +472,17 @@
       + (select count(1) from t_tran where customer_id = #{id,jdbcType=INTEGER})
       + (select count(1) from t_quote where customer_id = #{id,jdbcType=INTEGER})
   </select>
+
+  <update id="updateRecentFollowFact">
+    update t_customer
+    set last_follow_time = #{lastFollowTime,jdbcType=TIMESTAMP},
+        last_follow_summary = #{lastFollowSummary,jdbcType=VARCHAR},
+        next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
+        edit_time = CURRENT_TIMESTAMP,
+        edit_by = #{editBy,jdbcType=INTEGER}
+    where id = #{id,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
+  </update>
 </mapper>

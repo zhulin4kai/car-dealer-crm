@@ -88,6 +88,15 @@ class ClueServiceImplTest {
         lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
     }
 
+    @Test
+    void getClueByPage_oversizedPageSize_shouldReject() {
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> clueService.getClueByPage(1, 101));
+
+        assertEquals(CodeEnum.PARAM_ERROR, exception.getCodeEnum());
+        verify(tClueMapper, never()).selectClueByPage(any());
+    }
+
     // ==================== getClueById ====================
 
     @Test

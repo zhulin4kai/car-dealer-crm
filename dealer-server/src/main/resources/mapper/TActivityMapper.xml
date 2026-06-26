@@ -5,110 +5,129 @@
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
     <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="status" jdbcType="VARCHAR" property="status" />
+    <result column="channel" jdbcType="VARCHAR" property="channel" />
+    <result column="target_model" jdbcType="VARCHAR" property="targetModel" />
     <result column="start_time" jdbcType="TIMESTAMP" property="startTime" />
     <result column="end_time" jdbcType="TIMESTAMP" property="endTime" />
     <result column="cost" jdbcType="DECIMAL" property="cost" />
+    <result column="actual_cost" jdbcType="DECIMAL" property="actualCost" />
     <result column="description" jdbcType="VARCHAR" property="description" />
+    <result column="result_summary" jdbcType="VARCHAR" property="resultSummary" />
+    <result column="review_conclusion" jdbcType="VARCHAR" property="reviewConclusion" />
+    <result column="reviewed_by" jdbcType="INTEGER" property="reviewedBy" />
+    <result column="reviewed_time" jdbcType="TIMESTAMP" property="reviewedTime" />
+    <result column="closed_reason" jdbcType="VARCHAR" property="closedReason" />
+    <result column="canceled_reason" jdbcType="VARCHAR" property="canceledReason" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
     <result column="create_by" jdbcType="INTEGER" property="createBy" />
     <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
   </resultMap>
 
-  <resultMap id="ActivityResultMap" type="com.autodealer.crm.model.TActivity">
-    <id column="id" jdbcType="INTEGER" property="id" />
-    <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
-    <result column="name" jdbcType="VARCHAR" property="name" />
-    <result column="start_time" jdbcType="TIMESTAMP" property="startTime" />
-    <result column="end_time" jdbcType="TIMESTAMP" property="endTime" />
-    <result column="cost" jdbcType="DECIMAL" property="cost" />
-    <result column="description" jdbcType="VARCHAR" property="description" />
-    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
-    <result column="create_by" jdbcType="INTEGER" property="createBy" />
-    <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
-    <result column="edit_by" jdbcType="INTEGER" property="editBy" />
-    <!--一对一关联查询-->
+  <resultMap id="ActivityResultMap" type="com.autodealer.crm.model.TActivity" extends="BaseResultMap">
     <association property="ownerDO" javaType="com.autodealer.crm.model.TUser">
-      <id column="ownerId" jdbcType="INTEGER" property="id" />
+      <id column="ownerUserId" jdbcType="INTEGER" property="id" />
       <result column="ownerName" jdbcType="VARCHAR" property="name" />
     </association>
-    <!--一对一关联查询-->
     <association property="createByDO" javaType="com.autodealer.crm.model.TUser">
       <id column="createById" jdbcType="INTEGER" property="id" />
       <result column="createByName" jdbcType="VARCHAR" property="name" />
     </association>
-    <!--一对一关联查询-->
     <association property="editByDO" javaType="com.autodealer.crm.model.TUser">
       <id column="editById" jdbcType="INTEGER" property="id" />
       <result column="editByName" jdbcType="VARCHAR" property="name" />
     </association>
+    <association property="reviewedByDO" javaType="com.autodealer.crm.model.TUser">
+      <id column="reviewedById" jdbcType="INTEGER" property="id" />
+      <result column="reviewedByName" jdbcType="VARCHAR" property="name" />
+    </association>
   </resultMap>
 
   <sql id="Base_Column_List">
-    id, owner_id, `name`, start_time, end_time, cost, description, create_time, create_by, 
-    edit_time, edit_by
+    id, owner_id, `name`, status, channel, target_model, start_time, end_time,
+    cost, actual_cost, description, result_summary, review_conclusion,
+    reviewed_by, reviewed_time, closed_reason, canceled_reason,
+    create_time, create_by, edit_time, edit_by
+  </sql>
+
+  <sql id="Activity_Select_List">
+    ta.*,
+    tu1.id ownerUserId, tu1.name ownerName,
+    tu2.id createById, tu2.name createByName,
+    tu3.id editById, tu3.name editByName,
+    tu4.id reviewedById, tu4.name reviewedByName
+  </sql>
+
+  <sql id="Activity_Joins">
+    left join t_user tu1 on ta.owner_id = tu1.id
+    left join t_user tu2 on ta.create_by = tu2.id
+    left join t_user tu3 on ta.edit_by = tu3.id
+    left join t_user tu4 on ta.reviewed_by = tu4.id
+  </sql>
+
+  <sql id="Activity_Filter">
+    <where>
+      <if test="ownerId != null">
+        and ta.owner_id = #{ownerId}
+      </if>
+      <if test="name != null and name != ''">
+        and ta.name like concat('%', #{name}, '%')
+      </if>
+      <if test="status != null and status != ''">
+        and ta.status = #{status}
+      </if>
+      <if test="channel != null and channel != ''">
+        and ta.channel = #{channel}
+      </if>
+      <if test="startTime != null">
+        and ta.start_time <![CDATA[>=]]> #{startTime}
+      </if>
+      <if test="endTime != null">
+        and ta.end_time <![CDATA[<=]]> #{endTime}
+      </if>
+      <if test="cost != null">
+        and coalesce(ta.actual_cost, ta.cost, 0) <![CDATA[>=]]> #{cost}
+      </if>
+      <if test="createTime != null">
+        and ta.create_time <![CDATA[>=]]> #{createTime}
+      </if>
+      <if test="dataScopeUserId != null">
+        and ta.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      </if>
+    </where>
   </sql>
 
   <select id="selectActivityByPage" resultMap="ActivityResultMap">
-    select
-        ta.*,
-        tu.id ownerId, tu.name ownerName
-    from t_activity ta  left join t_user tu on ta.owner_id = tu.id
-    <where>
-      <if test="ownerId  != null">
-        and ta.owner_id = #{ownerId}
-      </if>
-      <if test="name  != null">
-        and ta.name like concat ('%', #{name}, '%')
-      </if>
-      <if test="startTime  != null">
-        and ta.start_time >= #{startTime}
-      </if>
-      <if test="endTime  != null">
-        <![CDATA[  and ta.end_time <= #{endTime}  ]]>
-      </if>
-      <if test="cost  != null">
-        and ta.cost >= #{cost}
-      </if>
-      <if test="createTime  != null">
-        and ta.create_time >= #{createTime}
-      </if>
-      <if test="dataScopeUserId != null">
-        and ta.owner_id = #{dataScopeUserId, jdbcType=INTEGER}
-      </if>
-    </where>
+    select <include refid="Activity_Select_List" />
+    from t_activity ta
+    <include refid="Activity_Joins" />
+    <include refid="Activity_Filter" />
     order by ta.start_time desc, ta.id desc
   </select>
 
-  <select id="selectDetailByPrimaryKey" parameterType="java.lang.Integer" resultMap="ActivityResultMap">
-    select
-        ta.*,
-        tu1.id ownerId, tu1.name ownerName,
-        tu2.id createById, tu2.name createByName,
-        tu3.id editById, tu3.name editByName
-    from t_activity ta left join t_user tu1 on ta.owner_id = tu1.id
-                       left join t_user tu2 on ta.create_by = tu2.id
-                       left join t_user tu3 on ta.edit_by = tu3.id
-    where ta.id = #{id, jdbcType=INTEGER}
+  <select id="selectDetailByPrimaryKey" resultMap="ActivityResultMap">
+    select <include refid="Activity_Select_List" />
+    from t_activity ta
+    <include refid="Activity_Joins" />
+    where ta.id = #{id,jdbcType=INTEGER}
     <if test="dataScopeUserId != null">
       and ta.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
     </if>
   </select>
 
   <select id="selecOngoingActivity" resultMap="BaseResultMap">
-    select
-    <include refid="Base_Column_List" />
+    select <include refid="Base_Column_List" />
     from t_activity
-    where  <![CDATA[  start_time <= now() and end_time >= now() ]]>
+    where status = 'ONGOING'
     <if test="dataScopeUserId != null">
       and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
     </if>
+    order by start_time desc, id desc
   </select>
 
-
   <select id="selectByCount" resultType="java.lang.Integer">
-    select
-        count(0)
+    select count(0)
     from t_activity
     <where>
       <if test="dataScopeUserId != null">
@@ -117,9 +136,119 @@
     </where>
   </select>
 
+  <select id="countBusinessReferences" resultType="java.lang.Integer">
+    select
+      (select count(1) from t_activity_remark where activity_id = #{id,jdbcType=INTEGER})
+      + (select count(1) from t_clue where activity_id = #{id,jdbcType=INTEGER})
+      + (select count(1) from t_customer where activity_id = #{id,jdbcType=INTEGER})
+      + (select count(1) from t_opportunity o
+         left join t_customer c on o.customer_id = c.id
+         where c.activity_id = #{id,jdbcType=INTEGER}
+            or o.clue_id in (select id from t_clue where activity_id = #{id,jdbcType=INTEGER}))
+      + (select count(1) from t_test_drive td
+         left join t_customer c on td.customer_id = c.id
+         where c.activity_id = #{id,jdbcType=INTEGER})
+      + (select count(1) from t_quote q
+         left join t_customer c on q.customer_id = c.id
+         where c.activity_id = #{id,jdbcType=INTEGER})
+      + (select count(1) from t_tran t
+         left join t_customer c on t.customer_id = c.id
+         where c.activity_id = #{id,jdbcType=INTEGER})
+  </select>
+
+  <select id="selectActivityRoi" resultType="com.autodealer.crm.dto.ActivityRoiResponse">
+    select
+      ta.id as activityId,
+      ta.name as activityName,
+      ta.status as status,
+      ta.cost as plannedCost,
+      ta.actual_cost as actualCost,
+      (select count(1) from t_clue c where c.activity_id = ta.id) as clueCount,
+      (select count(1) from t_clue c where c.activity_id = ta.id and c.phone is not null and c.phone != '') as validClueCount,
+      (select count(1) from t_customer c where c.activity_id = ta.id and (c.customer_status is null or c.customer_status != 'MERGED')) as customerCount,
+      (select count(distinct o.id) from t_opportunity o
+         left join t_customer c on o.customer_id = c.id
+         where c.activity_id = ta.id
+            or o.clue_id in (select id from t_clue where activity_id = ta.id)) as opportunityCount,
+      (select count(distinct td.id) from t_test_drive td
+         left join t_customer c on td.customer_id = c.id
+         where c.activity_id = ta.id) as testDriveCount,
+      (select count(distinct q.id) from t_quote q
+         left join t_customer c on q.customer_id = c.id
+         where c.activity_id = ta.id) as quoteCount,
+      (select count(distinct t.id) from t_tran t
+         left join t_customer c on t.customer_id = c.id
+         where c.activity_id = ta.id and t.stage not in ('CANCELLED', 'LOST', 'CLOSED')) as orderCount,
+      coalesce((select sum(t.money) from t_tran t
+         left join t_customer c on t.customer_id = c.id
+         where c.activity_id = ta.id and t.stage = 'COMPLETED'), 0) as dealAmount,
+      case
+        when coalesce(ta.actual_cost, ta.cost, 0) = 0 then null
+        else round((coalesce((select sum(t.money) from t_tran t
+             left join t_customer c on t.customer_id = c.id
+             where c.activity_id = ta.id and t.stage = 'COMPLETED'), 0)
+             - coalesce(ta.actual_cost, ta.cost, 0)) / coalesce(ta.actual_cost, ta.cost, 0), 4)
+      end as roi
+    from t_activity ta
+    where ta.id = #{id,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      and ta.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
+  </select>
+
+  <select id="selectActivityExportRows" resultType="com.autodealer.crm.result.ActivityExportRow">
+    select
+      ta.id as activityId,
+      ta.name as activityName,
+      case ta.status
+        when 'DRAFT' then '草稿'
+        when 'PLANNED' then '待开始'
+        when 'ONGOING' then '进行中'
+        when 'ENDED' then '已结束'
+        when 'REVIEWED' then '已复盘'
+        when 'CLOSED' then '已关闭'
+        when 'CANCELED' then '已取消'
+        else ta.status
+      end as statusName,
+      tu.name as ownerName,
+      ta.channel as channel,
+      ta.target_model as targetModel,
+      ta.cost as plannedCost,
+      ta.actual_cost as actualCost,
+      (select count(1) from t_clue c where c.activity_id = ta.id) as clueCount,
+      (select count(1) from t_customer c where c.activity_id = ta.id and (c.customer_status is null or c.customer_status != 'MERGED')) as customerCount,
+      (select count(distinct o.id) from t_opportunity o
+         left join t_customer c on o.customer_id = c.id
+         where c.activity_id = ta.id
+            or o.clue_id in (select id from t_clue where activity_id = ta.id)) as opportunityCount,
+      (select count(distinct td.id) from t_test_drive td
+         left join t_customer c on td.customer_id = c.id
+         where c.activity_id = ta.id) as testDriveCount,
+      (select count(distinct q.id) from t_quote q
+         left join t_customer c on q.customer_id = c.id
+         where c.activity_id = ta.id) as quoteCount,
+      (select count(distinct t.id) from t_tran t
+         left join t_customer c on t.customer_id = c.id
+         where c.activity_id = ta.id and t.stage not in ('CANCELLED', 'LOST', 'CLOSED')) as orderCount,
+      coalesce((select sum(t.money) from t_tran t
+         left join t_customer c on t.customer_id = c.id
+         where c.activity_id = ta.id and t.stage = 'COMPLETED'), 0) as dealAmount,
+      case
+        when coalesce(ta.actual_cost, ta.cost, 0) = 0 then null
+        else round((coalesce((select sum(t.money) from t_tran t
+             left join t_customer c on t.customer_id = c.id
+             where c.activity_id = ta.id and t.stage = 'COMPLETED'), 0)
+             - coalesce(ta.actual_cost, ta.cost, 0)) / coalesce(ta.actual_cost, ta.cost, 0), 4)
+      end as roi,
+      ta.result_summary as resultSummary
+    from t_activity ta
+    left join t_user tu on ta.owner_id = tu.id
+    <include refid="Activity_Filter" />
+    order by ta.start_time desc, ta.id desc
+  </select>
+
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-    select 
-    <include refid="Base_Column_List" />
+    select <include refid="Base_Column_List" />
     from t_activity
     where id = #{id,jdbcType=INTEGER}
   </select>
@@ -130,131 +259,157 @@
   </delete>
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TActivity" useGeneratedKeys="true">
-    insert into t_activity (owner_id, `name`, start_time, 
-      end_time, cost, description, 
-      create_time, create_by, edit_time, 
-      edit_by)
-    values (#{ownerId,jdbcType=INTEGER}, #{name,jdbcType=VARCHAR}, #{startTime,jdbcType=TIMESTAMP}, 
-      #{endTime,jdbcType=TIMESTAMP}, #{cost,jdbcType=DECIMAL}, #{description,jdbcType=VARCHAR}, 
-      #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, #{editTime,jdbcType=TIMESTAMP}, 
-      #{editBy,jdbcType=INTEGER})
+    insert into t_activity (
+      owner_id, `name`, status, channel, target_model, start_time, end_time, cost,
+      actual_cost, description, result_summary, review_conclusion, reviewed_by,
+      reviewed_time, closed_reason, canceled_reason, create_time, create_by,
+      edit_time, edit_by
+    ) values (
+      #{ownerId,jdbcType=INTEGER}, #{name,jdbcType=VARCHAR}, #{status,jdbcType=VARCHAR},
+      #{channel,jdbcType=VARCHAR}, #{targetModel,jdbcType=VARCHAR},
+      #{startTime,jdbcType=TIMESTAMP}, #{endTime,jdbcType=TIMESTAMP}, #{cost,jdbcType=DECIMAL},
+      #{actualCost,jdbcType=DECIMAL}, #{description,jdbcType=VARCHAR},
+      #{resultSummary,jdbcType=VARCHAR}, #{reviewConclusion,jdbcType=VARCHAR},
+      #{reviewedBy,jdbcType=INTEGER}, #{reviewedTime,jdbcType=TIMESTAMP},
+      #{closedReason,jdbcType=VARCHAR}, #{canceledReason,jdbcType=VARCHAR},
+      #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER},
+      #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER}
+    )
   </insert>
+
   <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TActivity" useGeneratedKeys="true">
     insert into t_activity
     <trim prefix="(" suffix=")" suffixOverrides=",">
-      <if test="ownerId != null">
-        owner_id,
-      </if>
-      <if test="name != null">
-        `name`,
-      </if>
-      <if test="startTime != null">
-        start_time,
-      </if>
-      <if test="endTime != null">
-        end_time,
-      </if>
-      <if test="cost != null">
-        cost,
-      </if>
-      <if test="description != null">
-        description,
-      </if>
-      <if test="createTime != null">
-        create_time,
-      </if>
-      <if test="createBy != null">
-        create_by,
-      </if>
-      <if test="editTime != null">
-        edit_time,
-      </if>
-      <if test="editBy != null">
-        edit_by,
-      </if>
+      <if test="ownerId != null">owner_id,</if>
+      <if test="name != null">`name`,</if>
+      <if test="status != null">status,</if>
+      <if test="channel != null">channel,</if>
+      <if test="targetModel != null">target_model,</if>
+      <if test="startTime != null">start_time,</if>
+      <if test="endTime != null">end_time,</if>
+      <if test="cost != null">cost,</if>
+      <if test="actualCost != null">actual_cost,</if>
+      <if test="description != null">description,</if>
+      <if test="resultSummary != null">result_summary,</if>
+      <if test="reviewConclusion != null">review_conclusion,</if>
+      <if test="reviewedBy != null">reviewed_by,</if>
+      <if test="reviewedTime != null">reviewed_time,</if>
+      <if test="closedReason != null">closed_reason,</if>
+      <if test="canceledReason != null">canceled_reason,</if>
+      <if test="createTime != null">create_time,</if>
+      <if test="createBy != null">create_by,</if>
+      <if test="editTime != null">edit_time,</if>
+      <if test="editBy != null">edit_by,</if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
-      <if test="ownerId != null">
-        #{ownerId,jdbcType=INTEGER},
-      </if>
-      <if test="name != null">
-        #{name,jdbcType=VARCHAR},
-      </if>
-      <if test="startTime != null">
-        #{startTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="endTime != null">
-        #{endTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="cost != null">
-        #{cost,jdbcType=DECIMAL},
-      </if>
-      <if test="description != null">
-        #{description,jdbcType=VARCHAR},
-      </if>
-      <if test="createTime != null">
-        #{createTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="createBy != null">
-        #{createBy,jdbcType=INTEGER},
-      </if>
-      <if test="editTime != null">
-        #{editTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="editBy != null">
-        #{editBy,jdbcType=INTEGER},
-      </if>
+      <if test="ownerId != null">#{ownerId,jdbcType=INTEGER},</if>
+      <if test="name != null">#{name,jdbcType=VARCHAR},</if>
+      <if test="status != null">#{status,jdbcType=VARCHAR},</if>
+      <if test="channel != null">#{channel,jdbcType=VARCHAR},</if>
+      <if test="targetModel != null">#{targetModel,jdbcType=VARCHAR},</if>
+      <if test="startTime != null">#{startTime,jdbcType=TIMESTAMP},</if>
+      <if test="endTime != null">#{endTime,jdbcType=TIMESTAMP},</if>
+      <if test="cost != null">#{cost,jdbcType=DECIMAL},</if>
+      <if test="actualCost != null">#{actualCost,jdbcType=DECIMAL},</if>
+      <if test="description != null">#{description,jdbcType=VARCHAR},</if>
+      <if test="resultSummary != null">#{resultSummary,jdbcType=VARCHAR},</if>
+      <if test="reviewConclusion != null">#{reviewConclusion,jdbcType=VARCHAR},</if>
+      <if test="reviewedBy != null">#{reviewedBy,jdbcType=INTEGER},</if>
+      <if test="reviewedTime != null">#{reviewedTime,jdbcType=TIMESTAMP},</if>
+      <if test="closedReason != null">#{closedReason,jdbcType=VARCHAR},</if>
+      <if test="canceledReason != null">#{canceledReason,jdbcType=VARCHAR},</if>
+      <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+      <if test="createBy != null">#{createBy,jdbcType=INTEGER},</if>
+      <if test="editTime != null">#{editTime,jdbcType=TIMESTAMP},</if>
+      <if test="editBy != null">#{editBy,jdbcType=INTEGER},</if>
     </trim>
   </insert>
+
   <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TActivity">
     update t_activity
     <set>
-      <if test="ownerId != null">
-        owner_id = #{ownerId,jdbcType=INTEGER},
-      </if>
-      <if test="name != null">
-        `name` = #{name,jdbcType=VARCHAR},
-      </if>
-      <if test="startTime != null">
-        start_time = #{startTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="endTime != null">
-        end_time = #{endTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="cost != null">
-        cost = #{cost,jdbcType=DECIMAL},
-      </if>
-      <if test="description != null">
-        description = #{description,jdbcType=VARCHAR},
-      </if>
-      <if test="createTime != null">
-        create_time = #{createTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="createBy != null">
-        create_by = #{createBy,jdbcType=INTEGER},
-      </if>
-      <if test="editTime != null">
-        edit_time = #{editTime,jdbcType=TIMESTAMP},
-      </if>
-      <if test="editBy != null">
-        edit_by = #{editBy,jdbcType=INTEGER},
-      </if>
+      <if test="ownerId != null">owner_id = #{ownerId,jdbcType=INTEGER},</if>
+      <if test="name != null">`name` = #{name,jdbcType=VARCHAR},</if>
+      <if test="status != null">status = #{status,jdbcType=VARCHAR},</if>
+      <if test="channel != null">channel = #{channel,jdbcType=VARCHAR},</if>
+      <if test="targetModel != null">target_model = #{targetModel,jdbcType=VARCHAR},</if>
+      <if test="startTime != null">start_time = #{startTime,jdbcType=TIMESTAMP},</if>
+      <if test="endTime != null">end_time = #{endTime,jdbcType=TIMESTAMP},</if>
+      <if test="cost != null">cost = #{cost,jdbcType=DECIMAL},</if>
+      <if test="actualCost != null">actual_cost = #{actualCost,jdbcType=DECIMAL},</if>
+      <if test="description != null">description = #{description,jdbcType=VARCHAR},</if>
+      <if test="resultSummary != null">result_summary = #{resultSummary,jdbcType=VARCHAR},</if>
+      <if test="reviewConclusion != null">review_conclusion = #{reviewConclusion,jdbcType=VARCHAR},</if>
+      <if test="reviewedBy != null">reviewed_by = #{reviewedBy,jdbcType=INTEGER},</if>
+      <if test="reviewedTime != null">reviewed_time = #{reviewedTime,jdbcType=TIMESTAMP},</if>
+      <if test="closedReason != null">closed_reason = #{closedReason,jdbcType=VARCHAR},</if>
+      <if test="canceledReason != null">canceled_reason = #{canceledReason,jdbcType=VARCHAR},</if>
+      <if test="createTime != null">create_time = #{createTime,jdbcType=TIMESTAMP},</if>
+      <if test="createBy != null">create_by = #{createBy,jdbcType=INTEGER},</if>
+      <if test="editTime != null">edit_time = #{editTime,jdbcType=TIMESTAMP},</if>
+      <if test="editBy != null">edit_by = #{editBy,jdbcType=INTEGER},</if>
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
+
   <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TActivity">
     update t_activity
     set owner_id = #{ownerId,jdbcType=INTEGER},
       `name` = #{name,jdbcType=VARCHAR},
+      status = #{status,jdbcType=VARCHAR},
+      channel = #{channel,jdbcType=VARCHAR},
+      target_model = #{targetModel,jdbcType=VARCHAR},
       start_time = #{startTime,jdbcType=TIMESTAMP},
       end_time = #{endTime,jdbcType=TIMESTAMP},
       cost = #{cost,jdbcType=DECIMAL},
+      actual_cost = #{actualCost,jdbcType=DECIMAL},
       description = #{description,jdbcType=VARCHAR},
+      result_summary = #{resultSummary,jdbcType=VARCHAR},
+      review_conclusion = #{reviewConclusion,jdbcType=VARCHAR},
+      reviewed_by = #{reviewedBy,jdbcType=INTEGER},
+      reviewed_time = #{reviewedTime,jdbcType=TIMESTAMP},
+      closed_reason = #{closedReason,jdbcType=VARCHAR},
+      canceled_reason = #{canceledReason,jdbcType=VARCHAR},
       create_time = #{createTime,jdbcType=TIMESTAMP},
       create_by = #{createBy,jdbcType=INTEGER},
       edit_time = #{editTime,jdbcType=TIMESTAMP},
       edit_by = #{editBy,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
+  </update>
+
+  <update id="updateStatusAtomic">
+    update t_activity
+    set status = #{toStatus,jdbcType=VARCHAR},
+        edit_time = CURRENT_TIMESTAMP,
+        edit_by = #{operatorId,jdbcType=INTEGER}
+        <if test="toStatus == 'CLOSED'">
+          , closed_reason = #{reason,jdbcType=VARCHAR}
+        </if>
+        <if test="toStatus == 'CANCELED'">
+          , canceled_reason = #{reason,jdbcType=VARCHAR}
+        </if>
+    where id = #{id,jdbcType=INTEGER}
+      and status = #{fromStatus,jdbcType=VARCHAR}
+    <if test="dataScopeUserId != null">
+      and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
+  </update>
+
+  <update id="reviewAtomic">
+    update t_activity
+    set status = 'REVIEWED',
+        actual_cost = #{record.actualCost,jdbcType=DECIMAL},
+        result_summary = #{record.resultSummary,jdbcType=VARCHAR},
+        review_conclusion = #{record.reviewConclusion,jdbcType=VARCHAR},
+        reviewed_by = #{record.reviewedBy,jdbcType=INTEGER},
+        reviewed_time = #{record.reviewedTime,jdbcType=TIMESTAMP},
+        edit_time = #{record.editTime,jdbcType=TIMESTAMP},
+        edit_by = #{record.editBy,jdbcType=INTEGER}
+    where id = #{id,jdbcType=INTEGER}
+      and status = #{fromStatus,jdbcType=VARCHAR}
+    <if test="dataScopeUserId != null">
+      and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </update>
 
   <delete id="batchDeleteByIds">

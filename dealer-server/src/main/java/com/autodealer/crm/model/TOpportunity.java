@@ -23,6 +23,8 @@ public class TOpportunity {
     private BigDecimal expectedAmount;
     private LocalDate expectedCloseDate;
     private LocalDate nextActionTime;
+    private LocalDateTime lastFollowTime;
+    private String lastFollowSummary;
     private String lostReason;
     private String lostCompetitor;
     private String resultRemark;

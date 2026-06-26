@@ -34,6 +34,11 @@ public class TCustomer implements Serializable {
     private Integer activityId;
 
     /**
+     * 来源活动名称快照
+     */
+    private String activityNameSnapshot;
+
+    /**
      * 客户姓名或组织名称
      */
     private String customerName;
@@ -142,6 +147,16 @@ public class TCustomer implements Serializable {
      * 下次联系时间
      */
     private Date nextContactTime;
+
+    /**
+     * 最近跟进时间
+     */
+    private Date lastFollowTime;
+
+    /**
+     * 最近跟进摘要
+     */
+    private String lastFollowSummary;
 
     /**
      * 创建时间

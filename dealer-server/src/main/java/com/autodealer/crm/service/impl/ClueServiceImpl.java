@@ -46,6 +46,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.result.CodeEnum;
+import com.autodealer.crm.enums.ActivityStatus;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -108,9 +109,8 @@ public class ClueServiceImpl implements ClueService {
         if (pageSize == null || pageSize < 1) {
             pageSize = Constants.PAGE_SIZE;
         }
-        // 限制pageSize范围
         if (pageSize > 100) {
-            pageSize = 100;
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "分页大小不能超过100");
         }
 
         // 1.设置PageHelper
@@ -281,6 +281,7 @@ public class ClueServiceImpl implements ClueService {
             //Spring框架有个工具类BeanUtils可以进行对象的复制,复制的条件要求是：两个对象的字段名要相同，字段的类型也相同，这样才可以复制
             BeanUtils.copyProperties(clueQuery, tClue);
             tClue.setPhone(normalizedPhone);
+            tClue.setActivityNameSnapshot(resolveActivitySnapshot(tClue.getActivityId()));
 
             Integer operatorId = currentUserProvider.getCurrentUserId();
             tClue.setOwnerId(operatorId);
@@ -320,6 +321,9 @@ public class ClueServiceImpl implements ClueService {
         //Spring框架有个工具类BeanUtils可以进行对象的复制,复制的条件要求是：两个对象的字段名要相同，字段的类型也相同，这样才可以复制
         BeanUtils.copyProperties(clueQuery, tClue);
         tClue.setOwnerId(originalClue.getOwnerId());
+        if (tClue.getActivityId() != null) {
+            tClue.setActivityNameSnapshot(resolveActivitySnapshot(tClue.getActivityId()));
+        }
 
         // 如果传入的手机号与原记录不同，忽略手机号字段
         String normalizedPhone = PhoneNormalizer.normalizeMainlandMobile(clueQuery.getPhone());
@@ -475,6 +479,22 @@ public class ClueServiceImpl implements ClueService {
             throw new BusinessException(CodeEnum.NOT_FOUND, "目标负责人不存在或不可用");
         }
         return ownerId;
+    }
+
+    private String resolveActivitySnapshot(Integer activityId) {
+        if (activityId == null) {
+            return null;
+        }
+        TActivity activity = tActivityMapper.selectDetailByPrimaryKey(
+                activityId, currentUserProvider.getDataScopeUserId());
+        if (activity == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "来源活动不存在或无权访问");
+        }
+        ActivityStatus status = ActivityStatus.parse(activity.getStatus());
+        if (status == ActivityStatus.DRAFT || status.terminal()) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "只有待开始或进行中的活动可以作为线索来源");
+        }
+        return activity.getName();
     }
 
     private void writeOwnerHistory(Integer clueId, Integer fromOwnerId, Integer toOwnerId,

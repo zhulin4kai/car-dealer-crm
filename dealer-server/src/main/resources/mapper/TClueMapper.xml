@@ -5,6 +5,7 @@
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
     <result column="activity_id" jdbcType="INTEGER" property="activityId" />
+    <result column="activity_name_snapshot" jdbcType="VARCHAR" property="activityNameSnapshot" />
     <result column="full_name" jdbcType="VARCHAR" property="fullName" />
     <result column="appellation" jdbcType="INTEGER" property="appellation" />
     <result column="phone" jdbcType="VARCHAR" property="phone" />
@@ -22,6 +23,8 @@
     <result column="source" jdbcType="INTEGER" property="source" />
     <result column="description" jdbcType="VARCHAR" property="description" />
     <result column="next_contact_time" jdbcType="TIMESTAMP" property="nextContactTime" />
+    <result column="last_follow_time" jdbcType="TIMESTAMP" property="lastFollowTime" />
+    <result column="last_follow_summary" jdbcType="VARCHAR" property="lastFollowSummary" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
     <result column="create_by" jdbcType="INTEGER" property="createBy" />
     <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
@@ -32,6 +35,7 @@
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
     <result column="activity_id" jdbcType="INTEGER" property="activityId" />
+    <result column="activity_name_snapshot" jdbcType="VARCHAR" property="activityNameSnapshot" />
     <result column="full_name" jdbcType="VARCHAR" property="fullName" />
     <result column="appellation" jdbcType="INTEGER" property="appellation" />
     <result column="phone" jdbcType="VARCHAR" property="phone" />
@@ -102,9 +106,10 @@
   </resultMap>
 
   <sql id="Base_Column_List">
-    id, owner_id, activity_id, full_name, appellation, phone, weixin, qq, email, age,
+    id, owner_id, activity_id, activity_name_snapshot, full_name, appellation, phone, weixin, qq, email, age,
     job, year_income, address, need_loan, intention_state, intention_product, `state`,
-    `source`, description, next_contact_time, create_time, create_by, edit_time, edit_by
+    `source`, description, next_contact_time, last_follow_time, last_follow_summary,
+    create_time, create_by, edit_time, edit_by
   </sql>
 
   <select id="selectClueByPage" parameterType="com.autodealer.crm.query.BaseQuery" resultMap="ClueResultMap">
@@ -231,7 +236,7 @@
 
   <!--批量保存-->
   <insert id="saveClue" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TClue" useGeneratedKeys="true">
-    insert into t_clue (owner_id, activity_id, full_name,
+    insert into t_clue (owner_id, activity_id, activity_name_snapshot, full_name,
                         appellation, phone, weixin,
                         qq, email, age, job,
                         year_income, address, need_loan,
@@ -241,7 +246,7 @@
                         edit_by)
     values
         <foreach collection="tClueList" item="tClue"  separator="," >
-          (#{tClue.ownerId,jdbcType=INTEGER}, #{tClue.activityId,jdbcType=INTEGER}, #{tClue.fullName,jdbcType=VARCHAR},
+          (#{tClue.ownerId,jdbcType=INTEGER}, #{tClue.activityId,jdbcType=INTEGER}, #{tClue.activityNameSnapshot,jdbcType=VARCHAR}, #{tClue.fullName,jdbcType=VARCHAR},
           #{tClue.appellation,jdbcType=INTEGER}, #{tClue.phone,jdbcType=VARCHAR}, #{tClue.weixin,jdbcType=VARCHAR},
           #{tClue.qq,jdbcType=VARCHAR}, #{tClue.email,jdbcType=VARCHAR}, #{tClue.age,jdbcType=INTEGER}, #{tClue.job,jdbcType=VARCHAR},
           #{tClue.yearIncome,jdbcType=DECIMAL}, #{tClue.address,jdbcType=VARCHAR}, #{tClue.needLoan,jdbcType=INTEGER},
@@ -253,7 +258,7 @@
   </insert>
 
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TClue" useGeneratedKeys="true">
-    insert into t_clue (owner_id, activity_id, full_name,
+    insert into t_clue (owner_id, activity_id, activity_name_snapshot, full_name,
       appellation, phone, weixin,
       qq, email, age, job,
       year_income, address, need_loan,
@@ -261,7 +266,7 @@
       `source`, description, next_contact_time,
       create_time, create_by, edit_time,
       edit_by)
-    values (#{ownerId,jdbcType=INTEGER}, #{activityId,jdbcType=INTEGER}, #{fullName,jdbcType=VARCHAR},
+    values (#{ownerId,jdbcType=INTEGER}, #{activityId,jdbcType=INTEGER}, #{activityNameSnapshot,jdbcType=VARCHAR}, #{fullName,jdbcType=VARCHAR},
       #{appellation,jdbcType=INTEGER}, #{phone,jdbcType=VARCHAR}, #{weixin,jdbcType=VARCHAR},
       #{qq,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR}, #{age,jdbcType=INTEGER}, #{job,jdbcType=VARCHAR},
       #{yearIncome,jdbcType=DECIMAL}, #{address,jdbcType=VARCHAR}, #{needLoan,jdbcType=INTEGER},
@@ -279,6 +284,9 @@
       </if>
       <if test="activityId != null">
         activity_id,
+      </if>
+      <if test="activityNameSnapshot != null">
+        activity_name_snapshot,
       </if>
       <if test="fullName != null">
         full_name,
@@ -350,6 +358,9 @@
       </if>
       <if test="activityId != null">
         #{activityId,jdbcType=INTEGER},
+      </if>
+      <if test="activityNameSnapshot != null">
+        #{activityNameSnapshot,jdbcType=VARCHAR},
       </if>
       <if test="fullName != null">
         #{fullName,jdbcType=VARCHAR},
@@ -425,6 +436,9 @@
       <if test="activityId != null">
         activity_id = #{activityId,jdbcType=INTEGER},
       </if>
+      <if test="activityNameSnapshot != null">
+        activity_name_snapshot = #{activityNameSnapshot,jdbcType=VARCHAR},
+      </if>
       <if test="fullName != null">
         full_name = #{fullName,jdbcType=VARCHAR},
       </if>
@@ -498,6 +512,7 @@
     update t_clue
     set owner_id = #{ownerId,jdbcType=INTEGER},
       activity_id = #{activityId,jdbcType=INTEGER},
+      activity_name_snapshot = #{activityNameSnapshot,jdbcType=VARCHAR},
       full_name = #{fullName,jdbcType=VARCHAR},
       appellation = #{appellation,jdbcType=INTEGER},
       phone = #{phone,jdbcType=VARCHAR},
@@ -602,4 +617,17 @@
     FROM t_clue
     WHERE intention_product = #{productId,jdbcType=BIGINT}
   </select>
+
+  <update id="updateRecentFollowFact">
+    update t_clue
+    set last_follow_time = #{lastFollowTime,jdbcType=TIMESTAMP},
+        last_follow_summary = #{lastFollowSummary,jdbcType=VARCHAR},
+        next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
+        edit_time = CURRENT_TIMESTAMP,
+        edit_by = #{editBy,jdbcType=INTEGER}
+    where id = #{id,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
+  </update>
 </mapper>

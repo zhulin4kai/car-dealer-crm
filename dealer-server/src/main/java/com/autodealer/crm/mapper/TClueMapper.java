@@ -6,6 +6,7 @@ import com.autodealer.crm.query.BaseQuery;
 import com.autodealer.crm.result.NameValue;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TClueMapper {
@@ -73,4 +74,11 @@ public interface TClueMapper {
     List<String> selectExistingPhones(@Param("phones") List<String> phones);
 
     int countByIntentionProductId(@Param("productId") Long productId);
+
+    int updateRecentFollowFact(@Param("id") Integer id,
+                               @Param("lastFollowTime") LocalDateTime lastFollowTime,
+                               @Param("lastFollowSummary") String lastFollowSummary,
+                               @Param("nextContactTime") LocalDateTime nextContactTime,
+                               @Param("editBy") Integer editBy,
+                               @Param("dataScopeUserId") Integer dataScopeUserId);
 }

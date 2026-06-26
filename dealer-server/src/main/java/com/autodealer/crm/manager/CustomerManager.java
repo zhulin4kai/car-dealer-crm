@@ -59,6 +59,7 @@ public class CustomerManager {
         tCustomer.setClueId(request.getClueId());
         tCustomer.setOwnerId(clue.getOwnerId());
         tCustomer.setActivityId(clue.getActivityId());
+        tCustomer.setActivityNameSnapshot(clue.getActivityNameSnapshot());
         tCustomer.setCustomerName(clue.getFullName());
         tCustomer.setAppellation(clue.getAppellation());
         tCustomer.setPhone(normalizedPhone);

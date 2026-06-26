@@ -2,7 +2,6 @@ package com.autodealer.crm.query;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -106,11 +105,5 @@ public class ClueQuery extends BaseQuery {
      */
     private String description;
 
-    /**
-     * 下次联系时间
-     *
-     * 前端提交过来了一个string的日期，后端使用Date接收，那么需要加个注解转换一下
-     */
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date nextContactTime;
 }

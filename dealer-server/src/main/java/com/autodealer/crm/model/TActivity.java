@@ -28,6 +28,21 @@ public class TActivity implements Serializable {
     private String name;
 
     /**
+     * 活动状态稳定编码
+     */
+    private String status;
+
+    /**
+     * 活动渠道
+     */
+    private String channel;
+
+    /**
+     * 目标车型
+     */
+    private String targetModel;
+
+    /**
      * 活动开始时间
      */
     private Date startTime;
@@ -43,9 +58,44 @@ public class TActivity implements Serializable {
     private BigDecimal cost;
 
     /**
+     * 活动实际成本
+     */
+    private BigDecimal actualCost;
+
+    /**
      * 活动描述
      */
     private String description;
+
+    /**
+     * 复盘结果摘要
+     */
+    private String resultSummary;
+
+    /**
+     * 复盘结论
+     */
+    private String reviewConclusion;
+
+    /**
+     * 复盘人
+     */
+    private Integer reviewedBy;
+
+    /**
+     * 复盘时间
+     */
+    private Date reviewedTime;
+
+    /**
+     * 关闭原因
+     */
+    private String closedReason;
+
+    /**
+     * 取消原因
+     */
+    private String canceledReason;
 
     /**
      * 活动创建时间
@@ -73,6 +123,7 @@ public class TActivity implements Serializable {
     private TUser ownerDO;
     private TUser createByDO;
     private TUser editByDO;
+    private TUser reviewedByDO;
 
     private static final long serialVersionUID = 1L;
 }

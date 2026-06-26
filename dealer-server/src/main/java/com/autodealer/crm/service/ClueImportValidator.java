@@ -202,6 +202,7 @@ public class ClueImportValidator {
 
         clue.setOwnerId(context.findOwnerId(raw.getOwnerName()));
         clue.setActivityId(safeFindId(raw.getActivityName(), context::findActivityId));
+        clue.setActivityNameSnapshot(context.findActivityNameSnapshot(raw.getActivityName()));
         clue.setFullName(trimOrNull(raw.getFullName()));
         clue.setAppellation(safeFindDicId(DicEnum.APPELLATION.getCode(), raw.getAppellation(), context));
         clue.setPhone(PhoneNormalizer.normalizeMainlandMobile(raw.getPhone()));
