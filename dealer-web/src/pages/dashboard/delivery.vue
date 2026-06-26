@@ -186,7 +186,13 @@
           </Table>
         </div>
         <DialogFooter>
-          <Button v-if="selectedDelivery" v-has-permission="PERMISSIONS.delivery.cancel" variant="outline" class="gap-2" @click="openCancel(selectedDelivery)">
+          <Button
+            v-if="selectedDelivery && canCancelDelivery(selectedDelivery.status)"
+            v-has-permission="PERMISSIONS.delivery.cancel"
+            variant="outline"
+            class="gap-2"
+            @click="openCancel(selectedDelivery)"
+          >
             <XCircle class="h-4 w-4" />
             取消交付
           </Button>
@@ -314,6 +320,7 @@ import {
 import {
   formatDeliveryCheckStatus,
   formatDeliveryStatus,
+  canCancelDelivery,
   getDeliveryCheckStatusTone,
   getDeliveryStatusTone,
   type Delivery,

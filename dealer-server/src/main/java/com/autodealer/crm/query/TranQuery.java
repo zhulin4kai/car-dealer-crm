@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.autodealer.crm.enums.TranStage;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.springframework.format.annotation.DateTimeFormat;
 import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -34,19 +33,15 @@ public class TranQuery extends BaseQuery {
     private BigDecimal maxMoney;
     
     /** 预计成交日期-开始 */
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date expectedDateStart;
     
     /** 预计成交日期-结束 */
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date expectedDateEnd;
     
     /** 创建时间-开始 */
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createTimeStart;
     
     /** 创建时间-结束 */
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createTimeEnd;
     
     /** 创建人ID */

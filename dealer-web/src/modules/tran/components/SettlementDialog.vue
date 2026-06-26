@@ -83,6 +83,7 @@ import type {
   SettlementPreviewResponse,
   SettlementPromotionOption,
 } from '@/modules/tran/model/tran.types'
+import { PRODUCT_PROMOTION_TYPE_LABEL } from '@/modules/product/model/product.types'
 import type { EntityId } from '@/shared/types/id'
 import { formatCurrency, toNumber } from '@/shared/utils/display-format'
 import { messageTip } from '@/shared/utils/feedback'
@@ -219,15 +220,19 @@ function formatAmount(value: number | string | null | undefined): string {
 
 function formatPromotionText(promotion: SettlementPromotionOption): string {
   const discount = toNumber(promotion.discount)
-  if (discount === null) {
-    return promotion.type || '促销'
-  }
   const type = (promotion.type || '').toUpperCase()
-  if (type === 'PERCENTAGE' || promotion.type === '折扣') {
+  if (discount === null) {
+    return PRODUCT_PROMOTION_TYPE_LABEL[type as keyof typeof PRODUCT_PROMOTION_TYPE_LABEL] ?? '促销'
+  }
+  if (type === 'PERCENTAGE') {
     const folded = discount <= 1 ? discount * 10 : discount
     return `${formatPlainNumber(folded)}折`
   }
-  return `每台优惠 ${formatAmount(discount)}`
+  const label = PRODUCT_PROMOTION_TYPE_LABEL[type as keyof typeof PRODUCT_PROMOTION_TYPE_LABEL] ?? '促销'
+  if (type === 'GIFT' || type === 'MAINTENANCE') {
+    return `${label} 成本 ${formatAmount(discount)}`
+  }
+  return `${label} ${formatAmount(discount)}`
 }
 
 function formatPlainNumber(value: number): string {

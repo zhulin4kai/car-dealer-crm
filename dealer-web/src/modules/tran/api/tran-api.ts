@@ -42,7 +42,7 @@ export function fetchTranProducts(id: EntityId): Promise<TranProduct[]> {
 }
 
 export function createTran(data: CreateTranRequest): Promise<number> {
-  return httpClient.post<number>('/api/tran/create', data)
+  return httpClient.post<number>('/api/transactions', data)
 }
 
 export function updateTran(data: UpdateTranRequest): Promise<boolean> {

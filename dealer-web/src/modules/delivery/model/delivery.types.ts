@@ -113,6 +113,10 @@ export function getDeliveryStatusTone(
   return 'muted'
 }
 
+export function canCancelDelivery(status?: DeliveryStatus): boolean {
+  return !!status && !['SIGNED', 'COMPLETED', 'CANCELLED'].includes(status)
+}
+
 export function formatDeliveryCheckStatus(status?: string): string {
   const map: Record<string, string> = {
     PENDING: '待处理',

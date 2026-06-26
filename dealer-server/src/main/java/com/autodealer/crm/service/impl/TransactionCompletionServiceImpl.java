@@ -179,10 +179,7 @@ public class TransactionCompletionServiceImpl implements TransactionCompletionSe
     }
 
     private void clearTransactionCache(Integer tranId) {
-        redisManager.delete(RedisKeys.transactionDetail(tranId));
-        redisManager.deletePattern(RedisKeys.transactionListPattern());
         redisManager.delete(RedisKeys.transactionProducts(tranId));
         redisManager.delete(RedisKeys.transactionInvoices(tranId));
-        redisManager.delete(RedisKeys.transactionPayments(tranId));
     }
 }

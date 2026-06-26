@@ -324,6 +324,10 @@
               <span class="text-muted-foreground">原收款金额</span>
               <span>&yen;{{ selectedPayment?.amount?.toFixed(2) || '0.00' }}</span>
             </div>
+            <div class="flex justify-between py-1">
+              <span class="text-muted-foreground">可申请退款</span>
+              <span>&yen;{{ selectedPaymentRefundableAmount.toFixed(2) }}</span>
+            </div>
           </div>
           <div>
             <Label>退款类型</Label>
@@ -336,7 +340,13 @@
           </div>
           <div>
             <Label>退款金额</Label>
-            <Input v-model.number="refundForm.amount" type="number" min="0.01" step="0.01" />
+            <Input
+              v-model.number="refundForm.amount"
+              type="number"
+              min="0.01"
+              :max="selectedPaymentRefundableAmount"
+              step="0.01"
+            />
           </div>
           <div>
             <Label>退款原因</Label>
@@ -710,10 +720,39 @@ const balance = computed(() => {
   return Math.max((tranDetail.value.amount || 0) - totalPaid.value, 0)
 })
 
+const REFUND_AMOUNT_HOLDING_STATUSES = new Set([
+  'PENDING_APPROVAL',
+  'PENDING_EXECUTION',
+  'EXECUTING',
+  'COMPLETED',
+])
+
+const getRefundableAmountForPayment = (payment?: TPayment | null) => {
+  if (!payment?.id) {
+    return 0
+  }
+  const originalAmount = Math.max(Number(payment.amount || 0), 0)
+  const heldAmount = refundRequestList.value
+    .filter(request =>
+      Number(request.originalPaymentId) === Number(payment.id)
+      && REFUND_AMOUNT_HOLDING_STATUSES.has(request.status),
+    )
+    .reduce((sum, request) => sum + Number(request.amount || 0), 0)
+
+  return Math.max(Number((originalAmount - heldAmount).toFixed(2)), 0)
+}
+
+const selectedPaymentRefundableAmount = computed(() => getRefundableAmountForPayment(selectedPayment.value))
+
 const canRequestRefund = (payment: TPayment) => {
-  return (tranDetail.value.stage === TRAN_STAGE.PAYMENT || tranDetail.value.stage === TRAN_STAGE.DELIVERY)
+  return (
+    tranDetail.value.stage === TRAN_STAGE.PAYMENT
+    || tranDetail.value.stage === TRAN_STAGE.DELIVERY
+    || tranDetail.value.stage === TRAN_STAGE.CANCELLED
+  )
     && payment.paymentStatus === 'COMPLETED'
     && payment.paymentType !== 'REFUND'
+    && getRefundableAmountForPayment(payment) > 0
 }
 
 const getPaymentMethodText = (m) => PAYMENT_METHODS.find(p => p.value === m)?.label || m
@@ -849,7 +888,7 @@ const openRefundRequestDialog = (payment: TPayment) => {
   selectedPayment.value = payment
   refundForm.value = {
     refundType: 'ORDER_CANCEL',
-    amount: Math.max(Number(payment.amount || 0), 0),
+    amount: getRefundableAmountForPayment(payment),
     reason: ''
   }
   refundRequestDialogOpen.value = true
@@ -859,6 +898,10 @@ const submitRefundRequest = async () => {
   if (!selectedPayment.value) return
   if (!refundForm.value.amount || refundForm.value.amount <= 0) {
     messageTip('请输入有效的退款金额', 'error')
+    return
+  }
+  if (refundForm.value.amount > selectedPaymentRefundableAmount.value) {
+    messageTip('退款金额不能超过可申请退款余额', 'error')
     return
   }
   if (!refundForm.value.reason.trim()) {

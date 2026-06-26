@@ -221,9 +221,11 @@ export interface SettlementPreviewRequest {
 export interface SettlementPromotionOption {
   id: EntityId
   productId: EntityId
+  code?: string
   name: string
   type: string
   discount: number | string
+  ruleSummary?: string
   startTime?: string
   endTime?: string
   status?: string
@@ -245,9 +247,11 @@ export interface SettlementPreviewResponse {
   pricingFingerprint: string
   promotion?: {
     id: number
+    code?: string
     name: string
     type: string
     discount: number
+    ruleSummary?: string
     productId: number
     startTime?: string
     endTime?: string

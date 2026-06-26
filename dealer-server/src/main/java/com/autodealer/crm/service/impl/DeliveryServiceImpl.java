@@ -15,6 +15,7 @@ import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TDeliveryCheckItemMapper;
 import com.autodealer.crm.mapper.TDeliveryMapper;
+import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TProductStockRecordMapper;
 import com.autodealer.crm.mapper.TProductVehicleMapper;
 import com.autodealer.crm.mapper.TTranMapper;
@@ -52,6 +53,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final TDeliveryMapper deliveryMapper;
     private final TDeliveryCheckItemMapper checkItemMapper;
     private final TTranMapper tranMapper;
+    private final TProductMapper productMapper;
     private final TProductVehicleMapper vehicleMapper;
     private final TProductStockRecordMapper stockRecordMapper;
     private final CurrentUserProvider currentUserProvider;
@@ -61,6 +63,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     public DeliveryServiceImpl(TDeliveryMapper deliveryMapper,
                                TDeliveryCheckItemMapper checkItemMapper,
                                TTranMapper tranMapper,
+                               TProductMapper productMapper,
                                TProductVehicleMapper vehicleMapper,
                                TProductStockRecordMapper stockRecordMapper,
                                CurrentUserProvider currentUserProvider,
@@ -69,6 +72,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         this.deliveryMapper = deliveryMapper;
         this.checkItemMapper = checkItemMapper;
         this.tranMapper = tranMapper;
+        this.productMapper = productMapper;
         this.vehicleMapper = vehicleMapper;
         this.stockRecordMapper = stockRecordMapper;
         this.currentUserProvider = currentUserProvider;
@@ -80,7 +84,10 @@ public class DeliveryServiceImpl implements DeliveryService {
     public PageInfo<TDelivery> getDeliveryPage(DeliveryQuery query) {
         DeliveryQuery actualQuery = query == null ? new DeliveryQuery() : query;
         int page = actualQuery.getPage() == null || actualQuery.getPage() < 1 ? 1 : actualQuery.getPage();
-        int size = actualQuery.getSize() == null || actualQuery.getSize() < 1 ? 10 : Math.min(actualQuery.getSize(), 100);
+        int size = actualQuery.getSize() == null || actualQuery.getSize() < 1 ? 10 : actualQuery.getSize();
+        if (size > 100) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "分页大小不能超过100");
+        }
         PageHelper.startPage(page, size);
         return new PageInfo<>(deliveryMapper.selectPage(actualQuery));
     }
@@ -274,9 +281,12 @@ public class DeliveryServiceImpl implements DeliveryService {
         if (status == DeliveryStatus.CANCELLED) {
             return deliveryMapper.selectById(id);
         }
+        String cancelReason = requireNonBlank(reason, "取消原因不能为空");
+        TTran transaction = requireAccessibleTransaction(delivery.getTranId());
         Integer operatorId = currentUserProvider.getCurrentUserId();
         LocalDateTime now = LocalDateTime.now();
-        if (deliveryMapper.cancelIfNotTerminal(id, requireNonBlank(reason, "取消原因不能为空"), now, operatorId) != 1) {
+        releaseReservedVehicleForCancellation(delivery, transaction, cancelReason, now, operatorId);
+        if (deliveryMapper.cancelIfNotTerminal(id, cancelReason, now, operatorId) != 1) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交付状态已变更，请刷新后重试");
         }
         auditRecorder.record(AuditActionEnum.DELIVERY_CANCEL, String.valueOf(id));
@@ -362,6 +372,54 @@ public class DeliveryServiceImpl implements DeliveryService {
         record.setCreateBy(operatorId);
         if (stockRecordMapper.insert(record) != 1) {
             throw new BusinessException(CodeEnum.FAIL, "交付出库流水创建失败");
+        }
+    }
+
+    private void releaseReservedVehicleForCancellation(TDelivery delivery, TTran transaction, String reason,
+                                                       LocalDateTime now, Integer operatorId) {
+        TProductStockRecord reserveRecord = stockRecordMapper.selectLatestReserveByVehicle(
+                delivery.getVehicleId(), "ORDER", transaction.getId().longValue());
+        if (reserveRecord == null) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "缺少原订单库存占用流水，不能取消交付");
+        }
+        if (stockRecordMapper.selectReleaseByRelatedRecordId(reserveRecord.getId()) != null) {
+            return;
+        }
+
+        TProductVehicle vehicle = vehicleMapper.selectByIdForUpdate(delivery.getVehicleId());
+        if (vehicle == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "库存车辆不存在");
+        }
+        validateVehicleReservedForTransaction(vehicle, transaction.getId());
+        ProductVehicleStatus currentStatus = ProductVehicleStatus.parse(vehicle.getStatus());
+        if (vehicleMapper.releaseIfCurrent(vehicle.getId(), currentStatus.name(), now, operatorId) != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "库存车辆状态已变更，请刷新后重试");
+        }
+        if (productMapper.updateStock(vehicle.getProductId(), 1) != 1) {
+            throw new BusinessException(CodeEnum.FAIL, "商品库存汇总恢复失败");
+        }
+        insertReleaseRecord(vehicle, reserveRecord, currentStatus.name(), "取消交付：" + reason, now, operatorId);
+        auditRecorder.record(AuditActionEnum.PRODUCT_STOCK_RELEASE, String.valueOf(vehicle.getId()));
+    }
+
+    private void insertReleaseRecord(TProductVehicle vehicle, TProductStockRecord reserveRecord,
+                                     String beforeStatus, String remark,
+                                     LocalDateTime now, Integer operatorId) {
+        TProductStockRecord record = new TProductStockRecord();
+        record.setProductId(vehicle.getProductId());
+        record.setVehicleId(vehicle.getId());
+        record.setQuantity(1);
+        record.setType("RELEASE");
+        record.setSourceType(reserveRecord.getSourceType());
+        record.setSourceId(reserveRecord.getSourceId());
+        record.setBeforeStatus(beforeStatus);
+        record.setAfterStatus(ProductVehicleStatus.AVAILABLE.name());
+        record.setRelatedRecordId(reserveRecord.getId());
+        record.setRemark(remark);
+        record.setCreateTime(now);
+        record.setCreateBy(operatorId);
+        if (stockRecordMapper.insert(record) != 1) {
+            throw new BusinessException(CodeEnum.FAIL, "交付取消释放流水创建失败");
         }
     }
 

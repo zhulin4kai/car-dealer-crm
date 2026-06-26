@@ -3,9 +3,11 @@ package com.autodealer.crm.service.impl;
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
 import com.autodealer.crm.constant.PermissionCodes;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.enums.PaymentMethod;
 import com.autodealer.crm.enums.PaymentStatus;
 import com.autodealer.crm.enums.PaymentType;
+import com.autodealer.crm.enums.ProductVehicleStatus;
 import com.autodealer.crm.enums.RefundRequestStatus;
 import com.autodealer.crm.enums.RefundType;
 import com.autodealer.crm.enums.TranStage;
@@ -25,6 +27,7 @@ import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
+import com.autodealer.crm.dto.PromotionProductLine;
 import com.autodealer.crm.dto.SettlementPreviewResponse;
 import com.autodealer.crm.dto.SettleRequest;
 import com.autodealer.crm.service.ProductPromotionService;
@@ -36,11 +39,13 @@ import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -66,6 +71,9 @@ public class TranServiceImpl implements TranService {
 
     @Resource
     private TProductMapper productMapper;
+
+    @Resource
+    private TProductVehicleMapper productVehicleMapper;
 
     @Resource
     private TCustomerMapper customerMapper;
@@ -237,6 +245,10 @@ public class TranServiceImpl implements TranService {
         String promotionSnapshot = calculated.getPromotion() == null
                 ? null : JSONUtils.toJSON(calculated.getPromotion());
         Integer operatorId = currentUserProvider.getCurrentUserId();
+        if (calculated.getPromotionId() != null) {
+            promotionService.reserveUsage(calculated.getPromotionId(),
+                    calculated.getDiscountAmount(), "TRAN", tranId.longValue());
+        }
         int rows = tranMapper.settleAtomic(
                 tranId,
                 calculated.getFinalAmount(),
@@ -277,17 +289,13 @@ public class TranServiceImpl implements TranService {
         TProductPromotion promotion = null;
         BigDecimal discountAmount = BigDecimal.ZERO;
         if (promotionId != null) {
-            promotion = promotionService.getPromotionById(promotionId);
-            if (promotion == null) {
-                throw new BusinessException(CodeEnum.NOT_FOUND, "促销不存在");
-            }
-            if (!isActivePromotionStatus(promotion.getStatus())) {
-                throw new BusinessException(CodeEnum.FAIL, "促销状态不是进行中");
-            }
-            if (!isPromotionEffectiveNow(promotion)) {
-                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "促销不在有效期内");
-            }
-            discountAmount = calculatePromotionDiscount(products, promotion);
+            List<Long> productIds = products.stream()
+                    .map(TTranProduct::getProductId)
+                    .filter(id -> id != null)
+                    .distinct()
+                    .toList();
+            promotion = promotionService.requireApplicablePromotion(promotionId, productIds);
+            discountAmount = promotionService.calculateDiscount(toPromotionLines(products), promotion);
         }
         BigDecimal finalAmount = originalAmount.subtract(discountAmount);
         if (finalAmount.compareTo(BigDecimal.ZERO) < 0) {
@@ -304,9 +312,11 @@ public class TranServiceImpl implements TranService {
         if (promotion != null) {
             SettlementPreviewResponse.PromotionInfo info = new SettlementPreviewResponse.PromotionInfo();
             info.setId(promotion.getId());
+            info.setCode(promotion.getCode());
             info.setName(promotion.getName());
             info.setType(promotion.getType());
             info.setDiscount(promotion.getDiscount());
+            info.setRuleSummary(promotion.getRuleSummary());
             info.setProductId(promotion.getProductId());
             info.setStartTime(String.valueOf(promotion.getStartTime()));
             info.setEndTime(String.valueOf(promotion.getEndTime()));
@@ -337,16 +347,6 @@ public class TranServiceImpl implements TranService {
         return promotionService.getAvailablePromotions(productIds);
     }
 
-    private boolean isActivePromotionStatus(String status) {
-        return "进行中".equals(status) || "ACTIVE".equals(status) || "active".equals(status);
-    }
-
-    private boolean isPromotionEffectiveNow(TProductPromotion promotion) {
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        return promotion.getStartTime() != null && promotion.getEndTime() != null
-                && !now.isBefore(promotion.getStartTime()) && !now.isAfter(promotion.getEndTime());
-    }
-
     private BigDecimal calculateOriginalAmount(List<TTranProduct> products) {
         BigDecimal total = BigDecimal.ZERO;
         for (TTranProduct p : products) {
@@ -354,54 +354,6 @@ public class TranServiceImpl implements TranService {
             total = total.add(p.getPrice().multiply(BigDecimal.valueOf(p.getQuantity())));
         }
         return total.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal calculatePromotionDiscount(List<TTranProduct> products, TProductPromotion promotion) {
-        BigDecimal discount = BigDecimal.ZERO;
-        BigDecimal promoDiscount = promotion.getDiscount();
-        if (promotion.getProductId() == null || promoDiscount == null) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "促销商品和优惠值不能为空");
-        }
-        String type = promotion.getType();
-        boolean matched = false;
-        if ("PERCENTAGE".equals(type)) {
-            if (promoDiscount.compareTo(BigDecimal.ZERO) <= 0 || promoDiscount.compareTo(BigDecimal.ONE) >= 0) {
-                throw new BusinessException(CodeEnum.PARAM_ERROR, "折扣必须在0到1之间");
-            }
-            for (TTranProduct p : products) {
-                validateSettlementProduct(p);
-                if (!promotion.getProductId().equals(p.getProductId())) continue;
-                matched = true;
-                BigDecimal lineTotal = p.getPrice().multiply(BigDecimal.valueOf(p.getQuantity()));
-                BigDecimal lineDiscount = lineTotal.multiply(BigDecimal.ONE.subtract(promoDiscount));
-                discount = discount.add(lineDiscount);
-            }
-        } else if ("AMOUNT".equals(type)) {
-            if (promoDiscount.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new BusinessException(CodeEnum.PARAM_ERROR, "优惠金额必须大于0");
-            }
-            for (TTranProduct p : products) {
-                validateSettlementProduct(p);
-                if (!promotion.getProductId().equals(p.getProductId())) continue;
-                matched = true;
-                BigDecimal lineDiscount = promoDiscount.multiply(BigDecimal.valueOf(p.getQuantity()));
-                discount = discount.add(lineDiscount);
-            }
-        } else {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "不支持的促销类型");
-        }
-        if (!matched) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "促销不适用于当前交易商品");
-        }
-        BigDecimal originalMatched = BigDecimal.ZERO;
-        for (TTranProduct p : products) {
-            if (!promotion.getProductId().equals(p.getProductId())) continue;
-            originalMatched = originalMatched.add(p.getPrice().multiply(BigDecimal.valueOf(p.getQuantity())));
-        }
-        if (discount.compareTo(originalMatched) > 0) {
-            discount = originalMatched;
-        }
-        return discount.setScale(2, RoundingMode.HALF_UP);
     }
 
     private void validateSettlementProduct(TTranProduct product) {
@@ -412,6 +364,14 @@ public class TranServiceImpl implements TranService {
         if (product.getPrice().compareTo(BigDecimal.ZERO) <= 0 || product.getQuantity() <= 0) {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "交易商品价格和数量必须大于0");
         }
+    }
+
+    private List<PromotionProductLine> toPromotionLines(List<TTranProduct> products) {
+        return products.stream()
+                .peek(this::validateSettlementProduct)
+                .map(product -> new PromotionProductLine(
+                        product.getProductId(), product.getPrice(), product.getQuantity()))
+                .toList();
     }
 
     private String buildPricingFingerprint(Integer tranId, Integer version, List<TTranProduct> products, TProductPromotion promotion) {
@@ -465,7 +425,7 @@ public class TranServiceImpl implements TranService {
     @Override
     public List<TTranProduct> getTransactionProducts(Integer tranId) {
         requireAccessibleTransaction(tranId);
-        String cacheKey = Constants.CACHE_KEY_TRAN_PRODUCTS + tranId;
+        String cacheKey = RedisKeys.transactionProducts(tranId);
         List<TTranProduct> products = redisManager.get(cacheKey);
         if (products != null) {
             return products;
@@ -481,7 +441,7 @@ public class TranServiceImpl implements TranService {
     @Override
     public List<TTranInvoice> getTransactionInvoices(Integer tranId) {
         requireAccessibleTransaction(tranId);
-        String cacheKey = Constants.CACHE_KEY_TRAN_INVOICES + tranId;
+        String cacheKey = RedisKeys.transactionInvoices(tranId);
         List<TTranInvoice> invoices = redisManager.get(cacheKey);
         if (invoices != null) {
             return invoices;
@@ -514,7 +474,7 @@ public class TranServiceImpl implements TranService {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "仅待报价阶段可以修改交易商品");
         }
         tranProductMapper.deleteByTranId(tranId);
-        redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
+        redisManager.delete(RedisKeys.transactionProducts(tranId));
         return true;
     }
 
@@ -577,7 +537,7 @@ public class TranServiceImpl implements TranService {
             throw new BusinessException(CodeEnum.OPERATION_FAILED, "交易金额更新失败");
         }
 
-        redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
+        redisManager.delete(RedisKeys.transactionProducts(tranId));
         return true;
     }
 
@@ -652,7 +612,8 @@ public class TranServiceImpl implements TranService {
         List<TTranInvoice> existingInvoices = tranInvoiceMapper.selectByTranId(invoice.getTranId());
         BigDecimal availableAmount = calculateAvailableInvoiceAmount(tran, existingInvoices);
         if (invoice.getAmount().compareTo(availableAmount) > 0) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "发票金额不能超过当前可开票余额");
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "发票金额不能超过当前可开票余额",
+                    Map.of("availableAmount", availableAmount));
         }
         if (!canCreateInvoice(tran.getStage())) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许创建发票");
@@ -721,7 +682,7 @@ public class TranServiceImpl implements TranService {
         int result = tranInvoiceMapper.updateStatusIfCurrent(invoiceId, currentInvoice.getStatus(),
                 status, "ISSUED".equals(status) ? now : currentInvoice.getIssueTime(), updateRemark, now, updateBy);
         if (result != 1) {
-            throw new BusinessException(CodeEnum.OPERATION_FAILED, "发票状态已变更，请刷新后重试");
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "发票状态已变更，请刷新后重试");
         }
 
         auditRecorder.record(AuditActionEnum.INVOICE_STATUS, String.valueOf(invoiceId));
@@ -754,7 +715,8 @@ public class TranServiceImpl implements TranService {
         BigDecimal reversedAmount = calculateCompletedRedReversalAmount(originalInvoice.getId(), invoices);
         BigDecimal remainingAmount = originalInvoice.getAmount().abs().subtract(reversedAmount).setScale(2, RoundingMode.HALF_UP);
         if (normalizedAmount.compareTo(remainingAmount) > 0) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "红冲金额不能超过原票剩余可红冲金额");
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "红冲金额不能超过原票剩余可红冲金额",
+                    Map.of("availableAmount", remainingAmount));
         }
 
         Integer operatorId = currentUserProvider.getCurrentUserId();
@@ -772,7 +734,7 @@ public class TranServiceImpl implements TranService {
         int updated = tranInvoiceMapper.updateStatusIfCurrent(originalInvoice.getId(), originalInvoice.getStatus(),
                 newOriginalStatus, originalInvoice.getIssueTime(), updateRemark, now, operatorId);
         if (updated != 1) {
-            throw new BusinessException(CodeEnum.OPERATION_FAILED, "发票状态已变更，请刷新后重试");
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "发票状态已变更，请刷新后重试");
         }
 
         auditRecorder.record(AuditActionEnum.INVOICE_RED_REVERSE, String.valueOf(invoiceId));
@@ -802,7 +764,8 @@ public class TranServiceImpl implements TranService {
         BigDecimal availableAmount = calculateAvailableInvoiceAmount(tran, invoices);
         BigDecimal reissueAmount = invoice.getAmount().setScale(2, RoundingMode.HALF_UP);
         if (reissueAmount.compareTo(availableAmount) > 0) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "重开发票金额不能超过当前可开票余额");
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "重开发票金额不能超过当前可开票余额",
+                    Map.of("availableAmount", availableAmount));
         }
 
         Integer operatorId = currentUserProvider.getCurrentUserId();
@@ -861,6 +824,9 @@ public class TranServiceImpl implements TranService {
         }
         validateTerminalTransitionBlockers(transaction, targetStage);
         Integer userId = currentUserProvider.getCurrentUserId();
+        if (targetStage == TranStage.CANCELLED) {
+            releaseReservedVehicleForTransactionCancel(transaction, reason, userId);
+        }
         int rows = tranMapper.updateStageAtomic(id, targetStage, transaction.getStage(), userId);
         if (rows != 1) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态已变更，请刷新后重试");
@@ -869,6 +835,50 @@ public class TranServiceImpl implements TranService {
         auditRecorder.record(action, String.valueOf(id));
         clearTransactionCache(id);
         return true;
+    }
+
+    private void releaseReservedVehicleForTransactionCancel(TTran transaction, String reason, Integer userId) {
+        TProductVehicle vehicle = productVehicleMapper.selectActiveBySource("ORDER", transaction.getId().longValue());
+        if (vehicle == null) {
+            return;
+        }
+        ProductVehicleStatus currentStatus = ProductVehicleStatus.parse(vehicle.getStatus());
+        if (currentStatus != ProductVehicleStatus.ORDER_RESERVED) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易库存占用状态不允许取消释放");
+        }
+        TProductStockRecord reserveRecord = stockRecordMapper.selectLatestReserveByVehicle(
+                vehicle.getId(), "ORDER", transaction.getId().longValue());
+        if (reserveRecord == null) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "缺少原订单库存占用流水，不能取消交易");
+        }
+        if (stockRecordMapper.selectReleaseByRelatedRecordId(reserveRecord.getId()) != null) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (productVehicleMapper.releaseIfCurrent(vehicle.getId(), currentStatus.name(), now, userId) != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "库存车辆状态已变更，请刷新后重试");
+        }
+        if (productMapper.updateStock(vehicle.getProductId(), 1) != 1) {
+            throw new BusinessException(CodeEnum.FAIL, "商品库存汇总恢复失败");
+        }
+        TProductStockRecord releaseRecord = new TProductStockRecord();
+        releaseRecord.setProductId(vehicle.getProductId());
+        releaseRecord.setVehicleId(vehicle.getId());
+        releaseRecord.setQuantity(1);
+        releaseRecord.setType("RELEASE");
+        releaseRecord.setSourceType(reserveRecord.getSourceType());
+        releaseRecord.setSourceId(reserveRecord.getSourceId());
+        releaseRecord.setBeforeStatus(currentStatus.name());
+        releaseRecord.setAfterStatus(ProductVehicleStatus.AVAILABLE.name());
+        releaseRecord.setRelatedRecordId(reserveRecord.getId());
+        releaseRecord.setRemark("取消交易：" + reason);
+        releaseRecord.setCreateTime(now);
+        releaseRecord.setCreateBy(userId);
+        if (stockRecordMapper.insert(releaseRecord) != 1) {
+            throw new BusinessException(CodeEnum.FAIL, "交易取消释放流水创建失败");
+        }
+        auditRecorder.record(AuditActionEnum.PRODUCT_STOCK_RELEASE, String.valueOf(vehicle.getId()));
     }
 
     private void validateTerminalTransitionBlockers(TTran transaction, TranStage targetStage) {
@@ -1180,13 +1190,14 @@ public class TranServiceImpl implements TranService {
         }
 
         TTran tran = requireAccessibleTransaction(original.getTranId());
-        if (tran.getStage() != TranStage.PAYMENT && tran.getStage() != TranStage.DELIVERY) {
+        if (!canProcessRefund(tran.getStage())) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许申请退款");
         }
 
         BigDecimal refundable = calculateAvailableRefundAmount(original.getId(), original.getAmount(), true);
         if (request.getAmount().compareTo(refundable) > 0) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "退款金额不能超过可退金额");
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款金额不能超过可退金额",
+                    Map.of("availableAmount", refundable));
         }
 
         Integer userId = currentUserProvider.getCurrentUserId();
@@ -1278,13 +1289,14 @@ public class TranServiceImpl implements TranService {
         if (tran == null) {
             throw new BusinessException(CodeEnum.NOT_FOUND, "交易记录不存在");
         }
-        if (tran.getStage() != TranStage.PAYMENT && tran.getStage() != TranStage.DELIVERY) {
+        if (!canProcessRefund(tran.getStage())) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许执行退款");
         }
 
         BigDecimal refundable = calculateAvailableRefundAmount(original.getId(), original.getAmount(), false);
         if (request.getAmount().compareTo(refundable) > 0) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "退款金额不能超过当前可退金额");
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款金额不能超过当前可退金额",
+                    Map.of("availableAmount", refundable));
         }
 
         String normalizedRef = normalizeBlank(transactionRef);
@@ -1405,6 +1417,12 @@ public class TranServiceImpl implements TranService {
 
     private boolean canCreateInvoice(TranStage stage) {
         return stage == TranStage.APPROVED || stage == TranStage.PAYMENT || stage == TranStage.DELIVERY;
+    }
+
+    private boolean canProcessRefund(TranStage stage) {
+        return stage == TranStage.PAYMENT
+                || stage == TranStage.DELIVERY
+                || stage == TranStage.CANCELLED;
     }
 
     private BigDecimal calculateAvailableInvoiceAmount(TTran tran, List<TTranInvoice> invoices) {
@@ -1810,10 +1828,7 @@ public class TranServiceImpl implements TranService {
     }
 
     private void clearTransactionCache(Integer tranId) {
-        redisManager.delete(Constants.CACHE_KEY_TRAN + tranId);
-        redisManager.deletePattern(Constants.CACHE_KEY_TRAN_LIST + "*");
-        redisManager.delete(Constants.CACHE_KEY_TRAN_PRODUCTS + tranId);
-        redisManager.delete(Constants.CACHE_KEY_TRAN_INVOICES + tranId);
-        redisManager.delete("cdrm:tran:payments:" + tranId);
+        redisManager.delete(RedisKeys.transactionProducts(tranId));
+        redisManager.delete(RedisKeys.transactionInvoices(tranId));
     }
 }

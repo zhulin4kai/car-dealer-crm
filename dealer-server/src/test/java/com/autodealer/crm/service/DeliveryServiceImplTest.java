@@ -11,6 +11,7 @@ import com.autodealer.crm.enums.TranStage;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TDeliveryCheckItemMapper;
 import com.autodealer.crm.mapper.TDeliveryMapper;
+import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TProductStockRecordMapper;
 import com.autodealer.crm.mapper.TProductVehicleMapper;
 import com.autodealer.crm.mapper.TTranMapper;
@@ -19,6 +20,7 @@ import com.autodealer.crm.model.TDeliveryCheckItem;
 import com.autodealer.crm.model.TProductStockRecord;
 import com.autodealer.crm.model.TProductVehicle;
 import com.autodealer.crm.model.TTran;
+import com.autodealer.crm.query.DeliveryQuery;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.DeliveryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +52,7 @@ class DeliveryServiceImplTest {
     @Mock private TDeliveryMapper deliveryMapper;
     @Mock private TDeliveryCheckItemMapper checkItemMapper;
     @Mock private TTranMapper tranMapper;
+    @Mock private TProductMapper productMapper;
     @Mock private TProductVehicleMapper vehicleMapper;
     @Mock private TProductStockRecordMapper stockRecordMapper;
     @Mock private CurrentUserProvider currentUserProvider;
@@ -90,6 +93,18 @@ class DeliveryServiceImplTest {
         assertEquals(List.of("VEHICLE_READY", "DOCUMENTS_READY", "PAYMENT_READY",
                 "INVOICE_READY", "CUSTOMER_APPOINTMENT"), codes);
         verify(auditRecorder).record(AuditActionEnum.DELIVERY_CREATE, "10");
+    }
+
+    @Test
+    void getDeliveryPage_oversizedPageSize_shouldReject() {
+        DeliveryQuery query = new DeliveryQuery();
+        query.setSize(101);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> deliveryService.getDeliveryPage(query));
+
+        assertEquals(CodeEnum.PARAM_ERROR, ex.getCodeEnum());
+        verify(deliveryMapper, never()).selectPage(any());
     }
 
     @Test
@@ -157,6 +172,77 @@ class DeliveryServiceImplTest {
         verify(stockRecordMapper, never()).insert(any());
     }
 
+    @Test
+    void cancelDelivery_activeDelivery_shouldReleaseReservedVehicleAndRestoreStock() {
+        TDelivery cancelled = delivery(10L, DeliveryStatus.CANCELLED);
+        when(deliveryMapper.selectByIdForUpdate(10L)).thenReturn(delivery(10L, DeliveryStatus.PREPARING));
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran(1, TranStage.DELIVERY));
+        when(vehicleMapper.selectByIdForUpdate(100L)).thenReturn(vehicle());
+        when(stockRecordMapper.selectLatestReserveByVehicle(100L, "ORDER", 1L)).thenReturn(reserveRecord());
+        when(stockRecordMapper.selectReleaseByRelatedRecordId(700L)).thenReturn(null);
+        when(vehicleMapper.releaseIfCurrent(eq(100L), eq("ORDER_RESERVED"), any(), eq(7))).thenReturn(1);
+        when(productMapper.updateStock(5L, 1)).thenReturn(1);
+        when(stockRecordMapper.insert(any())).thenReturn(1);
+        when(deliveryMapper.cancelIfNotTerminal(eq(10L), eq("客户延期"), any(), eq(7))).thenReturn(1);
+        when(deliveryMapper.selectById(10L)).thenReturn(cancelled);
+
+        TDelivery result = deliveryService.cancelDelivery(10L, "客户延期");
+
+        assertSame(cancelled, result);
+        verify(vehicleMapper).releaseIfCurrent(eq(100L), eq("ORDER_RESERVED"), any(), eq(7));
+        verify(productMapper).updateStock(5L, 1);
+        ArgumentCaptor<TProductStockRecord> recordCaptor = ArgumentCaptor.forClass(TProductStockRecord.class);
+        verify(stockRecordMapper).insert(recordCaptor.capture());
+        TProductStockRecord record = recordCaptor.getValue();
+        assertEquals("RELEASE", record.getType());
+        assertEquals("ORDER", record.getSourceType());
+        assertEquals(1L, record.getSourceId());
+        assertEquals(700L, record.getRelatedRecordId());
+        assertEquals("ORDER_RESERVED", record.getBeforeStatus());
+        assertEquals("AVAILABLE", record.getAfterStatus());
+        assertEquals("取消交付：客户延期", record.getRemark());
+        verify(auditRecorder).record(AuditActionEnum.PRODUCT_STOCK_RELEASE, "100");
+        verify(auditRecorder).record(AuditActionEnum.DELIVERY_CANCEL, "10");
+    }
+
+    @Test
+    void cancelDelivery_releasedReservation_shouldCancelWithoutDuplicateStockChange() {
+        TDelivery cancelled = delivery(10L, DeliveryStatus.CANCELLED);
+        when(deliveryMapper.selectByIdForUpdate(10L)).thenReturn(delivery(10L, DeliveryStatus.EXCEPTION));
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran(1, TranStage.DELIVERY));
+        when(stockRecordMapper.selectLatestReserveByVehicle(100L, "ORDER", 1L)).thenReturn(reserveRecord());
+        when(stockRecordMapper.selectReleaseByRelatedRecordId(700L)).thenReturn(releaseRecord());
+        when(deliveryMapper.cancelIfNotTerminal(eq(10L), eq("车辆问题"), any(), eq(7))).thenReturn(1);
+        when(deliveryMapper.selectById(10L)).thenReturn(cancelled);
+
+        TDelivery result = deliveryService.cancelDelivery(10L, "车辆问题");
+
+        assertSame(cancelled, result);
+        verify(vehicleMapper, never()).releaseIfCurrent(anyLong(), anyString(), any(), any());
+        verify(productMapper, never()).updateStock(anyLong(), any());
+        verify(stockRecordMapper, never()).insert(any());
+        verify(auditRecorder).record(AuditActionEnum.DELIVERY_CANCEL, "10");
+    }
+
+    @Test
+    void cancelDelivery_outboundVehicle_shouldRejectBeforeCancel() {
+        TProductVehicle outboundVehicle = vehicle();
+        outboundVehicle.setStatus(ProductVehicleStatus.OUTBOUND.name());
+        when(deliveryMapper.selectByIdForUpdate(10L)).thenReturn(delivery(10L, DeliveryStatus.PREPARING));
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(tran(1, TranStage.DELIVERY));
+        when(stockRecordMapper.selectLatestReserveByVehicle(100L, "ORDER", 1L)).thenReturn(reserveRecord());
+        when(stockRecordMapper.selectReleaseByRelatedRecordId(700L)).thenReturn(null);
+        when(vehicleMapper.selectByIdForUpdate(100L)).thenReturn(outboundVehicle);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> deliveryService.cancelDelivery(10L, "客户取消"));
+
+        assertEquals(CodeEnum.TRAN_STATE_CONFLICT, ex.getCodeEnum());
+        verify(deliveryMapper, never()).cancelIfNotTerminal(anyLong(), anyString(), any(), any());
+        verify(productMapper, never()).updateStock(anyLong(), any());
+        verify(stockRecordMapper, never()).insert(any());
+    }
+
     private CreateDeliveryRequest createDeliveryRequest() {
         CreateDeliveryRequest request = new CreateDeliveryRequest();
         request.setTranId(1);
@@ -212,6 +298,17 @@ class DeliveryServiceImplTest {
         record.setSourceId(1L);
         record.setBeforeStatus("AVAILABLE");
         record.setAfterStatus("ORDER_RESERVED");
+        return record;
+    }
+
+    private TProductStockRecord releaseRecord() {
+        TProductStockRecord record = reserveRecord();
+        record.setId(701L);
+        record.setQuantity(1);
+        record.setType("RELEASE");
+        record.setBeforeStatus("ORDER_RESERVED");
+        record.setAfterStatus("AVAILABLE");
+        record.setRelatedRecordId(700L);
         return record;
     }
 }
