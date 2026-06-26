@@ -55,7 +55,10 @@ public class ProductVehicleServiceImpl implements ProductVehicleService {
     public PageInfo<TProductVehicle> getVehiclePage(ProductVehicleQuery query) {
         ProductVehicleQuery actualQuery = query == null ? new ProductVehicleQuery() : query;
         int page = actualQuery.getPage() == null || actualQuery.getPage() < 1 ? 1 : actualQuery.getPage();
-        int size = actualQuery.getSize() == null || actualQuery.getSize() < 1 ? 10 : Math.min(actualQuery.getSize(), 100);
+        int size = actualQuery.getSize() == null || actualQuery.getSize() < 1 ? 10 : actualQuery.getSize();
+        if (size > 100) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "分页大小不能超过100");
+        }
         PageHelper.startPage(page, size);
         List<TProductVehicle> vehicles = vehicleMapper.selectPage(actualQuery);
         return new PageInfo<>(vehicles);

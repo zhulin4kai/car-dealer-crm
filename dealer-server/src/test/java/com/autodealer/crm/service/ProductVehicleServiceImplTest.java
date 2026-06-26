@@ -14,6 +14,7 @@ import com.autodealer.crm.mapper.TProductVehicleMapper;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TProductStockRecord;
 import com.autodealer.crm.model.TProductVehicle;
+import com.autodealer.crm.query.ProductVehicleQuery;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.ProductVehicleServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,6 +66,18 @@ class ProductVehicleServiceImplTest {
         assertEquals(CodeEnum.DUPLICATE, ex.getCodeEnum());
         verify(vehicleMapper, never()).insert(any());
         verify(productMapper, never()).updateStock(anyLong(), any());
+    }
+
+    @Test
+    void getVehiclePage_oversizedPageSize_shouldReject() {
+        ProductVehicleQuery query = new ProductVehicleQuery();
+        query.setSize(101);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> productVehicleService.getVehiclePage(query));
+
+        assertEquals(CodeEnum.PARAM_ERROR, ex.getCodeEnum());
+        verify(vehicleMapper, never()).selectPage(any());
     }
 
     @Test

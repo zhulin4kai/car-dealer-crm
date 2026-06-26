@@ -5,6 +5,7 @@ import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.dto.CreateQuoteRequest;
 import com.autodealer.crm.dto.CreateQuoteVersionRequest;
+import com.autodealer.crm.dto.PromotionProductLine;
 import com.autodealer.crm.dto.QuoteDetailResponse;
 import com.autodealer.crm.dto.QuoteItemRequest;
 import com.autodealer.crm.dto.UpdateQuoteStatusRequest;
@@ -21,13 +22,16 @@ import com.autodealer.crm.mapper.TQuoteVersionMapper;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.model.TOpportunity;
 import com.autodealer.crm.model.TProduct;
+import com.autodealer.crm.model.TProductPromotion;
 import com.autodealer.crm.model.TQuote;
 import com.autodealer.crm.model.TQuoteStatusHistory;
 import com.autodealer.crm.model.TQuoteVersion;
 import com.autodealer.crm.model.TQuoteVersionItem;
 import com.autodealer.crm.query.QuoteQuery;
 import com.autodealer.crm.result.CodeEnum;
+import com.autodealer.crm.service.ProductPromotionService;
 import com.autodealer.crm.service.QuoteService;
+import com.autodealer.crm.util.JSONUtils;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.springframework.stereotype.Service;
@@ -68,6 +72,7 @@ public class QuoteServiceImpl implements QuoteService {
     private final TOpportunityMapper opportunityMapper;
     private final CurrentUserProvider currentUserProvider;
     private final OperationAuditRecorder auditRecorder;
+    private final ProductPromotionService promotionService;
 
     public QuoteServiceImpl(TQuoteMapper quoteMapper,
                             TQuoteVersionMapper versionMapper,
@@ -77,7 +82,8 @@ public class QuoteServiceImpl implements QuoteService {
                             TCustomerMapper customerMapper,
                             TOpportunityMapper opportunityMapper,
                             CurrentUserProvider currentUserProvider,
-                            OperationAuditRecorder auditRecorder) {
+                            OperationAuditRecorder auditRecorder,
+                            ProductPromotionService promotionService) {
         this.quoteMapper = quoteMapper;
         this.versionMapper = versionMapper;
         this.itemMapper = itemMapper;
@@ -87,6 +93,7 @@ public class QuoteServiceImpl implements QuoteService {
         this.opportunityMapper = opportunityMapper;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
+        this.promotionService = promotionService;
     }
 
     @Override
@@ -262,7 +269,9 @@ public class QuoteServiceImpl implements QuoteService {
         BigDecimal total = BigDecimal.ZERO;
         for (QuoteItemRequest item : items) {
             TProduct product = requireOnSaleProduct(item.getProductId());
-            total = total.add(product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+            BigDecimal lineAmount = product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            BigDecimal promotionAmount = calculateQuotePromotionAmount(item, lineAmount);
+            total = total.add(lineAmount.subtract(promotionAmount).max(BigDecimal.ZERO));
         }
         return total;
     }
@@ -292,15 +301,55 @@ public class QuoteServiceImpl implements QuoteService {
             item.setGuidePrice(product.getPrice());
             item.setUnitPrice(product.getPrice());
             item.setQuantity(requestItem.getQuantity());
-            item.setLineAmount(product.getPrice().multiply(BigDecimal.valueOf(requestItem.getQuantity())));
-            item.setPromotionId(requestItem.getPromotionId());
-            item.setPromotionAmount(BigDecimal.ZERO);
+            BigDecimal lineAmount = product.getPrice().multiply(BigDecimal.valueOf(requestItem.getQuantity()));
+            item.setLineAmount(lineAmount);
+            applyPromotionSnapshot(item, requestItem, lineAmount);
             item.setCreateTime(now);
             item.setCreateBy(operatorId);
             if (itemMapper.insert(item) != 1) {
                 throw new BusinessException(CodeEnum.FAIL, "报价商品快照创建失败");
             }
         }
+    }
+
+    private void applyPromotionSnapshot(TQuoteVersionItem item,
+                                        QuoteItemRequest requestItem,
+                                        BigDecimal lineAmount) {
+        Long promotionId = requestItem.getPromotionId();
+        if (promotionId == null) {
+            item.setPromotionAmount(BigDecimal.ZERO);
+            return;
+        }
+        TProductPromotion promotion = requireQuotePromotion(requestItem, lineAmount);
+        BigDecimal promotionAmount = promotionService.calculateDiscount(List.of(
+                new PromotionProductLine(requestItem.getProductId(), lineAmount
+                        .divide(BigDecimal.valueOf(requestItem.getQuantity())), requestItem.getQuantity())
+        ), promotion);
+        item.setPromotionId(promotion.getId());
+        item.setPromotionCode(promotion.getCode());
+        item.setPromotionName(promotion.getName());
+        item.setPromotionRuleSummary(promotion.getRuleSummary());
+        item.setPromotionAmount(promotionAmount);
+        item.setPromotionSnapshot(JSONUtils.toJSON(promotion));
+    }
+
+    private BigDecimal calculateQuotePromotionAmount(QuoteItemRequest requestItem, BigDecimal lineAmount) {
+        if (requestItem.getPromotionId() == null) {
+            return BigDecimal.ZERO;
+        }
+        TProductPromotion promotion = requireQuotePromotion(requestItem, lineAmount);
+        return promotionService.calculateDiscount(List.of(
+                new PromotionProductLine(requestItem.getProductId(), lineAmount
+                        .divide(BigDecimal.valueOf(requestItem.getQuantity())), requestItem.getQuantity())
+        ), promotion);
+    }
+
+    private TProductPromotion requireQuotePromotion(QuoteItemRequest requestItem, BigDecimal lineAmount) {
+        if (requestItem.getQuantity() == null || requestItem.getQuantity() <= 0 || lineAmount == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "报价商品数量无效");
+        }
+        return promotionService.requireApplicablePromotion(
+                requestItem.getPromotionId(), List.of(requestItem.getProductId()));
     }
 
     private TProduct requireOnSaleProduct(Long productId) {

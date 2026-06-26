@@ -18,8 +18,11 @@ public class TQuoteVersionItem {
     private Integer quantity;
     private BigDecimal lineAmount;
     private Long promotionId;
+    private String promotionCode;
     private String promotionName;
+    private String promotionRuleSummary;
     private BigDecimal promotionAmount;
+    private String promotionSnapshot;
     private LocalDateTime createTime;
     private Integer createBy;
 }

@@ -39,47 +39,139 @@ export interface ProductCategory {
 export interface ProductPromotion {
   id: EntityId
   productId: EntityId
+  code: string
   name: string
-  type: string
+  type: ProductPromotionType
   discount: number | string
+  ruleSummary: string
+  applicableStore: string
+  customerType: string
+  applicableChannel: string
+  inventoryScope: string
+  stackable: boolean
+  priority: number
+  budgetLimit?: number | string | null
+  usedBudget?: number | string
+  usageLimit?: number | null
+  usedCount?: number
   startTime: string
   endTime: string
-  status: string
+  status: ProductPromotionStatus
+  pauseReason?: string | null
+  endReason?: string | null
+  voidReason?: string | null
   createTime?: string
   updateTime?: string
 }
 
+export const PRODUCT_PROMOTION_STATUS = {
+  DRAFT: 'DRAFT',
+  PENDING_EFFECTIVE: 'PENDING_EFFECTIVE',
+  ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
+  ENDED: 'ENDED',
+  VOIDED: 'VOIDED',
+  EXHAUSTED: 'EXHAUSTED',
+} as const
+
+export type ProductPromotionStatus =
+  (typeof PRODUCT_PROMOTION_STATUS)[keyof typeof PRODUCT_PROMOTION_STATUS]
+
+export const PRODUCT_PROMOTION_STATUS_LABEL: Record<ProductPromotionStatus, string> = {
+  DRAFT: '草稿',
+  PENDING_EFFECTIVE: '待生效',
+  ACTIVE: '生效中',
+  PAUSED: '已暂停',
+  ENDED: '已结束',
+  VOIDED: '已作废',
+  EXHAUSTED: '已用尽',
+}
+
+export const PRODUCT_PROMOTION_TYPE = {
+  AMOUNT: 'AMOUNT',
+  PERCENTAGE: 'PERCENTAGE',
+  EXCHANGE_SUBSIDY: 'EXCHANGE_SUBSIDY',
+  FINANCE_SUBSIDY: 'FINANCE_SUBSIDY',
+  GIFT: 'GIFT',
+  MAINTENANCE: 'MAINTENANCE',
+  INSURANCE_SUBSIDY: 'INSURANCE_SUBSIDY',
+  LIMITED_TIME: 'LIMITED_TIME',
+  INVENTORY_CLEARANCE: 'INVENTORY_CLEARANCE',
+} as const
+
+export type ProductPromotionType =
+  (typeof PRODUCT_PROMOTION_TYPE)[keyof typeof PRODUCT_PROMOTION_TYPE]
+
+export const PRODUCT_PROMOTION_TYPE_LABEL: Record<ProductPromotionType, string> = {
+  AMOUNT: '现金优惠',
+  PERCENTAGE: '折扣比例',
+  EXCHANGE_SUBSIDY: '置换补贴',
+  FINANCE_SUBSIDY: '金融贴息',
+  GIFT: '精品赠送',
+  MAINTENANCE: '保养权益',
+  INSURANCE_SUBSIDY: '保险补贴',
+  LIMITED_TIME: '限时特价',
+  INVENTORY_CLEARANCE: '库存清理',
+}
+
 export interface CreatePromotionRequest {
   productId: EntityId
+  code: string
   name: string
-  type: string
+  type: ProductPromotionType
   discount: number | string
+  ruleSummary: string
+  applicableStore?: string
+  customerType?: string
+  applicableChannel?: string
+  inventoryScope?: string
+  stackable?: boolean
+  priority?: number
+  budgetLimit?: number | string | null
+  usageLimit?: number | null
   startTime: string
   endTime: string
-  status: string
 }
 
 export type UpdatePromotionRequest = CreatePromotionRequest
 
 export interface PromotionFormValues {
   productId: string
+  code: string
   name: string
-  type: string
+  type: ProductPromotionType
   discount: number
+  ruleSummary: string
+  applicableStore: string
+  customerType: string
+  applicableChannel: string
+  inventoryScope: string
+  stackable: boolean
+  priority: number
+  budgetLimit: number | null
+  usageLimit: number | null
   startTime: string
   endTime: string
-  status: string
 }
 
 export function toCreatePromotionRequest(values: PromotionFormValues): CreatePromotionRequest {
   return {
     productId: values.productId,
+    code: values.code.trim(),
     name: values.name,
     type: values.type,
     discount: values.discount,
+    ruleSummary: values.ruleSummary.trim(),
+    applicableStore: values.applicableStore || 'ALL',
+    customerType: values.customerType || 'ALL',
+    applicableChannel: values.applicableChannel || 'ALL',
+    inventoryScope: values.inventoryScope || 'ALL',
+    stackable: values.stackable,
+    priority: values.priority,
+    budgetLimit: values.budgetLimit,
+    usageLimit: values.usageLimit,
     startTime: values.startTime,
     endTime: values.endTime,
-    status: values.status,
   }
 }
 

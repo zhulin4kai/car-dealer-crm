@@ -18,9 +18,11 @@ public class SettlementPreviewResponse {
     @Data
     public static class PromotionInfo {
         private Long id;
+        private String code;
         private String name;
         private String type;
         private BigDecimal discount;
+        private String ruleSummary;
         private Long productId;
         private String startTime;
         private String endTime;

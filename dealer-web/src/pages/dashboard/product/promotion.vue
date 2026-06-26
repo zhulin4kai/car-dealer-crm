@@ -14,19 +14,13 @@
             </span>
           </div>
           <p class="mt-1 text-sm text-[var(--crm-text-tertiary)]">
-            维护产品促销活动、折扣规则和生效时间。
+            维护促销政策、适用范围、预算名额和状态流转。
           </p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <Button
-            v-has-permission="PERMISSIONS.product.promotion.add"
-            class="gap-2"
-            @click="handleAdd"
-          >
-            <Plus class="h-4 w-4" />
-            新增促销
-          </Button>
-        </div>
+        <Button v-has-permission="PERMISSIONS.product.promotion.add" class="gap-2" @click="handleAdd">
+          <Plus class="h-4 w-4" />
+          新增促销
+        </Button>
       </div>
     </section>
 
@@ -35,96 +29,55 @@
         <div v-if="loading" class="py-10 text-center text-[var(--crm-text-tertiary)]">
           加载中...
         </div>
-        <Table v-else class="min-w-[1080px]">
+        <Table v-else class="min-w-[1320px]">
           <TableHeader class="bg-[var(--crm-bg-muted)]">
             <TableRow>
-              <TableHead
-                class="w-[80px]"
-                sortable
-                sort-key="id"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >ID</TableHead
-              >
-              <TableHead
-                class="w-[220px]"
-                sortable
-                sort-key="name"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >促销名称</TableHead
-              >
-              <TableHead
-                class="w-[120px]"
-                sortable
-                sort-key="type"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >促销类型</TableHead
-              >
-              <TableHead
-                class="w-[140px]"
-                sortable
-                sort-key="discount"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >折扣/金额</TableHead
-              >
-              <TableHead
-                sortable
-                sort-key="startTime"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >开始时间</TableHead
-              >
-              <TableHead
-                sortable
-                sort-key="endTime"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >结束时间</TableHead
-              >
-              <TableHead
-                class="w-[120px]"
-                sortable
-                sort-key="status"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >状态</TableHead
-              >
-              <TableHead class="w-[100px]">操作</TableHead>
+              <TableHead class="w-[130px]">编码</TableHead>
+              <TableHead class="w-[220px]">促销名称</TableHead>
+              <TableHead class="w-[120px]">类型</TableHead>
+              <TableHead class="w-[130px]">优惠</TableHead>
+              <TableHead class="w-[180px]">适用范围</TableHead>
+              <TableHead class="w-[150px]">预算/名额</TableHead>
+              <TableHead class="w-[190px]">有效期</TableHead>
+              <TableHead class="w-[110px]">状态</TableHead>
+              <TableHead class="w-[220px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow v-if="displayPromotionList.length === 0">
-              <TableCell colspan="8" class="h-32 text-center text-[var(--crm-text-tertiary)]"
-                >暂无促销数据</TableCell
-              >
+              <TableCell colspan="9" class="h-32 text-center text-[var(--crm-text-tertiary)]">
+                暂无促销数据
+              </TableCell>
             </TableRow>
             <TableRow v-for="row in displayPromotionList" :key="row.id">
-              <TableCell class="text-[var(--crm-text-tertiary)]">{{ row.id }}</TableCell>
-              <TableCell
-                class="max-w-[220px] truncate font-semibold text-[var(--crm-text-primary)]"
-                >{{ row.name || '--' }}</TableCell
-              >
+              <TableCell class="font-mono text-xs">{{ row.code || '--' }}</TableCell>
               <TableCell>
-                <StatusBadge
-                  :label="formatPromotionType(row.type)"
-                  :tone="getPromotionTypeTone(row.type)"
-                />
+                <div class="max-w-[220px] truncate font-semibold text-[var(--crm-text-primary)]">
+                  {{ row.name || '--' }}
+                </div>
+                <div class="mt-1 max-w-[220px] truncate text-xs text-[var(--crm-text-tertiary)]">
+                  {{ row.ruleSummary || '--' }}
+                </div>
+              </TableCell>
+              <TableCell>
+                <StatusBadge :label="formatPromotionType(row.type)" :tone="getPromotionTypeTone(row.type)" />
               </TableCell>
               <TableCell class="font-semibold text-[var(--crm-text-primary)]">
                 {{ formatPromotionDiscount(row) }}
               </TableCell>
-              <TableCell>{{ formatDateTime(row.startTime) }}</TableCell>
-              <TableCell>{{ formatDateTime(row.endTime) }}</TableCell>
+              <TableCell class="text-xs text-[var(--crm-text-secondary)]">
+                <div>门店 {{ row.applicableStore || 'ALL' }}</div>
+                <div>客户 {{ row.customerType || 'ALL' }}</div>
+                <div>渠道 {{ row.applicableChannel || 'ALL' }}</div>
+              </TableCell>
+              <TableCell class="text-xs text-[var(--crm-text-secondary)]">
+                <div>{{ formatBudget(row) }}</div>
+                <div>{{ formatUsage(row) }}</div>
+              </TableCell>
+              <TableCell class="text-xs">
+                <div>{{ formatDateTime(row.startTime) }}</div>
+                <div class="text-[var(--crm-text-tertiary)]">{{ formatDateTime(row.endTime) }}</div>
+              </TableCell>
               <TableCell>
                 <StatusBadge
                   :label="formatPromotionStatus(row.status)"
@@ -132,8 +85,50 @@
                 />
               </TableCell>
               <TableCell>
-                <div class="flex items-center gap-1">
+                <div class="flex flex-wrap items-center gap-1">
                   <RowActionButton
+                    v-if="canPublish(row)"
+                    v-has-permission="PERMISSIONS.product.promotion.status"
+                    label="发布"
+                    @click="handleStatusAction(row, 'publish')"
+                  >
+                    <Send class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-if="canActivate(row)"
+                    v-has-permission="PERMISSIONS.product.promotion.status"
+                    label="生效"
+                    @click="handleStatusAction(row, 'activate')"
+                  >
+                    <Play class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-if="canPause(row)"
+                    v-has-permission="PERMISSIONS.product.promotion.status"
+                    label="暂停"
+                    @click="openReasonDialog(row, 'pause')"
+                  >
+                    <Pause class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-if="canEnd(row)"
+                    v-has-permission="PERMISSIONS.product.promotion.status"
+                    label="结束"
+                    @click="openReasonDialog(row, 'end')"
+                  >
+                    <StopCircle class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-if="canVoid(row)"
+                    v-has-permission="PERMISSIONS.product.promotion.status"
+                    label="作废"
+                    danger
+                    @click="openReasonDialog(row, 'void')"
+                  >
+                    <Ban class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-if="canEdit(row)"
                     v-has-permission="PERMISSIONS.product.promotion.edit"
                     label="编辑"
                     @click="handleEdit(row)"
@@ -141,6 +136,7 @@
                     <Pencil class="h-4 w-4" />
                   </RowActionButton>
                   <RowActionButton
+                    v-if="row.status === PRODUCT_PROMOTION_STATUS.DRAFT"
                     v-has-permission="PERMISSIONS.product.promotion.delete"
                     label="删除"
                     danger
@@ -164,13 +160,12 @@
       </div>
     </section>
 
-    <!-- 促销表单对话框 -->
     <Dialog v-model:open="dialogVisible">
-      <DialogContent class="sm:max-w-[425px]">
+      <DialogContent class="sm:max-w-[760px]">
         <DialogHeader>
           <DialogTitle>{{ dialogType === 'add' ? '新增促销' : '编辑促销' }}</DialogTitle>
         </DialogHeader>
-        <form class="space-y-4" @submit.prevent="handleSubmit">
+        <form class="grid gap-4 md:grid-cols-2" @submit.prevent="handleSubmit">
           <div class="space-y-2">
             <Label>商品</Label>
             <Select v-model="promotionForm.productId">
@@ -178,11 +173,15 @@
                 <SelectValue placeholder="请选择商品" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in productOptions" :key="item.value" :value="item.value">{{
-                  item.label
-                }}</SelectItem>
+                <SelectItem v-for="item in productOptions" :key="item.value" :value="item.value">
+                  {{ item.label }}
+                </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div class="space-y-2">
+            <Label>促销编码</Label>
+            <Input v-model="promotionForm.code" />
           </div>
           <div class="space-y-2">
             <Label>促销名称</Label>
@@ -195,18 +194,19 @@
                 <SelectValue placeholder="请选择类型" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="AMOUNT">满减</SelectItem>
-                <SelectItem value="PERCENTAGE">折扣</SelectItem>
+                <SelectItem v-for="item in promotionTypeOptions" :key="item.value" :value="item.value">
+                  {{ item.label }}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div class="space-y-2">
-            <Label>折扣/金额</Label>
+            <Label>优惠值</Label>
             <NumberField
               v-model="promotionForm.discount"
               :min="0"
-              :max="promotionForm.type === 'PERCENTAGE' ? 1 : 999999"
-              :step="promotionForm.type === 'PERCENTAGE' ? 0.01 : 1"
+              :max="promotionForm.type === PRODUCT_PROMOTION_TYPE.PERCENTAGE ? 0.99 : 999999"
+              :step="promotionForm.type === PRODUCT_PROMOTION_TYPE.PERCENTAGE ? 0.01 : 1"
             >
               <NumberFieldContent>
                 <NumberFieldDecrement />
@@ -216,34 +216,81 @@
             </NumberField>
           </div>
           <div class="space-y-2">
+            <Label>叠加规则</Label>
+            <div class="flex h-10 items-center gap-2 rounded-md border px-3">
+              <Checkbox
+                :checked="promotionForm.stackable"
+                @update:checked="promotionForm.stackable = Boolean($event)"
+              />
+              <span class="text-sm">允许与其他促销叠加</span>
+            </div>
+          </div>
+          <div class="space-y-2 md:col-span-2">
+            <Label>规则摘要</Label>
+            <Textarea v-model="promotionForm.ruleSummary" rows="3" />
+          </div>
+          <div class="space-y-2">
+            <Label>适用门店</Label>
+            <Input v-model="promotionForm.applicableStore" placeholder="ALL" />
+          </div>
+          <div class="space-y-2">
+            <Label>客户类型</Label>
+            <Input v-model="promotionForm.customerType" placeholder="ALL" />
+          </div>
+          <div class="space-y-2">
+            <Label>适用渠道</Label>
+            <Input v-model="promotionForm.applicableChannel" placeholder="ALL" />
+          </div>
+          <div class="space-y-2">
+            <Label>库存范围</Label>
+            <Input v-model="promotionForm.inventoryScope" placeholder="ALL" />
+          </div>
+          <div class="space-y-2">
+            <Label>预算上限</Label>
+            <Input v-model.number="promotionForm.budgetLimit" type="number" min="0" step="1" />
+          </div>
+          <div class="space-y-2">
+            <Label>使用名额</Label>
+            <Input v-model.number="promotionForm.usageLimit" type="number" min="0" step="1" />
+          </div>
+          <div class="space-y-2">
+            <Label>优先级</Label>
+            <Input v-model.number="promotionForm.priority" type="number" min="0" step="1" />
+          </div>
+          <div class="space-y-2">
             <Label>开始时间</Label>
-            <Input type="datetime-local" v-model="promotionForm.startTime" />
+            <Input v-model="promotionForm.startTime" type="datetime-local" />
           </div>
           <div class="space-y-2">
             <Label>结束时间</Label>
-            <Input type="datetime-local" v-model="promotionForm.endTime" />
-          </div>
-          <div class="space-y-2">
-            <Label>状态</Label>
-            <Select v-model="promotionForm.status">
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="请选择状态" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="待开始">待开始</SelectItem>
-                <SelectItem value="进行中">进行中</SelectItem>
-                <SelectItem value="已结束">已结束</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input v-model="promotionForm.endTime" type="datetime-local" />
           </div>
         </form>
         <DialogFooter>
-          <Button variant="outline" @click="dialogVisible = false" :disabled="submitting"
-            >取消</Button
-          >
-          <Button @click="handleSubmit" :disabled="submitting">{{
-            submitting ? '提交中...' : '确定'
-          }}</Button>
+          <Button variant="outline" :disabled="submitting" @click="dialogVisible = false">取消</Button>
+          <Button :disabled="submitting" @click="handleSubmit">
+            {{ submitting ? '提交中...' : '确定' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="reasonDialogVisible">
+      <DialogContent class="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle>{{ reasonDialogTitle }}</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-2">
+          <Label>原因</Label>
+          <Textarea v-model="statusReason" rows="4" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" :disabled="statusSubmitting" @click="reasonDialogVisible = false">
+            取消
+          </Button>
+          <Button :disabled="statusSubmitting" @click="submitReasonAction">
+            {{ statusSubmitting ? '处理中...' : '确定' }}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -252,31 +299,43 @@
 
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import {
+  activatePromotion,
   createPromotion,
   deletePromotion,
+  endPromotion,
   fetchPromotionDetail,
   fetchProductPage,
   getPromotionList,
+  pausePromotion,
+  publishPromotion,
   updatePromotion,
+  voidPromotion,
 } from '@/modules/product/api/product-api'
-import type { ProductPromotion } from '@/modules/product/model/product.types'
 import {
+  PRODUCT_PROMOTION_STATUS,
+  PRODUCT_PROMOTION_STATUS_LABEL,
+  PRODUCT_PROMOTION_TYPE,
+  PRODUCT_PROMOTION_TYPE_LABEL,
   toCreatePromotionRequest,
   toUpdatePromotionRequest,
+  type ProductPromotion,
+  type ProductPromotionStatus,
+  type ProductPromotionType,
   type PromotionFormValues,
 } from '@/modules/product/model/product.types'
-import { toLocalDateTimeInput, fromLocalDateTimeInput } from '@/shared/datetime/local-date'
-import { messageConfirm, messageTip } from '@/shared/utils/feedback'
+import { fromLocalDateTimeInput, toLocalDateTimeInput } from '@/shared/datetime/local-date'
 import { formatCurrency } from '@/shared/utils/display-format'
+import { messageConfirm, messageTip } from '@/shared/utils/feedback'
+import { useClientSort } from '@/shared/utils/table-sort'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
-import { useClientSort } from '@/shared/utils/table-sort'
 
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -308,9 +367,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Pencil, Plus, Trash2 } from '@lucide/vue'
+import { Textarea } from '@/components/ui/textarea'
+import { Ban, Pause, Pencil, Play, Plus, Send, StopCircle, Trash2 } from '@lucide/vue'
 
 defineOptions({ name: 'ProductPromotionView' })
+
+type ReasonAction = 'pause' | 'end' | 'void'
+type InstantAction = 'publish' | 'activate'
 
 const promotionList = ref<ProductPromotion[]>([])
 const currentPage = ref(1)
@@ -318,115 +381,149 @@ const pageSize = ref(10)
 const total = ref(0)
 const loading = ref(false)
 const {
-  sortBy,
-  sortDirection,
   sortedRows: displayPromotionList,
-  toggleSort,
 } = useClientSort<ProductPromotion>(promotionList, {
-  id: 'id',
+  code: 'code',
   name: 'name',
   type: (row) => formatPromotionType(row.type),
-  discount: 'discount',
   startTime: 'startTime',
   endTime: 'endTime',
   status: (row) => formatPromotionStatus(row.status),
 })
+
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
 const submitting = ref(false)
 const productOptions = ref<{ value: string; label: string }[]>([])
-
-const promotionForm = ref<PromotionFormValues>({
-  productId: '',
-  name: '',
-  type: '折扣',
-  discount: 0,
-  startTime: '',
-  endTime: '',
-  status: '未开始',
-})
 const editingPromotionId = ref<string | number | null>(null)
 
-function getPromotionTypeTone(
-  type: string,
-): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
-  const map: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple'> = {
-    折扣: 'success',
-    DISCOUNT: 'success',
-    discount: 'success',
-    满减: 'info',
-    AMOUNT: 'info',
-    amount: 'info',
-    FULL_REDUCTION: 'info',
-    full_reduction: 'info',
-    直降: 'warning',
-    DIRECT_REDUCTION: 'warning',
-    direct_reduction: 'warning',
+const reasonDialogVisible = ref(false)
+const statusSubmitting = ref(false)
+const pendingReasonAction = ref<ReasonAction | null>(null)
+const pendingPromotion = ref<ProductPromotion | null>(null)
+const statusReason = ref('')
+
+const promotionTypeOptions = Object.entries(PRODUCT_PROMOTION_TYPE_LABEL).map(([value, label]) => ({
+  value: value as ProductPromotionType,
+  label,
+}))
+
+const promotionForm = ref<PromotionFormValues>(emptyPromotionForm())
+
+const reasonDialogTitle = computed(() => {
+  const map: Record<ReasonAction, string> = {
+    pause: '暂停促销',
+    end: '结束促销',
+    void: '作废促销',
   }
-  return map[type] ?? 'muted'
+  return pendingReasonAction.value ? map[pendingReasonAction.value] : '状态操作'
+})
+
+function emptyPromotionForm(): PromotionFormValues {
+  return {
+    productId: '',
+    code: '',
+    name: '',
+    type: PRODUCT_PROMOTION_TYPE.AMOUNT,
+    discount: 0,
+    ruleSummary: '',
+    applicableStore: 'ALL',
+    customerType: 'ALL',
+    applicableChannel: 'ALL',
+    inventoryScope: 'ALL',
+    stackable: false,
+    priority: 0,
+    budgetLimit: null,
+    usageLimit: null,
+    startTime: '',
+    endTime: '',
+  }
 }
 
-function getPromotionStatusTone(
-  status: string,
-): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
-  const map: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple'> = {
-    未开始: 'purple',
-    NOT_STARTED: 'purple',
-    pending: 'purple',
-    进行中: 'success',
+function getPromotionTypeTone(type: ProductPromotionType): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
+  if (type === PRODUCT_PROMOTION_TYPE.PERCENTAGE) return 'success'
+  if (type === PRODUCT_PROMOTION_TYPE.GIFT || type === PRODUCT_PROMOTION_TYPE.MAINTENANCE) return 'purple'
+  return 'info'
+}
+
+function getPromotionStatusTone(status: ProductPromotionStatus): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
+  const map: Record<ProductPromotionStatus, 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple'> = {
+    DRAFT: 'muted',
+    PENDING_EFFECTIVE: 'purple',
     ACTIVE: 'success',
-    active: 'success',
-    待开始: 'purple',
-    已结束: 'muted',
+    PAUSED: 'warning',
     ENDED: 'muted',
-    ended: 'muted',
+    VOIDED: 'danger',
+    EXHAUSTED: 'info',
   }
   return map[status] ?? 'muted'
 }
 
 function formatPromotionDiscount(row: ProductPromotion): string {
-  if (formatPromotionType(row.type) === '折扣') {
-    return `${row.discount ?? '--'}折`
+  if (row.type === PRODUCT_PROMOTION_TYPE.PERCENTAGE) {
+    return `${Number(row.discount ?? 0).toFixed(2)}`
+  }
+  if (row.type === PRODUCT_PROMOTION_TYPE.GIFT || row.type === PRODUCT_PROMOTION_TYPE.MAINTENANCE) {
+    return `成本 ${formatCurrency(row.discount, { fractionDigits: 0 })}`
   }
   return formatCurrency(row.discount, { fractionDigits: 0 })
 }
 
-function formatPromotionType(type: string): string {
-  const map: Record<string, string> = {
-    折扣: '折扣',
-    DISCOUNT: '折扣',
-    discount: '折扣',
-    满减: '满减',
-    FULL_REDUCTION: '满减',
-    full_reduction: '满减',
-    AMOUNT: '满减',
-    amount: '满减',
-    直降: '直降',
-    DIRECT_REDUCTION: '直降',
-    direct_reduction: '直降',
-  }
-  return map[type] ?? type ?? '--'
+function formatPromotionType(type: ProductPromotionType): string {
+  return PRODUCT_PROMOTION_TYPE_LABEL[type] ?? type ?? '--'
 }
 
-function formatPromotionStatus(status: string): string {
-  const map: Record<string, string> = {
-    未开始: '未开始',
-    待开始: '待开始',
-    NOT_STARTED: '未开始',
-    pending: '未开始',
-    进行中: '进行中',
-    ACTIVE: '进行中',
-    active: '进行中',
-    已结束: '已结束',
-    ENDED: '已结束',
-    ended: '已结束',
-  }
-  return map[status] ?? status ?? '--'
+function formatPromotionStatus(status: ProductPromotionStatus): string {
+  return PRODUCT_PROMOTION_STATUS_LABEL[status] ?? status ?? '--'
+}
+
+function formatBudget(row: ProductPromotion): string {
+  if (row.budgetLimit === null || row.budgetLimit === undefined) return '预算不限'
+  return `${formatCurrency(row.usedBudget ?? 0, { fractionDigits: 0 })}/${formatCurrency(row.budgetLimit, { fractionDigits: 0 })}`
+}
+
+function formatUsage(row: ProductPromotion): string {
+  if (row.usageLimit === null || row.usageLimit === undefined) return '名额不限'
+  return `${row.usedCount ?? 0}/${row.usageLimit} 次`
 }
 
 function formatDateTime(dateTimeStr?: string): string {
   if (!dateTimeStr) return ''
   return dateTimeStr.replace('T', ' ').split('.')[0] ?? ''
+}
+
+function canEdit(row: ProductPromotion): boolean {
+  return [
+    PRODUCT_PROMOTION_STATUS.DRAFT,
+    PRODUCT_PROMOTION_STATUS.PENDING_EFFECTIVE,
+    PRODUCT_PROMOTION_STATUS.PAUSED,
+  ].includes(row.status)
+}
+
+function canPublish(row: ProductPromotion): boolean {
+  return row.status === PRODUCT_PROMOTION_STATUS.DRAFT
+}
+
+function canActivate(row: ProductPromotion): boolean {
+  return row.status === PRODUCT_PROMOTION_STATUS.PENDING_EFFECTIVE || row.status === PRODUCT_PROMOTION_STATUS.PAUSED
+}
+
+function canPause(row: ProductPromotion): boolean {
+  return row.status === PRODUCT_PROMOTION_STATUS.ACTIVE || row.status === PRODUCT_PROMOTION_STATUS.PENDING_EFFECTIVE
+}
+
+function canEnd(row: ProductPromotion): boolean {
+  return [
+    PRODUCT_PROMOTION_STATUS.DRAFT,
+    PRODUCT_PROMOTION_STATUS.PENDING_EFFECTIVE,
+    PRODUCT_PROMOTION_STATUS.ACTIVE,
+    PRODUCT_PROMOTION_STATUS.PAUSED,
+    PRODUCT_PROMOTION_STATUS.EXHAUSTED,
+  ].includes(row.status)
+}
+
+function canVoid(row: ProductPromotion): boolean {
+  return canEnd(row)
 }
 
 async function loadProductOptions(): Promise<void> {
@@ -459,15 +556,7 @@ async function loadPromotions(): Promise<void> {
 function handleAdd(): void {
   dialogType.value = 'add'
   editingPromotionId.value = null
-  promotionForm.value = {
-    productId: '',
-    name: '',
-    type: 'AMOUNT',
-    discount: 0,
-    startTime: '',
-    endTime: '',
-    status: '待开始',
-  }
+  promotionForm.value = emptyPromotionForm()
   dialogVisible.value = true
 }
 
@@ -478,12 +567,21 @@ async function handleEdit(row: ProductPromotion): Promise<void> {
     editingPromotionId.value = detail.id ?? row.id
     promotionForm.value = {
       productId: String(detail.productId ?? ''),
+      code: detail.code ?? '',
       name: detail.name ?? '',
-      type: normalizePromotionType(detail.type),
+      type: detail.type ?? PRODUCT_PROMOTION_TYPE.AMOUNT,
       discount: Number(detail.discount ?? 0),
+      ruleSummary: detail.ruleSummary ?? '',
+      applicableStore: detail.applicableStore ?? 'ALL',
+      customerType: detail.customerType ?? 'ALL',
+      applicableChannel: detail.applicableChannel ?? 'ALL',
+      inventoryScope: detail.inventoryScope ?? 'ALL',
+      stackable: Boolean(detail.stackable),
+      priority: Number(detail.priority ?? 0),
+      budgetLimit: detail.budgetLimit === null || detail.budgetLimit === undefined ? null : Number(detail.budgetLimit),
+      usageLimit: detail.usageLimit === null || detail.usageLimit === undefined ? null : Number(detail.usageLimit),
       startTime: toLocalDateTimeInput(detail.startTime),
       endTime: toLocalDateTimeInput(detail.endTime),
-      status: normalizePromotionStatus(detail.status),
     }
     dialogVisible.value = true
   } catch {
@@ -493,9 +591,8 @@ async function handleEdit(row: ProductPromotion): Promise<void> {
 
 async function handleDelete(row: ProductPromotion): Promise<void> {
   try {
-    await messageConfirm('确认删除该促销活动？')
+    await messageConfirm('确认删除该促销草稿？')
   } catch {
-    messageTip('取消删除', 'warning')
     return
   }
   try {
@@ -508,31 +605,30 @@ async function handleDelete(row: ProductPromotion): Promise<void> {
 }
 
 function validateForm(): string | null {
-  if (!promotionForm.value.productId) {
-    return '请选择商品'
-  }
-  if (!promotionForm.value.name.trim()) {
-    return '请输入促销名称'
-  }
-  if (!promotionForm.value.startTime || !promotionForm.value.endTime) {
-    return '请选择开始和结束时间'
-  }
+  if (!promotionForm.value.productId) return '请选择商品'
+  if (!promotionForm.value.code.trim()) return '请输入促销编码'
+  if (!promotionForm.value.name.trim()) return '请输入促销名称'
+  if (!promotionForm.value.ruleSummary.trim()) return '请输入规则摘要'
   const start = fromLocalDateTimeInput(promotionForm.value.startTime)
   const end = fromLocalDateTimeInput(promotionForm.value.endTime)
-  if (!start || !end) {
-    return '时间格式有误'
+  if (!start || !end) return '请选择有效期'
+  if (start >= end) return '结束时间必须晚于开始时间'
+  if (promotionForm.value.type === PRODUCT_PROMOTION_TYPE.PERCENTAGE) {
+    if (promotionForm.value.discount <= 0 || promotionForm.value.discount >= 1) {
+      return '百分比折扣必须大于0且小于1'
+    }
+  } else if (
+    promotionForm.value.type !== PRODUCT_PROMOTION_TYPE.GIFT &&
+    promotionForm.value.type !== PRODUCT_PROMOTION_TYPE.MAINTENANCE &&
+    promotionForm.value.discount <= 0
+  ) {
+    return '金额类促销优惠必须大于0'
   }
-  if (start >= end) {
-    return '结束时间必须晚于开始时间'
+  if (promotionForm.value.budgetLimit !== null && promotionForm.value.budgetLimit <= 0) {
+    return '预算上限必须大于0'
   }
-  if (promotionForm.value.discount < 0) {
-    return '折扣/金额不能为负'
-  }
-  if (promotionForm.value.type === 'AMOUNT' && promotionForm.value.discount <= 0) {
-    return '满减金额必须大于0'
-  }
-  if (promotionForm.value.type === 'PERCENTAGE' && promotionForm.value.discount > 1) {
-    return '折扣比例不能超过1'
+  if (promotionForm.value.usageLimit !== null && promotionForm.value.usageLimit <= 0) {
+    return '使用名额必须大于0'
   }
   return null
 }
@@ -569,11 +665,7 @@ async function handleSubmit(): Promise<void> {
       messageTip('编辑成功', 'success')
     }
     dialogVisible.value = false
-    try {
-      await loadPromotions()
-    } catch {
-      messageTip('操作已成功，但列表刷新失败', 'warning')
-    }
+    await loadPromotions()
   } catch {
     messageTip('操作失败', 'error')
   } finally {
@@ -581,34 +673,53 @@ async function handleSubmit(): Promise<void> {
   }
 }
 
-function normalizePromotionType(type?: string): string {
-  const map: Record<string, string> = {
-    折扣: 'PERCENTAGE',
-    DISCOUNT: 'PERCENTAGE',
-    PERCENTAGE: 'PERCENTAGE',
-    percentage: 'PERCENTAGE',
-    满减: 'AMOUNT',
-    FULL_REDUCTION: 'AMOUNT',
-    AMOUNT: 'AMOUNT',
-    amount: 'AMOUNT',
+async function handleStatusAction(row: ProductPromotion, action: InstantAction): Promise<void> {
+  try {
+    if (action === 'publish') {
+      await publishPromotion(row.id)
+      messageTip('发布成功', 'success')
+    } else {
+      await activatePromotion(row.id)
+      messageTip('生效成功', 'success')
+    }
+    await loadPromotions()
+  } catch {
+    messageTip('状态操作失败', 'error')
   }
-  return map[type ?? ''] ?? 'AMOUNT'
 }
 
-function normalizePromotionStatus(status?: string): string {
-  const map: Record<string, string> = {
-    未开始: '待开始',
-    待开始: '待开始',
-    NOT_STARTED: '待开始',
-    pending: '待开始',
-    进行中: '进行中',
-    ACTIVE: '进行中',
-    active: '进行中',
-    已结束: '已结束',
-    ENDED: '已结束',
-    ended: '已结束',
+function openReasonDialog(row: ProductPromotion, action: ReasonAction): void {
+  pendingPromotion.value = row
+  pendingReasonAction.value = action
+  statusReason.value = ''
+  reasonDialogVisible.value = true
+}
+
+async function submitReasonAction(): Promise<void> {
+  if (!pendingPromotion.value || !pendingReasonAction.value) return
+  if (!statusReason.value.trim()) {
+    messageTip('请输入原因', 'warning')
+    return
   }
-  return map[status ?? ''] ?? '待开始'
+  statusSubmitting.value = true
+  try {
+    if (pendingReasonAction.value === 'pause') {
+      await pausePromotion(pendingPromotion.value.id, statusReason.value.trim())
+      messageTip('暂停成功', 'success')
+    } else if (pendingReasonAction.value === 'end') {
+      await endPromotion(pendingPromotion.value.id, statusReason.value.trim())
+      messageTip('结束成功', 'success')
+    } else {
+      await voidPromotion(pendingPromotion.value.id, statusReason.value.trim())
+      messageTip('作废成功', 'success')
+    }
+    reasonDialogVisible.value = false
+    await loadPromotions()
+  } catch {
+    messageTip('状态操作失败', 'error')
+  } finally {
+    statusSubmitting.value = false
+  }
 }
 
 function handleCurrentChange(val: number): void {

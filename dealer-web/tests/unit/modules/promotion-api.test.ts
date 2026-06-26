@@ -12,12 +12,21 @@ const mockedAxios = vi.mocked(axios)
 
 const formValues: PromotionFormValues = {
   productId: '1',
+  code: ' SUMMER-2026 ',
   name: '夏季促销',
-  type: '折扣',
+  type: 'PERCENTAGE',
   discount: 8.5,
+  ruleSummary: ' 夏季限时折扣 ',
+  applicableStore: 'ALL',
+  customerType: 'ALL',
+  applicableChannel: 'ALL',
+  inventoryScope: 'ALL',
+  stackable: false,
+  priority: 10,
+  budgetLimit: null,
+  usageLimit: null,
   startTime: '2026-06-22 00:00:00',
   endTime: '2026-07-22 23:59:59',
-  status: '进行中',
 }
 
 describe('promotion request mappers', () => {
@@ -26,12 +35,21 @@ describe('promotion request mappers', () => {
 
     expect(request).toEqual({
       productId: '1',
+      code: 'SUMMER-2026',
       name: '夏季促销',
-      type: '折扣',
+      type: 'PERCENTAGE',
       discount: 8.5,
+      ruleSummary: '夏季限时折扣',
+      applicableStore: 'ALL',
+      customerType: 'ALL',
+      applicableChannel: 'ALL',
+      inventoryScope: 'ALL',
+      stackable: false,
+      priority: 10,
+      budgetLimit: null,
+      usageLimit: null,
       startTime: '2026-06-22 00:00:00',
       endTime: '2026-07-22 23:59:59',
-      status: '进行中',
     })
     expect(request).toHaveProperty('productId')
   })
@@ -58,12 +76,21 @@ describe('promotion api request bodies', () => {
     expect(callArgs?.url).toBe('/api/product-promotions')
     expect(callArgs?.data).toEqual({
       productId: '1',
+      code: 'SUMMER-2026',
       name: '夏季促销',
-      type: '折扣',
+      type: 'PERCENTAGE',
       discount: 8.5,
+      ruleSummary: '夏季限时折扣',
+      applicableStore: 'ALL',
+      customerType: 'ALL',
+      applicableChannel: 'ALL',
+      inventoryScope: 'ALL',
+      stackable: false,
+      priority: 10,
+      budgetLimit: null,
+      usageLimit: null,
       startTime: '2026-06-22 00:00:00',
       endTime: '2026-07-22 23:59:59',
-      status: '进行中',
     })
   })
 

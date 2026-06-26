@@ -13,16 +13,20 @@
         <result column="quantity" property="quantity" />
         <result column="line_amount" property="lineAmount" />
         <result column="promotion_id" property="promotionId" />
+        <result column="promotion_code" property="promotionCode" />
         <result column="promotion_name" property="promotionName" />
+        <result column="promotion_rule_summary" property="promotionRuleSummary" />
         <result column="promotion_amount" property="promotionAmount" />
+        <result column="promotion_snapshot" property="promotionSnapshot" />
         <result column="create_time" property="createTime" />
         <result column="create_by" property="createBy" />
     </resultMap>
 
     <sql id="Base_Column_List">
         id, quote_version_id, product_id, product_sku, product_name, product_specification,
-        guide_price, unit_price, quantity, line_amount, promotion_id, promotion_name,
-        promotion_amount, create_time, create_by
+        guide_price, unit_price, quantity, line_amount, promotion_id, promotion_code,
+        promotion_name, promotion_rule_summary, promotion_amount, promotion_snapshot,
+        create_time, create_by
     </sql>
 
     <select id="selectByVersionId" resultMap="BaseResultMap">
@@ -35,12 +39,14 @@
     <insert id="insert" parameterType="com.autodealer.crm.model.TQuoteVersionItem" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_quote_version_item (
             quote_version_id, product_id, product_sku, product_name, product_specification,
-            guide_price, unit_price, quantity, line_amount, promotion_id, promotion_name,
-            promotion_amount, create_time, create_by
+            guide_price, unit_price, quantity, line_amount, promotion_id, promotion_code,
+            promotion_name, promotion_rule_summary, promotion_amount, promotion_snapshot,
+            create_time, create_by
         ) VALUES (
             #{quoteVersionId}, #{productId}, #{productSku}, #{productName}, #{productSpecification},
-            #{guidePrice}, #{unitPrice}, #{quantity}, #{lineAmount}, #{promotionId}, #{promotionName},
-            #{promotionAmount}, #{createTime}, #{createBy}
+            #{guidePrice}, #{unitPrice}, #{quantity}, #{lineAmount}, #{promotionId}, #{promotionCode},
+            #{promotionName}, #{promotionRuleSummary}, #{promotionAmount}, #{promotionSnapshot},
+            #{createTime}, #{createBy}
         )
     </insert>
 

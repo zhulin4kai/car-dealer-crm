@@ -3,6 +3,7 @@ package com.autodealer.crm.web;
 import com.autodealer.crm.constant.PermissionCodes;
 
 import com.autodealer.crm.dto.CreateProductPromotionRequest;
+import com.autodealer.crm.dto.ProductPromotionLifecycleRequest;
 import com.autodealer.crm.dto.UpdateProductPromotionRequest;
 import com.autodealer.crm.model.TProductPromotion;
 import com.autodealer.crm.result.R;
@@ -39,12 +40,21 @@ public class ProductPromotionController {
     public R<Void> addPromotion(@Valid @RequestBody CreateProductPromotionRequest req) {
         TProductPromotion promotion = new TProductPromotion();
         promotion.setProductId(req.getProductId());
+        promotion.setCode(req.getCode());
         promotion.setName(req.getName());
         promotion.setType(req.getType());
         promotion.setDiscount(req.getDiscount());
+        promotion.setRuleSummary(req.getRuleSummary());
+        promotion.setApplicableStore(req.getApplicableStore());
+        promotion.setCustomerType(req.getCustomerType());
+        promotion.setApplicableChannel(req.getApplicableChannel());
+        promotion.setInventoryScope(req.getInventoryScope());
+        promotion.setStackable(req.getStackable());
+        promotion.setPriority(req.getPriority());
+        promotion.setBudgetLimit(req.getBudgetLimit());
+        promotion.setUsageLimit(req.getUsageLimit());
         promotion.setStartTime(req.getStartTime());
         promotion.setEndTime(req.getEndTime());
-        promotion.setStatus(req.getStatus());
         promotionService.addPromotion(promotion);
         return R.OK();
     }
@@ -55,14 +65,56 @@ public class ProductPromotionController {
         TProductPromotion promotion = new TProductPromotion();
         promotion.setId(id);
         promotion.setProductId(req.getProductId());
+        promotion.setCode(req.getCode());
         promotion.setName(req.getName());
         promotion.setType(req.getType());
         promotion.setDiscount(req.getDiscount());
+        promotion.setRuleSummary(req.getRuleSummary());
+        promotion.setApplicableStore(req.getApplicableStore());
+        promotion.setCustomerType(req.getCustomerType());
+        promotion.setApplicableChannel(req.getApplicableChannel());
+        promotion.setInventoryScope(req.getInventoryScope());
+        promotion.setStackable(req.getStackable());
+        promotion.setPriority(req.getPriority());
+        promotion.setBudgetLimit(req.getBudgetLimit());
+        promotion.setUsageLimit(req.getUsageLimit());
         promotion.setStartTime(req.getStartTime());
         promotion.setEndTime(req.getEndTime());
-        promotion.setStatus(req.getStatus());
         promotionService.updatePromotion(promotion);
         return R.OK();
+    }
+
+    @PutMapping("/{id}/publish")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_STATUS + "')")
+    public R<TProductPromotion> publishPromotion(@PathVariable Long id) {
+        return R.OK(promotionService.publishPromotion(id));
+    }
+
+    @PutMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_STATUS + "')")
+    public R<TProductPromotion> activatePromotion(@PathVariable Long id) {
+        return R.OK(promotionService.activatePromotion(id));
+    }
+
+    @PutMapping("/{id}/pause")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_STATUS + "')")
+    public R<TProductPromotion> pausePromotion(@PathVariable Long id,
+                                               @Valid @RequestBody ProductPromotionLifecycleRequest req) {
+        return R.OK(promotionService.pausePromotion(id, req.getReason()));
+    }
+
+    @PutMapping("/{id}/end")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_STATUS + "')")
+    public R<TProductPromotion> endPromotion(@PathVariable Long id,
+                                             @Valid @RequestBody ProductPromotionLifecycleRequest req) {
+        return R.OK(promotionService.endPromotion(id, req.getReason()));
+    }
+
+    @PutMapping("/{id}/void")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.PRODUCT_PROMOTION_STATUS + "')")
+    public R<TProductPromotion> voidPromotion(@PathVariable Long id,
+                                              @Valid @RequestBody ProductPromotionLifecycleRequest req) {
+        return R.OK(promotionService.voidPromotion(id, req.getReason()));
     }
 
     @DeleteMapping("/{id}")

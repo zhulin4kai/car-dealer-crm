@@ -20,6 +20,7 @@ import com.autodealer.crm.mapper.TQuoteVersionMapper;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.model.TOpportunity;
 import com.autodealer.crm.model.TProduct;
+import com.autodealer.crm.model.TProductPromotion;
 import com.autodealer.crm.model.TQuote;
 import com.autodealer.crm.model.TQuoteStatusHistory;
 import com.autodealer.crm.model.TQuoteVersion;
@@ -41,9 +42,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -77,6 +80,8 @@ class QuoteServiceImplTest {
     private CurrentUserProvider currentUserProvider;
     @Mock
     private OperationAuditRecorder auditRecorder;
+    @Mock
+    private ProductPromotionService promotionService;
 
     @BeforeEach
     void setUp() {
@@ -137,6 +142,44 @@ class QuoteServiceImplTest {
         verify(quoteMapper, never()).insert(any());
         verify(productMapper, never()).selectById(anyLong());
         verify(auditRecorder, never()).record(any(), anyString());
+    }
+
+    @Test
+    void createQuote_withPromotion_shouldSnapshotPromotionFacts() {
+        CreateQuoteRequest request = createQuoteRequest();
+        request.getItems().get(0).setPromotionId(10L);
+        TProductPromotion promotion = promotion();
+        when(productMapper.selectById(1L)).thenReturn(product());
+        when(promotionService.requireApplicablePromotion(eq(10L), eq(List.of(1L)))).thenReturn(promotion);
+        when(promotionService.calculateDiscount(anyList(), eq(promotion))).thenReturn(new BigDecimal("2000.00"));
+        when(quoteMapper.insert(any())).thenAnswer(inv -> {
+            TQuote quote = inv.getArgument(0);
+            quote.setId(100L);
+            return 1;
+        });
+        when(versionMapper.insert(any())).thenAnswer(inv -> {
+            TQuoteVersion version = inv.getArgument(0);
+            version.setId(200L);
+            return 1;
+        });
+        when(itemMapper.insert(any())).thenReturn(1);
+        when(quoteMapper.updateCurrentVersion(eq(100L), eq(200L), any(), eq(7))).thenReturn(1);
+        when(historyMapper.insert(any())).thenReturn(1);
+        when(quoteMapper.selectById(100L)).thenReturn(quote(100L, QuoteStatus.DRAFT, 200L));
+        when(versionMapper.selectById(200L)).thenReturn(version(200L, 1));
+        when(itemMapper.selectByVersionId(200L)).thenReturn(List.of());
+
+        quoteService.createQuote(request);
+
+        ArgumentCaptor<TQuoteVersionItem> itemCaptor = ArgumentCaptor.forClass(TQuoteVersionItem.class);
+        verify(itemMapper).insert(itemCaptor.capture());
+        TQuoteVersionItem item = itemCaptor.getValue();
+        assertEquals(10L, item.getPromotionId());
+        assertEquals("PROMO-Q-001", item.getPromotionCode());
+        assertEquals("报价促销", item.getPromotionName());
+        assertEquals("每台直减2000元", item.getPromotionRuleSummary());
+        assertEquals(new BigDecimal("2000.00"), item.getPromotionAmount());
+        assertTrue(item.getPromotionSnapshot().contains("PROMO-Q-001"));
     }
 
     @Test
@@ -382,6 +425,18 @@ class QuoteServiceImplTest {
         product.setPrice(new BigDecimal("100000.00"));
         product.setStatus("ON_SALE");
         return product;
+    }
+
+    private TProductPromotion promotion() {
+        TProductPromotion promotion = new TProductPromotion();
+        promotion.setId(10L);
+        promotion.setProductId(1L);
+        promotion.setCode("PROMO-Q-001");
+        promotion.setName("报价促销");
+        promotion.setType("AMOUNT");
+        promotion.setDiscount(new BigDecimal("2000.00"));
+        promotion.setRuleSummary("每台直减2000元");
+        return promotion;
     }
 
     private TOpportunity opportunity(Long id, Integer customerId, Integer ownerId, OpportunityStage stage) {

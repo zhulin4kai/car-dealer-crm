@@ -92,6 +92,26 @@ export function updatePromotion(id: EntityId, data: UpdatePromotionRequest): Pro
   return httpClient.put(`/api/product-promotions/${id}`, data)
 }
 
+export function publishPromotion(id: EntityId): Promise<ProductPromotion> {
+  return httpClient.put<ProductPromotion>(`/api/product-promotions/${id}/publish`)
+}
+
+export function activatePromotion(id: EntityId): Promise<ProductPromotion> {
+  return httpClient.put<ProductPromotion>(`/api/product-promotions/${id}/activate`)
+}
+
+export function pausePromotion(id: EntityId, reason: string): Promise<ProductPromotion> {
+  return httpClient.put<ProductPromotion>(`/api/product-promotions/${id}/pause`, { reason })
+}
+
+export function endPromotion(id: EntityId, reason: string): Promise<ProductPromotion> {
+  return httpClient.put<ProductPromotion>(`/api/product-promotions/${id}/end`, { reason })
+}
+
+export function voidPromotion(id: EntityId, reason: string): Promise<ProductPromotion> {
+  return httpClient.put<ProductPromotion>(`/api/product-promotions/${id}/void`, { reason })
+}
+
 export function deletePromotion(id: EntityId): Promise<unknown> {
   return httpClient.delete(`/api/product-promotions/${id}`)
 }

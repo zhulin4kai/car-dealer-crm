@@ -36,10 +36,22 @@ class ProductPromotionMapperIntegrationTest extends BackendIntegrationTestBase {
     void insertAndUpdateMustPersistProductId() {
         TProductPromotion promotion = new TProductPromotion();
         promotion.setProductId(1L);
+        promotion.setCode("PROMO-MAPPER-PERSIST");
         promotion.setName("产品促销关联测试");
         promotion.setType("AMOUNT");
         promotion.setDiscount(new BigDecimal("1000.00"));
-        promotion.setStatus("待开始");
+        promotion.setRuleSummary("每台直减1000元");
+        promotion.setApplicableStore("ALL");
+        promotion.setCustomerType("ALL");
+        promotion.setApplicableChannel("ALL");
+        promotion.setInventoryScope("ALL");
+        promotion.setStackable(false);
+        promotion.setPriority(0);
+        promotion.setUsedBudget(BigDecimal.ZERO);
+        promotion.setUsedCount(0);
+        promotion.setStartTime(LocalDateTime.now().minusDays(1));
+        promotion.setEndTime(LocalDateTime.now().plusDays(1));
+        promotion.setStatus("DRAFT");
         promotion.setCreateTime(LocalDateTime.now());
         promotion.setUpdateTime(LocalDateTime.now());
 
@@ -60,10 +72,11 @@ class ProductPromotionMapperIntegrationTest extends BackendIntegrationTestBase {
         insertPromotion(1L, "过期促销", "ACTIVE", now.minusDays(5), now.minusDays(1));
         insertPromotion(1L, "未开始促销", "ACTIVE", now.plusDays(1), now.plusDays(5));
         insertPromotion(1L, "暂停促销", "PAUSED", now.minusDays(1), now.plusDays(1));
-        TProductPromotion otherProduct = insertPromotion(2L, "其他商品促销", "进行中",
+        TProductPromotion otherProduct = insertPromotion(2L, "其他商品促销", "ACTIVE",
                 now.minusDays(1), now.plusDays(1));
 
-        List<TProductPromotion> result = promotionMapper.selectAvailableByProductIds(List.of(1L), now);
+        List<TProductPromotion> result = promotionMapper.selectAvailableByProductIds(
+                List.of(1L), now, "ALL", "ALL", "ALL");
 
         assertTrue(result.stream().anyMatch(promotion -> promotion.getId().equals(available.getId())));
         assertTrue(result.stream().noneMatch(promotion -> promotion.getName().equals("过期促销")));
@@ -76,9 +89,19 @@ class ProductPromotionMapperIntegrationTest extends BackendIntegrationTestBase {
                                               LocalDateTime startTime, LocalDateTime endTime) {
         TProductPromotion promotion = new TProductPromotion();
         promotion.setProductId(productId);
+        promotion.setCode("PROMO-MAPPER-" + name.hashCode());
         promotion.setName(name);
         promotion.setType("AMOUNT");
         promotion.setDiscount(new BigDecimal("1000.00"));
+        promotion.setRuleSummary("每台直减1000元");
+        promotion.setApplicableStore("ALL");
+        promotion.setCustomerType("ALL");
+        promotion.setApplicableChannel("ALL");
+        promotion.setInventoryScope("ALL");
+        promotion.setStackable(false);
+        promotion.setPriority(0);
+        promotion.setUsedBudget(BigDecimal.ZERO);
+        promotion.setUsedCount(0);
         promotion.setStartTime(startTime);
         promotion.setEndTime(endTime);
         promotion.setStatus(status);
