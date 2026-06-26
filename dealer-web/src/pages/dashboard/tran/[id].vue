@@ -234,7 +234,7 @@
                   @click="openRefundApprovalDialog(request, false)"
                 >驳回</Button>
                 <Button
-                  v-if="request.status === 'APPROVED'"
+                  v-if="request.status === 'PENDING_EXECUTION'"
                   v-has-permission="PERMISSIONS.tran.refundExecute"
                   variant="outline"
                   size="sm"
@@ -375,8 +375,22 @@
         </DialogHeader>
         <div class="space-y-3">
           <div>
+            <Label>执行结果</Label>
+            <Select v-model="refundExecuteForm.result">
+              <SelectTrigger><SelectValue placeholder="选择执行结果" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SUCCESS">退款成功</SelectItem>
+                <SelectItem value="FAILED">退款失败</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label>退款参考号</Label>
             <Input v-model="refundExecuteForm.transactionRef" placeholder="银行或第三方退款参考号" />
+          </div>
+          <div v-if="refundExecuteForm.result === 'FAILED'">
+            <Label>失败原因</Label>
+            <Textarea v-model="refundExecuteForm.failureReason" :rows="3" placeholder="请输入失败原因" />
           </div>
           <div>
             <Label>执行备注</Label>
@@ -504,8 +518,13 @@ const settlementDialogOpen = ref(false)
 
 const invoiceStatusMap = {
   'PENDING': { type: 'warning', text: '待开具' },
+  'ISSUING': { type: 'warning', text: '开票中' },
   'ISSUED': { type: 'success', text: '已开具' },
-  'VOID': { type: 'danger', text: '已作废' }
+  'FAILED': { type: 'danger', text: '开票失败' },
+  'VOIDED': { type: 'danger', text: '已作废' },
+  'PARTIAL_RED_REVERSED': { type: 'warning', text: '部分红冲' },
+  'RED_REVERSED': { type: 'danger', text: '已红冲' },
+  'NOT_REQUIRED': { type: 'info', text: '无需开票' },
 }
 
 const getStatusType = getTranStageType
@@ -620,8 +639,10 @@ const refundApprovalApproved = ref(true)
 const refundApprovalComment = ref('')
 const refundExecuteDialogOpen = ref(false)
 const refundExecuteForm = ref({
+  result: 'SUCCESS',
   transactionRef: '',
   remark: '',
+  failureReason: '',
 })
 
 const PAYMENT_METHODS = [
@@ -644,6 +665,7 @@ const canShowPaymentRecords = computed(() =>
   canRecordPayment.value
   || tranDetail.value.stage === TRAN_STAGE.DELIVERY
   || tranDetail.value.stage === TRAN_STAGE.COMPLETED
+  || tranDetail.value.stage === TRAN_STAGE.CLOSED
   || tranDetail.value.stage === TRAN_STAGE.CANCELLED,
 )
 
@@ -665,7 +687,7 @@ const REFUND_TYPES: Array<{ value: RefundType; label: string }> = [
 
 const totalPaid = computed(() => {
   return paymentList.value
-    .filter(p => (p.paymentStatus === 'COMPLETED' || p.paymentStatus === 'REFUNDED') && p.paymentType !== 'REFUND')
+    .filter(p => p.paymentStatus === 'COMPLETED' && p.paymentType !== 'REFUND')
     .reduce((sum, p) => sum + (p.amount || 0), 0)
     + paymentList.value
       .filter(p => p.paymentStatus === 'COMPLETED' && p.paymentType === 'REFUND')
@@ -698,12 +720,12 @@ const getPaymentMethodText = (m) => PAYMENT_METHODS.find(p => p.value === m)?.la
 const getPaymentTypeText = (t) => PAYMENT_TYPES.find(p => p.value === t)?.label || t
 
 const getPaymentStatusText = (s) => {
-  const map = { PENDING: '待确认', COMPLETED: '已到账', FAILED: '已退回', REFUNDED: '已退款' }
+  const map = { PENDING: '待确认', COMPLETED: '已到账', FAILED: '已退回', REVERSED: '已冲正', VOIDED: '已作废' }
   return map[s] || s
 }
 
 const getPaymentStatusClass = (s) => {
-  const map = { COMPLETED: 'bg-green-600 text-white', REFUNDED: 'bg-red-600 text-white', PENDING: 'bg-yellow-600 text-white', FAILED: 'bg-red-600 text-white' }
+  const map = { COMPLETED: 'bg-green-600 text-white', PENDING: 'bg-yellow-600 text-white', FAILED: 'bg-red-600 text-white', REVERSED: 'bg-orange-600 text-white', VOIDED: 'bg-slate-600 text-white' }
   return map[s] || ''
 }
 
@@ -712,9 +734,12 @@ const getRefundTypeText = (type) => REFUND_TYPES.find(item => item.value === typ
 const getRefundStatusText = (status) => {
   const map = {
     PENDING_APPROVAL: '待审批',
-    APPROVED: '已审批',
+    PENDING_EXECUTION: '待执行',
+    EXECUTING: '执行中',
+    COMPLETED: '已完成',
     REJECTED: '已驳回',
-    EXECUTED: '已退款'
+    FAILED: '执行失败',
+    CANCELLED: '已撤销'
   }
   return map[status] || status
 }
@@ -722,9 +747,12 @@ const getRefundStatusText = (status) => {
 const getRefundStatusClass = (status) => {
   const map = {
     PENDING_APPROVAL: 'bg-yellow-600 text-white',
-    APPROVED: 'bg-blue-600 text-white',
+    PENDING_EXECUTION: 'bg-blue-600 text-white',
+    EXECUTING: 'bg-purple-600 text-white',
+    COMPLETED: 'bg-green-600 text-white',
     REJECTED: 'bg-red-600 text-white',
-    EXECUTED: 'bg-green-600 text-white'
+    FAILED: 'bg-red-600 text-white',
+    CANCELLED: 'bg-slate-600 text-white'
   }
   return map[status] || ''
 }
@@ -879,18 +907,26 @@ const submitRefundApproval = async () => {
 
 const openRefundExecuteDialog = (request: TRefundRequest) => {
   selectedRefundRequest.value = request
-  refundExecuteForm.value = { transactionRef: '', remark: '' }
+  refundExecuteForm.value = { result: 'SUCCESS', transactionRef: '', remark: '', failureReason: '' }
   refundExecuteDialogOpen.value = true
 }
 
 const submitRefundExecute = async () => {
   if (!selectedRefundRequest.value) return
+  if (refundExecuteForm.value.result === 'FAILED' && !refundExecuteForm.value.failureReason.trim()) {
+    messageTip('请输入失败原因', 'warning')
+    return
+  }
   try {
     await executeRefundRequest(selectedRefundRequest.value.id, {
       transactionRef: refundExecuteForm.value.transactionRef || undefined,
-      remark: refundExecuteForm.value.remark || undefined
+      remark: refundExecuteForm.value.remark || undefined,
+      success: refundExecuteForm.value.result === 'SUCCESS',
+      failureReason: refundExecuteForm.value.result === 'FAILED'
+        ? refundExecuteForm.value.failureReason.trim()
+        : undefined
     })
-    messageTip('退款已执行', 'success')
+    messageTip(refundExecuteForm.value.result === 'SUCCESS' ? '退款已执行' : '退款执行失败已记录', 'success')
     refundExecuteDialogOpen.value = false
     await Promise.all([fetchPaymentList(), fetchRefundRequestList(), fetchTranDetail()])
   } catch (error) {

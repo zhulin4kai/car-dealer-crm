@@ -14,6 +14,7 @@ public class TTranHistory implements Serializable {
     private Integer id;
     private Integer tranId;
     private String stage;
+    private String reason;
     private BigDecimal money;
     private Date expectedDate;
     private Date createTime;

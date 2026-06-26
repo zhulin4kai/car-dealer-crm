@@ -6,6 +6,7 @@
         <id column="id" property="id" />
         <result column="tran_id" property="tranId" />
         <result column="stage" property="stage" />
+        <result column="reason" property="reason" />
         <result column="money" property="money" />
         <result column="expected_date" property="expectedDate" />
         <result column="create_time" property="createTime" />
@@ -13,12 +14,12 @@
     </resultMap>
 
     <insert id="insert" parameterType="com.autodealer.crm.model.TTranHistory" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO t_tran_history (tran_id, stage, money, expected_date, create_time, create_by)
-        VALUES (#{tranId}, #{stage}, #{money}, #{expectedDate}, #{createTime}, #{createBy})
+        INSERT INTO t_tran_history (tran_id, stage, reason, money, expected_date, create_time, create_by)
+        VALUES (#{tranId}, #{stage}, #{reason}, #{money}, #{expectedDate}, #{createTime}, #{createBy})
     </insert>
 
     <select id="selectByTranId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-        SELECT id, tran_id, stage, money, expected_date, create_time, create_by
+        SELECT id, tran_id, stage, reason, money, expected_date, create_time, create_by
         FROM t_tran_history
         WHERE tran_id = #{tranId,jdbcType=INTEGER}
         ORDER BY create_time DESC

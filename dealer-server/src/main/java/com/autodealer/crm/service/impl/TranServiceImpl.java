@@ -2,6 +2,7 @@ package com.autodealer.crm.service.impl;
 
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.PermissionCodes;
 import com.autodealer.crm.enums.PaymentMethod;
 import com.autodealer.crm.enums.PaymentStatus;
 import com.autodealer.crm.enums.PaymentType;
@@ -36,8 +37,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class TranServiceImpl implements TranService {
@@ -189,7 +192,7 @@ public class TranServiceImpl implements TranService {
         sanitizeTransactionUpdate(tTran);
         tTran.setEditBy(currentUserProvider.getCurrentUserId());
         tTran.setEditTime(new Date());
-        int rows = tranMapper.updateByPrimaryKeySelective(tTran);
+        int rows = updateTransactionScoped(tTran);
 
         if (rows > 0) {
             int versionRows = tranMapper.incrementVersion(
@@ -560,7 +563,7 @@ public class TranServiceImpl implements TranService {
         TTran moneyUpdate = new TTran();
         moneyUpdate.setId(tranId);
         moneyUpdate.setMoney(totalAmount);
-        if (tranMapper.updateByPrimaryKeySelective(moneyUpdate) != 1) {
+        if (updateTransactionScoped(moneyUpdate) != 1) {
             throw new BusinessException(CodeEnum.OPERATION_FAILED, "交易金额更新失败");
         }
 
@@ -622,21 +625,26 @@ public class TranServiceImpl implements TranService {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "发票信息不完整");
         }
 
-        TTran tran = requireAccessibleTransaction(invoice.getTranId());
+        requireAccessibleTransaction(invoice.getTranId());
+        TTran tran = tranMapper.selectByPrimaryKeyForUpdate(invoice.getTranId());
+        if (tran == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "交易不存在");
+        }
         Integer operatorId = currentUserProvider.getCurrentUserId();
         invoice.setCreateBy(operatorId);
         invoice.setEditBy(operatorId);
         if (invoice.getAmount() == null || tran.getMoney() == null) {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "发票金额和交易金额不能为空");
         }
-        if (invoice.getAmount().compareTo(tran.getMoney()) != 0) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "发票金额必须等于交易结算金额");
+        if (invoice.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "发票金额必须大于0");
         }
         List<TTranInvoice> existingInvoices = tranInvoiceMapper.selectByTranId(invoice.getTranId());
-        if (existingInvoices != null && !existingInvoices.isEmpty()) {
-            throw new BusinessException(CodeEnum.DUPLICATE, "该交易已开具发票，不可重复开票");
+        BigDecimal availableAmount = calculateAvailableInvoiceAmount(tran, existingInvoices);
+        if (invoice.getAmount().compareTo(availableAmount) > 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "发票金额不能超过当前可开票余额");
         }
-        if (tran.getStage() != TranStage.APPROVED) {
+        if (!canCreateInvoice(tran.getStage())) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许创建发票");
         }
 
@@ -658,13 +666,19 @@ public class TranServiceImpl implements TranService {
     @Override
     public List<TTranInvoice> getTranInvoices(Integer tranId) {
         requireAccessibleTransaction(tranId);
-        return tranInvoiceMapper.selectByTranId(tranId);
+        List<TTranInvoice> invoices = tranInvoiceMapper.selectByTranId(tranId);
+        if (currentUserProvider.isAdmin() || currentUserProvider.hasAuthority(PermissionCodes.TRAN_INVOICE_SENSITIVE)) {
+            return invoices;
+        }
+        return normalizeInvoices(invoices).stream()
+                .map(this::maskInvoiceSensitiveFields)
+                .toList();
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean updateTranInvoiceStatus(Integer invoiceId, String status) {
-        if (!"ISSUED".equals(status) && !"VOID".equals(status)) {
+    public boolean updateTranInvoiceStatus(Integer invoiceId, String status, String reason) {
+        if (!"ISSUED".equals(status) && !"FAILED".equals(status) && !"VOIDED".equals(status)) {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "不支持的发票状态: " + status);
         }
 
@@ -673,16 +687,29 @@ public class TranServiceImpl implements TranService {
             throw new BusinessException(CodeEnum.NOT_FOUND, "发票不存在");
         }
         requireAccessibleTransaction(currentInvoice.getTranId());
+        TTran lockedTran = tranMapper.selectByPrimaryKeyForUpdate(currentInvoice.getTranId());
+        if (lockedTran == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "交易不存在");
+        }
+        currentInvoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
+        if (currentInvoice == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "发票不存在");
+        }
         Integer updateBy = currentUserProvider.getCurrentUserId();
-        boolean validTransition = "PENDING".equals(currentInvoice.getStatus())
-                || ("ISSUED".equals(currentInvoice.getStatus()) && "VOID".equals(status));
+        boolean validTransition = ("PENDING".equals(currentInvoice.getStatus())
+                    && ("ISSUED".equals(status) || "FAILED".equals(status) || "VOIDED".equals(status)))
+                || ("ISSUED".equals(currentInvoice.getStatus()) && "VOIDED".equals(status));
         if (!validTransition || currentInvoice.getStatus().equals(status)) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前发票状态不允许此操作");
+        }
+        String updateRemark = currentInvoice.getRemark();
+        if ("FAILED".equals(status) || "VOIDED".equals(status)) {
+            updateRemark = mergeRemark(currentInvoice.getRemark(), requireNonBlank(reason, "发票失败或作废原因不能为空"));
         }
 
         Date now = new Date();
         int result = tranInvoiceMapper.updateStatusIfCurrent(invoiceId, currentInvoice.getStatus(),
-                status, "ISSUED".equals(status) ? now : currentInvoice.getIssueTime(), now, updateBy);
+                status, "ISSUED".equals(status) ? now : currentInvoice.getIssueTime(), updateRemark, now, updateBy);
         if (result != 1) {
             throw new BusinessException(CodeEnum.OPERATION_FAILED, "发票状态已变更，请刷新后重试");
         }
@@ -694,61 +721,174 @@ public class TranServiceImpl implements TranService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteTransaction(Integer id) {
-        requireAccessibleTransaction(id);
-        TTran transaction = tranMapper.selectByPrimaryKeyForUpdate(id);
-        if (transaction == null) {
-            return false;
+    public TTranInvoice redReverseInvoice(Integer invoiceId, BigDecimal amount, String reason) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "红冲金额必须大于0");
         }
-        requireDeletable(transaction);
-        deleteLockedTransaction(id);
-        return true;
+        String checkedReason = requireNonBlank(reason, "红冲原因不能为空");
+
+        TTranInvoice originalInvoice = requireInvoiceForMutation(invoiceId);
+        if (!"ISSUED".equals(originalInvoice.getStatus())
+                && !"PARTIAL_RED_REVERSED".equals(originalInvoice.getStatus())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前发票状态不允许红冲");
+        }
+        if (originalInvoice.getAmount() == null || originalInvoice.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "只能对正数原票发起红冲");
+        }
+
+        List<TTranInvoice> invoices = tranInvoiceMapper.selectByTranId(originalInvoice.getTranId());
+        BigDecimal normalizedAmount = amount.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal reversedAmount = calculateCompletedRedReversalAmount(originalInvoice.getId(), invoices);
+        BigDecimal remainingAmount = originalInvoice.getAmount().abs().subtract(reversedAmount).setScale(2, RoundingMode.HALF_UP);
+        if (normalizedAmount.compareTo(remainingAmount) > 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "红冲金额不能超过原票剩余可红冲金额");
+        }
+
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        Date now = new Date();
+        TTranInvoice redInvoice = copyInvoiceForRedReverse(originalInvoice, normalizedAmount, checkedReason, operatorId, now);
+        int inserted = tranInvoiceMapper.insertSelective(redInvoice);
+        if (inserted != 1) {
+            throw new BusinessException(CodeEnum.FAIL, "红冲发票创建失败");
+        }
+
+        BigDecimal totalReversed = reversedAmount.add(normalizedAmount).setScale(2, RoundingMode.HALF_UP);
+        String newOriginalStatus = totalReversed.compareTo(originalInvoice.getAmount().abs()) >= 0
+                ? "RED_REVERSED" : "PARTIAL_RED_REVERSED";
+        String updateRemark = mergeRemark(originalInvoice.getRemark(), "红冲原因：" + checkedReason);
+        int updated = tranInvoiceMapper.updateStatusIfCurrent(originalInvoice.getId(), originalInvoice.getStatus(),
+                newOriginalStatus, originalInvoice.getIssueTime(), updateRemark, now, operatorId);
+        if (updated != 1) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "发票状态已变更，请刷新后重试");
+        }
+
+        auditRecorder.record(AuditActionEnum.INVOICE_RED_REVERSE, String.valueOf(invoiceId));
+        clearTransactionCache(originalInvoice.getTranId());
+        return redInvoice;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TTranInvoice reissueInvoice(Integer invoiceId, TTranInvoice invoice, String reason) {
+        if (invoice == null || invoice.getAmount() == null || invoice.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "重开发票金额必须大于0");
+        }
+        String checkedReason = requireNonBlank(reason, "重开原因不能为空");
+        TTranInvoice sourceInvoice = requireInvoiceForMutation(invoiceId);
+        if (!"VOIDED".equals(sourceInvoice.getStatus())
+                && !"RED_REVERSED".equals(sourceInvoice.getStatus())
+                && !"PARTIAL_RED_REVERSED".equals(sourceInvoice.getStatus())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前发票状态不允许重开");
+        }
+
+        TTran tran = tranMapper.selectByPrimaryKeyForUpdate(sourceInvoice.getTranId());
+        if (tran == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "交易不存在");
+        }
+        List<TTranInvoice> invoices = tranInvoiceMapper.selectByTranId(sourceInvoice.getTranId());
+        BigDecimal availableAmount = calculateAvailableInvoiceAmount(tran, invoices);
+        BigDecimal reissueAmount = invoice.getAmount().setScale(2, RoundingMode.HALF_UP);
+        if (reissueAmount.compareTo(availableAmount) > 0) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "重开发票金额不能超过当前可开票余额");
+        }
+
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        Date now = new Date();
+        TTranInvoice reissueInvoice = copyInvoiceForReissue(sourceInvoice, invoice, checkedReason, operatorId, now);
+        int inserted = tranInvoiceMapper.insertSelective(reissueInvoice);
+        if (inserted != 1) {
+            throw new BusinessException(CodeEnum.FAIL, "重开发票创建失败");
+        }
+
+        auditRecorder.record(AuditActionEnum.INVOICE_REISSUE, String.valueOf(invoiceId));
+        clearTransactionCache(sourceInvoice.getTranId());
+        return reissueInvoice;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteTransaction(Integer id) {
+        throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易历史不允许物理删除，请使用取消或关闭命令");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean cancelTransaction(Integer id, String reason) {
+        return transitionTransactionTerminal(id, TranStage.CANCELLED, requireNonBlank(reason, "取消原因不能为空"),
+                AuditActionEnum.TRAN_CANCEL);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean closeTransaction(Integer id, String reason) {
+        return transitionTransactionTerminal(id, TranStage.CLOSED, requireNonBlank(reason, "关闭原因不能为空"),
+                AuditActionEnum.TRAN_CLOSE);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean batchDeleteTransactions(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return false;
-        }
-        if (ids.size() > Constants.MAX_BATCH_SIZE) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "单次批量删除最多支持" + Constants.MAX_BATCH_SIZE + "条记录");
-        }
+        throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易历史不允许批量物理删除，请逐笔取消或关闭交易");
+    }
 
-        List<Integer> lockedIds = ids.stream().distinct().sorted().toList();
-        lockedIds.forEach(this::requireAccessibleTransaction);
-        for (Integer id : lockedIds) {
-            TTran transaction = tranMapper.selectByPrimaryKeyForUpdate(id);
-            if (transaction == null) {
-                throw new BusinessException(CodeEnum.NOT_FOUND, "交易不存在: " + id);
-            }
-            requireDeletable(transaction);
+    private boolean transitionTransactionTerminal(Integer id, TranStage targetStage,
+                                                  String reason, AuditActionEnum action) {
+        requireAccessibleTransaction(id);
+        TTran transaction = tranMapper.selectByPrimaryKeyForUpdate(id);
+        if (transaction == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "交易不存在");
         }
-
-        for (Integer id : lockedIds) {
-            deleteLockedTransaction(id);
+        if (transaction.getStage() == targetStage) {
+            return true;
         }
+        if (transaction.getStage() == TranStage.COMPLETED
+                || transaction.getStage() == TranStage.CANCELLED
+                || transaction.getStage() == TranStage.CLOSED) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易终态不允许变更");
+        }
+        validateTerminalTransitionBlockers(transaction, targetStage);
+        Integer userId = currentUserProvider.getCurrentUserId();
+        int rows = tranMapper.updateStageAtomic(id, targetStage, transaction.getStage(), userId);
+        if (rows != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易状态已变更，请刷新后重试");
+        }
+        writeHistory(id, targetStage, transaction.getMoney(), transaction.getExpectedDate(), userId, reason);
+        auditRecorder.record(action, String.valueOf(id));
+        clearTransactionCache(id);
         return true;
     }
 
-    private void requireDeletable(TTran transaction) {
-        if (transaction.getStage() != TranStage.QUOTATION) {
-            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "只有待报价状态的交易才能删除: " + transaction.getId());
+    private void validateTerminalTransitionBlockers(TTran transaction, TranStage targetStage) {
+        List<TPayment> payments = paymentMapper.selectByTranId(transaction.getId());
+        BigDecimal netPaid = calculateNetConfirmedPaid(payments);
+        boolean hasPendingReceipt = normalizePayments(payments).stream()
+                .anyMatch(payment -> PaymentStatus.PENDING.name().equals(payment.getPaymentStatus()));
+        if (netPaid.compareTo(BigDecimal.ZERO) > 0 || hasPendingReceipt) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易存在收款或待确认收款，请先完成退款或退回处理");
         }
-    }
 
-    private void deleteLockedTransaction(Integer id) {
-        tranProductMapper.deleteByTranId(id);
-        tranRemarkMapper.deleteByTranId(id);
-        tranInvoiceMapper.deleteByTranId(id);
-        tranApproveMapper.deleteByTranId(id);
-        refundRequestMapper.deleteByTranId(id);
-        paymentMapper.deleteByTranId(id);
-        if (tranMapper.deleteByPrimaryKey(id) != 1) {
-            throw new BusinessException(CodeEnum.FAIL, "交易删除失败: " + id);
+        List<TRefundRequest> refunds = refundRequestMapper.selectByTranId(transaction.getId());
+        boolean hasOpenRefund = normalizeRefundRequests(refunds).stream()
+                .anyMatch(request -> RefundRequestStatus.PENDING_APPROVAL.name().equals(request.getStatus())
+                        || RefundRequestStatus.PENDING_EXECUTION.name().equals(request.getStatus())
+                        || RefundRequestStatus.EXECUTING.name().equals(request.getStatus()));
+        if (hasOpenRefund) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易存在退款处理中事项");
         }
-        auditRecorder.record(AuditActionEnum.TRAN_DELETE, String.valueOf(id));
-        clearTransactionCache(id);
+
+        List<TTranInvoice> invoices = tranInvoiceMapper.selectByTranId(transaction.getId());
+        boolean hasBlockingInvoice = normalizeInvoices(invoices).stream()
+                .anyMatch(invoice -> "PENDING".equals(invoice.getStatus())
+                        || "ISSUING".equals(invoice.getStatus())
+                        || "ISSUED".equals(invoice.getStatus())
+                        || "PARTIAL_RED_REVERSED".equals(invoice.getStatus()));
+        if (hasBlockingInvoice) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易存在未处理完成的发票事实");
+        }
+
+        if (targetStage == TranStage.CLOSED && transaction.getStage() == TranStage.DELIVERY) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "待交付交易不能直接关闭，请按取消或交付异常流程处理");
+        }
     }
 
     @Override
@@ -762,9 +902,6 @@ public class TranServiceImpl implements TranService {
         if (stageResult == 0) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "当前交易状态不允许重新提交");
         }
-
-        // 清除旧的审批记录
-        tranApproveMapper.deleteByTranId(tranId);
 
         writeHistory(tranId, TranStage.QUOTATION,
                 tran.getMoney(), tran.getExpectedDate(), userId);
@@ -794,7 +931,7 @@ public class TranServiceImpl implements TranService {
         sanitizeTransactionUpdate(tran);
         tran.setEditBy(currentUserProvider.getCurrentUserId());
         tran.setEditTime(new Date());
-        int rows = tranMapper.updateByPrimaryKeySelective(tran);
+        int rows = updateTransactionScoped(tran);
         if (rows == 0) {
             return false;
         }
@@ -837,7 +974,7 @@ public class TranServiceImpl implements TranService {
     @Override
     @Deprecated
     public boolean updateInvoiceStatus(Integer id, String status) {
-        return updateTranInvoiceStatus(id, status);
+        return updateTranInvoiceStatus(id, status, null);
     }
 
     @Override
@@ -1062,11 +1199,14 @@ public class TranServiceImpl implements TranService {
             throw new BusinessException(CodeEnum.NOT_FOUND, "退款申请不存在");
         }
         requireAccessibleTransaction(request.getTranId());
+        Integer userId = currentUserProvider.getCurrentUserId();
+        if (approved && userId.equals(request.getRequestedBy())) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "退款申请人不能审批自己的退款");
+        }
         String approveComment = approved ? normalizeBlank(comment) : requireNonBlank(comment, "驳回原因不能为空");
         String newStatus = approved
-                ? RefundRequestStatus.APPROVED.name()
+                ? RefundRequestStatus.PENDING_EXECUTION.name()
                 : RefundRequestStatus.REJECTED.name();
-        Integer userId = currentUserProvider.getCurrentUserId();
         Date now = new Date();
         int rows = refundRequestMapper.updateApprovalIfPending(requestId, newStatus, userId,
                 now, approveComment, userId, now);
@@ -1086,13 +1226,21 @@ public class TranServiceImpl implements TranService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TPayment executeRefundRequest(Integer requestId, String transactionRef, String remark) {
+    public TRefundRequest executeRefundRequest(Integer requestId, String transactionRef, String remark,
+                                               Boolean success, String failureReason) {
         TRefundRequest request = refundRequestMapper.selectByPrimaryKeyForUpdate(requestId);
         if (request == null) {
             throw new BusinessException(CodeEnum.NOT_FOUND, "退款申请不存在");
         }
-        if (!RefundRequestStatus.APPROVED.name().equals(request.getStatus())) {
-            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "只有已审批退款申请可以执行");
+        if (RefundRequestStatus.COMPLETED.name().equals(request.getStatus())
+                || RefundRequestStatus.FAILED.name().equals(request.getStatus())
+                || RefundRequestStatus.REJECTED.name().equals(request.getStatus())
+                || RefundRequestStatus.CANCELLED.name().equals(request.getStatus())) {
+            return request;
+        }
+        if (!RefundRequestStatus.PENDING_EXECUTION.name().equals(request.getStatus())
+                && !RefundRequestStatus.EXECUTING.name().equals(request.getStatus())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "只有待执行退款申请可以执行");
         }
 
         TPayment original = paymentMapper.selectByPrimaryKeyForUpdate(request.getOriginalPaymentId());
@@ -1118,6 +1266,7 @@ public class TranServiceImpl implements TranService {
         }
 
         String normalizedRef = normalizeBlank(transactionRef);
+        String normalizedRemark = normalizeBlank(remark);
         if (normalizedRef != null) {
             TPayment sameRefPayment = paymentMapper.selectByTransactionRef(normalizedRef);
             if (sameRefPayment != null) {
@@ -1127,6 +1276,42 @@ public class TranServiceImpl implements TranService {
 
         Integer userId = currentUserProvider.getCurrentUserId();
         Date now = new Date();
+        boolean executionSuccess = success == null || success;
+        if (!executionSuccess) {
+            String requiredFailureReason = requireNonBlank(failureReason, "退款执行失败原因不能为空");
+            int failed = refundRequestMapper.markFailedIfExecutable(requestId, userId, now,
+                    requiredFailureReason, normalizedRef, normalizedRemark, userId, now);
+            if (failed != 1) {
+                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款申请状态已变更，请刷新后重试");
+            }
+            request.setStatus(RefundRequestStatus.FAILED.name());
+            request.setExecutedBy(userId);
+            request.setExecutedTime(now);
+            request.setExecutionRef(normalizedRef);
+            request.setExecutionRemark(normalizedRemark);
+            request.setFailureReason(requiredFailureReason);
+            request.setEditBy(userId);
+            request.setEditTime(now);
+            auditRecorder.record(AuditActionEnum.PAYMENT_REFUND_FAILED, String.valueOf(requestId));
+            clearTransactionCache(original.getTranId());
+            return request;
+        }
+
+        if (RefundRequestStatus.PENDING_EXECUTION.name().equals(request.getStatus())) {
+            int executing = refundRequestMapper.markExecutingIfPendingExecution(requestId, userId, now,
+                    normalizedRef, normalizedRemark, userId, now);
+            if (executing != 1) {
+                throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款申请状态已变更，请刷新后重试");
+            }
+            request.setStatus(RefundRequestStatus.EXECUTING.name());
+            request.setExecutedBy(userId);
+            request.setExecutionStartedTime(now);
+            request.setExecutionRef(normalizedRef);
+            request.setExecutionRemark(normalizedRemark);
+            request.setEditBy(userId);
+            request.setEditTime(now);
+        }
+
         TPayment refund = new TPayment();
         refund.setTranId(original.getTranId());
         refund.setAmount(request.getAmount().negate());
@@ -1136,23 +1321,29 @@ public class TranServiceImpl implements TranService {
         refund.setPaymentTime(now);
         refund.setPaymentNo(generatePaymentNo());
         refund.setTransactionRef(normalizedRef);
+        refund.setIdempotencyKey(buildRefundIdempotencyKey(requestId, original.getPaymentMethod(), normalizedRef));
         refund.setCreateTime(now);
         refund.setCreateBy(userId);
-        refund.setRemark(buildRefundRemark(request, remark));
+        refund.setRemark(buildRefundRemark(request, normalizedRemark));
         if (paymentMapper.insertSelective(refund) != 1) {
             throw new BusinessException(CodeEnum.FAIL, "退款记录创建失败");
         }
 
-        int executed = refundRequestMapper.markExecutedIfApproved(requestId, refund.getId(), userId, now, userId, now);
+        int executed = refundRequestMapper.markCompletedIfExecuting(requestId, refund.getId(), now, userId, now);
         if (executed != 1) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "退款申请状态已变更，请刷新后重试");
         }
+        request.setStatus(RefundRequestStatus.COMPLETED.name());
+        request.setRefundPaymentId(refund.getId());
+        request.setExecutedTime(now);
+        request.setEditBy(userId);
+        request.setEditTime(now);
 
         reconcileTransactionAfterRefund(tran, request, userId);
 
         auditRecorder.record(AuditActionEnum.PAYMENT_REFUND, String.valueOf(requestId));
         clearTransactionCache(original.getTranId());
-        return refund;
+        return request;
     }
 
     @Override
@@ -1171,6 +1362,10 @@ public class TranServiceImpl implements TranService {
         return payments == null ? List.of() : payments;
     }
 
+    private List<TRefundRequest> normalizeRefundRequests(List<TRefundRequest> requests) {
+        return requests == null ? List.of() : requests;
+    }
+
     private boolean requiresExternalTransactionRef(String paymentMethod) {
         return PaymentMethod.BANK_TRANSFER.name().equals(paymentMethod)
                 || PaymentMethod.WECHAT.name().equals(paymentMethod)
@@ -1182,6 +1377,146 @@ public class TranServiceImpl implements TranService {
         return stage == TranStage.APPROVED || stage == TranStage.PAYMENT;
     }
 
+    private boolean canCreateInvoice(TranStage stage) {
+        return stage == TranStage.APPROVED || stage == TranStage.PAYMENT || stage == TranStage.DELIVERY;
+    }
+
+    private BigDecimal calculateAvailableInvoiceAmount(TTran tran, List<TTranInvoice> invoices) {
+        BigDecimal usedAmount = normalizeInvoices(invoices).stream()
+                .filter(invoice -> invoice.getAmount() != null)
+                .filter(invoice -> !"VOIDED".equals(invoice.getStatus()))
+                .filter(invoice -> !"FAILED".equals(invoice.getStatus()))
+                .filter(invoice -> !"NOT_REQUIRED".equals(invoice.getStatus()))
+                .map(TTranInvoice::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal availableAmount = nullToZero(tran.getMoney()).subtract(usedAmount).setScale(2, RoundingMode.HALF_UP);
+        return availableAmount.max(BigDecimal.ZERO);
+    }
+
+    private List<TTranInvoice> normalizeInvoices(List<TTranInvoice> invoices) {
+        return invoices == null ? Collections.emptyList() : invoices;
+    }
+
+    private TTranInvoice requireInvoiceForMutation(Integer invoiceId) {
+        TTranInvoice invoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
+        if (invoice == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "发票不存在");
+        }
+        requireAccessibleTransaction(invoice.getTranId());
+        TTran lockedTran = tranMapper.selectByPrimaryKeyForUpdate(invoice.getTranId());
+        if (lockedTran == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "交易不存在");
+        }
+        invoice = tranInvoiceMapper.selectByPrimaryKey(invoiceId);
+        if (invoice == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "发票不存在");
+        }
+        return invoice;
+    }
+
+    private BigDecimal calculateCompletedRedReversalAmount(Integer originalInvoiceId, List<TTranInvoice> invoices) {
+        return normalizeInvoices(invoices).stream()
+                .filter(invoice -> Objects.equals(invoice.getOriginalInvoiceId(), originalInvoiceId))
+                .filter(invoice -> "RED_REVERSED".equals(invoice.getStatus()))
+                .map(TTranInvoice::getAmount)
+                .filter(Objects::nonNull)
+                .filter(amount -> amount.compareTo(BigDecimal.ZERO) < 0)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private TTranInvoice copyInvoiceForRedReverse(TTranInvoice originalInvoice, BigDecimal amount,
+                                                  String reason, Integer operatorId, Date now) {
+        TTranInvoice redInvoice = new TTranInvoice();
+        redInvoice.setTranId(originalInvoice.getTranId());
+        redInvoice.setOriginalInvoiceId(originalInvoice.getId());
+        redInvoice.setInvoiceNo(generateInvoiceNo());
+        redInvoice.setType(originalInvoice.getType());
+        redInvoice.setTitle(originalInvoice.getTitle());
+        redInvoice.setTaxNumber(originalInvoice.getTaxNumber());
+        redInvoice.setBankName(originalInvoice.getBankName());
+        redInvoice.setBankAccount(originalInvoice.getBankAccount());
+        redInvoice.setAddress(originalInvoice.getAddress());
+        redInvoice.setPhone(originalInvoice.getPhone());
+        redInvoice.setAmount(amount.negate().setScale(2, RoundingMode.HALF_UP));
+        redInvoice.setStatus("RED_REVERSED");
+        redInvoice.setRemark("红冲原因：" + reason);
+        redInvoice.setIssueTime(now);
+        redInvoice.setCreateTime(now);
+        redInvoice.setCreateBy(operatorId);
+        redInvoice.setEditTime(now);
+        redInvoice.setEditBy(operatorId);
+        return redInvoice;
+    }
+
+    private TTranInvoice copyInvoiceForReissue(TTranInvoice sourceInvoice, TTranInvoice request,
+                                               String reason, Integer operatorId, Date now) {
+        TTranInvoice reissueInvoice = new TTranInvoice();
+        reissueInvoice.setTranId(sourceInvoice.getTranId());
+        reissueInvoice.setOriginalInvoiceId(sourceInvoice.getId());
+        reissueInvoice.setInvoiceNo(generateInvoiceNo());
+        reissueInvoice.setType(firstNonBlank(request.getType(), sourceInvoice.getType()));
+        reissueInvoice.setTitle(firstNonBlank(request.getTitle(), sourceInvoice.getTitle()));
+        reissueInvoice.setTaxNumber(firstNonBlank(request.getTaxNumber(), sourceInvoice.getTaxNumber()));
+        reissueInvoice.setBankName(firstNonBlank(request.getBankName(), sourceInvoice.getBankName()));
+        reissueInvoice.setBankAccount(firstNonBlank(request.getBankAccount(), sourceInvoice.getBankAccount()));
+        reissueInvoice.setAddress(firstNonBlank(request.getAddress(), sourceInvoice.getAddress()));
+        reissueInvoice.setPhone(firstNonBlank(request.getPhone(), sourceInvoice.getPhone()));
+        reissueInvoice.setAmount(request.getAmount().setScale(2, RoundingMode.HALF_UP));
+        reissueInvoice.setStatus("PENDING");
+        reissueInvoice.setRemark("重开原因：" + reason);
+        reissueInvoice.setCreateTime(now);
+        reissueInvoice.setCreateBy(operatorId);
+        reissueInvoice.setEditTime(now);
+        reissueInvoice.setEditBy(operatorId);
+        return reissueInvoice;
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        if (primary != null && !primary.trim().isEmpty()) {
+            return primary;
+        }
+        return fallback;
+    }
+
+    private TTranInvoice maskInvoiceSensitiveFields(TTranInvoice invoice) {
+        TTranInvoice masked = new TTranInvoice();
+        masked.setId(invoice.getId());
+        masked.setTranId(invoice.getTranId());
+        masked.setInvoiceNo(invoice.getInvoiceNo());
+        masked.setType(invoice.getType());
+        masked.setTitle(maskText(invoice.getTitle(), 2, 2));
+        masked.setTaxNumber(maskText(invoice.getTaxNumber(), 4, 4));
+        masked.setBankName(invoice.getBankName());
+        masked.setBankAccount(maskText(invoice.getBankAccount(), 4, 4));
+        masked.setAddress(maskText(invoice.getAddress(), 6, 0));
+        masked.setPhone(maskText(invoice.getPhone(), 3, 4));
+        masked.setOriginalInvoiceId(invoice.getOriginalInvoiceId());
+        masked.setAmount(invoice.getAmount());
+        masked.setStatus(invoice.getStatus());
+        masked.setRemark(invoice.getRemark());
+        masked.setIssueTime(invoice.getIssueTime());
+        masked.setCreateTime(invoice.getCreateTime());
+        masked.setCreateBy(invoice.getCreateBy());
+        masked.setEditTime(invoice.getEditTime());
+        masked.setEditBy(invoice.getEditBy());
+        return masked;
+    }
+
+    private String maskText(String value, int prefixLength, int suffixLength) {
+        if (value == null || value.isBlank()) {
+            return value;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() <= prefixLength + suffixLength) {
+            return "*".repeat(trimmed.length());
+        }
+        String prefix = trimmed.substring(0, Math.max(prefixLength, 0));
+        String suffix = suffixLength > 0 ? trimmed.substring(trimmed.length() - suffixLength) : "";
+        return prefix + "****" + suffix;
+    }
+
     private String buildPaymentIdempotencyKey(Integer tranId, String paymentMethod,
                                               String transactionRef, BigDecimal amount) {
         String normalizedAmount = amount.setScale(2, RoundingMode.HALF_UP).toPlainString();
@@ -1189,6 +1524,13 @@ public class TranServiceImpl implements TranService {
             return "PAYMENT:REF:" + paymentMethod + ":" + transactionRef;
         }
         return "PAYMENT:MANUAL:" + tranId + ":" + paymentMethod + ":" + normalizedAmount;
+    }
+
+    private String buildRefundIdempotencyKey(Integer requestId, String paymentMethod, String transactionRef) {
+        if (transactionRef != null) {
+            return "REFUND:REF:" + paymentMethod + ":" + transactionRef;
+        }
+        return "REFUND:REQUEST:" + requestId;
     }
 
     private TPayment findPaymentByIdempotency(List<TPayment> payments, String idempotencyKey) {
@@ -1231,9 +1573,7 @@ public class TranServiceImpl implements TranService {
     private BigDecimal calculateNetConfirmedPaid(List<TPayment> payments) {
         return normalizePayments(payments).stream()
                 .filter(payment -> payment.getAmount() != null)
-                .filter(payment -> PaymentStatus.COMPLETED.name().equals(payment.getPaymentStatus())
-                        || (PaymentStatus.REFUNDED.name().equals(payment.getPaymentStatus())
-                            && !PaymentType.REFUND.name().equals(payment.getPaymentType())))
+                .filter(payment -> PaymentStatus.COMPLETED.name().equals(payment.getPaymentStatus()))
                 .map(TPayment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
@@ -1340,6 +1680,12 @@ public class TranServiceImpl implements TranService {
                         scope.isApprovalScope(), scope.getFinanceStages());
     }
 
+    private int updateTransactionScoped(TTran transaction) {
+        CurrentUserProvider.TransactionDataScope scope = currentUserProvider.getTransactionDataScope();
+        return tranMapper.updateScopedByPrimaryKeySelective(
+                transaction, scope.isAll(), scope.getSelfUserId());
+    }
+
     private TCustomer requireAccessibleCustomer(Integer customerId) {
         if (customerId == null) {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "客户不能为空");
@@ -1375,9 +1721,15 @@ public class TranServiceImpl implements TranService {
     }
 
     private void writeHistory(Integer tranId, TranStage stage, BigDecimal money, Date expectedDate, Integer userId) {
+        writeHistory(tranId, stage, money, expectedDate, userId, null);
+    }
+
+    private void writeHistory(Integer tranId, TranStage stage, BigDecimal money, Date expectedDate,
+                              Integer userId, String reason) {
         TTranHistory history = new TTranHistory();
         history.setTranId(tranId);
         history.setStage(stage.name());
+        history.setReason(reason);
         history.setMoney(money);
         history.setExpectedDate(expectedDate);
         history.setCreateTime(new Date());

@@ -56,16 +56,6 @@
               <Plus class="h-4 w-4" />
               新增交易
             </Button>
-            <Button
-              v-has-permission="PERMISSIONS.tran.delete"
-              variant="destructive"
-              class="gap-2"
-              @click="handleBatchDelete"
-              :disabled="selectedIds.length === 0"
-            >
-              <Trash2 class="h-4 w-4" />
-              批量删除
-            </Button>
           </div>
         </div>
       </div>
@@ -226,11 +216,20 @@
                       <Wallet class="h-4 w-4" />
                     </RowActionButton>
                     <RowActionButton
-                      v-if="row.stage === TRAN_STAGE.QUOTATION"
-                      v-has-permission="PERMISSIONS.tran.delete"
-                      label="删除"
+                      v-if="row.stage === TRAN_STAGE.QUOTATION || row.stage === TRAN_STAGE.LOST"
+                      v-has-permission="PERMISSIONS.tran.close"
+                      label="关闭"
                       danger
-                      @click="handleDelete(row.id)"
+                      @click="openLifecycleDialog(row, 'close')"
+                    >
+                      <Trash2 class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
+                      v-if="canCancelTransaction(row.stage)"
+                      v-has-permission="PERMISSIONS.tran.cancel"
+                      label="取消"
+                      danger
+                      @click="openLifecycleDialog(row, 'cancel')"
                     >
                       <Trash2 class="h-4 w-4" />
                     </RowActionButton>
@@ -363,6 +362,24 @@
       </DialogContent>
     </Dialog>
 
+    <Dialog v-model:open="lifecycleDialogOpen">
+      <DialogContent class="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle>{{ lifecycleAction === 'cancel' ? '取消交易' : '关闭交易' }}</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-2">
+          <Label>{{ lifecycleAction === 'cancel' ? '取消原因' : '关闭原因' }}</Label>
+          <Textarea v-model="lifecycleReason" :rows="4" placeholder="请输入原因" maxlength="500" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" type="button" @click="lifecycleDialogOpen = false">取消</Button>
+          <Button variant="destructive" type="button" :disabled="lifecycleSubmitting" @click="submitLifecycleAction">
+            {{ lifecycleSubmitting ? '处理中...' : '确认' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <SettlementDialog
       v-model:open="settlementDialogOpen"
       :tran-id="settlementTarget?.id ?? null"
@@ -385,8 +402,8 @@ import {
   createTran,
   getTranDetail,
   getTranProducts,
-  deleteTran,
-  batchDeleteTran,
+  cancelTran,
+  closeTran,
   resubmitTran,
 } from '@/modules/tran/api/tran-api'
 import { getProductList } from '@/modules/product/api/product-api'
@@ -399,7 +416,6 @@ import {
   normalizeTranStage,
 } from '@/modules/tran/model/tran-stage'
 import { messageTip, messageConfirm } from '@/shared/utils/feedback'
-import { normalizePage } from '@/shared/utils/pagination'
 import { toLocalDateInput } from '@/shared/datetime/local-date'
 import { useLatestRequest } from '@/shared/composables/use-latest-request'
 import type { PageResult } from '@/shared/api/api-types'
@@ -490,6 +506,11 @@ const pageSize = ref(10)
 const total = ref(0)
 const selectedIds = ref<EntityId[]>([])
 const { loading, run: runTranPage } = useLatestRequest<PageResult<Tran>>()
+const lifecycleDialogOpen = ref(false)
+const lifecycleAction = ref<'cancel' | 'close'>('close')
+const lifecycleTarget = ref<TranListRow | null>(null)
+const lifecycleReason = ref('')
+const lifecycleSubmitting = ref(false)
 
 // Dialog state
 const dialogOpen = ref(false)
@@ -618,16 +639,6 @@ const fetchData = async () => {
   }
 }
 
-async function reloadAfterDelete(deletedCount: number): Promise<void> {
-  const estimatedTotal = Math.max(total.value - deletedCount, 0)
-  currentPage.value = normalizePage(currentPage.value, estimatedTotal, pageSize.value)
-  await fetchData()
-  if (tableData.value.length === 0 && currentPage.value > 1) {
-    currentPage.value -= 1
-    await fetchData()
-  }
-}
-
 // Search
 const handleSearch = () => {
   currentPage.value = 1
@@ -643,51 +654,46 @@ const handleReset = () => {
   void fetchData()
 }
 
-// Single delete
-const handleDelete = async (id: number | string) => {
-  try {
-    await messageConfirm('您确定要删除该交易吗？')
-  } catch {
-    messageTip('取消删除', 'warning')
-    return
-  }
-  try {
-    await deleteTran(id)
-    messageTip('删除成功', 'success')
-    try {
-      await reloadAfterDelete(1)
-    } catch {
-      messageTip('删除已成功，但列表刷新失败', 'warning')
-    }
-  } catch {
-    messageTip('删除失败', 'error')
-  }
+function canCancelTransaction(stage: unknown): boolean {
+  return [
+    TRAN_STAGE.PENDING,
+    TRAN_STAGE.APPROVED,
+    TRAN_STAGE.PAYMENT,
+    TRAN_STAGE.DELIVERY,
+  ].includes(normalizeTranStage(stage))
 }
 
-// Batch delete
-const handleBatchDelete = async () => {
-  if (selectedIds.value.length === 0) {
-    messageTip('请选择要删除的交易', 'warning')
+function openLifecycleDialog(row: TranListRow, action: 'cancel' | 'close'): void {
+  lifecycleTarget.value = row
+  lifecycleAction.value = action
+  lifecycleReason.value = ''
+  lifecycleDialogOpen.value = true
+}
+
+async function submitLifecycleAction(): Promise<void> {
+  if (!lifecycleTarget.value) {
     return
   }
-  const deletedCount = selectedIds.value.length
-  try {
-    await messageConfirm(`您确定要删除选中的 ${deletedCount} 条交易吗？`)
-  } catch {
-    messageTip('取消批量删除', 'warning')
+  const reason = lifecycleReason.value.trim()
+  if (!reason) {
+    messageTip('请输入原因', 'warning')
     return
   }
+  lifecycleSubmitting.value = true
   try {
-    await batchDeleteTran(selectedIds.value)
-    messageTip(`成功删除 ${deletedCount} 条交易`, 'success')
-    selectedIds.value = []
-    try {
-      await reloadAfterDelete(deletedCount)
-    } catch {
-      messageTip('删除已成功，但列表刷新失败', 'warning')
+    if (lifecycleAction.value === 'cancel') {
+      await cancelTran(lifecycleTarget.value.id, { reason })
+      messageTip('交易已取消', 'success')
+    } else {
+      await closeTran(lifecycleTarget.value.id, { reason })
+      messageTip('交易已关闭', 'success')
     }
+    lifecycleDialogOpen.value = false
+    await fetchData()
   } catch (error) {
-    messageTip(error instanceof Error ? error.message : '批量删除失败', 'error')
+    messageTip(error instanceof Error ? error.message : '操作失败', 'error')
+  } finally {
+    lifecycleSubmitting.value = false
   }
 }
 

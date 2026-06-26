@@ -87,12 +87,28 @@
                   @click="markAsIssued(invoice)"
                 >标记已开具</Button>
                 <Button
+                  v-if="invoice.status === 'ISSUED' || invoice.status === 'PARTIAL_RED_REVERSED'"
+                  v-has-permission="PERMISSIONS.tran.invoice"
+                  variant="outline"
+                  size="sm"
+                  :disabled="invoiceLoading"
+                  @click="openRedReverseDialog(invoice)"
+                >红冲</Button>
+                <Button
+                  v-if="invoice.status === 'VOIDED' || invoice.status === 'PARTIAL_RED_REVERSED' || invoice.status === 'RED_REVERSED'"
+                  v-has-permission="PERMISSIONS.tran.invoice"
+                  variant="outline"
+                  size="sm"
+                  :disabled="invoiceLoading"
+                  @click="startReissue(invoice)"
+                >重开</Button>
+                <Button
                   v-if="invoice.status === 'PENDING' || invoice.status === 'ISSUED'"
                   v-has-permission="PERMISSIONS.tran.invoice"
                   variant="destructive"
                   size="sm"
                   :disabled="invoiceLoading"
-                  @click="voidInvoice(invoice)"
+                  @click="openVoidInvoiceDialog(invoice)"
                 >作废</Button>
               </div>
             </div>
@@ -100,13 +116,21 @@
               <div>发票编号：{{ invoice.invoiceNo }}</div>
               <div>金额：&yen;{{ invoice.amount }}</div>
               <div>类型：{{ getInvoiceTypeText(invoice.type) }}</div>
+              <div v-if="invoice.originalInvoiceId">关联原票：{{ invoice.originalInvoiceId }}</div>
               <div>备注：{{ invoice.remark }}</div>
             </div>
           </div>
         </div>
 
-        <!-- Create form (only when no existing invoice) -->
-        <form v-if="invoiceList.length === 0" class="mt-8 max-w-[600px] space-y-4" @submit.prevent="onSubmit">
+        <div class="mb-4 text-sm text-muted-foreground">
+          可开票金额：&yen;{{ availableInvoiceAmount.toFixed(2) }}
+        </div>
+
+        <form v-if="canCreateInvoice" class="mt-8 max-w-[600px] space-y-4" @submit.prevent="onSubmit">
+          <div v-if="reissueSourceInvoice" class="rounded-md border border-dashed p-3 text-sm">
+            <div>重开发票：{{ reissueSourceInvoice.invoiceNo || reissueSourceInvoice.id }}</div>
+            <Button type="button" variant="outline" size="sm" class="mt-2" @click="cancelReissue">取消重开</Button>
+          </div>
           <!-- Invoice Type -->
           <div class="space-y-2">
             <Label>发票类型</Label>
@@ -182,7 +206,7 @@
           <!-- Amount -->
           <div class="space-y-2">
             <Label>发票金额</Label>
-            <NumberField v-model="amount" :min="0.01" :max="99999999.99" :step="0.01" class="w-full">
+            <NumberField v-model="amount" :min="0.01" :max="availableInvoiceAmount" :step="0.01" class="w-full">
               <NumberFieldContent>
                 <NumberFieldDecrement />
                 <NumberFieldInput placeholder="发票金额（0.01-99,999,999.99）" />
@@ -199,16 +223,70 @@
             <p v-if="errors.remark" class="text-sm text-destructive">{{ errors.remark }}</p>
           </div>
 
+          <div v-if="reissueSourceInvoice" class="space-y-2">
+            <Label>重开原因</Label>
+            <Textarea v-model="reissueReason" :rows="3" placeholder="请输入重开原因" maxlength="500" />
+          </div>
+
           <!-- Submit -->
           <div class="pt-2">
             <Button v-has-permission="PERMISSIONS.tran.invoice" type="submit" :disabled="isSubmitting">
-              {{ isSubmitting ? '提交中...' : '开具发票' }}
+              {{ isSubmitting ? '提交中...' : (reissueSourceInvoice ? '重开发票' : '开具发票') }}
             </Button>
             <Button type="button" variant="outline" class="ml-2" @click="goBack">返回</Button>
           </div>
         </form>
       </CardContent>
     </Card>
+
+    <Dialog v-model:open="voidDialogOpen">
+      <DialogContent class="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle>作废发票</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-2">
+          <Label>作废原因</Label>
+          <Textarea v-model="voidReason" :rows="4" placeholder="请输入作废原因" maxlength="500" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="voidDialogOpen = false">取消</Button>
+          <Button variant="destructive" :disabled="invoiceLoading" @click="confirmVoidInvoice">
+            {{ invoiceLoading ? '处理中...' : '确认作废' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="redReverseDialogOpen">
+      <DialogContent class="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle>红冲发票</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <Label>红冲金额</Label>
+            <NumberField v-model="redReverseAmount" :min="0.01" :max="selectedRedInvoiceRemaining" :step="0.01" class="w-full">
+              <NumberFieldContent>
+                <NumberFieldDecrement />
+                <NumberFieldInput placeholder="请输入红冲金额" />
+                <NumberFieldIncrement />
+              </NumberFieldContent>
+            </NumberField>
+            <div class="text-xs text-muted-foreground">可红冲金额：&yen;{{ selectedRedInvoiceRemaining.toFixed(2) }}</div>
+          </div>
+          <div class="space-y-2">
+            <Label>红冲原因</Label>
+            <Textarea v-model="redReverseReason" :rows="4" placeholder="请输入红冲原因" maxlength="500" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="redReverseDialogOpen = false">取消</Button>
+          <Button variant="destructive" :disabled="invoiceLoading" @click="confirmRedReverseInvoice">
+            {{ invoiceLoading ? '处理中...' : '确认红冲' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -220,7 +298,16 @@ import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
 import { useRoute, useRouter } from 'vue-router'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
-import { getTranDetail, getTranProducts, createInvoice, getTranInvoiceList, updateInvoiceStatus } from '@/modules/tran/api/tran-api'
+import {
+  createInvoice,
+  getTranDetail,
+  getTranInvoiceList,
+  getTranProducts,
+  redReverseInvoice,
+  reissueInvoice,
+  updateInvoiceStatus,
+} from '@/modules/tran/api/tran-api'
+import type { InvoiceStatus, TranInvoice } from '@/modules/tran/model/tran.types'
 import { TRAN_STAGE, getTranStageText, getTranStageType, normalizeTranStage } from '@/modules/tran/model/tran-stage'
 
 import { Button } from '@/components/ui/button'
@@ -233,6 +320,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Alert, AlertTitle } from '@/components/ui/alert'
 import { NumberField, NumberFieldContent, NumberFieldInput, NumberFieldIncrement, NumberFieldDecrement } from '@/components/ui/number-field'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 const route = useRoute()
 const router = useRouter()
@@ -249,7 +343,7 @@ const tranDetail = ref({
   products: []
 })
 
-const invoiceList = ref([])
+const invoiceList = ref<TranInvoice[]>([])
 
 // Invoice form schema with dynamic validation via superRefine
 const invoiceSchema = toTypedSchema(z.object({
@@ -312,13 +406,41 @@ const [amount] = defineField('amount')
 const [remark] = defineField('remark')
 
 // Internal tranId for API calls
-let tranId = null
+let tranId: number | null = null
 
-// Check if invoice has been issued (one invoice per transaction)
-const hasAnyInvoice = computed(() => invoiceList.value.length > 0)
 const invoiceLoading = ref(false)
+const voidDialogOpen = ref(false)
+const selectedVoidInvoice = ref<TranInvoice | null>(null)
+const voidReason = ref('')
+const redReverseDialogOpen = ref(false)
+const selectedRedInvoice = ref<TranInvoice | null>(null)
+const redReverseAmount = ref(0)
+const redReverseReason = ref('')
+const reissueSourceInvoice = ref<TranInvoice | null>(null)
+const reissueReason = ref('')
 const canRecordPayment = computed(() =>
   tranDetail.value.stage === TRAN_STAGE.APPROVED || tranDetail.value.stage === TRAN_STAGE.PAYMENT,
+)
+
+const availableInvoiceAmount = computed(() => {
+  const usedAmount = invoiceList.value
+    .filter(invoice => !['FAILED', 'VOIDED', 'NOT_REQUIRED'].includes(invoice.status))
+    .reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0)
+  return Math.max(Number((Number(tranDetail.value.amount || 0) - usedAmount).toFixed(2)), 0)
+})
+const selectedRedInvoiceRemaining = computed(() => {
+  if (!selectedRedInvoice.value) {
+    return 0
+  }
+  return getInvoiceRedRemaining(selectedRedInvoice.value)
+})
+const canCreateInvoice = computed(() =>
+  availableInvoiceAmount.value > 0
+  && [
+    TRAN_STAGE.APPROVED,
+    TRAN_STAGE.PAYMENT,
+    TRAN_STAGE.DELIVERY,
+  ].includes(tranDetail.value.stage),
 )
 
 // Invoice type mapping
@@ -333,8 +455,13 @@ const getInvoiceTypeText = (type) => {
 // Invoice status mapping
 const invoiceStatusMap = {
   'PENDING': { type: 'warning', text: '待开具' },
+  'ISSUING': { type: 'warning', text: '开票中' },
   'ISSUED': { type: 'success', text: '已开具' },
-  'VOID': { type: 'danger', text: '已作废' }
+  'FAILED': { type: 'danger', text: '开票失败' },
+  'VOIDED': { type: 'danger', text: '已作废' },
+  'PARTIAL_RED_REVERSED': { type: 'warning', text: '部分红冲' },
+  'RED_REVERSED': { type: 'danger', text: '已红冲' },
+  'NOT_REQUIRED': { type: 'info', text: '无需开票' },
 }
 
 const getInvoiceStatusType = (status: string) => invoiceStatusMap[status]?.type || ''
@@ -342,8 +469,13 @@ const getInvoiceStatusText = (status: string) => invoiceStatusMap[status]?.text 
 const getInvoiceStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
   const map: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
     PENDING: 'secondary',
+    ISSUING: 'secondary',
     ISSUED: 'default',
-    VOID: 'destructive',
+    FAILED: 'destructive',
+    VOIDED: 'destructive',
+    PARTIAL_RED_REVERSED: 'secondary',
+    RED_REVERSED: 'destructive',
+    NOT_REQUIRED: 'outline',
   }
   return map[status] || 'outline'
 }
@@ -376,8 +508,15 @@ const fetchTranDetail = async () => {
       products: tranDetail.value.products.length > 0 ? tranDetail.value.products : data.products || [],
     }
     tranId = Number(id)
-    resetForm({
-      values: {
+    resetInvoiceForm()
+  } catch {
+    messageTip('获取交易详情失败', 'error')
+  }
+}
+
+function resetInvoiceForm(): void {
+  resetForm({
+    values: {
       type: 'VAT_NORMAL',
       title: '',
       taxNumber: '',
@@ -385,13 +524,18 @@ const fetchTranDetail = async () => {
       bankAccount: '',
       address: '',
       phone: '',
-      amount: tranDetail.value.amount,
+      amount: availableInvoiceAmount.value,
       remark: '',
-      },
-    })
-  } catch {
-    messageTip('获取交易详情失败', 'error')
-  }
+    },
+  })
+}
+
+function getInvoiceRedRemaining(invoice: TranInvoice): number {
+  const reversedAmount = invoiceList.value
+    .filter(item => item.originalInvoiceId === invoice.id && item.status === 'RED_REVERSED')
+    .filter(item => Number(item.amount || 0) < 0)
+    .reduce((sum, item) => sum + Math.abs(Number(item.amount || 0)), 0)
+  return Math.max(Number((Math.abs(Number(invoice.amount || 0)) - reversedAmount).toFixed(2)), 0)
 }
 
 // Fetch product details
@@ -417,23 +561,37 @@ const fetchInvoiceList = async () => {
 async function loadInvoicePageData(): Promise<void> {
   await fetchTranDetail()
   await Promise.all([fetchProducts(), fetchInvoiceList()])
+  resetInvoiceForm()
 }
 
 // Submit invoice form
 const onSubmit = handleSubmit(async (formData) => {
-  if (hasAnyInvoice.value) {
-    messageTip('该交易已有发票，不能重复开票', 'warning')
-    return
-  }
   try {
     if (tranId === null) {
       messageTip('缺少交易ID参数', 'error')
       return
     }
-    await createInvoice({ tranId, ...formData })
-    messageTip('发票创建成功', 'success')
+    if (formData.amount > availableInvoiceAmount.value) {
+      messageTip(`发票金额不能超过可开票金额 ${availableInvoiceAmount.value.toFixed(2)} 元`, 'warning')
+      return
+    }
+    if (reissueSourceInvoice.value) {
+      const reason = reissueReason.value.trim()
+      if (!reason) {
+        messageTip('请输入重开原因', 'warning')
+        return
+      }
+      await reissueInvoice(reissueSourceInvoice.value.id, { ...formData, reason })
+      messageTip('发票重开申请已提交', 'success')
+      reissueSourceInvoice.value = null
+      reissueReason.value = ''
+    } else {
+      await createInvoice({ tranId, ...formData })
+      messageTip('发票创建成功', 'success')
+    }
     try {
       await Promise.all([fetchInvoiceList(), fetchTranDetail()])
+      resetInvoiceForm()
     } catch {
       messageTip('发票已创建，但刷新失败', 'warning')
     }
@@ -451,7 +609,7 @@ const markAsIssued = async (invoice: { id: number | string }) => {
   }
   invoiceLoading.value = true
   try {
-    await updateInvoiceStatus(invoice.id, 'ISSUED')
+    await updateInvoiceStatus(invoice.id, { status: 'ISSUED' })
     messageTip('开票完成', 'success')
     await Promise.all([fetchInvoiceList(), fetchTranDetail()])
   } catch {
@@ -470,17 +628,89 @@ function handlePayment(): void {
 }
 
 // Void invoice
-const voidInvoice = async (invoice: { id: number | string }) => {
-  try {
-    await messageConfirm('确认作废该发票吗？作废后不可恢复')
-  } catch {
+function openVoidInvoiceDialog(invoice: TranInvoice): void {
+  selectedVoidInvoice.value = invoice
+  voidReason.value = ''
+  voidDialogOpen.value = true
+}
+
+function openRedReverseDialog(invoice: TranInvoice): void {
+  selectedRedInvoice.value = invoice
+  redReverseAmount.value = getInvoiceRedRemaining(invoice)
+  redReverseReason.value = ''
+  redReverseDialogOpen.value = true
+}
+
+const confirmRedReverseInvoice = async () => {
+  if (!selectedRedInvoice.value) {
+    return
+  }
+  const reason = redReverseReason.value.trim()
+  if (!reason) {
+    messageTip('请输入红冲原因', 'warning')
+    return
+  }
+  if (redReverseAmount.value <= 0 || redReverseAmount.value > selectedRedInvoiceRemaining.value) {
+    messageTip('红冲金额必须大于0且不能超过可红冲金额', 'warning')
     return
   }
   invoiceLoading.value = true
   try {
-    await updateInvoiceStatus(invoice.id, 'VOID')
-    messageTip('发票已作废', 'success')
+    await redReverseInvoice(selectedRedInvoice.value.id, {
+      amount: redReverseAmount.value,
+      reason,
+    })
+    messageTip('发票已红冲', 'success')
+    redReverseDialogOpen.value = false
     await Promise.all([fetchInvoiceList(), fetchTranDetail()])
+    resetInvoiceForm()
+  } catch {
+    messageTip('发票红冲失败', 'error')
+  } finally {
+    invoiceLoading.value = false
+  }
+}
+
+function startReissue(invoice: TranInvoice): void {
+  reissueSourceInvoice.value = invoice
+  reissueReason.value = ''
+  resetForm({
+    values: {
+      type: invoice.type || 'VAT_NORMAL',
+      title: invoice.title || '',
+      taxNumber: invoice.taxNumber || '',
+      bankName: invoice.bankName || '',
+      bankAccount: invoice.bankAccount || '',
+      address: invoice.address || '',
+      phone: invoice.phone || '',
+      amount: Math.min(Math.abs(Number(invoice.amount || 0)), availableInvoiceAmount.value),
+      remark: '',
+    },
+  })
+}
+
+function cancelReissue(): void {
+  reissueSourceInvoice.value = null
+  reissueReason.value = ''
+  resetInvoiceForm()
+}
+
+const confirmVoidInvoice = async () => {
+  if (!selectedVoidInvoice.value) {
+    return
+  }
+  const reason = voidReason.value.trim()
+  if (!reason) {
+    messageTip('请输入作废原因', 'warning')
+    return
+  }
+  invoiceLoading.value = true
+  try {
+    await updateInvoiceStatus(selectedVoidInvoice.value.id, { status: 'VOIDED', reason })
+    messageTip('发票已作废', 'success')
+    voidDialogOpen.value = false
+    await Promise.all([fetchInvoiceList(), fetchTranDetail()])
+    resetInvoiceForm()
   } catch {
     messageTip('发票作废失败', 'error')
   } finally {

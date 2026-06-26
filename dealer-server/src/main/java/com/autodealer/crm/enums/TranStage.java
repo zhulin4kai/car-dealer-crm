@@ -11,6 +11,7 @@ public enum TranStage {
     DELIVERY("待交付"),
     COMPLETED("已完成"),
     LOST("丢失关闭"),
+    CLOSED("已关闭"),
     CANCELLED("已取消");
 
     private final String label;

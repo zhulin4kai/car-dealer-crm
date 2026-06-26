@@ -6,6 +6,7 @@ export const TRAN_STAGE = {
   DELIVERY: 'DELIVERY',
   COMPLETED: 'COMPLETED',
   LOST: 'LOST',
+  CLOSED: 'CLOSED',
   CANCELLED: 'CANCELLED',
 } as const
 
@@ -21,6 +22,7 @@ export const TRAN_STAGE_META = {
   [TRAN_STAGE.DELIVERY]: { type: 'primary', text: '待交付' },
   [TRAN_STAGE.COMPLETED]: { type: 'success', text: '已完成' },
   [TRAN_STAGE.LOST]: { type: 'danger', text: '丢失关闭' },
+  [TRAN_STAGE.CLOSED]: { type: 'danger', text: '已关闭' },
   [TRAN_STAGE.CANCELLED]: { type: 'danger', text: '已取消' },
 } as const satisfies Record<TranStage, { type: TranStageTagType; text: string }>
 

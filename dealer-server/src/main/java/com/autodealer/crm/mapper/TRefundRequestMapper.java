@@ -30,10 +30,26 @@ public interface TRefundRequestMapper {
                                 @Param("editBy") Integer editBy,
                                 @Param("editTime") Date editTime);
 
-    int markExecutedIfApproved(@Param("id") Integer id,
-                               @Param("refundPaymentId") Integer refundPaymentId,
+    int markExecutingIfPendingExecution(@Param("id") Integer id,
+                                        @Param("executedBy") Integer executedBy,
+                                        @Param("executionStartedTime") Date executionStartedTime,
+                                        @Param("executionRef") String executionRef,
+                                        @Param("executionRemark") String executionRemark,
+                                        @Param("editBy") Integer editBy,
+                                        @Param("editTime") Date editTime);
+
+    int markCompletedIfExecuting(@Param("id") Integer id,
+                                 @Param("refundPaymentId") Integer refundPaymentId,
+                                 @Param("executedTime") Date executedTime,
+                                 @Param("editBy") Integer editBy,
+                                 @Param("editTime") Date editTime);
+
+    int markFailedIfExecutable(@Param("id") Integer id,
                                @Param("executedBy") Integer executedBy,
                                @Param("executedTime") Date executedTime,
+                               @Param("failureReason") String failureReason,
+                               @Param("executionRef") String executionRef,
+                               @Param("executionRemark") String executionRemark,
                                @Param("editBy") Integer editBy,
                                @Param("editTime") Date editTime);
 

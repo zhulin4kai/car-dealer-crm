@@ -7,9 +7,12 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum RefundRequestStatus {
     PENDING_APPROVAL("待审批"),
-    APPROVED("已审批"),
+    PENDING_EXECUTION("待执行"),
+    EXECUTING("执行中"),
+    COMPLETED("已完成"),
     REJECTED("已驳回"),
-    EXECUTED("已退款");
+    FAILED("执行失败"),
+    CANCELLED("已撤销");
 
     private final String label;
 }

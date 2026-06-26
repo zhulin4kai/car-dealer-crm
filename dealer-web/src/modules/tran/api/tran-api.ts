@@ -11,6 +11,8 @@ import type {
   ExecuteRefundRequest,
   InvoiceStatusCommand,
   PaymentRequest,
+  RedReverseInvoiceRequest,
+  ReissueInvoiceRequest,
   SettleRequest,
   SettlementPromotionOption,
   SettlementPreviewRequest,
@@ -20,8 +22,10 @@ import type {
   Tran,
   TranApproval,
   TranInvoice,
+  TransactionLifecycleRequest,
   TranProduct,
   TranQuery,
+  UpdateInvoiceStatusRequest,
   UpdateTranRequest,
 } from '@/modules/tran/model/tran.types'
 
@@ -73,12 +77,32 @@ export function fetchTranInvoiceList(tranId: EntityId): Promise<TranInvoice[]> {
   return httpClient.get<TranInvoice[]>(`/api/tran/invoice/${tranId}`)
 }
 
-export function updateInvoiceStatus(invoiceId: EntityId, status: InvoiceStatusCommand): Promise<boolean> {
-  return httpClient.put<boolean>(`/api/tran/invoice/${invoiceId}/status`, { status })
+export function updateInvoiceStatus(
+  invoiceId: EntityId,
+  data: UpdateInvoiceStatusRequest | InvoiceStatusCommand,
+): Promise<boolean> {
+  const request = typeof data === 'string' ? { status: data } : data
+  return httpClient.put<boolean>(`/api/tran/invoice/${invoiceId}/status`, request)
+}
+
+export function redReverseInvoice(invoiceId: EntityId, data: RedReverseInvoiceRequest): Promise<TranInvoice> {
+  return httpClient.post<TranInvoice>(`/api/tran/invoice/${invoiceId}/red-reversal`, data)
+}
+
+export function reissueInvoice(invoiceId: EntityId, data: ReissueInvoiceRequest): Promise<TranInvoice> {
+  return httpClient.post<TranInvoice>(`/api/tran/invoice/${invoiceId}/reissue`, data)
 }
 
 export function deleteTran(id: EntityId): Promise<unknown> {
   return httpClient.delete(`/api/tran/${id}`)
+}
+
+export function cancelTran(id: EntityId, data: TransactionLifecycleRequest): Promise<boolean> {
+  return httpClient.put<boolean>(`/api/tran/${id}/cancel`, data)
+}
+
+export function closeTran(id: EntityId, data: TransactionLifecycleRequest): Promise<boolean> {
+  return httpClient.put<boolean>(`/api/tran/${id}/close`, data)
 }
 
 export function batchDeleteTran(ids: EntityId[]): Promise<unknown> {
@@ -113,8 +137,8 @@ export function approveRefundRequest(id: EntityId, data: ApproveRefundRequest): 
   return httpClient.put<TRefundRequest>(`/api/tran/refund-requests/${id}/approve`, data)
 }
 
-export function executeRefundRequest(id: EntityId, data: ExecuteRefundRequest): Promise<TPayment> {
-  return httpClient.post<TPayment>(`/api/tran/refund-requests/${id}/execute`, data)
+export function executeRefundRequest(id: EntityId, data: ExecuteRefundRequest): Promise<TRefundRequest> {
+  return httpClient.post<TRefundRequest>(`/api/tran/refund-requests/${id}/execute`, data)
 }
 
 export const getTranList = fetchTranPage

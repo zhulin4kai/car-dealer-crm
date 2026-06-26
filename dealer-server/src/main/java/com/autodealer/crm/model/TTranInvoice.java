@@ -62,6 +62,11 @@ public class TTranInvoice implements Serializable {
     private String phone;
 
     /**
+     * 原发票ID，红冲或重开时关联原票/红冲记录
+     */
+    private Integer originalInvoiceId;
+
+    /**
      * 发票金额
      */
     private BigDecimal amount;
@@ -102,4 +107,4 @@ public class TTranInvoice implements Serializable {
     private Integer editBy;
 
     private static final long serialVersionUID = 1L;
-} 
+}

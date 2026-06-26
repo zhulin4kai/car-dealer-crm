@@ -15,8 +15,10 @@ describe('tran stage model', () => {
       { value: TRAN_STAGE.PENDING, label: '待审批' },
       { value: TRAN_STAGE.APPROVED, label: '已审批' },
       { value: TRAN_STAGE.PAYMENT, label: '待收款' },
+      { value: TRAN_STAGE.DELIVERY, label: '待交付' },
       { value: TRAN_STAGE.COMPLETED, label: '已完成' },
       { value: TRAN_STAGE.LOST, label: '丢失关闭' },
+      { value: TRAN_STAGE.CLOSED, label: '已关闭' },
       { value: TRAN_STAGE.CANCELLED, label: '已取消' },
     ])
   })

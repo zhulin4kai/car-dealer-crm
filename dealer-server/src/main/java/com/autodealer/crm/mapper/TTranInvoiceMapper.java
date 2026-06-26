@@ -24,6 +24,7 @@ public interface TTranInvoiceMapper {
                               @Param("expectedStatus") String expectedStatus,
                               @Param("newStatus") String newStatus,
                               @Param("issueTime") Date issueTime,
+                              @Param("remark") String remark,
                               @Param("editTime") Date editTime,
                               @Param("editBy") Integer editBy);
     

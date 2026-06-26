@@ -148,7 +148,17 @@ public interface TranService {
      * @param updateBy 更新人
      * @return 是否更新成功
      */
-    boolean updateTranInvoiceStatus(Integer invoiceId, String status);
+    boolean updateTranInvoiceStatus(Integer invoiceId, String status, String reason);
+
+    /**
+     * 红冲发票，创建负数红字记录并保留原票。
+     */
+    TTranInvoice redReverseInvoice(Integer invoiceId, java.math.BigDecimal amount, String reason);
+
+    /**
+     * 重开发票，创建关联原票的新发票申请。
+     */
+    TTranInvoice reissueInvoice(Integer invoiceId, TTranInvoice invoice, String reason);
 
     /**
      * 删除交易
@@ -156,6 +166,10 @@ public interface TranService {
      * @return 是否删除成功
      */
     boolean deleteTransaction(Integer id);
+
+    boolean cancelTransaction(Integer id, String reason);
+
+    boolean closeTransaction(Integer id, String reason);
 
     /**
      * 批量删除交易
@@ -196,7 +210,8 @@ public interface TranService {
 
     TRefundRequest approveRefundRequest(Integer requestId, Boolean approved, String comment);
 
-    TPayment executeRefundRequest(Integer requestId, String transactionRef, String remark);
+    TRefundRequest executeRefundRequest(Integer requestId, String transactionRef, String remark,
+                                        Boolean success, String failureReason);
 
     /**
      * 获取交易收款记录

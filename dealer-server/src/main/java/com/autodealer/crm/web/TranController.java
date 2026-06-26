@@ -199,8 +199,41 @@ public class TranController {
     public R<Boolean> updateInvoiceStatus(
             @PathVariable Integer invoiceId,
             @Valid @RequestBody UpdateInvoiceStatusRequest request) {
-        boolean result = tranService.updateTranInvoiceStatus(invoiceId, request.getStatus());
+        boolean result = tranService.updateTranInvoiceStatus(invoiceId, request.getStatus(), request.getReason());
         return R.OK(result);
+    }
+
+    /**
+     * 红冲发票
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_INVOICE + "')")
+    @PostMapping("/invoice/{invoiceId}/red-reversal")
+    public R<TTranInvoice> redReverseInvoice(
+            @PathVariable Integer invoiceId,
+            @Valid @RequestBody RedReverseInvoiceRequest request) {
+        TTranInvoice invoice = tranService.redReverseInvoice(invoiceId, request.getAmount(), request.getReason());
+        return R.OK(invoice);
+    }
+
+    /**
+     * 重开发票
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_INVOICE + "')")
+    @PostMapping("/invoice/{invoiceId}/reissue")
+    public R<TTranInvoice> reissueInvoice(
+            @PathVariable Integer invoiceId,
+            @Valid @RequestBody ReissueInvoiceRequest request) {
+        TTranInvoice invoice = new TTranInvoice();
+        invoice.setAmount(request.getAmount());
+        invoice.setType(request.getType());
+        invoice.setTitle(request.getTitle());
+        invoice.setTaxNumber(request.getTaxNumber());
+        invoice.setBankName(request.getBankName());
+        invoice.setBankAccount(request.getBankAccount());
+        invoice.setAddress(request.getAddress());
+        invoice.setPhone(request.getPhone());
+        TTranInvoice created = tranService.reissueInvoice(invoiceId, invoice, request.getReason());
+        return R.OK(created);
     }
 
     /**
@@ -233,6 +266,28 @@ public class TranController {
         } else {
             return R.FAIL("删除失败");
         }
+    }
+
+    /**
+     * 取消交易
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_CANCEL + "')")
+    @PutMapping("/{id}/cancel")
+    public R<Boolean> cancel(
+            @PathVariable Integer id,
+            @Valid @RequestBody TransactionLifecycleRequest request) {
+        return R.OK(tranService.cancelTransaction(id, request.getReason()));
+    }
+
+    /**
+     * 关闭交易
+     */
+    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_CLOSE + "')")
+    @PutMapping("/{id}/close")
+    public R<Boolean> close(
+            @PathVariable Integer id,
+            @Valid @RequestBody TransactionLifecycleRequest request) {
+        return R.OK(tranService.closeTransaction(id, request.getReason()));
     }
 
     /**
@@ -335,10 +390,11 @@ public class TranController {
      */
     @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_REFUND_EXECUTE + "')")
     @PostMapping("/refund-requests/{id}/execute")
-    public R<TPayment> executeRefundRequest(
+    public R<TRefundRequest> executeRefundRequest(
             @PathVariable Integer id,
             @Valid @RequestBody ExecuteRefundRequest request) {
-        return R.OK(tranService.executeRefundRequest(id, request.getTransactionRef(), request.getRemark()));
+        return R.OK(tranService.executeRefundRequest(id, request.getTransactionRef(), request.getRemark(),
+                request.getSuccess(), request.getFailureReason()));
     }
 
     /**

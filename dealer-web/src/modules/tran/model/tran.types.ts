@@ -1,7 +1,20 @@
 import type { EntityId } from '@/shared/types/id'
 
-export type InvoiceStatus = 'PENDING' | 'ISSUED' | 'VOID'
-export type InvoiceStatusCommand = 'ISSUED' | 'VOID'
+export type InvoiceStatus =
+  | 'PENDING'
+  | 'ISSUING'
+  | 'ISSUED'
+  | 'FAILED'
+  | 'VOIDED'
+  | 'PARTIAL_RED_REVERSED'
+  | 'RED_REVERSED'
+  | 'NOT_REQUIRED'
+export type InvoiceStatusCommand = 'ISSUED' | 'FAILED' | 'VOIDED'
+
+export interface UpdateInvoiceStatusRequest {
+  status: InvoiceStatusCommand
+  reason?: string
+}
 
 export interface TranProduct {
   id?: EntityId
@@ -63,6 +76,10 @@ export interface ApproveTranRequest {
   comment: string
 }
 
+export interface TransactionLifecycleRequest {
+  reason: string
+}
+
 export interface TranApproval {
   id?: EntityId
   tranId?: EntityId
@@ -82,6 +99,7 @@ export interface TranInvoice {
   bankAccount?: string
   address?: string
   phone?: string
+  originalInvoiceId?: EntityId
   amount?: number
   status: InvoiceStatus
   remark?: string
@@ -102,8 +120,32 @@ export interface CreateInvoiceRequest {
   remark?: string
 }
 
-export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
-export type RefundRequestStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'EXECUTED'
+export interface RedReverseInvoiceRequest {
+  amount: number
+  reason: string
+}
+
+export interface ReissueInvoiceRequest {
+  type?: string
+  title?: string
+  taxNumber?: string
+  bankName?: string
+  bankAccount?: string
+  address?: string
+  phone?: string
+  amount: number
+  reason: string
+}
+
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REVERSED' | 'VOIDED'
+export type RefundRequestStatus =
+  | 'PENDING_APPROVAL'
+  | 'PENDING_EXECUTION'
+  | 'EXECUTING'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'FAILED'
+  | 'CANCELLED'
 export type RefundType = 'ORDER_CANCEL' | 'OVERPAY' | 'PRICE_ADJUSTMENT' | 'CUSTOMER_BREACH' | 'INTERNAL_CORRECTION'
 
 export interface PaymentRequest {
@@ -149,6 +191,8 @@ export interface ApproveRefundRequest {
 export interface ExecuteRefundRequest {
   transactionRef?: string
   remark?: string
+  success?: boolean
+  failureReason?: string
 }
 
 export interface TRefundRequest {
@@ -163,7 +207,11 @@ export interface TRefundRequest {
   requestedTime?: string
   approvedTime?: string
   approveComment?: string
+  executionStartedTime?: string
   executedTime?: string
+  executionRef?: string
+  executionRemark?: string
+  failureReason?: string
 }
 
 export interface SettlementPreviewRequest {

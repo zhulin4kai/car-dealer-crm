@@ -13,6 +13,7 @@
     <result column="bank_account" jdbcType="VARCHAR" property="bankAccount" />
     <result column="address" jdbcType="VARCHAR" property="address" />
     <result column="phone" jdbcType="VARCHAR" property="phone" />
+    <result column="original_invoice_id" jdbcType="INTEGER" property="originalInvoiceId" />
     <result column="amount" jdbcType="DECIMAL" property="amount" />
     <result column="status" jdbcType="VARCHAR" property="status" />
     <result column="remark" jdbcType="VARCHAR" property="remark" />
@@ -25,7 +26,7 @@
 
   <sql id="Base_Column_List">
     id, tran_id, invoice_no, type, title, tax_number, bank_name, bank_account, address, 
-    phone, amount, status, remark, issue_time, create_time, create_by, edit_time, edit_by
+    phone, original_invoice_id, amount, status, remark, issue_time, create_time, create_by, edit_time, edit_by
   </sql>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -55,13 +56,13 @@
     insert into t_tran_invoice (tran_id, invoice_no, type, 
       title, tax_number, bank_name, 
       bank_account, address, phone, 
-      amount, status, remark, 
+      original_invoice_id, amount, status, remark,
       issue_time, create_time, create_by, 
       edit_time, edit_by)
     values (#{tranId,jdbcType=INTEGER}, #{invoiceNo,jdbcType=VARCHAR}, #{type,jdbcType=VARCHAR}, 
       #{title,jdbcType=VARCHAR}, #{taxNumber,jdbcType=VARCHAR}, #{bankName,jdbcType=VARCHAR}, 
       #{bankAccount,jdbcType=VARCHAR}, #{address,jdbcType=VARCHAR}, #{phone,jdbcType=VARCHAR}, 
-      #{amount,jdbcType=DECIMAL}, #{status,jdbcType=VARCHAR}, #{remark,jdbcType=VARCHAR}, 
+      #{originalInvoiceId,jdbcType=INTEGER}, #{amount,jdbcType=DECIMAL}, #{status,jdbcType=VARCHAR}, #{remark,jdbcType=VARCHAR},
       #{issueTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER}, 
       #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER})
   </insert>
@@ -98,6 +99,9 @@
       </if>
       <if test="phone != null">
         phone,
+      </if>
+      <if test="originalInvoiceId != null">
+        original_invoice_id,
       </if>
       <if test="amount != null">
         amount,
@@ -151,6 +155,9 @@
       </if>
       <if test="phone != null">
         #{phone,jdbcType=VARCHAR},
+      </if>
+      <if test="originalInvoiceId != null">
+        #{originalInvoiceId,jdbcType=INTEGER},
       </if>
       <if test="amount != null">
         #{amount,jdbcType=DECIMAL},
@@ -209,6 +216,9 @@
       <if test="phone != null">
         phone = #{phone,jdbcType=VARCHAR},
       </if>
+      <if test="originalInvoiceId != null">
+        original_invoice_id = #{originalInvoiceId,jdbcType=INTEGER},
+      </if>
       <if test="amount != null">
         amount = #{amount,jdbcType=DECIMAL},
       </if>
@@ -241,6 +251,7 @@
     update t_tran_invoice
     set status = #{newStatus,jdbcType=VARCHAR},
         issue_time = #{issueTime,jdbcType=TIMESTAMP},
+        remark = #{remark,jdbcType=VARCHAR},
         edit_time = #{editTime,jdbcType=TIMESTAMP},
         edit_by = #{editBy,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
@@ -258,6 +269,7 @@
       bank_account = #{bankAccount,jdbcType=VARCHAR},
       address = #{address,jdbcType=VARCHAR},
       phone = #{phone,jdbcType=VARCHAR},
+      original_invoice_id = #{originalInvoiceId,jdbcType=INTEGER},
       amount = #{amount,jdbcType=DECIMAL},
       status = #{status,jdbcType=VARCHAR},
       remark = #{remark,jdbcType=VARCHAR},

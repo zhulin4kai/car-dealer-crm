@@ -17,7 +17,11 @@
         <result column="approved_time" property="approvedTime" />
         <result column="approve_comment" property="approveComment" />
         <result column="executed_by" property="executedBy" />
+        <result column="execution_started_time" property="executionStartedTime" />
         <result column="executed_time" property="executedTime" />
+        <result column="execution_ref" property="executionRef" />
+        <result column="execution_remark" property="executionRemark" />
+        <result column="failure_reason" property="failureReason" />
         <result column="create_time" property="createTime" />
         <result column="create_by" property="createBy" />
         <result column="edit_time" property="editTime" />
@@ -27,7 +31,8 @@
     <sql id="Base_Column_List">
         id, tran_id, original_payment_id, refund_payment_id, amount, refund_type,
         reason, status, requested_by, requested_time, approved_by, approved_time,
-        approve_comment, executed_by, executed_time, create_time, create_by, edit_time, edit_by
+        approve_comment, executed_by, execution_started_time, executed_time,
+        execution_ref, execution_remark, failure_reason, create_time, create_by, edit_time, edit_by
     </sql>
 
     <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
@@ -54,14 +59,14 @@
         SELECT COALESCE(SUM(amount), 0)
         FROM t_refund_request
         WHERE original_payment_id = #{originalPaymentId,jdbcType=INTEGER}
-          AND status = 'EXECUTED'
+          AND status = 'COMPLETED'
     </select>
 
     <select id="sumOpenAmountByOriginalPaymentId" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(amount), 0)
         FROM t_refund_request
         WHERE original_payment_id = #{originalPaymentId,jdbcType=INTEGER}
-          AND status IN ('PENDING_APPROVAL', 'APPROVED')
+          AND status IN ('PENDING_APPROVAL', 'PENDING_EXECUTION', 'EXECUTING')
     </select>
 
     <insert id="insertSelective" parameterType="com.autodealer.crm.model.TRefundRequest" useGeneratedKeys="true" keyProperty="id">
@@ -80,7 +85,11 @@
             <if test="approvedTime != null">approved_time,</if>
             <if test="approveComment != null">approve_comment,</if>
             <if test="executedBy != null">executed_by,</if>
+            <if test="executionStartedTime != null">execution_started_time,</if>
             <if test="executedTime != null">executed_time,</if>
+            <if test="executionRef != null">execution_ref,</if>
+            <if test="executionRemark != null">execution_remark,</if>
+            <if test="failureReason != null">failure_reason,</if>
             <if test="createTime != null">create_time,</if>
             <if test="createBy != null">create_by,</if>
             <if test="editTime != null">edit_time,</if>
@@ -100,7 +109,11 @@
             <if test="approvedTime != null">#{approvedTime},</if>
             <if test="approveComment != null">#{approveComment},</if>
             <if test="executedBy != null">#{executedBy},</if>
+            <if test="executionStartedTime != null">#{executionStartedTime},</if>
             <if test="executedTime != null">#{executedTime},</if>
+            <if test="executionRef != null">#{executionRef},</if>
+            <if test="executionRemark != null">#{executionRemark},</if>
+            <if test="failureReason != null">#{failureReason},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="editTime != null">#{editTime},</if>
@@ -120,16 +133,42 @@
           AND status = 'PENDING_APPROVAL'
     </update>
 
-    <update id="markExecutedIfApproved">
+    <update id="markExecutingIfPendingExecution">
         UPDATE t_refund_request
-        SET status = 'EXECUTED',
-            refund_payment_id = #{refundPaymentId,jdbcType=INTEGER},
+        SET status = 'EXECUTING',
             executed_by = #{executedBy,jdbcType=INTEGER},
+            execution_started_time = #{executionStartedTime,jdbcType=TIMESTAMP},
+            execution_ref = #{executionRef,jdbcType=VARCHAR},
+            execution_remark = #{executionRemark,jdbcType=VARCHAR},
+            edit_by = #{editBy,jdbcType=INTEGER},
+            edit_time = #{editTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=INTEGER}
+          AND status = 'PENDING_EXECUTION'
+    </update>
+
+    <update id="markCompletedIfExecuting">
+        UPDATE t_refund_request
+        SET status = 'COMPLETED',
+            refund_payment_id = #{refundPaymentId,jdbcType=INTEGER},
             executed_time = #{executedTime,jdbcType=TIMESTAMP},
             edit_by = #{editBy,jdbcType=INTEGER},
             edit_time = #{editTime,jdbcType=TIMESTAMP}
         WHERE id = #{id,jdbcType=INTEGER}
-          AND status = 'APPROVED'
+          AND status = 'EXECUTING'
+    </update>
+
+    <update id="markFailedIfExecutable">
+        UPDATE t_refund_request
+        SET status = 'FAILED',
+            executed_by = #{executedBy,jdbcType=INTEGER},
+            executed_time = #{executedTime,jdbcType=TIMESTAMP},
+            failure_reason = #{failureReason,jdbcType=VARCHAR},
+            execution_ref = #{executionRef,jdbcType=VARCHAR},
+            execution_remark = #{executionRemark,jdbcType=VARCHAR},
+            edit_by = #{editBy,jdbcType=INTEGER},
+            edit_time = #{editTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=INTEGER}
+          AND status IN ('PENDING_EXECUTION', 'EXECUTING')
     </update>
 
     <delete id="deleteByTranId">

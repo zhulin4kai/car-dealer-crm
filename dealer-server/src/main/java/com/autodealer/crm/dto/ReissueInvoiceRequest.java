@@ -8,21 +8,15 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 /**
- * 创建发票请求。
+ * 发票重开请求。
  */
 @Data
-public class CreateTranInvoiceRequest {
+public class ReissueInvoiceRequest {
 
-    @NotNull(message = "交易ID不能为空")
-    private Integer tranId;
-
-    @NotBlank(message = "发票类型不能为空")
     private String type;
 
-    @NotBlank(message = "发票抬头不能为空")
     private String title;
 
-    @NotBlank(message = "纳税人识别号不能为空")
     private String taxNumber;
 
     private String bankName;
@@ -37,5 +31,6 @@ public class CreateTranInvoiceRequest {
     @DecimalMin(value = "0.01", message = "发票金额必须大于0")
     private BigDecimal amount;
 
-    private String remark;
+    @NotBlank(message = "重开原因不能为空")
+    private String reason;
 }

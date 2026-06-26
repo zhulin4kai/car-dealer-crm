@@ -11,4 +11,6 @@ public class UpdateInvoiceStatusRequest {
 
     @NotBlank(message = "发票状态不能为空")
     private String status;
+
+    private String reason;
 }

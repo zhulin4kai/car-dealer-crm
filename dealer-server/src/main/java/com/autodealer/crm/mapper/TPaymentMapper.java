@@ -24,10 +24,6 @@ public interface TPaymentMapper {
 
     int updateByPrimaryKeySelective(TPayment record);
 
-    int markRefundedIfCompleted(@Param("id") Integer id,
-                                @Param("editTime") Date editTime,
-                                @Param("editBy") Integer editBy);
-
     int updateStatusIfCurrent(@Param("id") Integer id,
                               @Param("expectedStatus") String expectedStatus,
                               @Param("newStatus") String newStatus,

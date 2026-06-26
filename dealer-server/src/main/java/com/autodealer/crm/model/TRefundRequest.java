@@ -22,7 +22,11 @@ public class TRefundRequest implements Serializable {
     private Date approvedTime;
     private String approveComment;
     private Integer executedBy;
+    private Date executionStartedTime;
     private Date executedTime;
+    private String executionRef;
+    private String executionRemark;
+    private String failureReason;
     private Date createTime;
     private Integer createBy;
     private Date editTime;
