@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -84,6 +85,31 @@ class ExternalMysqlSchemaVerificationTest {
             assertIndex(connection, schema, "t_product_vehicle", "idx_product_vehicle_product_status");
             assertIndex(connection, schema, "t_follow_task", "idx_follow_task_owner_due");
             assertIndex(connection, schema, "t_communication_record", "idx_comm_record_owner_time");
+
+            assertTrigger(connection, schema, "trg_permission_no_self_parent_bi");
+            assertTrigger(connection, schema, "trg_permission_no_self_parent_bu");
+        }
+    }
+
+    @Test
+    @DisplayName("真实 MySQL/MariaDB 必须拒绝权限父级自引用")
+    void realMysqlMustRejectPermissionSelfParent() throws Exception {
+        try (Connection connection = openConnection()) {
+            assertThrows(SQLException.class, () -> executeUpdate(connection, """
+                    INSERT INTO t_permission (id, name, code, type, parent_id)
+                    VALUES (991001, '自引用权限', 'test:mysql:self-parent-insert', 'menu', 991001)
+                    """));
+
+            executeUpdate(connection, """
+                    INSERT INTO t_permission (id, name, code, type)
+                    VALUES (991002, '自引用更新权限', 'test:mysql:self-parent-update', 'menu')
+                    """);
+            try {
+                assertThrows(SQLException.class, () -> executeUpdate(connection,
+                        "UPDATE t_permission SET parent_id = 991002 WHERE id = 991002"));
+            } finally {
+                executeUpdate(connection, "DELETE FROM t_permission WHERE id = 991002");
+            }
         }
     }
 
@@ -165,6 +191,28 @@ class ExternalMysqlSchemaVerificationTest {
                 WHERE constraint_schema = ? AND constraint_name = ? AND delete_rule = ?
                 """;
         assertCountAtLeastOne(connection, sql, schema, constraint, deleteRule, constraint + " 外键删除规则缺失");
+    }
+
+    private void assertTrigger(Connection connection, String schema, String trigger) throws SQLException {
+        String sql = """
+                SELECT COUNT(*)
+                FROM information_schema.triggers
+                WHERE trigger_schema = ? AND trigger_name = ?
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, schema);
+            statement.setString(2, trigger);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                assertTrue(resultSet.next(), trigger + " 触发器缺失");
+                assertTrue(resultSet.getInt(1) > 0, trigger + " 触发器缺失");
+            }
+        }
+    }
+
+    private void executeUpdate(Connection connection, String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.executeUpdate();
+        }
     }
 
     private void assertCountAtLeastOne(Connection connection, String sql, String arg1, String arg2, String arg3,

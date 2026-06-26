@@ -116,12 +116,17 @@ class DataLayerContractTest {
 
     @Test
     @DisplayName("生产与H2必须共同声明权限父级自引用保护")
-    void productionAndH2PermissionSelfParentCheckMustMatch() throws IOException {
+    void productionAndH2PermissionSelfParentProtectionMustMatch() throws IOException {
         String productionSql = normalizeSql(Files.readString(PRODUCTION_SCHEMA));
         String h2Sql = normalizeSql(Files.readString(H2_SCHEMA));
 
+        assertFalse(productionSql.contains("chk_permission_parent_self"),
+                "生产 MySQL Schema 不能用 CHECK 引用 AUTO_INCREMENT id");
         assertSqlContainsAll(productionSql,
-                "CONSTRAINT `chk_permission_parent_self` CHECK (`parent_id` IS NULL OR `parent_id` <> `id`)");
+                "CREATE TRIGGER `trg_permission_no_self_parent_bi` BEFORE INSERT ON `t_permission`",
+                "CREATE TRIGGER `trg_permission_no_self_parent_bu` BEFORE UPDATE ON `t_permission`",
+                "IF NEW.`parent_id` IS NOT NULL AND NEW.`parent_id` = NEW.`id` THEN",
+                "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'permission parent cannot reference itself'");
         assertSqlContainsAll(h2Sql,
                 "CONSTRAINT chk_permission_parent_self CHECK (parent_id IS NULL OR parent_id <> id)");
     }

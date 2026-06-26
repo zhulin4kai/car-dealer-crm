@@ -571,6 +571,8 @@ WHERE `type_code` IN ('sex', 'appellation', 'clueState', 'returnPriority', 'retu
 -- ----------------------------
 -- Table structure for t_permission
 -- ----------------------------
+DROP TRIGGER IF EXISTS `trg_permission_no_self_parent_bi`;
+DROP TRIGGER IF EXISTS `trg_permission_no_self_parent_bu`;
 DROP TABLE IF EXISTS `t_permission`;
 CREATE TABLE `t_permission`
 (
@@ -587,12 +589,30 @@ CREATE TABLE `t_permission`
     UNIQUE KEY `uk_permission_code` (`code`),
     KEY `idx_permission_parent` (`parent_id`),
     CONSTRAINT `chk_permission_type` CHECK (`type` IN ('menu', 'button')),
-    CONSTRAINT `chk_permission_parent_self` CHECK (`parent_id` IS NULL OR `parent_id` <> `id`),
     CONSTRAINT `fk_permission_parent` FOREIGN KEY (`parent_id`) REFERENCES `t_permission` (`id`) ON DELETE RESTRICT
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_general_ci COMMENT = '权限表'
   ROW_FORMAT = DYNAMIC;
+
+DELIMITER $$
+CREATE TRIGGER `trg_permission_no_self_parent_bi`
+BEFORE INSERT ON `t_permission`
+FOR EACH ROW
+BEGIN
+    IF NEW.`parent_id` IS NOT NULL AND NEW.`parent_id` = NEW.`id` THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'permission parent cannot reference itself';
+    END IF;
+END$$
+CREATE TRIGGER `trg_permission_no_self_parent_bu`
+BEFORE UPDATE ON `t_permission`
+FOR EACH ROW
+BEGIN
+    IF NEW.`parent_id` IS NOT NULL AND NEW.`parent_id` = NEW.`id` THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'permission parent cannot reference itself';
+    END IF;
+END$$
+DELIMITER ;
 
 -- ----------------------------
 -- Records of t_permission
@@ -1859,6 +1879,8 @@ VALUES
 (3, 3, 1, '客户职业及付款计划明确，同意最终报价。', '2026-06-19 17:10:00', 4, '2026-06-18 16:20:00', 3),
 (4, 6, 0, '客户要求的交付日期无法保证，不建议继续占用车辆资源。', '2026-06-09 16:40:00', 4, '2026-06-09 10:15:00', 8);
 
+DROP TABLE IF EXISTS `t_user_role`;
+DROP TABLE IF EXISTS `t_user`;
 create table t_user
 (
     id                     int auto_increment comment '主键，自动增长，用户ID'
@@ -1889,6 +1911,7 @@ create table t_user
  COLLATE = utf8mb3_general_ci COMMENT = '用户表'
  ROW_FORMAT = DYNAMIC;
 
+DROP TABLE IF EXISTS `t_clue_owner_history`;
 CREATE TABLE `t_clue_owner_history`
 (
     `id`             int auto_increment comment '主键，自动增长，线索责任历史ID'
@@ -1935,6 +1958,7 @@ SELECT id, NULL, owner_id, COALESCE(create_by, owner_id), '初始化线索责任
 FROM `t_clue`
 WHERE owner_id IS NOT NULL;
 
+DROP TABLE IF EXISTS `t_user_role`;
 create table t_user_role
 (
     user_id int not null,
@@ -1981,6 +2005,7 @@ INSERT INTO t_user_role (user_id, role_id)
 SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r
 WHERE u.login_act = 'hejun' AND r.role = 'sales_consultant';
 
+DROP TABLE IF EXISTS `t_tran_remark`;
 create table t_tran_remark
 (
     id           int auto_increment comment '主键，自动增长，交易备注ID'
