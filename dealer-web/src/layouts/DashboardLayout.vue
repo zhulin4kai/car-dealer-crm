@@ -202,7 +202,7 @@ const BUSINESS_MENU_CODES = new Set([
 ])
 const SYSTEM_MENU_CODES = new Set(['menu:user', DICT_MENU_CODE, AUDIT_MENU_CODE])
 const MENU_ITEM_OVERRIDES: Record<string, Partial<Pick<NavigationMenuItem, 'name' | 'icon'>>> = {
-  'menu:dashboard': { name: '工作台', icon: 'Menu' },
+  'menu:dashboard': { name: '工作台', icon: 'Gauge' },
 }
 const PRODUCT_ITEM_OVERRIDES: Record<string, Pick<NavigationMenuItem, 'name' | 'icon'>> = {
   'page:product:list': { name: '产品列表', icon: 'Box' },
