@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TOpportunityMapper">
+
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TOpportunity">
+        <id column="id" property="id" />
+        <result column="opportunity_no" property="opportunityNo" />
+        <result column="customer_id" property="customerId" />
+        <result column="customer_name" property="customerName" />
+        <result column="clue_id" property="clueId" />
+        <result column="owner_id" property="ownerId" />
+        <result column="owner_name" property="ownerName" />
+        <result column="product_id" property="productId" />
+        <result column="product_name" property="productName" />
+        <result column="source_type" property="sourceType" />
+        <result column="stage" property="stage" />
+        <result column="requirement" property="requirement" />
+        <result column="expected_amount" property="expectedAmount" />
+        <result column="expected_close_date" property="expectedCloseDate" />
+        <result column="next_action_time" property="nextActionTime" />
+        <result column="lost_reason" property="lostReason" />
+        <result column="lost_competitor" property="lostCompetitor" />
+        <result column="result_remark" property="resultRemark" />
+        <result column="order_tran_id" property="orderTranId" />
+        <result column="version" property="version" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="update_by" property="updateBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        o.id, o.opportunity_no, o.customer_id, c.customer_name, o.clue_id, o.owner_id,
+        u.name AS owner_name, o.product_id, p.name AS product_name, o.source_type,
+        o.stage, o.requirement, o.expected_amount, o.expected_close_date,
+        o.next_action_time, o.lost_reason, o.lost_competitor, o.result_remark,
+        o.order_tran_id, o.version, o.create_time, o.create_by, o.update_time, o.update_by
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_opportunity o
+        LEFT JOIN t_customer c ON o.customer_id = c.id
+        LEFT JOIN t_user u ON o.owner_id = u.id
+        LEFT JOIN t_product p ON o.product_id = p.id
+        WHERE o.id = #{id}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_opportunity o
+        LEFT JOIN t_customer c ON o.customer_id = c.id
+        LEFT JOIN t_user u ON o.owner_id = u.id
+        LEFT JOIN t_product p ON o.product_id = p.id
+        WHERE o.id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="selectByQuery" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_opportunity o
+        LEFT JOIN t_customer c ON o.customer_id = c.id
+        LEFT JOIN t_user u ON o.owner_id = u.id
+        LEFT JOIN t_product p ON o.product_id = p.id
+        WHERE 1 = 1
+        <if test="query.dataScopeUserId != null">
+            AND o.owner_id = #{query.dataScopeUserId}
+        </if>
+        <if test="query.customerId != null">
+            AND o.customer_id = #{query.customerId}
+        </if>
+        <if test="query.ownerId != null">
+            AND o.owner_id = #{query.ownerId}
+        </if>
+        <if test="query.stage != null and query.stage != ''">
+            AND o.stage = #{query.stage}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (o.opportunity_no LIKE CONCAT('%', #{query.keyword}, '%')
+                OR c.customer_name LIKE CONCAT('%', #{query.keyword}, '%')
+                OR o.requirement LIKE CONCAT('%', #{query.keyword}, '%'))
+        </if>
+        ORDER BY o.update_time DESC, o.id DESC
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TOpportunity" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_opportunity (
+            opportunity_no, customer_id, clue_id, owner_id, product_id, source_type,
+            stage, requirement, expected_amount, expected_close_date, next_action_time,
+            version, create_time, create_by, update_time, update_by
+        ) VALUES (
+            #{opportunityNo}, #{customerId}, #{clueId}, #{ownerId}, #{productId}, #{sourceType},
+            #{stage}, #{requirement}, #{expectedAmount}, #{expectedCloseDate}, #{nextActionTime},
+            #{version}, #{createTime}, #{createBy}, #{updateTime}, #{updateBy}
+        )
+    </insert>
+
+    <update id="updateBasic">
+        UPDATE t_opportunity
+        SET product_id = #{record.productId},
+            requirement = #{record.requirement},
+            expected_amount = #{record.expectedAmount},
+            expected_close_date = #{record.expectedCloseDate},
+            next_action_time = #{record.nextActionTime},
+            update_time = #{record.updateTime},
+            update_by = #{record.updateBy},
+            version = version + 1
+        WHERE id = #{record.id}
+        <if test="dataScopeUserId != null">
+            AND owner_id = #{dataScopeUserId}
+        </if>
+          AND stage NOT IN ('WON', 'LOST', 'CLOSED')
+    </update>
+
+    <update id="updateStageIfCurrent">
+        UPDATE t_opportunity
+        SET stage = #{targetStage},
+            lost_reason = CASE
+                WHEN #{targetStage} IN ('LOST', 'SHELVED', 'CLOSED') THEN #{reason}
+                ELSE lost_reason
+            END,
+            lost_competitor = CASE
+                WHEN #{targetStage} = 'LOST' THEN #{competitor}
+                ELSE lost_competitor
+            END,
+            result_remark = CASE
+                WHEN #{targetStage} IN ('WON', 'LOST', 'SHELVED', 'CLOSED') THEN #{remark}
+                ELSE result_remark
+            END,
+            next_action_time = #{nextActionTime},
+            order_tran_id = CASE
+                WHEN #{targetStage} = 'WON' THEN #{orderTranId}
+                ELSE order_tran_id
+            END,
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND stage = #{expectedStage}
+    </update>
+</mapper>

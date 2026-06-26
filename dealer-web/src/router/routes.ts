@@ -147,6 +147,17 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'opportunity',
+        name: 'opportunity',
+        component: () => import('@/pages/dashboard/opportunity.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '商机管理',
+          activeMenu: '/dashboard/opportunity',
+          permission: PERMISSIONS.opportunity.list,
+        },
+      },
+      {
         path: 'quote',
         name: 'quote',
         component: () => import('@/pages/dashboard/quote.vue'),

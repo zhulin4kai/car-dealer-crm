@@ -47,6 +47,13 @@
         WHERE q.id = #{id}
     </select>
 
+    <select id="countActiveByOpportunityId" resultType="int">
+        SELECT COUNT(1)
+        FROM t_quote
+        WHERE opportunity_id = #{opportunityId}
+          AND status NOT IN ('REFUSED', 'EXPIRED', 'VOIDED')
+    </select>
+
     <insert id="insert" parameterType="com.autodealer.crm.model.TQuote" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_quote (
             quote_no, customer_id, opportunity_id, current_version_id, status, remark,

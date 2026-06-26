@@ -18,12 +18,13 @@
 - [10. 字典管理模块](#10-字典管理模块)
 - [11. 统计报表模块](#11-统计报表模块)
 - [12. 交付管理模块](#12-交付管理模块)
-- [13. 安全配置](#13-安全配置)
-- [14. AOP 切面](#14-aop-切面)
-- [15. 工具类](#15-工具类)
-- [16. 数据字典缓存机制](#16-数据字典缓存机制)
-- [17. Mapper XML SQL 汇总](#17-mapper-xml-sql-汇总)
-- [18. 数据库表汇总](#18-数据库表汇总)
+- [13. 商机管理模块](#13-商机管理模块)
+- [14. 安全配置](#14-安全配置)
+- [15. AOP 切面](#15-aop-切面)
+- [16. 工具类](#16-工具类)
+- [17. 数据字典缓存机制](#17-数据字典缓存机制)
+- [18. Mapper XML SQL 汇总](#18-mapper-xml-sql-汇总)
+- [19. 数据库表汇总](#19-数据库表汇总)
 
 ---
 
@@ -692,9 +693,10 @@ ACCEPTED → CONVERTED_TO_ORDER
 - **接口**: `POST /api/quotes`
 - **流程**: `QuoteController.create()` → `QuoteServiceImpl.createQuote()`
   1. 校验客户数据范围。
-  2. 校验商品处于 `ON_SALE`。
-  3. 服务端按商品主档价格计算总额并保存商品编码、名称、配置和价格快照。
-  4. 创建报价主档、版本 1、版本行项和状态历史。
+  2. 如提交 `opportunityId`，校验商机存在、同客户、同数据范围且未进入终态。
+  3. 校验商品处于 `ON_SALE`。
+  4. 服务端按商品主档价格计算总额并保存商品编码、名称、配置和价格快照。
+  5. 创建报价主档、版本 1、版本行项和状态历史。
 - **库存边界**: 创建报价不扣减、不占用库存。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
@@ -1021,9 +1023,52 @@ deleteDicType(id):
 
 ---
 
-## 13. 安全配置
+## 13. 商机管理模块
 
-### 13.1 SecurityConfig
+### 13.1 文件路径
+
+| 层级 | 文件路径 |
+|------|----------|
+| Controller | `web/OpportunityController.java` |
+| Service | `service/OpportunityService.java` → `service/impl/OpportunityServiceImpl.java` |
+| Mapper | `mapper/TOpportunityMapper.java`, `mapper/TOpportunityStageHistoryMapper.java` |
+| XML | `resources/mapper/TOpportunityMapper.xml`, `resources/mapper/TOpportunityStageHistoryMapper.xml` |
+| Model | `model/TOpportunity.java`, `model/TOpportunityStageHistory.java` |
+| DTO | `dto/CreateOpportunityRequest.java`, `dto/UpdateOpportunityRequest.java`, `dto/AdvanceOpportunityStageRequest.java`, `dto/OpportunityResultRequest.java` |
+| Enum | `enums/OpportunityStage.java` |
+| Query | `query/OpportunityQuery.java` |
+
+### 13.2 接口方法及业务流程
+
+#### 创建和编辑商机
+- **接口**: `POST /api/opportunities`、`PUT /api/opportunities/{id}`
+- **权限**: `opportunity:create`、`opportunity:edit`
+- **流程**: 商机基于已识别客户创建，不创建交易、订单、收款或发票；客户访问范围由服务端当前用户数据范围校验，负责人来自客户主档或当前登录人，前端不得提交可信负责人或数据范围。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 阶段推进和阶段历史
+- **接口**: `PUT /api/opportunities/{id}/stage`、`GET /api/opportunities/{id}/stage-history`
+- **权限**: `opportunity:advance`、`opportunity:view`
+- **流程**: 阶段只允许使用 `INITIAL_CONTACT`、`NEEDS_ANALYSIS`、`VEHICLE_MATCHING`、`TEST_DRIVE_INVITED`、`QUOTING`、`NEGOTIATION`、`PENDING_APPROVAL`、`WON`、`LOST`、`SHELVED`、`CLOSED` 稳定编码。推进命令必须提交 `expectedStage`、`targetStage` 和原因，服务端按当前阶段做 CAS 更新并写入 `t_opportunity_stage_history`。
+- **边界**: 商机阶段不承载收款、发票、库存出库或交付状态。
+
+#### 赢单、输单、搁置和恢复
+- **接口**: `PUT /api/opportunities/{id}/won`、`/lost`、`/shelve`、`/restore`
+- **权限**: `opportunity:win`、`opportunity:lose`、`opportunity:shelve`、`opportunity:restore`
+- **流程**: 赢单必须关联已成立交易；输单必须填写原因和可选竞品或反馈；搁置必须填写原因和下一步日期；恢复只允许搁置或输单商机重新进入需求确认，并保留原关闭事实和阶段历史。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+### 13.3 涉及数据库表
+- `t_opportunity` - 商机主表
+- `t_opportunity_stage_history` - 商机阶段历史表
+- `t_customer` - 客户主档和数据范围
+- `t_tran` - 赢单关联已成立交易
+
+---
+
+## 14. 安全配置
+
+### 14.1 SecurityConfig
 **路径**: `config/SecurityConfig.java`
 
 ```java
@@ -1042,7 +1087,7 @@ public class SecurityConfig {
 }
 ```
 
-### 13.2 TokenVerifyFilter
+### 14.2 TokenVerifyFilter
 **路径**: `config/filter/TokenVerifyFilter.java`
 
 **执行逻辑**:
@@ -1052,7 +1097,7 @@ public class SecurityConfig {
 4. 设置 SecurityContext
 5. 异步刷新 token 过期时间
 
-### 13.3 Handler 处理器
+### 14.3 Handler 处理器
 
 | Handler | 路径 | 功能 |
 |---------|------|------|
@@ -1062,7 +1107,7 @@ public class SecurityConfig {
 | MyAccessDeniedHandler | `config/handler/MyAccessDeniedHandler.java` | 权限不足：返回 ACCESS_DENIED |
 | GlobalExceptionHandler | `config/handler/GlobalExceptionHandler.java` | 全局异常处理：统一返回错误 |
 
-### 13.4 GlobalExceptionHandler 异常处理
+### 14.4 GlobalExceptionHandler 异常处理
 
 | 异常类型 | 处理方式 |
 |----------|---------|
@@ -1073,7 +1118,7 @@ public class SecurityConfig {
 | `HttpMessageNotReadableException` | 返回请求体格式错误 |
 | `Exception` | 返回通用错误信息 |
 
-### 13.5 CorsConfig
+### 14.5 CorsConfig
 **路径**: `config/CorsConfig.java`
 
 - 允许所有源（`addAllowedOriginPattern("*")`）
@@ -1084,9 +1129,9 @@ public class SecurityConfig {
 
 ---
 
-## 14. AOP 切面
+## 15. AOP 切面
 
-### 14.1 DataScopeAspect
+### 15.1 DataScopeAspect
 **路径**: `aspect/DataScopeAspect.java`
 
 **功能**: 数据权限过滤，根据用户角色动态添加 SQL 过滤条件。
@@ -1110,7 +1155,7 @@ public class DataScopeAspect {
 }
 ```
 
-### 14.2 DataScope 注解
+### 15.2 DataScope 注解
 **路径**: `commons/DataScope.java`
 
 ```java
@@ -1130,9 +1175,9 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 
 ---
 
-## 15. 工具类
+## 16. 工具类
 
-### 15.1 JWTUtils
+### 16.1 JWTUtils
 **路径**: `util/JWTUtils.java`
 
 | 方法 | 功能 |
@@ -1143,7 +1188,7 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 
 **密钥**: 从环境变量 `JWT_SECRET` 获取；未配置时应用启动失败，避免使用可预测的默认签名密钥。
 
-### 15.2 CacheUtils
+### 16.2 CacheUtils
 **路径**: `util/CacheUtils.java`
 
 | 方法 | 功能 |
@@ -1151,7 +1196,7 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 | `getCacheData(Supplier cacheSelector, Supplier databaseSelector, Consumer cacheSave)` | 通用缓存查询：先查缓存，未命中查数据库并缓存 |
 | `generateKey(Object... params)` | 生成缓存 key |
 
-### 15.3 JSONUtils
+### 16.3 JSONUtils
 **路径**: `util/JSONUtils.java`
 
 | 方法 | 功能 |
@@ -1159,14 +1204,14 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 | `toJSON(Object object)` | Java 对象转 JSON 字符串 |
 | `toBean(String json, Class<T> clazz)` | JSON 字符串转 Java 对象 |
 
-### 15.4 ResponseUtils
+### 16.4 ResponseUtils
 **路径**: `util/ResponseUtils.java`
 
 | 方法 | 功能 |
 |------|------|
 | `write(HttpServletResponse response, String result)` | 将 JSON 结果写入 HttpServletResponse |
 
-### 15.5 RedisManager
+### 16.5 RedisManager
 **路径**: `manager/RedisManager.java`
 
 | 方法 | 功能 |
@@ -1180,9 +1225,9 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 
 ---
 
-## 16. 数据字典缓存机制
+## 17. 数据字典缓存机制
 
-### 16.1 缓存架构
+### 17.1 缓存架构
 
 ```
 DicController
@@ -1194,7 +1239,7 @@ CacheUtils.getCacheData()
 RedisManager (Redis)  ←→  DicMapper (MySQL)
 ```
 
-### 16.2 缓存策略
+### 17.2 缓存策略
 
 | 缓存 Key 模式 | 内容 | 过期时间 |
 |---------------|------|---------|
@@ -1203,7 +1248,7 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `dic:value:{id}` | 字典值详情 | 24 小时 |
 | `dic:values:type:{typeId}` | 按类型ID查询字典值列表 | 24 小时 |
 
-### 16.3 缓存刷新逻辑
+### 17.3 缓存刷新逻辑
 
 #### refreshTypeCache()
 ```java
@@ -1224,7 +1269,7 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 删除所有 dic:type:*, dic:value:*, dic:list:* 缓存
 ```
 
-### 16.4 Excel 导入时的数据解析
+### 17.4 Excel 导入时的数据解析
 
 Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。当前流程由 `ClueServiceImpl.importExcel()` 使用 EasyExcel 读取 `ClueExcelRaw`，再由 `ClueImportValidator` 一次性加载字典、负责人、活动和商品映射，逐行做公式前缀拦截、手机号归一化、必填校验、字典转换、同文件查重和对象转换。
 
@@ -1232,9 +1277,9 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 
 ---
 
-## 17. Mapper XML SQL 汇总
+## 18. Mapper XML SQL 汇总
 
-### 17.1 TClueMapper.xml (t_clue)
+### 18.1 TClueMapper.xml (t_clue)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1259,7 +1304,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `countActiveByPhoneExcludingId` | SELECT | 恢复线索前检查相同手机号活跃线索 |
 | `countByIntentionProductId` | SELECT | 检查商品是否被线索意向引用 |
 
-### 17.2 TCustomerMapper.xml (t_customer)
+### 18.2 TCustomerMapper.xml (t_customer)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1283,7 +1328,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新客户 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新客户 |
 
-### 17.3 TTranMapper.xml (t_tran)
+### 18.3 TTranMapper.xml (t_tran)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1302,7 +1347,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新交易 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新交易 |
 
-### 17.4 TUserMapper.xml (t_user)
+### 18.4 TUserMapper.xml (t_user)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1325,7 +1370,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新用户 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新用户 |
 
-### 17.5 TActivityMapper.xml (t_activity)
+### 18.5 TActivityMapper.xml (t_activity)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1341,7 +1386,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新活动 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新活动 |
 
-### 17.6 TProductMapper.xml (t_product)
+### 18.6 TProductMapper.xml (t_product)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1358,7 +1403,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `deleteById` | DELETE | 删除产品 |
 | `updateStock` | UPDATE | 更新库存（支持正负数） |
 
-### 17.7 DicMapper.xml (t_dic_type, t_dic_value)
+### 18.7 DicMapper.xml (t_dic_type, t_dic_value)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1382,7 +1427,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `deleteRemarksByDicValueId` | DELETE | 删除关联的交易备注 |
 | `deleteRemarksByDicValueIds` | DELETE | 批量删除关联的交易备注 |
 
-### 17.8 TTranProductMapper.xml (t_tran_product)
+### 18.8 TTranProductMapper.xml (t_tran_product)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1395,7 +1440,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新 |
 
-### 17.9 TTranInvoiceMapper.xml (t_tran_invoice)
+### 18.9 TTranInvoiceMapper.xml (t_tran_invoice)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1407,7 +1452,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新发票 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新发票 |
 
-### 17.10 TTranApproveMapper.xml (t_tran_approve)
+### 18.10 TTranApproveMapper.xml (t_tran_approve)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1418,7 +1463,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新 |
 
-### 17.11 TTranRemarkMapper.xml (t_tran_remark)
+### 18.11 TTranRemarkMapper.xml (t_tran_remark)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1431,7 +1476,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新 |
 
-## 18. 数据库表汇总
+## 19. 数据库表汇总
 
 | 表名 | 说明 | 主要字段 |
 |------|------|---------|
@@ -1445,6 +1490,8 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `t_customer` | 客户主档表 | id, clue_id, owner_id, customer_name, phone, source, original_clue_source, customer_status, product, description |
 | `t_customer_owner_history` | 客户归属转移历史表 | id, customer_id, from_owner_id, to_owner_id, reason, operator_id, transfer_time |
 | `t_customer_remark` | 客户跟踪记录表 | id, customer_id, note_way, note_content |
+| `t_opportunity` | 商机主表 | id, opportunity_no, customer_id, owner_id, product_id, stage, requirement, expected_amount, expected_close_date, order_tran_id |
+| `t_opportunity_stage_history` | 商机阶段历史表 | id, opportunity_id, from_stage, to_stage, reason, operate_by, operate_time |
 | `t_tran` | 交易表 | id, tran_no, customer_id, money, stage |
 | `t_tran_product` | 交易产品关联表 | id, tran_id, product_id, quantity, price, product_sku, product_name, product_specification, guide_price |
 | `t_tran_invoice` | 交易发票表 | id, tran_id, invoice_no, amount, status |

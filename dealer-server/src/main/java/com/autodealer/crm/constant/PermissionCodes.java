@@ -67,6 +67,16 @@ public final class PermissionCodes {
     public static final String DELIVERY_EXCEPTION = "delivery:exception";
     public static final String DELIVERY_CANCEL = "delivery:cancel";
 
+    public static final String OPPORTUNITY_LIST = "opportunity:list";
+    public static final String OPPORTUNITY_VIEW = "opportunity:view";
+    public static final String OPPORTUNITY_CREATE = "opportunity:create";
+    public static final String OPPORTUNITY_EDIT = "opportunity:edit";
+    public static final String OPPORTUNITY_ADVANCE = "opportunity:advance";
+    public static final String OPPORTUNITY_WIN = "opportunity:win";
+    public static final String OPPORTUNITY_LOSE = "opportunity:lose";
+    public static final String OPPORTUNITY_SHELVE = "opportunity:shelve";
+    public static final String OPPORTUNITY_RESTORE = "opportunity:restore";
+
     public static final String PRODUCT_LIST = "product:list";
     public static final String PRODUCT_VIEW = "product:view";
     public static final String PRODUCT_ADD = "product:add";

@@ -64,6 +64,17 @@ export const PERMISSIONS = {
     exception: 'delivery:exception',
     cancel: 'delivery:cancel',
   },
+  opportunity: {
+    list: 'opportunity:list',
+    view: 'opportunity:view',
+    create: 'opportunity:create',
+    edit: 'opportunity:edit',
+    advance: 'opportunity:advance',
+    win: 'opportunity:win',
+    lose: 'opportunity:lose',
+    shelve: 'opportunity:shelve',
+    restore: 'opportunity:restore',
+  },
   product: {
     list: 'product:list',
     view: 'product:view',

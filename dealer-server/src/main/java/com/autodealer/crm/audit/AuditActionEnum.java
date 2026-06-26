@@ -48,6 +48,14 @@ public enum AuditActionEnum {
     DELIVERY_EXCEPTION("DELIVERY_EXCEPTION", "登记交付异常", "交付管理"),
     DELIVERY_CANCEL("DELIVERY_CANCEL", "取消交付", "交付管理"),
 
+    OPPORTUNITY_CREATE("OPPORTUNITY_CREATE", "创建商机", "商机管理"),
+    OPPORTUNITY_UPDATE("OPPORTUNITY_UPDATE", "编辑商机", "商机管理"),
+    OPPORTUNITY_STAGE_CHANGE("OPPORTUNITY_STAGE_CHANGE", "商机阶段推进", "商机管理"),
+    OPPORTUNITY_WIN("OPPORTUNITY_WIN", "商机赢单", "商机管理"),
+    OPPORTUNITY_LOSE("OPPORTUNITY_LOSE", "商机输单", "商机管理"),
+    OPPORTUNITY_SHELVE("OPPORTUNITY_SHELVE", "商机搁置", "商机管理"),
+    OPPORTUNITY_RESTORE("OPPORTUNITY_RESTORE", "商机恢复", "商机管理"),
+
     PAYMENT_CREATE("PAYMENT_CREATE", "登记收款", "支付管理"),
     PAYMENT_CONFIRM("PAYMENT_CONFIRM", "确认收款", "支付管理"),
     PAYMENT_REJECT("PAYMENT_REJECT", "退回收款", "支付管理"),

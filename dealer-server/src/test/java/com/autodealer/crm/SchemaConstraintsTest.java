@@ -46,6 +46,7 @@ class SchemaConstraintsTest {
             "t_tran", "t_tran_history", "t_tran_product",
             "t_tran_invoice", "t_tran_approve", "t_tran_remark",
             "t_quote", "t_quote_version", "t_quote_version_item", "t_quote_status_history",
+            "t_opportunity", "t_opportunity_stage_history",
             "t_product", "t_product_category", "t_product_promotion",
             "t_product_vehicle", "t_product_stock_record",
             "t_delivery", "t_delivery_check_item",
@@ -208,6 +209,29 @@ class SchemaConstraintsTest {
             jdbcTemplate.execute(
                 "INSERT INTO t_delivery_check_item (id, delivery_id, item_code, item_name, status) " +
                 "VALUES (123, 123, 'VEHICLE_READY', '车辆验收', 'DONE_BY_CLICK')"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("重复商机编号插入失败")
+    void testDuplicateOpportunityNoFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_opportunity (id, opportunity_no, customer_id, owner_id, stage, requirement) " +
+            "VALUES (100, 'OPP-DUP-001', 1, 1, 'INITIAL_CONTACT', '增购一台SUV')");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_opportunity (id, opportunity_no, customer_id, owner_id, stage, requirement) " +
+                "VALUES (101, 'OPP-DUP-001', 1, 1, 'INITIAL_CONTACT', '换购一台轿车')"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("非法商机阶段插入失败")
+    void testInvalidOpportunityStageFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_opportunity (id, opportunity_no, customer_id, owner_id, stage, requirement) " +
+                "VALUES (102, 'OPP-STATUS-001', 1, 1, 'PAYMENT', '客户已经付款')"));
     }
 
     @Test

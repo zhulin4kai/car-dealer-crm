@@ -545,11 +545,12 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 ('线索管理', 'menu:clue', NULL, 'menu', NULL, 2, 'Magnet', 1),
 ('客户管理', 'menu:customer', NULL, 'menu', NULL, 3, 'User', 1),
 ('交易管理', 'menu:tran', NULL, 'menu', NULL, 4, 'Wallet', 1),
-('报价订单', 'menu:quote', NULL, 'menu', NULL, 5, 'FileText', 1),
-('交付管理', 'menu:delivery', NULL, 'menu', NULL, 6, 'Truck', 1),
-('产品管理', 'menu:product', NULL, 'menu', NULL, 7, 'Memo', 1),
-('字典管理', 'menu:dict', NULL, 'menu', NULL, 8, 'Grid', 1),
-('用户管理', 'menu:user', NULL, 'menu', NULL, 9, 'Stamp', 1);
+('商机管理', 'menu:opportunity', NULL, 'menu', NULL, 5, 'Target', 1),
+('报价订单', 'menu:quote', NULL, 'menu', NULL, 6, 'FileText', 1),
+('交付管理', 'menu:delivery', NULL, 'menu', NULL, 7, 'Truck', 1),
+('产品管理', 'menu:product', NULL, 'menu', NULL, 8, 'Memo', 1),
+('字典管理', 'menu:dict', NULL, 'menu', NULL, 9, 'Grid', 1),
+('用户管理', 'menu:user', NULL, 'menu', NULL, 10, 'Stamp', 1);
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '市场活动', 'page:activity:list', '/dashboard/activity', 'menu', id, 1, 'CreditCard', 1 FROM `t_permission` WHERE code = 'menu:activity';
@@ -559,6 +560,8 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '客户管理', 'page:customer:list', '/dashboard/customer', 'menu', id, 1, 'UserFilled', 1 FROM `t_permission` WHERE code = 'menu:customer';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '交易管理', 'page:tran:list', '/dashboard/tran', 'menu', id, 1, 'Coin', 1 FROM `t_permission` WHERE code = 'menu:tran';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理', 'page:opportunity:list', '/dashboard/opportunity', 'menu', id, 1, 'Target', 1 FROM `t_permission` WHERE code = 'menu:opportunity';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '报价订单', 'page:quote:list', '/dashboard/quote', 'menu', id, 1, 'FileText', 1 FROM `t_permission` WHERE code = 'menu:quote';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -670,6 +673,24 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '报价订单-成单', 'quote:order', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:quote:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '报价订单-取消', 'quote:cancel', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:quote:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-列表', 'opportunity:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-查看', 'opportunity:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-创建', 'opportunity:create', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-编辑', 'opportunity:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-推进', 'opportunity:advance', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-赢单', 'opportunity:win', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-输单', 'opportunity:lose', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-搁置', 'opportunity:shelve', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '商机管理-恢复', 'opportunity:restore', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '交付管理-列表', 'delivery:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -814,11 +835,11 @@ WHERE r.role = 'admin' AND r.enabled = 1 AND p.enabled = 1;
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'sales_consultant' AND p.code IN ('menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:settle', 'tran:resubmit', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:confirm', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception');
+WHERE r.role = 'sales_consultant' AND p.code IN ('menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'menu:opportunity', 'page:opportunity:list', 'opportunity:list', 'opportunity:view', 'opportunity:create', 'opportunity:edit', 'opportunity:advance', 'opportunity:lose', 'opportunity:shelve', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:settle', 'tran:resubmit', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:confirm', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'sales_manager' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:delete', 'clue:import', 'clue:transfer', 'clue:close', 'clue:restore', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'customer:export', 'customer:merge', 'customer:delete', 'customer:sensitive:view', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:delete', 'tran:cancel', 'tran:close', 'tran:settle', 'tran:resubmit', 'tran:approve', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:approve', 'quote:confirm', 'quote:order', 'quote:cancel', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception', 'delivery:cancel', 'statistic:view');
+WHERE r.role = 'sales_manager' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:delete', 'clue:import', 'clue:transfer', 'clue:close', 'clue:restore', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'customer:export', 'customer:merge', 'customer:delete', 'customer:sensitive:view', 'menu:opportunity', 'page:opportunity:list', 'opportunity:list', 'opportunity:view', 'opportunity:create', 'opportunity:edit', 'opportunity:advance', 'opportunity:win', 'opportunity:lose', 'opportunity:shelve', 'opportunity:restore', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:delete', 'tran:cancel', 'tran:close', 'tran:settle', 'tran:resubmit', 'tran:approve', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:approve', 'quote:confirm', 'quote:order', 'quote:cancel', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception', 'delivery:cancel', 'statistic:view');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
@@ -1161,6 +1182,70 @@ VALUES
 (10, 'BENZ-GLC300L-X254-25', '奔驰 GLC', 1, '2025款 GLC 300 L 4MATIC 动感型', 479300.00, 4, 2, 'ON_SALE', '2025-10-15 10:00:00', '2026-06-18 15:20:00'),
 (11, 'LEXUS-ES300H-25-P', '雷克萨斯 ES', 4, '2025款 300h 尊享版', 399900.00, 3, 1, 'ON_SALE', '2025-12-02 10:00:00', '2026-06-18 15:20:00'),
 (12, 'LEXUS-NX350H-25-C', '雷克萨斯 NX', 4, '2025款 350h 创驰版', 388800.00, 2, 1, 'ON_SALE', '2025-12-02 10:00:00', '2026-06-18 15:20:00');
+
+-- ----------------------------
+-- Table structure for t_opportunity
+-- ----------------------------
+DROP TABLE IF EXISTS `t_opportunity_stage_history`;
+DROP TABLE IF EXISTS `t_opportunity`;
+CREATE TABLE `t_opportunity`
+(
+    `id`                  BIGINT        NOT NULL AUTO_INCREMENT COMMENT '商机ID',
+    `opportunity_no`      VARCHAR(64)   NOT NULL COMMENT '商机业务编号',
+    `customer_id`         INT           NOT NULL COMMENT '客户ID',
+    `clue_id`             INT           DEFAULT NULL COMMENT '来源线索ID',
+    `owner_id`            INT           NOT NULL COMMENT '商机负责人',
+    `product_id`          BIGINT        DEFAULT NULL COMMENT '意向车型商品ID',
+    `source_type`         VARCHAR(64)   DEFAULT NULL COMMENT '商机来源稳定编码',
+    `stage`               VARCHAR(50)   NOT NULL COMMENT '商机销售阶段稳定编码',
+    `requirement`         VARCHAR(1000) NOT NULL COMMENT '购车需求',
+    `expected_amount`     DECIMAL(10, 2) DEFAULT NULL COMMENT '销售预测金额',
+    `expected_close_date` DATE          DEFAULT NULL COMMENT '预计成交日期',
+    `next_action_time`    DATE          DEFAULT NULL COMMENT '下一步跟进日期',
+    `lost_reason`         VARCHAR(500)  DEFAULT NULL COMMENT '输单/搁置/关闭原因',
+    `lost_competitor`     VARCHAR(255)  DEFAULT NULL COMMENT '输单竞品',
+    `result_remark`       VARCHAR(500)  DEFAULT NULL COMMENT '结果备注',
+    `order_tran_id`       INT           DEFAULT NULL COMMENT '赢单关联交易ID',
+    `version`             INT           NOT NULL DEFAULT 0 COMMENT '并发版本',
+    `create_time`         DATETIME      DEFAULT NULL COMMENT '创建时间',
+    `create_by`           INT           DEFAULT NULL COMMENT '创建人',
+    `update_time`         DATETIME      DEFAULT NULL COMMENT '更新时间',
+    `update_by`           INT           DEFAULT NULL COMMENT '更新人',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_opportunity_no` (`opportunity_no`),
+    KEY `idx_opportunity_customer_stage` (`customer_id`, `stage`),
+    KEY `idx_opportunity_owner_stage` (`owner_id`, `stage`),
+    KEY `idx_opportunity_product` (`product_id`),
+    KEY `idx_opportunity_order_tran` (`order_tran_id`),
+    CONSTRAINT `chk_opportunity_stage` CHECK (`stage` IN (
+        'INITIAL_CONTACT', 'NEEDS_ANALYSIS', 'VEHICLE_MATCHING', 'TEST_DRIVE_INVITED',
+        'QUOTING', 'NEGOTIATION', 'PENDING_APPROVAL', 'WON', 'LOST', 'SHELVED', 'CLOSED'
+    )),
+    CONSTRAINT `chk_opportunity_expected_amount` CHECK (`expected_amount` IS NULL OR `expected_amount` >= 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='商机表';
+
+CREATE TABLE `t_opportunity_stage_history`
+(
+    `id`             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '商机阶段历史ID',
+    `opportunity_id` BIGINT       NOT NULL COMMENT '商机ID',
+    `from_stage`     VARCHAR(50)  DEFAULT NULL COMMENT '原阶段',
+    `to_stage`       VARCHAR(50)  NOT NULL COMMENT '目标阶段',
+    `reason`         VARCHAR(500) NOT NULL COMMENT '推进依据或原因',
+    `operate_by`     INT          NOT NULL COMMENT '操作人',
+    `operate_time`   DATETIME     NOT NULL COMMENT '操作时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_opportunity_history_opportunity` (`opportunity_id`, `operate_time`),
+    CONSTRAINT `chk_opportunity_history_to_stage` CHECK (`to_stage` IN (
+        'INITIAL_CONTACT', 'NEEDS_ANALYSIS', 'VEHICLE_MATCHING', 'TEST_DRIVE_INVITED',
+        'QUOTING', 'NEGOTIATION', 'PENDING_APPROVAL', 'WON', 'LOST', 'SHELVED', 'CLOSED'
+    )),
+    CONSTRAINT `chk_opportunity_history_from_stage` CHECK (`from_stage` IS NULL OR `from_stage` IN (
+        'INITIAL_CONTACT', 'NEEDS_ANALYSIS', 'VEHICLE_MATCHING', 'TEST_DRIVE_INVITED',
+        'QUOTING', 'NEGOTIATION', 'PENDING_APPROVAL', 'WON', 'LOST', 'SHELVED', 'CLOSED'
+    ))
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='商机阶段历史表';
 
 -- ----------------------------
 -- Table structure for t_quote_version_item
@@ -1767,7 +1852,23 @@ ALTER TABLE `t_tran_history`
 ALTER TABLE `t_quote`
     ADD CONSTRAINT `fk_quote_customer` FOREIGN KEY (`customer_id`) REFERENCES `t_customer` (`id`) ON DELETE RESTRICT;
 ALTER TABLE `t_quote`
+    ADD CONSTRAINT `fk_quote_opportunity` FOREIGN KEY (`opportunity_id`) REFERENCES `t_opportunity` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_quote`
     ADD CONSTRAINT `fk_quote_current_version` FOREIGN KEY (`current_version_id`) REFERENCES `t_quote_version` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_opportunity`
+    ADD CONSTRAINT `fk_opportunity_customer` FOREIGN KEY (`customer_id`) REFERENCES `t_customer` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_opportunity`
+    ADD CONSTRAINT `fk_opportunity_clue` FOREIGN KEY (`clue_id`) REFERENCES `t_clue` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_opportunity`
+    ADD CONSTRAINT `fk_opportunity_owner` FOREIGN KEY (`owner_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_opportunity`
+    ADD CONSTRAINT `fk_opportunity_product` FOREIGN KEY (`product_id`) REFERENCES `t_product` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_opportunity`
+    ADD CONSTRAINT `fk_opportunity_order_tran` FOREIGN KEY (`order_tran_id`) REFERENCES `t_tran` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_opportunity_stage_history`
+    ADD CONSTRAINT `fk_opportunity_history_opportunity` FOREIGN KEY (`opportunity_id`) REFERENCES `t_opportunity` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_opportunity_stage_history`
+    ADD CONSTRAINT `fk_opportunity_history_operator` FOREIGN KEY (`operate_by`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT;
 ALTER TABLE `t_quote_version`
     ADD CONSTRAINT `fk_quote_version_quote` FOREIGN KEY (`quote_id`) REFERENCES `t_quote` (`id`) ON DELETE RESTRICT;
 ALTER TABLE `t_quote_version_item`

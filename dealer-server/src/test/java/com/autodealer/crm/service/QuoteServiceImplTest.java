@@ -7,15 +7,18 @@ import com.autodealer.crm.dto.CreateQuoteRequest;
 import com.autodealer.crm.dto.CreateQuoteVersionRequest;
 import com.autodealer.crm.dto.QuoteItemRequest;
 import com.autodealer.crm.dto.UpdateQuoteStatusRequest;
+import com.autodealer.crm.enums.OpportunityStage;
 import com.autodealer.crm.enums.QuoteStatus;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TCustomerMapper;
+import com.autodealer.crm.mapper.TOpportunityMapper;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TQuoteMapper;
 import com.autodealer.crm.mapper.TQuoteStatusHistoryMapper;
 import com.autodealer.crm.mapper.TQuoteVersionItemMapper;
 import com.autodealer.crm.mapper.TQuoteVersionMapper;
 import com.autodealer.crm.model.TCustomer;
+import com.autodealer.crm.model.TOpportunity;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TQuote;
 import com.autodealer.crm.model.TQuoteStatusHistory;
@@ -68,6 +71,8 @@ class QuoteServiceImplTest {
     private TProductMapper productMapper;
     @Mock
     private TCustomerMapper customerMapper;
+    @Mock
+    private TOpportunityMapper opportunityMapper;
     @Mock
     private CurrentUserProvider currentUserProvider;
     @Mock
@@ -132,6 +137,49 @@ class QuoteServiceImplTest {
         verify(quoteMapper, never()).insert(any());
         verify(productMapper, never()).selectById(anyLong());
         verify(auditRecorder, never()).record(any(), anyString());
+    }
+
+    @Test
+    void createQuote_inaccessibleOpportunity_shouldRejectBeforeWrite() {
+        CreateQuoteRequest request = createQuoteRequest();
+        request.setOpportunityId(900L);
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(7);
+        when(opportunityMapper.selectById(900L)).thenReturn(opportunity(900L, 10, 8, OpportunityStage.NEEDS_ANALYSIS));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> quoteService.createQuote(request));
+
+        assertEquals(CodeEnum.ACCESS_DENIED, ex.getCodeEnum());
+        verify(quoteMapper, never()).insert(any());
+        verify(productMapper, never()).selectById(anyLong());
+    }
+
+    @Test
+    void createQuote_mismatchedOpportunityCustomer_shouldRejectBeforeWrite() {
+        CreateQuoteRequest request = createQuoteRequest();
+        request.setOpportunityId(900L);
+        when(opportunityMapper.selectById(900L)).thenReturn(opportunity(900L, 11, 7, OpportunityStage.NEEDS_ANALYSIS));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> quoteService.createQuote(request));
+
+        assertEquals(CodeEnum.PARAM_ERROR, ex.getCodeEnum());
+        verify(quoteMapper, never()).insert(any());
+        verify(productMapper, never()).selectById(anyLong());
+    }
+
+    @Test
+    void createQuote_terminalOpportunity_shouldRejectBeforeWrite() {
+        CreateQuoteRequest request = createQuoteRequest();
+        request.setOpportunityId(900L);
+        when(opportunityMapper.selectById(900L)).thenReturn(opportunity(900L, 10, 7, OpportunityStage.WON));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> quoteService.createQuote(request));
+
+        assertEquals(CodeEnum.TRAN_STATE_CONFLICT, ex.getCodeEnum());
+        verify(quoteMapper, never()).insert(any());
+        verify(productMapper, never()).selectById(anyLong());
     }
 
     @Test
@@ -334,5 +382,14 @@ class QuoteServiceImplTest {
         product.setPrice(new BigDecimal("100000.00"));
         product.setStatus("ON_SALE");
         return product;
+    }
+
+    private TOpportunity opportunity(Long id, Integer customerId, Integer ownerId, OpportunityStage stage) {
+        TOpportunity opportunity = new TOpportunity();
+        opportunity.setId(id);
+        opportunity.setCustomerId(customerId);
+        opportunity.setOwnerId(ownerId);
+        opportunity.setStage(stage.name());
+        return opportunity;
     }
 }

@@ -15,6 +15,8 @@ public interface TQuoteMapper {
 
     TQuote selectById(@Param("id") Long id);
 
+    int countActiveByOpportunityId(@Param("opportunityId") Long opportunityId);
+
     int insert(TQuote quote);
 
     int updateCurrentVersion(@Param("id") Long id,

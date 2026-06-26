@@ -6,7 +6,7 @@ describe('router routes', () => {
   it('keeps the public URL contract', () => {
     const dashboardRoute = routes.find((route) => route.path === '/dashboard')
     expect(dashboardRoute).toBeDefined()
-    expect(dashboardRoute?.children).toHaveLength(20)
+    expect(dashboardRoute?.children).toHaveLength(21)
 
     const childPaths = dashboardRoute?.children?.map((route) => route.path) ?? []
     expect(childPaths).toEqual([
@@ -22,6 +22,7 @@ describe('router routes', () => {
       'product/category',
       'product/promotion',
       'product/stock',
+      'opportunity',
       'quote',
       'delivery',
       'tran',

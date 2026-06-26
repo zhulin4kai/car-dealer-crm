@@ -33,6 +33,8 @@ tags:
     description: 报价、报价版本和报价状态
   - name: Delivery
     description: 交付记录、准备清单、签收和异常
+  - name: Opportunity
+    description: 商机、销售阶段、输赢单和阶段历史
   - name: Transaction
     description: 交易、结算、审批、发票、收款和退款
   - name: Statistic
@@ -2141,6 +2143,285 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/opportunities:
+    get:
+      tags: [Opportunity]
+      operationId: listOpportunities
+      summary: 分页查询商机
+      description: 商机列表按服务端当前用户数据范围过滤，阶段只表达销售推进状态。
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: ownerId
+          in: query
+          schema:
+            type: integer
+        - name: stage
+          in: query
+          schema:
+            $ref: "#/components/schemas/OpportunityStage"
+        - name: keyword
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityPageOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Opportunity]
+      operationId: createOpportunity
+      summary: 创建独立商机
+      description: 基于已识别客户创建商机，不创建交易、订单、收款或发票；负责人和数据范围由服务端确定。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOpportunityRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/opportunities/{id}:
+    get:
+      tags: [Opportunity]
+      operationId: getOpportunity
+      summary: 查询商机详情
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityObject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags: [Opportunity]
+      operationId: updateOpportunity
+      summary: 编辑商机主档字段
+      description: 只允许编辑商机自身字段；客户、负责人、阶段、交易、收款、发票和交付字段不由本接口提交。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOpportunityRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/opportunities/{id}/stage-history:
+    get:
+      tags: [Opportunity]
+      operationId: listOpportunityStageHistory
+      summary: 查询商机阶段历史
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityStageHistoryArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/opportunities/{id}/stage:
+    put:
+      tags: [Opportunity]
+      operationId: advanceOpportunityStage
+      summary: 按销售状态机推进商机阶段
+      description: 阶段推进使用 expectedStage 和 targetStage 做 CAS 校验；赢单、输单、搁置和恢复必须使用独立命令。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdvanceOpportunityStageRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/opportunities/{id}/won:
+    put:
+      tags: [Opportunity]
+      operationId: markOpportunityWon
+      summary: 标记商机赢单
+      description: 赢单必须关联已成立交易；赢单只记录销售结果，不代表收款、发票、出库或交付完成。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpportunityResultRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/opportunities/{id}/lost:
+    put:
+      tags: [Opportunity]
+      operationId: markOpportunityLost
+      summary: 标记商机输单
+      description: 输单必须填写原因，并保留商机结果事实。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpportunityResultRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/opportunities/{id}/shelve:
+    put:
+      tags: [Opportunity]
+      operationId: shelveOpportunity
+      summary: 搁置商机
+      description: 搁置必须填写原因和下一步跟进日期；搁置不是输单，可由恢复命令重新进入需求确认。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpportunityResultRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/opportunities/{id}/restore:
+    put:
+      tags: [Opportunity]
+      operationId: restoreOpportunity
+      summary: 恢复搁置或输单商机
+      description: 恢复保留原输单或搁置事实，并写入新的阶段历史。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpportunityResultRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OpportunityObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/quotes:
     get:
       tags: [Quote]
@@ -3686,6 +3967,48 @@ components:
                 properties:
                   data:
                     $ref: "#/components/schemas/UserDetailResponse"
+    OpportunityObject:
+      description: 商机命令或详情查询成功，data 为商机对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Opportunity"
+    OpportunityPageOk:
+      description: 分页查询成功，data.list 为商机数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Opportunity"
+    OpportunityStageHistoryArrayOk:
+      description: 查询成功，data 为商机阶段历史数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OpportunityStageHistory"
     ProductVehicleObject:
       description: 库存车辆实例命令成功，data 为车辆实例当前状态。
       content:
@@ -4658,6 +4981,179 @@ components:
           format: date-time
         createBy:
           type: integer
+    OpportunityStage:
+      type: string
+      enum:
+        - INITIAL_CONTACT
+        - NEEDS_ANALYSIS
+        - VEHICLE_MATCHING
+        - TEST_DRIVE_INVITED
+        - QUOTING
+        - NEGOTIATION
+        - PENDING_APPROVAL
+        - WON
+        - LOST
+        - SHELVED
+        - CLOSED
+      description: 商机销售阶段稳定编码，中文只用于页面展示；不得承载收款、发票、库存或交付状态。
+    Opportunity:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        opportunityNo:
+          type: string
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        clueId:
+          type: integer
+          format: int64
+        ownerId:
+          type: integer
+        ownerName:
+          type: string
+        productId:
+          type: integer
+          format: int64
+        productName:
+          type: string
+        sourceType:
+          type: string
+        stage:
+          $ref: "#/components/schemas/OpportunityStage"
+        requirement:
+          type: string
+        expectedAmount:
+          type: number
+        expectedCloseDate:
+          type: string
+          format: date
+        nextActionTime:
+          type: string
+          format: date
+        lostReason:
+          type: string
+        lostCompetitor:
+          type: string
+        resultRemark:
+          type: string
+        orderTranId:
+          type: integer
+        version:
+          type: integer
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        updateTime:
+          type: string
+          format: date-time
+        updateBy:
+          type: integer
+    OpportunityStageHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        opportunityId:
+          type: integer
+          format: int64
+        fromStage:
+          $ref: "#/components/schemas/OpportunityStage"
+        toStage:
+          $ref: "#/components/schemas/OpportunityStage"
+        reason:
+          type: string
+        operateBy:
+          type: integer
+        operateTime:
+          type: string
+          format: date-time
+    CreateOpportunityRequest:
+      type: object
+      required: [customerId, requirement]
+      properties:
+        customerId:
+          type: integer
+          description: 客户 ID；负责人和数据范围由服务端根据当前用户和客户主档确定。
+        clueId:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        sourceType:
+          type: string
+        requirement:
+          type: string
+          minLength: 1
+        expectedAmount:
+          type: number
+          minimum: 0
+        expectedCloseDate:
+          type: string
+          format: date
+        nextActionTime:
+          type: string
+          format: date
+    UpdateOpportunityRequest:
+      type: object
+      required: [id, requirement]
+      properties:
+        id:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        requirement:
+          type: string
+          minLength: 1
+        expectedAmount:
+          type: number
+          minimum: 0
+        expectedCloseDate:
+          type: string
+          format: date
+        nextActionTime:
+          type: string
+          format: date
+    AdvanceOpportunityStageRequest:
+      type: object
+      required: [expectedStage, targetStage, reason]
+      properties:
+        expectedStage:
+          $ref: "#/components/schemas/OpportunityStage"
+        targetStage:
+          $ref: "#/components/schemas/OpportunityStage"
+        reason:
+          type: string
+          minLength: 1
+        nextActionTime:
+          type: string
+          format: date
+    OpportunityResultRequest:
+      type: object
+      required: [reason]
+      properties:
+        orderTranId:
+          type: integer
+          description: 赢单时必填，必须关联已成立交易。
+        reason:
+          type: string
+          minLength: 1
+        competitor:
+          type: string
+        remark:
+          type: string
+        nextActionTime:
+          type: string
+          format: date
     DeliveryStatus:
       type: string
       enum:
@@ -4955,7 +5451,7 @@ components:
         opportunityId:
           type: integer
           format: int64
-          description: 当前商机独立模型未完成时可以为空。
+          description: 可选关联商机；提交时必须存在、属于同一客户、在当前用户数据范围内且未进入终态。
         validUntil:
           type: string
           format: date-time

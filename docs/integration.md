@@ -98,20 +98,37 @@
 | updateCategory | PUT | /api/product-categories/{id} | 路径参数: id, data: ProductCategory对象 (JSON) | Result\<Void\> | ProductCategoryController.updateCategory | 编辑分类 |
 | deleteCategory | DELETE | /api/product-categories/{id} | 路径参数: id | Result\<Void\> | ProductCategoryController.deleteCategory | 删除分类；存在商品或历史引用时返回 422 RESOURCE_IN_USE |
 
-### 1.6 报价订单模块 (quote-api.ts)
+### 1.6 商机管理模块 (opportunity-api.ts)
+
+| 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
+|-----------|---------|---------|-------------|-------------|-------------------|-------------|
+| fetchOpportunityPage | GET | /api/opportunities | params: {page, size, customerId?, ownerId?, stage?, keyword?} | R\<PageInfo\<TOpportunity\>\> | OpportunityController.list | 分页查询商机，按服务端当前用户数据范围过滤 |
+| fetchOpportunityDetail | GET | /api/opportunities/{id} | 路径参数: id | R\<TOpportunity\> | OpportunityController.detail | 查询商机详情 |
+| createOpportunity | POST | /api/opportunities | data: CreateOpportunityRequest (JSON) | R\<TOpportunity\> | OpportunityController.create | 创建独立商机，不创建交易、订单、收款或发票 |
+| updateOpportunity | PUT | /api/opportunities/{id} | 路径参数: id, data: UpdateOpportunityRequest (JSON) | R\<TOpportunity\> | OpportunityController.update | 编辑商机自身字段，不提交客户归属、阶段或履约字段 |
+| fetchOpportunityStageHistory | GET | /api/opportunities/{id}/stage-history | 路径参数: id | R\<List\<TOpportunityStageHistory\>\> | OpportunityController.stageHistory | 查询阶段历史 |
+| advanceOpportunityStage | PUT | /api/opportunities/{id}/stage | 路径参数: id, data: {expectedStage, targetStage, reason, nextActionTime?} | R\<TOpportunity\> | OpportunityController.advanceStage | 使用稳定阶段 code 和 CAS 推进销售阶段并写历史 |
+| markOpportunityWon | PUT | /api/opportunities/{id}/won | 路径参数: id, data: {orderTranId, reason, remark?} | R\<TOpportunity\> | OpportunityController.markWon | 赢单必须关联已成立交易，只记录销售结果 |
+| markOpportunityLost | PUT | /api/opportunities/{id}/lost | 路径参数: id, data: {reason, competitor?, remark?} | R\<TOpportunity\> | OpportunityController.markLost | 输单必须填写原因并保留结果事实 |
+| shelveOpportunity | PUT | /api/opportunities/{id}/shelve | 路径参数: id, data: {reason, nextActionTime, remark?} | R\<TOpportunity\> | OpportunityController.shelve | 搁置必须填写原因和下一步日期 |
+| restoreOpportunity | PUT | /api/opportunities/{id}/restore | 路径参数: id, data: {reason, nextActionTime?, remark?} | R\<TOpportunity\> | OpportunityController.restore | 恢复搁置或输单商机，保留原历史事实 |
+
+商机阶段、报价状态、车辆状态、商品状态等业务状态在接口层统一使用稳定英文编码，前端负责展示中文 label，不匹配中文 msg 或中文状态做业务分支。
+
+### 1.7 报价订单模块 (quote-api.ts)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
 | fetchQuotePage | GET | /api/quotes | params: {page, size, quoteNo, customerId, status} | Result\<PageInfo\<Quote\>\> | QuoteController.list | 分页查询报价列表，按客户数据范围过滤 |
 | fetchQuoteDetail | GET | /api/quotes/{id} | 路径参数: id | Result\<QuoteDetail\> | QuoteController.detail | 获取报价、当前版本和版本行项 |
-| createQuote | POST | /api/quotes | data: CreateQuoteRequest (JSON) | Result\<QuoteDetail\> | QuoteController.create | 创建报价并保存商品快照，不扣减库存 |
+| createQuote | POST | /api/quotes | data: CreateQuoteRequest (JSON) | Result\<QuoteDetail\> | QuoteController.create | 创建报价并保存商品快照，不扣减库存；`opportunityId` 可选，提交时必须与客户一致、在数据范围内且未终态 |
 | fetchQuoteVersions | GET | /api/quotes/{id}/versions | 路径参数: id | Result\<List\<QuoteVersion\>\> | QuoteController.versions | 获取报价版本列表 |
 | createQuoteVersion | POST | /api/quotes/{id}/versions | 路径参数: id, data: CreateQuoteVersionRequest (JSON) | Result\<QuoteDetail\> | QuoteController.createVersion | 创建或覆盖报价版本并重置草稿 |
 | updateQuoteStatus | PUT | /api/quotes/{id}/status | 路径参数: id, data: UpdateQuoteStatusRequest (JSON) | Result\<QuoteDetail\> | QuoteController.updateStatus | 使用 expectedStatus 和 targetStatus 稳定编码执行 CAS 状态迁移 |
 
 报价状态、车辆状态、商品状态等业务状态在接口层统一使用稳定英文编码，前端负责展示中文 label，不匹配中文 msg 或中文状态做业务分支。
 
-### 1.7 交易管理模块 (tran.js)
+### 1.8 交易管理模块 (tran.js)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
@@ -142,7 +159,7 @@
 | batchDeleteTran | POST | /api/tran/batch-delete | data: {ids: List\<Integer\>} (JSON) | R\<String\> | TranController.batchDelete | 已废弃；批量物理删除返回状态冲突 |
 | getTranStatus | GET | /api/tran/status/{id} | 路径参数: id | - | **后端未实现** | 前端调用但后端无对应接口 |
 
-### 1.8 交付管理模块 (delivery-api.ts)
+### 1.9 交付管理模块 (delivery-api.ts)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
@@ -156,7 +173,7 @@
 | markDeliveryException | POST | /api/deliveries/{id}/exception | 路径参数: id, data: {exceptionType, reason} | R\<TDelivery\> | DeliveryController.markException | 登记交付异常并保留历史 |
 | cancelDelivery | POST | /api/deliveries/{id}/cancel | 路径参数: id, data: {reason} | R\<TDelivery\> | DeliveryController.cancel | 取消交付并保留历史 |
 
-### 1.9 字典管理模块 (dict.js)
+### 1.10 字典管理模块 (dict.js)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
@@ -174,13 +191,13 @@
 | batchDeleteDictValues | DELETE | /api/dict/value/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicValues | 批量删除字典值 |
 | clearCache | GET | /api/dict/clear | params: {forceRefresh: true} | R | DicController.clearCache | 清除字典缓存 |
 
-### 1.10 审计日志模块
+### 1.11 审计日志模块
 
 审计日志已确认为后续正式模块，业务规格见 `docs/spec/审计日志/`。接口尚未实现，本文不声明可调用的审计日志 API。
 
 旧系统配置与系统监控接口已下线，不再提供 `/api/system/*` 和 `/api/monitor/*`。
 
-### 1.11 统计模块
+### 1.12 统计模块
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|
@@ -190,7 +207,7 @@
 
 统计接口不接收前端范围参数，后端按当前登录用户的数据范围聚合；非管理员统计结果必须能由同范围明细反算。
 
-### 1.12 活动备注模块 (后端提供，前端未定义API文件)
+### 1.13 活动备注模块 (后端提供，前端未定义API文件)
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|

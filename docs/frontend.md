@@ -15,7 +15,7 @@ src/
   router/       # 路由表、守卫、meta 类型
   stores/       # Pinia 全局状态
   shared/       # HTTP、storage、utils、基础类型、通用 UI
-  modules/      # activity/clue/customer/dict/product/statistic/tran/user
+  modules/      # activity/clue/customer/dict/opportunity/product/quote/statistic/tran/user
 ```
 
 旧目录 `src/view`、`src/api`、`src/http`、`src/util` 已移除。入口文件为 `src/app/main.ts`，Vite 配置为 `vite.config.ts`。
@@ -131,6 +131,7 @@ token 存储策略：
 - `/dashboard/product/category`
 - `/dashboard/product/promotion`
 - `/dashboard/product/stock`
+- `/dashboard/opportunity`
 - `/dashboard/quote`
 - `/dashboard/tran`
 - `/dashboard/tran/:id`
@@ -153,6 +154,8 @@ token 存储策略：
 `/dashboard/customer/:id` 使用 `fetchCustomerDetail` 查询客户详情，并通过模块 API 执行 `transferCustomerOwner`、`mergeCustomer`、`deleteCustomer`。归属转移和合并必须提交原因，高风险删除必须确认并按 `RESOURCE_IN_USE` 的 422 code 展示阻断；页面权限只控制按钮展示，不能替代后端权限和数据范围。
 
 `/dashboard/product/stock` 使用 `modules/product/api/product-api.ts` 中的库存 API 查询商品库存汇总、库存流水和车辆实例。页面展示库存车辆实例状态时必须使用稳定编码映射中文文案，不能直接显示 `ORDER_RESERVED`、`RELEASE` 等后端枚举值；车辆入库、占用、释放命令统一走模块 API，不在页面临时拼装请求结构。
+
+`/dashboard/opportunity` 使用 `modules/opportunity/api/opportunity-api.ts` 查询商机列表、详情、阶段历史并执行创建、编辑、阶段推进、赢单、输单、搁置和恢复命令。页面只提交 `INITIAL_CONTACT`、`NEEDS_ANALYSIS`、`QUOTING`、`WON`、`LOST`、`SHELVED` 等稳定商机阶段编码，中文阶段只做展示；商机表单只提交客户、需求、意向车型、预计金额、预计成交日期和下一步日期，不提交交易、收款、发票、库存或交付字段。
 
 `/dashboard/tran` 使用 `modules/tran/api/tran-api.ts` 查询交易列表并触发交易终态命令。交易列表不再提供物理删除或批量删除入口；待报价、审批拒绝等未进入履约事实的交易可关闭，已审批、待收款和待交付交易可取消，操作必须填写原因并走 `cancelTran` 或 `closeTran` 模块 API。页面只按 `tran.cancel`、`tran.close` 权限做体验控制，后端仍负责最终授权、状态冲突和历史事实保留。
 审批拒绝后的重新提交只把交易回到待报价，旧审批记录保留；前端确认文案不得暗示会清除审批历史。
@@ -182,6 +185,7 @@ modules/<module>/
 - `customer`
 - `delivery`
 - `dict`
+- `opportunity`
 - `product`
 - `quote`
 - `statistic`

@@ -8,15 +8,18 @@ import com.autodealer.crm.dto.CreateQuoteVersionRequest;
 import com.autodealer.crm.dto.QuoteDetailResponse;
 import com.autodealer.crm.dto.QuoteItemRequest;
 import com.autodealer.crm.dto.UpdateQuoteStatusRequest;
+import com.autodealer.crm.enums.OpportunityStage;
 import com.autodealer.crm.enums.QuoteStatus;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TCustomerMapper;
+import com.autodealer.crm.mapper.TOpportunityMapper;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TQuoteMapper;
 import com.autodealer.crm.mapper.TQuoteStatusHistoryMapper;
 import com.autodealer.crm.mapper.TQuoteVersionItemMapper;
 import com.autodealer.crm.mapper.TQuoteVersionMapper;
 import com.autodealer.crm.model.TCustomer;
+import com.autodealer.crm.model.TOpportunity;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TQuote;
 import com.autodealer.crm.model.TQuoteStatusHistory;
@@ -62,6 +65,7 @@ public class QuoteServiceImpl implements QuoteService {
     private final TQuoteStatusHistoryMapper historyMapper;
     private final TProductMapper productMapper;
     private final TCustomerMapper customerMapper;
+    private final TOpportunityMapper opportunityMapper;
     private final CurrentUserProvider currentUserProvider;
     private final OperationAuditRecorder auditRecorder;
 
@@ -71,6 +75,7 @@ public class QuoteServiceImpl implements QuoteService {
                             TQuoteStatusHistoryMapper historyMapper,
                             TProductMapper productMapper,
                             TCustomerMapper customerMapper,
+                            TOpportunityMapper opportunityMapper,
                             CurrentUserProvider currentUserProvider,
                             OperationAuditRecorder auditRecorder) {
         this.quoteMapper = quoteMapper;
@@ -79,6 +84,7 @@ public class QuoteServiceImpl implements QuoteService {
         this.historyMapper = historyMapper;
         this.productMapper = productMapper;
         this.customerMapper = customerMapper;
+        this.opportunityMapper = opportunityMapper;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
     }
@@ -106,6 +112,7 @@ public class QuoteServiceImpl implements QuoteService {
     @Transactional(rollbackFor = Exception.class)
     public QuoteDetailResponse createQuote(CreateQuoteRequest request) {
         requireAccessibleCustomer(request.getCustomerId());
+        requireValidOpportunityLink(request.getOpportunityId(), request.getCustomerId());
         Integer operatorId = currentUserProvider.getCurrentUserId();
         LocalDateTime now = LocalDateTime.now();
 
@@ -358,6 +365,29 @@ public class QuoteServiceImpl implements QuoteService {
         TCustomer customer = customerMapper.selectScopedById(customerId, currentUserProvider.getDataScopeUserId());
         if (customer == null) {
             throw new BusinessException(CodeEnum.ACCESS_DENIED, "客户不存在或无权访问");
+        }
+    }
+
+    private void requireValidOpportunityLink(Long opportunityId, Integer customerId) {
+        if (opportunityId == null) {
+            return;
+        }
+        TOpportunity opportunity = opportunityMapper.selectById(opportunityId);
+        Integer dataScopeUserId = currentUserProvider.getDataScopeUserId();
+        if (opportunity == null || (dataScopeUserId != null && !dataScopeUserId.equals(opportunity.getOwnerId()))) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "商机不存在或无权访问");
+        }
+        if (!customerId.equals(opportunity.getCustomerId())) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "报价客户必须与商机客户一致");
+        }
+        OpportunityStage stage;
+        try {
+            stage = OpportunityStage.parse(opportunity.getStage());
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, ex.getMessage());
+        }
+        if (stage.terminal()) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "终态商机不能创建报价");
         }
     }
 

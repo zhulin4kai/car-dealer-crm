@@ -370,6 +370,75 @@ CREATE TABLE IF NOT EXISTS t_product
     CONSTRAINT chk_product_status_code CHECK (status IN ('ON_SALE', 'OFF_SALE'))
 );
 
+CREATE TABLE IF NOT EXISTS t_opportunity
+(
+    id                  BIGINT NOT NULL AUTO_INCREMENT,
+    opportunity_no      VARCHAR(64) NOT NULL,
+    customer_id         INTEGER NOT NULL,
+    clue_id             INTEGER,
+    owner_id            INTEGER NOT NULL,
+    product_id          BIGINT,
+    source_type         VARCHAR(64),
+    stage               VARCHAR(50) NOT NULL,
+    requirement         VARCHAR(1000) NOT NULL,
+    expected_amount     DECIMAL(10, 2),
+    expected_close_date DATE,
+    next_action_time    DATE,
+    lost_reason         VARCHAR(500),
+    lost_competitor     VARCHAR(255),
+    result_remark       VARCHAR(500),
+    order_tran_id       INTEGER,
+    version             INTEGER NOT NULL DEFAULT 0,
+    create_time         TIMESTAMP,
+    create_by           INTEGER,
+    update_time         TIMESTAMP,
+    update_by           INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_opportunity_no UNIQUE (opportunity_no),
+    CONSTRAINT fk_opportunity_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_opportunity_clue FOREIGN KEY (clue_id) REFERENCES t_clue(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_opportunity_owner FOREIGN KEY (owner_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_opportunity_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_opportunity_order_tran FOREIGN KEY (order_tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_opportunity_stage CHECK (stage IN (
+        'INITIAL_CONTACT', 'NEEDS_ANALYSIS', 'VEHICLE_MATCHING', 'TEST_DRIVE_INVITED',
+        'QUOTING', 'NEGOTIATION', 'PENDING_APPROVAL', 'WON', 'LOST', 'SHELVED', 'CLOSED'
+    )),
+    CONSTRAINT chk_opportunity_expected_amount CHECK (expected_amount IS NULL OR expected_amount >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_opportunity_customer_stage ON t_opportunity(customer_id, stage);
+CREATE INDEX IF NOT EXISTS idx_opportunity_owner_stage ON t_opportunity(owner_id, stage);
+CREATE INDEX IF NOT EXISTS idx_opportunity_product ON t_opportunity(product_id);
+CREATE INDEX IF NOT EXISTS idx_opportunity_order_tran ON t_opportunity(order_tran_id);
+
+CREATE TABLE IF NOT EXISTS t_opportunity_stage_history
+(
+    id             BIGINT NOT NULL AUTO_INCREMENT,
+    opportunity_id BIGINT NOT NULL,
+    from_stage     VARCHAR(50),
+    to_stage       VARCHAR(50) NOT NULL,
+    reason         VARCHAR(500) NOT NULL,
+    operate_by     INTEGER NOT NULL,
+    operate_time   TIMESTAMP NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_opportunity_history_opportunity FOREIGN KEY (opportunity_id) REFERENCES t_opportunity(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_opportunity_history_operator FOREIGN KEY (operate_by) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_opportunity_history_to_stage CHECK (to_stage IN (
+        'INITIAL_CONTACT', 'NEEDS_ANALYSIS', 'VEHICLE_MATCHING', 'TEST_DRIVE_INVITED',
+        'QUOTING', 'NEGOTIATION', 'PENDING_APPROVAL', 'WON', 'LOST', 'SHELVED', 'CLOSED'
+    )),
+    CONSTRAINT chk_opportunity_history_from_stage CHECK (from_stage IS NULL OR from_stage IN (
+        'INITIAL_CONTACT', 'NEEDS_ANALYSIS', 'VEHICLE_MATCHING', 'TEST_DRIVE_INVITED',
+        'QUOTING', 'NEGOTIATION', 'PENDING_APPROVAL', 'WON', 'LOST', 'SHELVED', 'CLOSED'
+    ))
+);
+
+CREATE INDEX IF NOT EXISTS idx_opportunity_history_opportunity ON t_opportunity_stage_history(opportunity_id, operate_time);
+
+ALTER TABLE t_quote
+    ADD CONSTRAINT fk_quote_opportunity FOREIGN KEY (opportunity_id) REFERENCES t_opportunity(id) ON DELETE RESTRICT;
+
 CREATE TABLE IF NOT EXISTS t_quote_version_item
 (
     id                    BIGINT NOT NULL AUTO_INCREMENT,
