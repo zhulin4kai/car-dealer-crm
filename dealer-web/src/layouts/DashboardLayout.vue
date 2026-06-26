@@ -194,6 +194,7 @@ const BUSINESS_MENU_CODES = new Set([
   'menu:clue',
   'menu:customer',
   'menu:quote',
+  'menu:delivery',
   'menu:tran',
 ])
 const SYSTEM_MENU_CODES = new Set(['menu:user', DICT_MENU_CODE])

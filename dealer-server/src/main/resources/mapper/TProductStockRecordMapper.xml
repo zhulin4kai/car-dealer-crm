@@ -50,6 +50,17 @@
         ORDER BY create_time DESC, id DESC
         LIMIT 1
     </select>
+
+    <select id="selectLatestReserveByVehicle" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_product_stock_record
+        WHERE vehicle_id = #{vehicleId}
+          AND source_type = #{sourceType}
+          AND source_id = #{sourceId}
+          AND type = 'RESERVE'
+        ORDER BY create_time DESC, id DESC
+        LIMIT 1
+    </select>
     
     <insert id="insert" parameterType="com.autodealer.crm.model.TProductStockRecord" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_product_stock_record (

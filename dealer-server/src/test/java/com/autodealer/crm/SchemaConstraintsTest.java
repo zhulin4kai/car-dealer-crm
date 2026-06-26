@@ -48,6 +48,7 @@ class SchemaConstraintsTest {
             "t_quote", "t_quote_version", "t_quote_version_item", "t_quote_status_history",
             "t_product", "t_product_category", "t_product_promotion",
             "t_product_vehicle", "t_product_stock_record",
+            "t_delivery", "t_delivery_check_item",
             "t_payment", "t_refund_request",
             "t_user", "t_user_role", "t_clue_owner_history"
         };
@@ -150,6 +151,63 @@ class SchemaConstraintsTest {
             jdbcTemplate.execute(
                 "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
                 "VALUES (101, 1, 'VIN-DUP-001', '白色', 'A-02', 'AVAILABLE')"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("同一交易重复交付记录插入失败")
+    void testDuplicateDeliveryTranFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_tran (id, tran_no, customer_id, money, stage) " +
+            "VALUES (120, 'TR_DELIVERY_DUP_001', 1, 100.00, 'DELIVERY')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+            "VALUES (120, 1, 'VIN-DELIVERY-DUP-001', '黑色', 'A-01', 'ORDER_RESERVED')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+            "VALUES (121, 1, 'VIN-DELIVERY-DUP-002', '白色', 'A-02', 'ORDER_RESERVED')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_delivery (id, tran_id, customer_id, vehicle_id, status, planned_delivery_time) " +
+            "VALUES (120, 120, 1, 120, 'PENDING_PREPARE', CURRENT_TIMESTAMP)");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_delivery (id, tran_id, customer_id, vehicle_id, status, planned_delivery_time) " +
+                "VALUES (121, 120, 1, 121, 'PENDING_PREPARE', CURRENT_TIMESTAMP)"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("非法交付状态插入失败")
+    void testInvalidDeliveryStatusFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_tran (id, tran_no, customer_id, money, stage) " +
+            "VALUES (122, 'TR_DELIVERY_STATUS_001', 1, 100.00, 'DELIVERY')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+            "VALUES (122, 1, 'VIN-DELIVERY-STATUS-001', '黑色', 'A-01', 'ORDER_RESERVED')");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_delivery (id, tran_id, customer_id, vehicle_id, status, planned_delivery_time) " +
+                "VALUES (122, 122, 1, 122, 'DONE_BY_CLICK', CURRENT_TIMESTAMP)"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("非法交付准备项状态插入失败")
+    void testInvalidDeliveryCheckStatusFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_tran (id, tran_no, customer_id, money, stage) " +
+            "VALUES (123, 'TR_DELIVERY_CHECK_001', 1, 100.00, 'DELIVERY')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+            "VALUES (123, 1, 'VIN-DELIVERY-CHECK-001', '黑色', 'A-01', 'ORDER_RESERVED')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_delivery (id, tran_id, customer_id, vehicle_id, status, planned_delivery_time) " +
+            "VALUES (123, 123, 1, 123, 'PENDING_PREPARE', CURRENT_TIMESTAMP)");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_delivery_check_item (id, delivery_id, item_code, item_name, status) " +
+                "VALUES (123, 123, 'VEHICLE_READY', '车辆验收', 'DONE_BY_CLICK')"));
     }
 
     @Test

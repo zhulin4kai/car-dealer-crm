@@ -620,6 +620,59 @@ CREATE TABLE IF NOT EXISTS t_product_stock_record
     CONSTRAINT fk_stock_record_related FOREIGN KEY (related_record_id) REFERENCES t_product_stock_record(id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS t_delivery
+(
+    id                    BIGINT NOT NULL AUTO_INCREMENT,
+    tran_id               INTEGER NOT NULL,
+    customer_id           INTEGER NOT NULL,
+    vehicle_id            BIGINT NOT NULL,
+    status                VARCHAR(50) NOT NULL,
+    planned_delivery_time TIMESTAMP NOT NULL,
+    actual_delivery_time  TIMESTAMP,
+    responsible_user_id   INTEGER,
+    signer_name           VARCHAR(100),
+    signed_at             TIMESTAMP,
+    sign_method           VARCHAR(50),
+    sign_evidence         VARCHAR(500),
+    exception_type        VARCHAR(50),
+    exception_reason      VARCHAR(500),
+    create_time           TIMESTAMP,
+    create_by             INTEGER,
+    update_time           TIMESTAMP,
+    update_by             INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_delivery_tran UNIQUE (tran_id),
+    CONSTRAINT fk_delivery_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_delivery_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_delivery_vehicle FOREIGN KEY (vehicle_id) REFERENCES t_product_vehicle(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_delivery_responsible_user FOREIGN KEY (responsible_user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_delivery_status CHECK (status IN (
+        'PENDING_PREPARE', 'PREPARING', 'WAITING_CUSTOMER', 'WAITING_DELIVERY',
+        'DELIVERING', 'SIGNED', 'COMPLETED', 'EXCEPTION', 'CANCELLED'
+    ))
+);
+
+CREATE TABLE IF NOT EXISTS t_delivery_check_item
+(
+    id                  BIGINT NOT NULL AUTO_INCREMENT,
+    delivery_id         BIGINT NOT NULL,
+    item_code           VARCHAR(64) NOT NULL,
+    item_name           VARCHAR(100) NOT NULL,
+    status              VARCHAR(30) NOT NULL,
+    responsible_user_id INTEGER,
+    completed_time      TIMESTAMP,
+    remark              VARCHAR(500),
+    create_time         TIMESTAMP,
+    create_by           INTEGER,
+    update_time         TIMESTAMP,
+    update_by           INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_delivery_check_item_code UNIQUE (delivery_id, item_code),
+    CONSTRAINT fk_delivery_check_delivery FOREIGN KEY (delivery_id) REFERENCES t_delivery(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_delivery_check_responsible_user FOREIGN KEY (responsible_user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_delivery_check_status CHECK (status IN ('PENDING', 'COMPLETED', 'BLOCKED'))
+);
+
 CREATE TABLE IF NOT EXISTS t_tran_remark
 (
     id           INTEGER NOT NULL AUTO_INCREMENT,

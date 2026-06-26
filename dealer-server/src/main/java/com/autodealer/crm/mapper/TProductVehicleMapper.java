@@ -38,4 +38,9 @@ public interface TProductVehicleMapper {
                          @Param("currentStatus") String currentStatus,
                          @Param("updateTime") LocalDateTime updateTime,
                          @Param("updateBy") Integer updateBy);
+
+    int outboundIfCurrent(@Param("id") Long id,
+                          @Param("currentStatus") String currentStatus,
+                          @Param("updateTime") LocalDateTime updateTime,
+                          @Param("updateBy") Integer updateBy);
 }

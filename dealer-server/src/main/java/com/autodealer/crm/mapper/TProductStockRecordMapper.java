@@ -16,6 +16,10 @@ public interface TProductStockRecordMapper {
     TProductStockRecord selectById(@Param("id") Long id);
 
     TProductStockRecord selectReleaseByRelatedRecordId(@Param("relatedRecordId") Long relatedRecordId);
+
+    TProductStockRecord selectLatestReserveByVehicle(@Param("vehicleId") Long vehicleId,
+                                                     @Param("sourceType") String sourceType,
+                                                     @Param("sourceId") Long sourceId);
     
     int insert(TProductStockRecord record);
 }

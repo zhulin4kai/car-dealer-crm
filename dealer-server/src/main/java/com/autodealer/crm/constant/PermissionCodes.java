@@ -59,6 +59,14 @@ public final class PermissionCodes {
     public static final String QUOTE_ORDER = "quote:order";
     public static final String QUOTE_CANCEL = "quote:cancel";
 
+    public static final String DELIVERY_LIST = "delivery:list";
+    public static final String DELIVERY_VIEW = "delivery:view";
+    public static final String DELIVERY_CREATE = "delivery:create";
+    public static final String DELIVERY_CHECK = "delivery:check";
+    public static final String DELIVERY_SIGN = "delivery:sign";
+    public static final String DELIVERY_EXCEPTION = "delivery:exception";
+    public static final String DELIVERY_CANCEL = "delivery:cancel";
+
     public static final String PRODUCT_LIST = "product:list";
     public static final String PRODUCT_VIEW = "product:view";
     public static final String PRODUCT_ADD = "product:add";

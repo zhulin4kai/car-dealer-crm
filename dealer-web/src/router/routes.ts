@@ -158,6 +158,17 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'delivery',
+        name: 'delivery',
+        component: () => import('@/pages/dashboard/delivery.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '交付管理',
+          activeMenu: '/dashboard/delivery',
+          permission: PERMISSIONS.delivery.list,
+        },
+      },
+      {
         path: 'tran',
         name: 'tran',
         component: () => import('@/pages/dashboard/tran/index.vue'),

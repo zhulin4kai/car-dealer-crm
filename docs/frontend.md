@@ -136,6 +136,7 @@ token 存储策略：
 - `/dashboard/tran/:id`
 - `/dashboard/tran/approve/:id`
 - `/dashboard/tran/invoice/:id`
+- `/dashboard/delivery`
 - `/dashboard/dict/type`
 - `/dashboard/dict/value`
 
@@ -159,6 +160,8 @@ token 存储策略：
 
 `/dashboard/quote` 使用 `modules/quote/api/quote-api.ts` 查询报价列表、详情、版本和状态变更。页面只能提交 `DRAFT`、`PENDING_APPROVAL`、`PENDING_CUSTOMER_CONFIRMATION` 等稳定报价状态编码，中文状态只做展示映射。
 
+`/dashboard/delivery` 使用 `modules/delivery/api/delivery-api.ts` 查询、创建和处理交付记录。页面展示 `PENDING_PREPARE`、`PREPARING`、`COMPLETED`、`EXCEPTION`、`CANCELLED` 等稳定编码的中文文案；准备项只提交 `PENDING`、`COMPLETED`、`BLOCKED`；签收、异常、取消都必须处理 loading、重复提交和失败提示。签收只触发交付和库存出库接口，不在前端假设交易已经完成。
+
 ## 业务模块
 
 每个业务模块按以下方式组织：
@@ -176,6 +179,7 @@ modules/<module>/
 - `activity`
 - `clue`
 - `customer`
+- `delivery`
 - `dict`
 - `product`
 - `quote`

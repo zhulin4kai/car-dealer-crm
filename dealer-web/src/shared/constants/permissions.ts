@@ -55,6 +55,15 @@ export const PERMISSIONS = {
     order: 'quote:order',
     cancel: 'quote:cancel',
   },
+  delivery: {
+    list: 'delivery:list',
+    view: 'delivery:view',
+    create: 'delivery:create',
+    check: 'delivery:check',
+    sign: 'delivery:sign',
+    exception: 'delivery:exception',
+    cancel: 'delivery:cancel',
+  },
   product: {
     list: 'product:list',
     view: 'product:view',

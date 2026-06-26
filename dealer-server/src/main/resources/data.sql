@@ -36,9 +36,10 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 ('客户管理', 'menu:customer', NULL, 'menu', NULL, 3, 'User', 1),
 ('交易管理', 'menu:tran', NULL, 'menu', NULL, 4, 'Wallet', 1),
 ('报价订单', 'menu:quote', NULL, 'menu', NULL, 5, 'FileText', 1),
-('产品管理', 'menu:product', NULL, 'menu', NULL, 6, 'Memo', 1),
-('字典管理', 'menu:dict', NULL, 'menu', NULL, 7, 'Grid', 1),
-('用户管理', 'menu:user', NULL, 'menu', NULL, 8, 'Stamp', 1);
+('交付管理', 'menu:delivery', NULL, 'menu', NULL, 6, 'Truck', 1),
+('产品管理', 'menu:product', NULL, 'menu', NULL, 7, 'Memo', 1),
+('字典管理', 'menu:dict', NULL, 'menu', NULL, 8, 'Grid', 1),
+('用户管理', 'menu:user', NULL, 'menu', NULL, 9, 'Stamp', 1);
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '市场活动', 'page:activity:list', '/dashboard/activity', 'menu', id, 1, 'CreditCard', 1 FROM `t_permission` WHERE code = 'menu:activity';
@@ -50,6 +51,8 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '交易管理', 'page:tran:list', '/dashboard/tran', 'menu', id, 1, 'Coin', 1 FROM `t_permission` WHERE code = 'menu:tran';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '报价订单', 'page:quote:list', '/dashboard/quote', 'menu', id, 1, 'FileText', 1 FROM `t_permission` WHERE code = 'menu:quote';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交付管理', 'page:delivery:list', '/dashboard/delivery', 'menu', id, 1, 'Truck', 1 FROM `t_permission` WHERE code = 'menu:delivery';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '车型商品', 'page:product:list', '/dashboard/product', 'menu', id, 1, 'SetUp', 1 FROM `t_permission` WHERE code = 'menu:product';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -158,6 +161,20 @@ SELECT '报价订单-成单', 'quote:order', NULL, 'button', id, NULL, NULL, 1 F
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '报价订单-取消', 'quote:cancel', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:quote:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交付管理-列表', 'delivery:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交付管理-查看', 'delivery:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交付管理-创建', 'delivery:create', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交付管理-准备项', 'delivery:check', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交付管理-签收', 'delivery:sign', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交付管理-异常', 'delivery:exception', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '交付管理-取消', 'delivery:cancel', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '车型商品-列表', 'product:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '车型商品-查看', 'product:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:list';
@@ -240,11 +257,11 @@ WHERE r.role = 'admin' AND r.enabled = 1 AND p.enabled = 1;
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'sales_consultant' AND p.code IN ('menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:settle', 'tran:resubmit', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:confirm');
+WHERE r.role = 'sales_consultant' AND p.code IN ('menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:settle', 'tran:resubmit', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:confirm', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'sales_manager' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:delete', 'clue:import', 'clue:transfer', 'clue:close', 'clue:restore', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'customer:export', 'customer:merge', 'customer:delete', 'customer:sensitive:view', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:delete', 'tran:cancel', 'tran:close', 'tran:settle', 'tran:resubmit', 'tran:approve', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:approve', 'quote:confirm', 'quote:order', 'quote:cancel', 'statistic:view');
+WHERE r.role = 'sales_manager' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:delete', 'clue:import', 'clue:transfer', 'clue:close', 'clue:restore', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'customer:export', 'customer:merge', 'customer:delete', 'customer:sensitive:view', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:delete', 'tran:cancel', 'tran:close', 'tran:settle', 'tran:resubmit', 'tran:approve', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:approve', 'quote:confirm', 'quote:order', 'quote:cancel', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception', 'delivery:cancel', 'statistic:view');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
@@ -252,11 +269,11 @@ WHERE r.role = 'marketing_specialist' AND p.code IN ('menu:dashboard', 'menu:act
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'finance_specialist' AND p.code IN ('menu:dashboard', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:invoice', 'tran:invoice:sensitive', 'tran:payment', 'tran:payment:confirm', 'tran:refund', 'tran:refund:approve', 'tran:refund:execute', 'statistic:view');
+WHERE r.role = 'finance_specialist' AND p.code IN ('menu:dashboard', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:invoice', 'tran:invoice:sensitive', 'tran:payment', 'tran:payment:confirm', 'tran:refund', 'tran:refund:approve', 'tran:refund:execute', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:check', 'statistic:view');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'inventory_specialist' AND p.code IN ('menu:product', 'page:product:list', 'page:product:category', 'page:product:promotion', 'page:product:stock', 'product:list', 'product:view', 'product:add', 'product:edit', 'product:delete', 'product:category:list', 'product:category:view', 'product:category:add', 'product:category:edit', 'product:category:delete', 'product:promotion:list', 'product:promotion:view', 'product:promotion:add', 'product:promotion:edit', 'product:promotion:delete', 'product:stock:view', 'product:stock:adjust');
+WHERE r.role = 'inventory_specialist' AND p.code IN ('menu:product', 'page:product:list', 'page:product:category', 'page:product:promotion', 'page:product:stock', 'product:list', 'product:view', 'product:add', 'product:edit', 'product:delete', 'product:category:list', 'product:category:view', 'product:category:add', 'product:category:edit', 'product:category:delete', 'product:promotion:list', 'product:promotion:view', 'product:promotion:add', 'product:promotion:edit', 'product:promotion:delete', 'product:stock:view', 'product:stock:adjust', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:check', 'delivery:sign', 'delivery:exception');
 
 -- ==================== Dictionary Types ====================
 MERGE INTO t_dic_type (id, type_code, type_name, remark) KEY(id) VALUES (1, 'sex', '性别', NULL);

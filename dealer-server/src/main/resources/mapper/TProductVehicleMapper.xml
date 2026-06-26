@@ -122,4 +122,17 @@
         WHERE id = #{id}
           AND status = #{currentStatus}
     </update>
+
+    <update id="outboundIfCurrent">
+        UPDATE t_product_vehicle
+        SET status = 'OUTBOUND',
+            hold_type = NULL,
+            source_type = NULL,
+            source_id = NULL,
+            hold_until = NULL,
+            update_time = #{updateTime},
+            update_by = #{updateBy}
+        WHERE id = #{id}
+          AND status = #{currentStatus}
+    </update>
 </mapper>

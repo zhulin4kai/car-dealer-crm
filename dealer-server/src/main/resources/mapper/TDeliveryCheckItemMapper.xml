@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TDeliveryCheckItemMapper">
+
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TDeliveryCheckItem">
+        <id column="id" property="id" />
+        <result column="delivery_id" property="deliveryId" />
+        <result column="item_code" property="itemCode" />
+        <result column="item_name" property="itemName" />
+        <result column="status" property="status" />
+        <result column="responsible_user_id" property="responsibleUserId" />
+        <result column="completed_time" property="completedTime" />
+        <result column="remark" property="remark" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="update_by" property="updateBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, delivery_id, item_code, item_name, status, responsible_user_id,
+        completed_time, remark, create_time, create_by, update_time, update_by
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_delivery_check_item
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_delivery_check_item
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="selectByDeliveryId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_delivery_check_item
+        WHERE delivery_id = #{deliveryId}
+        ORDER BY id ASC
+    </select>
+
+    <select id="countIncompleteByDeliveryId" resultType="int">
+        SELECT COUNT(*)
+        FROM t_delivery_check_item
+        WHERE delivery_id = #{deliveryId}
+          AND status != 'COMPLETED'
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TDeliveryCheckItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_delivery_check_item (
+            delivery_id, item_code, item_name, status, responsible_user_id,
+            completed_time, remark, create_time, create_by, update_time, update_by
+        ) VALUES (
+            #{deliveryId}, #{itemCode}, #{itemName}, #{status}, #{responsibleUserId},
+            #{completedTime}, #{remark}, #{createTime}, #{createBy}, #{updateTime}, #{updateBy}
+        )
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE t_delivery_check_item
+        SET status = #{status},
+            completed_time = #{completedTime},
+            remark = #{remark},
+            update_time = #{updateTime},
+            update_by = #{updateBy}
+        WHERE id = #{id}
+    </update>
+</mapper>

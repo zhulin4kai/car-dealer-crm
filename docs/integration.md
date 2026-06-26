@@ -142,7 +142,21 @@
 | batchDeleteTran | POST | /api/tran/batch-delete | data: {ids: List\<Integer\>} (JSON) | R\<String\> | TranController.batchDelete | 已废弃；批量物理删除返回状态冲突 |
 | getTranStatus | GET | /api/tran/status/{id} | 路径参数: id | - | **后端未实现** | 前端调用但后端无对应接口 |
 
-### 1.8 字典管理模块 (dict.js)
+### 1.8 交付管理模块 (delivery-api.ts)
+
+| 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
+|-----------|---------|---------|-------------|-------------|-------------------|-------------|
+| fetchDeliveryPage | GET | /api/deliveries | params: {page, size, tranId?, customerId?, vehicleId?, responsibleUserId?, status?} | R\<PageInfo\<TDelivery\>\> | DeliveryController.list | 分页查询交付记录，按当前用户交易客户数据范围过滤 |
+| createDelivery | POST | /api/deliveries | data: CreateDeliveryRequest (JSON) | R\<TDelivery\> | DeliveryController.create | 创建交付记录和准备清单；交易必须处于 DELIVERY，车辆必须为当前交易 ORDER_RESERVED |
+| fetchDeliveryDetail | GET | /api/deliveries/{id} | 路径参数: id | R\<TDelivery\> | DeliveryController.detail | 查询交付详情 |
+| fetchDeliveryCheckItems | GET | /api/deliveries/{id}/check-items | 路径参数: id | R\<List\<TDeliveryCheckItem\>\> | DeliveryController.checkItems | 查询交付准备清单 |
+| fetchDeliveriesByTranId | GET | /api/deliveries/tran/{tranId} | 路径参数: tranId | R\<List\<TDelivery\>\> | DeliveryController.listByTranId | 查询交易下交付记录 |
+| updateDeliveryCheckItem | PUT | /api/deliveries/check-items/{itemId} | 路径参数: itemId, data: {status, remark?} | R\<TDeliveryCheckItem\> | DeliveryController.updateCheckItem | 更新准备项状态，状态使用稳定编码 PENDING/COMPLETED/BLOCKED |
+| signDelivery | POST | /api/deliveries/{id}/sign | 路径参数: id, data: SignDeliveryRequest (JSON) | R\<TDelivery\> | DeliveryController.sign | 客户签收并联动库存出库；不直接完成交易 |
+| markDeliveryException | POST | /api/deliveries/{id}/exception | 路径参数: id, data: {exceptionType, reason} | R\<TDelivery\> | DeliveryController.markException | 登记交付异常并保留历史 |
+| cancelDelivery | POST | /api/deliveries/{id}/cancel | 路径参数: id, data: {reason} | R\<TDelivery\> | DeliveryController.cancel | 取消交付并保留历史 |
+
+### 1.9 字典管理模块 (dict.js)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
@@ -160,13 +174,13 @@
 | batchDeleteDictValues | DELETE | /api/dict/value/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicValues | 批量删除字典值 |
 | clearCache | GET | /api/dict/clear | params: {forceRefresh: true} | R | DicController.clearCache | 清除字典缓存 |
 
-### 1.9 审计日志模块
+### 1.10 审计日志模块
 
 审计日志已确认为后续正式模块，业务规格见 `docs/spec/审计日志/`。接口尚未实现，本文不声明可调用的审计日志 API。
 
 旧系统配置与系统监控接口已下线，不再提供 `/api/system/*` 和 `/api/monitor/*`。
 
-### 1.10 统计模块
+### 1.11 统计模块
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|
@@ -176,7 +190,7 @@
 
 统计接口不接收前端范围参数，后端按当前登录用户的数据范围聚合；非管理员统计结果必须能由同范围明细反算。
 
-### 1.11 活动备注模块 (后端提供，前端未定义API文件)
+### 1.12 活动备注模块 (后端提供，前端未定义API文件)
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|

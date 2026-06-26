@@ -31,6 +31,8 @@ tags:
     description: 商品库存调整记录
   - name: Quote
     description: 报价、报价版本和报价状态
+  - name: Delivery
+    description: 交付记录、准备清单、签收和异常
   - name: Transaction
     description: 交易、结算、审批、发票、收款和退款
   - name: Statistic
@@ -2290,6 +2292,250 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/deliveries:
+    get:
+      tags: [Delivery]
+      operationId: listDeliveries
+      summary: 分页查询交付记录
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: tranId
+          in: query
+          schema:
+            type: integer
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: vehicleId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: responsibleUserId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/DeliveryStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryPageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Delivery]
+      operationId: createDelivery
+      summary: 创建交付记录和默认准备清单
+      description: 交易必须处于 DELIVERY，车辆必须为当前交易 ORDER_RESERVED；重复创建返回已有活跃交付记录。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeliveryRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/deliveries/{id}:
+    get:
+      tags: [Delivery]
+      operationId: getDelivery
+      summary: 查询交付记录详情
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryObject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/deliveries/{id}/check-items:
+    get:
+      tags: [Delivery]
+      operationId: listDeliveryCheckItems
+      summary: 查询交付准备清单
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryCheckItemArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/deliveries/tran/{tranId}:
+    get:
+      tags: [Delivery]
+      operationId: listDeliveriesByTranId
+      summary: 查询某交易的交付记录
+      parameters:
+        - $ref: "#/components/parameters/TranId"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/deliveries/check-items/{itemId}:
+    put:
+      tags: [Delivery]
+      operationId: updateDeliveryCheckItem
+      summary: 更新交付准备项状态
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDeliveryCheckItemRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryCheckItemObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/deliveries/{id}/sign:
+    post:
+      tags: [Delivery]
+      operationId: signDelivery
+      summary: 客户交付签收并联动库存出库
+      description: 所有准备项必须 COMPLETED；签收只写交付事实和 OUTBOUND 库存流水，不直接把交易置为 COMPLETED。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignDeliveryRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/deliveries/{id}/exception:
+    post:
+      tags: [Delivery]
+      operationId: markDeliveryException
+      summary: 登记交付异常
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeliveryExceptionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/deliveries/{id}/cancel:
+    post:
+      tags: [Delivery]
+      operationId: cancelDelivery
+      summary: 取消交付并保留交付历史
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeliveryCancelRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/DeliveryObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/tran/list:
     get:
       tags: [Transaction]
@@ -3451,6 +3697,72 @@ components:
                 properties:
                   data:
                     $ref: "#/components/schemas/ProductVehicle"
+    DeliveryObject:
+      description: 交付命令或详情查询成功，data 为交付记录。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Delivery"
+    DeliveryPageOk:
+      description: 分页查询成功，data.list 为交付记录数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Delivery"
+    DeliveryArrayOk:
+      description: 查询成功，data 为交付记录数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Delivery"
+    DeliveryCheckItemObject:
+      description: 交付准备项命令成功，data 为准备项当前状态。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/DeliveryCheckItem"
+    DeliveryCheckItemArrayOk:
+      description: 查询成功，data 为交付准备项数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DeliveryCheckItem"
     QuoteObject:
       description: 报价状态命令成功，data 为报价对象。
       content:
@@ -4346,6 +4658,165 @@ components:
           format: date-time
         createBy:
           type: integer
+    DeliveryStatus:
+      type: string
+      enum:
+        - PENDING_PREPARE
+        - PREPARING
+        - WAITING_CUSTOMER
+        - WAITING_DELIVERY
+        - DELIVERING
+        - SIGNED
+        - COMPLETED
+        - EXCEPTION
+        - CANCELLED
+      description: 交付状态稳定编码，中文只用于页面展示。
+    DeliveryCheckStatus:
+      type: string
+      enum:
+        - PENDING
+        - COMPLETED
+        - BLOCKED
+      description: 交付准备项状态稳定编码，中文只用于页面展示。
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tranId:
+          type: integer
+        customerId:
+          type: integer
+        vehicleId:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/DeliveryStatus"
+        plannedDeliveryTime:
+          type: string
+          format: date-time
+        actualDeliveryTime:
+          type: string
+          format: date-time
+        responsibleUserId:
+          type: integer
+        signerName:
+          type: string
+        signedAt:
+          type: string
+          format: date-time
+        signMethod:
+          type: string
+        signEvidence:
+          type: string
+        exceptionType:
+          type: string
+        exceptionReason:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        updateTime:
+          type: string
+          format: date-time
+        updateBy:
+          type: integer
+    DeliveryCheckItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        deliveryId:
+          type: integer
+          format: int64
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        status:
+          $ref: "#/components/schemas/DeliveryCheckStatus"
+        responsibleUserId:
+          type: integer
+        completedTime:
+          type: string
+          format: date-time
+        remark:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        updateTime:
+          type: string
+          format: date-time
+        updateBy:
+          type: integer
+    DeliveryCheckItemRequest:
+      type: object
+      required: [itemCode, itemName]
+      properties:
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        responsibleUserId:
+          type: integer
+    CreateDeliveryRequest:
+      type: object
+      required: [tranId, vehicleId, plannedDeliveryTime]
+      properties:
+        tranId:
+          type: integer
+        vehicleId:
+          type: integer
+          format: int64
+        plannedDeliveryTime:
+          type: string
+          format: date-time
+        checkItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliveryCheckItemRequest"
+    UpdateDeliveryCheckItemRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/DeliveryCheckStatus"
+        remark:
+          type: string
+    SignDeliveryRequest:
+      type: object
+      required: [signerName, signedAt, signMethod, signEvidence]
+      properties:
+        signerName:
+          type: string
+        signedAt:
+          type: string
+          format: date-time
+        signMethod:
+          type: string
+        signEvidence:
+          type: string
+    DeliveryExceptionRequest:
+      type: object
+      required: [exceptionType, reason]
+      properties:
+        exceptionType:
+          type: string
+        reason:
+          type: string
+    DeliveryCancelRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
     QuoteStatus:
       type: string
       enum:

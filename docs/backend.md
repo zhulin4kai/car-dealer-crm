@@ -17,6 +17,7 @@
 - [9. 商品管理模块](#9-商品管理模块)
 - [10. 字典管理模块](#10-字典管理模块)
 - [11. 统计报表模块](#11-统计报表模块)
+- [12. 交付管理模块](#12-交付管理模块)
 - [13. 安全配置](#13-安全配置)
 - [14. AOP 切面](#14-aop-切面)
 - [15. 工具类](#15-工具类)
@@ -146,6 +147,15 @@ dealer-server/src/main/java/com/autodealer/crm/
 | PUT /api/user/{id}/roles | `user:role` |
 | PUT /api/user/{id}/password | `user:password` |
 | PUT /api/user/{id}/handover | `user:status` |
+| GET /api/deliveries | `delivery:list` |
+| POST /api/deliveries | `delivery:create` |
+| GET /api/deliveries/{id} | `delivery:view` |
+| GET /api/deliveries/{id}/check-items | `delivery:view` |
+| GET /api/deliveries/tran/{tranId} | `delivery:view` |
+| PUT /api/deliveries/check-items/{itemId} | `delivery:check` |
+| POST /api/deliveries/{id}/sign | `delivery:sign` |
+| POST /api/deliveries/{id}/exception | `delivery:exception` |
+| POST /api/deliveries/{id}/cancel | `delivery:cancel` |
 | GET /api/dict/clear | `admin` |
 
 ---
@@ -938,6 +948,63 @@ deleteDicType(id):
 - `t_clue` - 线索表
 - `t_customer` - 客户表
 - `t_tran` - 交易表
+
+---
+
+## 12. 交付管理模块
+
+### 12.1 文件路径
+
+| 层级 | 文件路径 |
+|------|----------|
+| Controller | `web/DeliveryController.java` |
+| Service | `service/DeliveryService.java` → `service/impl/DeliveryServiceImpl.java` |
+| Mapper | `mapper/TDeliveryMapper.java`, `mapper/TDeliveryCheckItemMapper.java`, `mapper/TProductVehicleMapper.java`, `mapper/TProductStockRecordMapper.java` |
+| XML | `resources/mapper/TDeliveryMapper.xml`, `resources/mapper/TDeliveryCheckItemMapper.xml`, `resources/mapper/TProductVehicleMapper.xml`, `resources/mapper/TProductStockRecordMapper.xml` |
+| Model | `model/TDelivery.java`, `model/TDeliveryCheckItem.java` |
+| DTO | `dto/CreateDeliveryRequest.java`, `dto/UpdateDeliveryCheckItemRequest.java`, `dto/SignDeliveryRequest.java`, `dto/DeliveryExceptionRequest.java`, `dto/DeliveryCancelRequest.java` |
+| Query | `query/DeliveryQuery.java` |
+
+### 12.2 接口方法及业务流程
+
+#### 创建交付记录
+- **接口**: `POST /api/deliveries`
+- **权限**: `@PreAuthorize("hasAuthority('delivery:create')")`
+- **流程**: `DeliveryController.create()` → `DeliveryServiceImpl.createDelivery()`
+  - 交易必须处于 `DELIVERY` 阶段，且当前用户具备交易客户数据访问权限。
+  - 车辆必须处于 `ORDER_RESERVED`，占用来源必须是当前交易订单。
+  - 默认生成车辆、资料、收款、发票和客户预约准备项；请求体也可以提交自定义准备项。
+  - 同一交易只能保留一条交付事实记录，重复创建返回已有活跃交付记录。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 交付准备清单
+- **接口**: `GET /api/deliveries/{id}/check-items`、`PUT /api/deliveries/check-items/{itemId}`
+- **权限**: `delivery:view`、`delivery:check`
+- **流程**: 准备项状态只能使用 `PENDING`、`COMPLETED`、`BLOCKED` 稳定编码；更新时锁定准备项和交付记录，交付终态后不得再改准备项。
+
+#### 客户签收与库存出库
+- **接口**: `POST /api/deliveries/{id}/sign`
+- **权限**: `delivery:sign`
+- **流程**: `DeliveryServiceImpl.signDelivery()`
+  - 所有准备项必须为 `COMPLETED`。
+  - 车辆仍需为当前交易的 `ORDER_RESERVED`，并存在未释放的订单占用流水。
+  - 签收在同一事务内把车辆更新为 `OUTBOUND`，写入 `OUTBOUND` 库存流水并关联原占用流水。
+  - 签收只写交付事实和库存出库事实，不直接把交易阶段改为 `COMPLETED`。
+  - 重复签收已完成交付时返回当前记录，不重复写出库流水。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 交付异常与取消
+- **接口**: `POST /api/deliveries/{id}/exception`、`POST /api/deliveries/{id}/cancel`
+- **权限**: `delivery:exception`、`delivery:cancel`
+- **流程**: 异常和取消必须提交原因，保留交付记录和准备项历史，写入操作审计。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+### 12.3 涉及数据库表
+- `t_delivery` - 交付记录主表
+- `t_delivery_check_item` - 交付准备清单表
+- `t_product_vehicle` - 车辆实例状态
+- `t_product_stock_record` - 库存占用、释放、出库流水
+- `t_tran` - 交易阶段与客户数据范围
 
 ---
 

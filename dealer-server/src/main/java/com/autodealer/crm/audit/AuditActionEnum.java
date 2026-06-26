@@ -40,6 +40,13 @@ public enum AuditActionEnum {
     QUOTE_VERSION_CREATE("QUOTE_VERSION_CREATE", "创建报价版本", "报价订单"),
     QUOTE_STATUS_CHANGE("QUOTE_STATUS_CHANGE", "报价状态变更", "报价订单"),
 
+    DELIVERY_CREATE("DELIVERY_CREATE", "创建交付记录", "交付管理"),
+    DELIVERY_CHECK("DELIVERY_CHECK", "更新交付准备项", "交付管理"),
+    DELIVERY_SIGN("DELIVERY_SIGN", "客户交付签收", "交付管理"),
+    DELIVERY_COMPLETE("DELIVERY_COMPLETE", "交付完成", "交付管理"),
+    DELIVERY_EXCEPTION("DELIVERY_EXCEPTION", "登记交付异常", "交付管理"),
+    DELIVERY_CANCEL("DELIVERY_CANCEL", "取消交付", "交付管理"),
+
     PAYMENT_CREATE("PAYMENT_CREATE", "登记收款", "支付管理"),
     PAYMENT_CONFIRM("PAYMENT_CONFIRM", "确认收款", "支付管理"),
     PAYMENT_REJECT("PAYMENT_REJECT", "退回收款", "支付管理"),
@@ -55,6 +62,7 @@ public enum AuditActionEnum {
     PRODUCT_STOCK_IN("PRODUCT_STOCK_IN", "商品入库", "商品管理"),
     PRODUCT_STOCK_RESERVE("PRODUCT_STOCK_RESERVE", "库存占用", "库存管理"),
     PRODUCT_STOCK_RELEASE("PRODUCT_STOCK_RELEASE", "库存释放", "库存管理"),
+    PRODUCT_STOCK_OUT("PRODUCT_STOCK_OUT", "库存出库", "库存管理"),
     PRODUCT_STOCK_ADJUST("PRODUCT_STOCK_ADJUST", "库存调整", "商品管理"),
     PRODUCT_STATUS_CHANGE("PRODUCT_STATUS_CHANGE", "商品状态变更", "商品管理"),
 
