@@ -29,7 +29,7 @@ class PermissionConsistencyTest extends BackendIntegrationTestBase {
             "dealer-server/src/main/resources/CarDealerCRM.sql");
     private static final Path TEST_DATA_SQL = PROJECT_ROOT.resolve(
             "dealer-server/src/main/resources/data.sql");
-    private static final Pattern TS_PERMISSION_VALUE = Pattern.compile("'([a-z]+(?::[a-z]+)+)'");
+    private static final Pattern TS_PERMISSION_VALUE = Pattern.compile("'([a-z-]+(?::[a-z-]+)+)'");
     private static final Pattern FORBIDDEN_PERMISSION_ID = Pattern.compile("\\b270[1-5]\\b");
     private static final Pattern NUMERIC_ROLE_PERMISSION_SEED = Pattern.compile(
             "(?is)insert\\s+into\\s+`?t_role_permission`?\\s*\\([^)]*\\)\\s*values");

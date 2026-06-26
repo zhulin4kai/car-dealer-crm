@@ -13,6 +13,9 @@ public final class PermissionCodes {
     public static final String ACTIVITY_EDIT = "activity:edit";
     public static final String ACTIVITY_VIEW = "activity:view";
     public static final String ACTIVITY_DELETE = "activity:delete";
+    public static final String ACTIVITY_REVIEW = "activity:review";
+    public static final String ACTIVITY_CLOSE = "activity:close";
+    public static final String ACTIVITY_EXPORT = "activity:export";
 
     public static final String CLUE_LIST = "clue:list";
     public static final String CLUE_ADD = "clue:add";
@@ -77,6 +80,25 @@ public final class PermissionCodes {
     public static final String OPPORTUNITY_SHELVE = "opportunity:shelve";
     public static final String OPPORTUNITY_RESTORE = "opportunity:restore";
 
+    public static final String TEST_DRIVE_LIST = "test-drive:list";
+    public static final String TEST_DRIVE_VIEW = "test-drive:view";
+    public static final String TEST_DRIVE_CREATE = "test-drive:create";
+    public static final String TEST_DRIVE_RESCHEDULE = "test-drive:reschedule";
+    public static final String TEST_DRIVE_CANCEL = "test-drive:cancel";
+    public static final String TEST_DRIVE_CHECK_IN = "test-drive:check-in";
+    public static final String TEST_DRIVE_COMPLETE = "test-drive:complete";
+
+    public static final String FOLLOW_TASK_LIST = "follow-task:list";
+    public static final String FOLLOW_TASK_VIEW = "follow-task:view";
+    public static final String FOLLOW_TASK_CREATE = "follow-task:create";
+    public static final String FOLLOW_TASK_UPDATE = "follow-task:update";
+    public static final String FOLLOW_TASK_CANCEL = "follow-task:cancel";
+    public static final String FOLLOW_TASK_COMPLETE = "follow-task:complete";
+    public static final String COMMUNICATION_RECORD_LIST = "communication-record:list";
+    public static final String COMMUNICATION_RECORD_CREATE = "communication-record:create";
+    public static final String COMMUNICATION_RECORD_CORRECT = "communication-record:correct";
+    public static final String COMMUNICATION_RECORD_VOID = "communication-record:void";
+
     public static final String PRODUCT_LIST = "product:list";
     public static final String PRODUCT_VIEW = "product:view";
     public static final String PRODUCT_ADD = "product:add";
@@ -92,6 +114,7 @@ public final class PermissionCodes {
     public static final String PRODUCT_PROMOTION_ADD = "product:promotion:add";
     public static final String PRODUCT_PROMOTION_EDIT = "product:promotion:edit";
     public static final String PRODUCT_PROMOTION_DELETE = "product:promotion:delete";
+    public static final String PRODUCT_PROMOTION_STATUS = "product:promotion:status";
     public static final String PRODUCT_STOCK_VIEW = "product:stock:view";
     public static final String PRODUCT_STOCK_ADJUST = "product:stock:adjust";
 
@@ -106,6 +129,13 @@ public final class PermissionCodes {
     public static final String DICT_VALUE_EDIT = "dict:value:edit";
     public static final String DICT_VALUE_DELETE = "dict:value:delete";
     public static final String DICT_CACHE_REFRESH = "dict:cache:refresh";
+
+    public static final String AUDIT_LOGIN_LIST = "audit:login:list";
+    public static final String AUDIT_LOGIN_DETAIL = "audit:login:detail";
+    public static final String AUDIT_LOGIN_EXPORT = "audit:login:export";
+    public static final String AUDIT_OPERATION_LIST = "audit:operation:list";
+    public static final String AUDIT_OPERATION_DETAIL = "audit:operation:detail";
+    public static final String AUDIT_OPERATION_EXPORT = "audit:operation:export";
 
     public static final String USER_LIST = "user:list";
     public static final String USER_VIEW = "user:view";

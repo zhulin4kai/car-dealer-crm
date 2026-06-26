@@ -23,6 +23,13 @@ public enum AuditActionEnum {
     CLUE_CLOSE("CLUE_CLOSE", "关闭线索", "线索管理"),
     CLUE_RESTORE("CLUE_RESTORE", "恢复线索", "线索管理"),
 
+    ACTIVITY_CREATE("ACTIVITY_CREATE", "创建活动", "市场活动"),
+    ACTIVITY_UPDATE("ACTIVITY_UPDATE", "编辑活动", "市场活动"),
+    ACTIVITY_STATUS_CHANGE("ACTIVITY_STATUS_CHANGE", "活动状态变更", "市场活动"),
+    ACTIVITY_REVIEW("ACTIVITY_REVIEW", "活动复盘", "市场活动"),
+    ACTIVITY_DELETE("ACTIVITY_DELETE", "删除活动草稿", "市场活动"),
+    ACTIVITY_EXPORT("ACTIVITY_EXPORT", "导出活动ROI", "市场活动"),
+
     CUSTOMER_CONVERT("CUSTOMER_CONVERT", "线索转客户", "客户管理"),
     CUSTOMER_OWNER_CHANGE("CUSTOMER_OWNER_CHANGE", "客户归属变更", "客户管理"),
     CUSTOMER_MERGE("CUSTOMER_MERGE", "客户合并", "客户管理"),
@@ -56,6 +63,22 @@ public enum AuditActionEnum {
     OPPORTUNITY_SHELVE("OPPORTUNITY_SHELVE", "商机搁置", "商机管理"),
     OPPORTUNITY_RESTORE("OPPORTUNITY_RESTORE", "商机恢复", "商机管理"),
 
+    TEST_DRIVE_CREATE("TEST_DRIVE_CREATE", "创建试驾预约", "试驾管理"),
+    TEST_DRIVE_RESCHEDULE("TEST_DRIVE_RESCHEDULE", "试驾改期", "试驾管理"),
+    TEST_DRIVE_CANCEL("TEST_DRIVE_CANCEL", "取消试驾", "试驾管理"),
+    TEST_DRIVE_NO_SHOW("TEST_DRIVE_NO_SHOW", "标记试驾爽约", "试驾管理"),
+    TEST_DRIVE_CHECK_IN("TEST_DRIVE_CHECK_IN", "试驾签到", "试驾管理"),
+    TEST_DRIVE_COMPLETE("TEST_DRIVE_COMPLETE", "试驾完成", "试驾管理"),
+
+    FOLLOW_TASK_CREATE("FOLLOW_TASK_CREATE", "创建跟进任务", "跟进任务"),
+    FOLLOW_TASK_START("FOLLOW_TASK_START", "开始跟进任务", "跟进任务"),
+    FOLLOW_TASK_POSTPONE("FOLLOW_TASK_POSTPONE", "延期跟进任务", "跟进任务"),
+    FOLLOW_TASK_CANCEL("FOLLOW_TASK_CANCEL", "取消跟进任务", "跟进任务"),
+    FOLLOW_TASK_COMPLETE("FOLLOW_TASK_COMPLETE", "完成跟进任务", "跟进任务"),
+    COMMUNICATION_RECORD_CREATE("COMMUNICATION_RECORD_CREATE", "新增沟通记录", "跟进任务"),
+    COMMUNICATION_RECORD_CORRECT("COMMUNICATION_RECORD_CORRECT", "更正沟通记录", "跟进任务"),
+    COMMUNICATION_RECORD_VOID("COMMUNICATION_RECORD_VOID", "作废沟通记录", "跟进任务"),
+
     PAYMENT_CREATE("PAYMENT_CREATE", "登记收款", "支付管理"),
     PAYMENT_CONFIRM("PAYMENT_CONFIRM", "确认收款", "支付管理"),
     PAYMENT_REJECT("PAYMENT_REJECT", "退回收款", "支付管理"),
@@ -74,11 +97,19 @@ public enum AuditActionEnum {
     PRODUCT_STOCK_OUT("PRODUCT_STOCK_OUT", "库存出库", "库存管理"),
     PRODUCT_STOCK_ADJUST("PRODUCT_STOCK_ADJUST", "库存调整", "商品管理"),
     PRODUCT_STATUS_CHANGE("PRODUCT_STATUS_CHANGE", "商品状态变更", "商品管理"),
+    PRODUCT_PROMOTION_CREATE("PRODUCT_PROMOTION_CREATE", "创建促销", "促销政策"),
+    PRODUCT_PROMOTION_UPDATE("PRODUCT_PROMOTION_UPDATE", "编辑促销", "促销政策"),
+    PRODUCT_PROMOTION_STATUS_CHANGE("PRODUCT_PROMOTION_STATUS_CHANGE", "促销状态变更", "促销政策"),
+    PRODUCT_PROMOTION_DELETE("PRODUCT_PROMOTION_DELETE", "删除促销草稿", "促销政策"),
+    PRODUCT_PROMOTION_USE("PRODUCT_PROMOTION_USE", "促销引用核销", "促销政策"),
 
     DICT_TYPE_SAVE("DICT_TYPE_SAVE", "保存字典类型", "字典管理"),
     DICT_TYPE_DELETE("DICT_TYPE_DELETE", "删除字典类型", "字典管理"),
     DICT_VALUE_SAVE("DICT_VALUE_SAVE", "保存字典值", "字典管理"),
     DICT_VALUE_DELETE("DICT_VALUE_DELETE", "删除字典值", "字典管理"),
+
+    AUDIT_LOGIN_EXPORT("AUDIT_LOGIN_EXPORT", "导出登录记录", "审计日志"),
+    AUDIT_OPERATION_EXPORT("AUDIT_OPERATION_EXPORT", "导出操作记录", "审计日志"),
 
     EXPORT_ALL_CUSTOMER("EXPORT_ALL_CUSTOMER", "导出全部客户", "客户管理");
 

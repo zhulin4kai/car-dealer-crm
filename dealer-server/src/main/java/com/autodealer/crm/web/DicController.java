@@ -52,6 +52,8 @@ public class DicController {
         TDicType dicType = new TDicType();
         dicType.setTypeCode(req.getTypeCode());
         dicType.setTypeName(req.getTypeName());
+        dicType.setApplicableModule(req.getApplicableModule());
+        dicType.setEnabled(req.getEnabled());
         dicType.setRemark(req.getRemark());
         return dicService.addDicType(dicType) ? R.OK() : R.FAIL("添加字典类型失败");
     }
@@ -62,6 +64,9 @@ public class DicController {
         TDicType dicType = new TDicType();
         dicType.setTypeCode(req.getTypeCode());
         dicType.setTypeName(req.getTypeName());
+        dicType.setApplicableModule(req.getApplicableModule());
+        dicType.setEnabled(req.getEnabled());
+        dicType.setDisableReason(req.getDisableReason());
         dicType.setRemark(req.getRemark());
         return dicService.updateDicType(id, dicType) ? R.OK() : R.FAIL("更新字典类型失败");
     }
@@ -107,6 +112,8 @@ public class DicController {
         dicValue.setTypeValue(req.getTypeValue());
         dicValue.setValueCode(req.getValueCode());
         dicValue.setOrder(req.getOrder());
+        dicValue.setApplicableModule(req.getApplicableModule());
+        dicValue.setEnabled(req.getEnabled());
         dicValue.setRemark(req.getRemark());
         return dicService.addDicValue(dicValue) ? R.OK() : R.FAIL("添加字典值失败");
     }
@@ -119,6 +126,9 @@ public class DicController {
         dicValue.setTypeValue(req.getTypeValue());
         dicValue.setValueCode(req.getValueCode());
         dicValue.setOrder(req.getOrder());
+        dicValue.setApplicableModule(req.getApplicableModule());
+        dicValue.setEnabled(req.getEnabled());
+        dicValue.setDisableReason(req.getDisableReason());
         dicValue.setRemark(req.getRemark());
         return dicService.updateDicValue(id, dicValue) ? R.OK() : R.FAIL("更新字典值失败");
     }

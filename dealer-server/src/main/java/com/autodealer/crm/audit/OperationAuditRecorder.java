@@ -10,6 +10,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * 操作审计记录器，业务模块 Service 调用审计的统一入口。
@@ -27,6 +28,7 @@ import java.util.Date;
 public class OperationAuditRecorder {
 
     private static final Logger log = LoggerFactory.getLogger(OperationAuditRecorder.class);
+    private static final int DETAIL_MAX_LENGTH = 512;
 
     private final CurrentUserProvider currentUserProvider;
     private final TOperationLogMapper tOperationLogMapper;
@@ -101,11 +103,24 @@ public class OperationAuditRecorder {
         logEntry.setUserName(userName);
         logEntry.setActionCode(action.getActionCode());
         logEntry.setModuleName(action.getModuleName());
+        logEntry.setObjectType(resolveObjectType(action));
         logEntry.setResourceId(resourceId);
-        logEntry.setDetail(buildDetail(result, summary));
+        logEntry.setResult(normalizeResult(result));
+        logEntry.setDetail(buildDetail(logEntry.getResult(), summary));
         logEntry.setIp(extractClientIp());
+        logEntry.setRequestId(resolveRequestId());
         logEntry.setCreateTime(new Date());
         return logEntry;
+    }
+
+    private String resolveObjectType(AuditActionEnum action) {
+        String actionCode = action.getActionCode();
+        int index = actionCode.indexOf('_');
+        return index > 0 ? actionCode.substring(0, index) : actionCode;
+    }
+
+    private String normalizeResult(String result) {
+        return result == null || result.isBlank() ? "SUCCESS" : result;
     }
 
     private String buildDetail(String result, String summary) {
@@ -115,7 +130,8 @@ public class OperationAuditRecorder {
             sb.append(",\"summary\":").append(summary);
         }
         sb.append("}");
-        return sb.toString();
+        String detail = sb.toString();
+        return detail.length() <= DETAIL_MAX_LENGTH ? detail : detail.substring(0, DETAIL_MAX_LENGTH);
     }
 
     private String escapeJson(String value) {
@@ -140,5 +156,21 @@ public class OperationAuditRecorder {
             log.debug("获取请求 IP 失败", e);
         }
         return "unknown";
+    }
+
+    private String resolveRequestId() {
+        try {
+            ServletRequestAttributes attributes =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                String requestId = attributes.getRequest().getHeader("X-Request-Id");
+                if (requestId != null && !requestId.isBlank()) {
+                    return requestId.length() <= 64 ? requestId : requestId.substring(0, 64);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("获取请求标识失败", e);
+        }
+        return UUID.randomUUID().toString();
     }
 }

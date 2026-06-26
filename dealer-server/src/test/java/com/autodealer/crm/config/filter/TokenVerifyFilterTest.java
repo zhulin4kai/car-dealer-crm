@@ -1,6 +1,7 @@
 package com.autodealer.crm.config.filter;
 
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
@@ -99,7 +100,7 @@ class TokenVerifyFilterTest {
     @Test
     void mismatchedRedisTokenShouldBeRejected() throws Exception {
         try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("other-token");
+            when(redisManager.get(RedisKeys.userLogin(1))).thenReturn("other-token");
             invokeProtectedPath();
             assertEquals(401, response.getStatus());
             assertTrue(response.getContentAsString().contains("513"));
@@ -111,7 +112,7 @@ class TokenVerifyFilterTest {
     void validTokenShouldSetAuthenticationWithoutRefreshingRedis() throws Exception {
         try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
             TUser user = usableUser();
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid-token");
+            when(redisManager.get(RedisKeys.userLogin(1))).thenReturn("valid-token");
             when(userService.getLoginUserById(1)).thenReturn(user);
 
             invokeProtectedPath();
@@ -129,13 +130,13 @@ class TokenVerifyFilterTest {
         try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
             TUser user = usableUser();
             user.setAccountEnabled(0);
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid-token");
+            when(redisManager.get(RedisKeys.userLogin(1))).thenReturn("valid-token");
             when(userService.getLoginUserById(1)).thenReturn(user);
-            when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenReturn(true);
+            when(redisManager.delete(RedisKeys.userLogin(1))).thenReturn(true);
 
             invokeProtectedPath();
 
-            verify(redisManager).delete(Constants.REDIS_JWT_KEY + 1);
+            verify(redisManager).delete(RedisKeys.userLogin(1));
             verifyNoInteractions(filterChain);
             assertNull(SecurityContextHolder.getContext().getAuthentication());
             assertEquals(401, response.getStatus());
@@ -148,13 +149,13 @@ class TokenVerifyFilterTest {
         try (MockedStatic<JWTUtils> jwt = mockJwt(1)) {
             TUser user = usableUser();
             user.setAccountEnabled(0);
-            when(redisManager.get(Constants.REDIS_JWT_KEY + 1)).thenReturn("valid-token");
+            when(redisManager.get(RedisKeys.userLogin(1))).thenReturn("valid-token");
             when(userService.getLoginUserById(1)).thenReturn(user);
-            when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenReturn(false);
+            when(redisManager.delete(RedisKeys.userLogin(1))).thenReturn(false);
 
             invokeProtectedPath();
 
-            verify(redisManager).delete(Constants.REDIS_JWT_KEY + 1);
+            verify(redisManager).delete(RedisKeys.userLogin(1));
             verifyNoInteractions(filterChain);
             assertNull(SecurityContextHolder.getContext().getAuthentication());
             assertEquals(500, response.getStatus());

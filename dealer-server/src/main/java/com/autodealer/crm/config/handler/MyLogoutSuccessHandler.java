@@ -1,6 +1,6 @@
 package com.autodealer.crm.config.handler;
 
-import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
@@ -33,7 +33,7 @@ public class MyLogoutSuccessHandler implements LogoutSuccessHandler {
         if (authentication != null && authentication.getPrincipal() instanceof TUser user) {
             boolean deleted;
             try {
-                deleted = redisManager.delete(Constants.REDIS_JWT_KEY + user.getId());
+                deleted = redisManager.delete(RedisKeys.userLogin(user.getId()));
             } catch (RuntimeException exception) {
                 writeSystemFailure(response);
                 return;

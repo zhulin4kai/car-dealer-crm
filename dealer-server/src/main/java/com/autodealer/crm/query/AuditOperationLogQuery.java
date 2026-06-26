@@ -1,16 +1,14 @@
-package com.autodealer.crm.model;
+package com.autodealer.crm.query;
 
 import lombok.Data;
-import java.io.Serializable;
+import lombok.EqualsAndHashCode;
+
 import java.util.Date;
 
-/**
- * 操作日志表
- * t_operation_log
- */
 @Data
-public class TOperationLog implements Serializable {
-    private Integer id;
+@EqualsAndHashCode(callSuper = true)
+public class AuditOperationLogQuery extends BaseQuery {
+
     private Integer userId;
     private String userName;
     private String actionCode;
@@ -18,10 +16,8 @@ public class TOperationLog implements Serializable {
     private String objectType;
     private String resourceId;
     private String result;
-    private String detail;
     private String ip;
     private String requestId;
-    private Date createTime;
-
-    private static final long serialVersionUID = 1L;
+    private Date startTime;
+    private Date endTime;
 }

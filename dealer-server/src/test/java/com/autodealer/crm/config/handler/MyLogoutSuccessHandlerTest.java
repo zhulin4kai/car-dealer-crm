@@ -1,6 +1,6 @@
 package com.autodealer.crm.config.handler;
 
-import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
@@ -41,11 +41,11 @@ class MyLogoutSuccessHandlerTest {
 
         Authentication authentication = mock(Authentication.class);
         when(authentication.getPrincipal()).thenReturn(user);
-        when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenReturn(true);
+        when(redisManager.delete(RedisKeys.userLogin(1))).thenReturn(true);
 
         logoutSuccessHandler.onLogoutSuccess(request, response, authentication);
 
-        verify(redisManager).delete(Constants.REDIS_JWT_KEY + 1);
+        verify(redisManager).delete(RedisKeys.userLogin(1));
     }
 
     @Test
@@ -58,7 +58,7 @@ class MyLogoutSuccessHandlerTest {
 
         Authentication authentication = mock(Authentication.class);
         when(authentication.getPrincipal()).thenReturn(user);
-        when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenReturn(true);
+        when(redisManager.delete(RedisKeys.userLogin(1))).thenReturn(true);
 
         logoutSuccessHandler.onLogoutSuccess(request, response, authentication);
 
@@ -78,7 +78,7 @@ class MyLogoutSuccessHandlerTest {
 
         Authentication authentication = mock(Authentication.class);
         when(authentication.getPrincipal()).thenReturn(user);
-        when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenReturn(true);
+        when(redisManager.delete(RedisKeys.userLogin(1))).thenReturn(true);
 
         logoutSuccessHandler.onLogoutSuccess(request, response, authentication);
 
@@ -95,7 +95,7 @@ class MyLogoutSuccessHandlerTest {
 
         Authentication authentication = mock(Authentication.class);
         when(authentication.getPrincipal()).thenReturn(user);
-        when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenReturn(false);
+        when(redisManager.delete(RedisKeys.userLogin(1))).thenReturn(false);
 
         logoutSuccessHandler.onLogoutSuccess(request, response, authentication);
 
@@ -115,7 +115,7 @@ class MyLogoutSuccessHandlerTest {
 
         Authentication authentication = mock(Authentication.class);
         when(authentication.getPrincipal()).thenReturn(user);
-        when(redisManager.delete(Constants.REDIS_JWT_KEY + 1)).thenThrow(new IllegalStateException("redis unavailable"));
+        when(redisManager.delete(RedisKeys.userLogin(1))).thenThrow(new IllegalStateException("redis unavailable"));
 
         logoutSuccessHandler.onLogoutSuccess(request, response, authentication);
 

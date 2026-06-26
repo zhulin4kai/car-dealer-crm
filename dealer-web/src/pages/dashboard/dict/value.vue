@@ -68,7 +68,7 @@
             <Skeleton class="h-8 w-full" v-for="i in 5" :key="i" />
           </div>
         </template>
-        <Table v-else class="min-w-[1080px]">
+        <Table v-else class="min-w-[1280px]">
           <TableHeader class="bg-[var(--crm-bg-muted)]">
             <TableRow>
               <TableHead class="w-[55px]">
@@ -119,6 +119,9 @@
                 @sort="toggleSort"
                 >排序</TableHead
               >
+              <TableHead class="w-[110px]">状态</TableHead>
+              <TableHead class="w-[100px]">内置</TableHead>
+              <TableHead class="w-[120px]">适用模块</TableHead>
               <TableHead
                 sortable
                 sort-key="remark"
@@ -132,7 +135,7 @@
           </TableHeader>
           <TableBody>
             <TableRow v-if="displayTableData.length === 0">
-              <TableCell colspan="8" class="h-32 text-center text-[var(--crm-text-tertiary)]"
+              <TableCell colspan="11" class="h-32 text-center text-[var(--crm-text-tertiary)]"
                 >暂无字典值数据</TableCell
               >
             </TableRow>
@@ -160,6 +163,19 @@
               <TableCell class="text-[var(--crm-text-secondary)]">{{
                 row.order ?? '--'
               }}</TableCell>
+              <TableCell>
+                <StatusBadge
+                  :label="isEnabled(row.enabled) ? '启用' : '停用'"
+                  :tone="isEnabled(row.enabled) ? 'success' : 'muted'"
+                />
+              </TableCell>
+              <TableCell>
+                <StatusBadge
+                  :label="row.builtIn ? '内置' : '自定义'"
+                  :tone="row.builtIn ? 'warning' : 'info'"
+                />
+              </TableCell>
+              <TableCell>{{ row.applicableModule || '--' }}</TableCell>
               <TableCell class="max-w-[260px] truncate">{{ row.remark || '--' }}</TableCell>
               <TableCell>
                 <div class="flex items-center gap-1">
@@ -174,6 +190,7 @@
                     v-has-permission="PERMISSIONS.dict.value.delete"
                     label="删除"
                     danger
+                    :disabled="Boolean(row.builtIn)"
                     @click="handleDelete(row)"
                   >
                     <Trash2 class="h-4 w-4" />
@@ -203,14 +220,17 @@
         <form class="space-y-4" @submit.prevent="onFormSubmit">
           <div class="space-y-2">
             <Label>字典类型</Label>
-            <Select v-model="typeCode">
+            <Select v-model="typeCode" :disabled="isEdit">
               <SelectTrigger>
                 <SelectValue placeholder="请选择字典类型" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in dictTypes" :key="item.typeCode" :value="item.typeCode">{{
-                  item.typeName
-                }}</SelectItem>
+                <SelectItem
+                  v-for="item in selectableDictTypes"
+                  :key="item.typeCode"
+                  :value="item.typeCode"
+                  >{{ item.typeName }}</SelectItem
+                >
               </SelectContent>
             </Select>
             <p v-if="errors.typeCode" class="text-sm text-destructive">{{ errors.typeCode }}</p>
@@ -222,7 +242,7 @@
           </div>
           <div class="space-y-2">
             <Label>业务编码</Label>
-            <Input v-model="valueCode" placeholder="例如：wechat" />
+            <Input v-model="valueCode" placeholder="例如：wechat" :disabled="isEdit" />
             <p v-if="errors.valueCode" class="text-sm text-destructive">{{ errors.valueCode }}</p>
           </div>
           <div class="space-y-2">
@@ -239,6 +259,24 @@
           <div class="space-y-2">
             <Label>备注</Label>
             <Textarea v-model="remark" placeholder="请输入备注" :rows="3" />
+          </div>
+          <div class="space-y-2">
+            <Label>适用模块</Label>
+            <Input v-model="applicableModule" placeholder="例如：clue、customer" />
+          </div>
+          <div class="flex items-center justify-between rounded-md border p-3">
+            <div>
+              <Label>启用状态</Label>
+              <p class="text-xs text-[var(--crm-text-tertiary)]">停用后不再用于新业务选择</p>
+            </div>
+            <Switch v-model:checked="enabled" />
+          </div>
+          <div v-if="enabled === false" class="space-y-2">
+            <Label>停用原因</Label>
+            <Textarea v-model="disableReason" placeholder="请输入停用原因" :rows="2" />
+            <p v-if="errors.disableReason" class="text-sm text-destructive">
+              {{ errors.disableReason }}
+            </p>
           </div>
         </form>
         <DialogFooter>
@@ -268,7 +306,9 @@ import {
   batchDeleteDictValues,
   getDictTypeList,
 } from '@/modules/dict/api/dict-api'
-import type { DictQuery, DictValue, DictType } from '@/modules/dict/model/dict.types'
+import type { DictQuery, DictValue, DictType, DictValueForm } from '@/modules/dict/model/dict.types'
+import { ApiError } from '@/shared/api/api-error'
+import { API_ERROR_CODE } from '@/shared/api/error-codes'
 import type { PageResult } from '@/shared/api/api-types'
 import { useLatestRequest } from '@/shared/composables/use-latest-request'
 import type { EntityId } from '@/shared/types/id'
@@ -308,8 +348,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
+import StatusBadge from '@/shared/ui/StatusBadge.vue'
 import { useClientSort } from '@/shared/utils/table-sort'
 import { Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
 
@@ -338,6 +380,7 @@ const {
   typeValue: 'typeValue',
   valueCode: 'valueCode',
   order: 'order',
+  applicableModule: 'applicableModule',
   remark: 'remark',
 })
 
@@ -356,7 +399,18 @@ const formSchema = toTypedSchema(
       .min(1, '请输入业务编码')
       .regex(/^[a-z][a-z0-9_]*$/, '业务编码只能使用小写字母、数字和下划线'),
     order: z.number({ required_error: '请输入排序' }).min(1, '排序最小为1'),
+    applicableModule: z.string().optional(),
+    enabled: z.boolean().optional(),
+    disableReason: z.string().optional(),
     remark: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (data.enabled === false && !data.disableReason?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['disableReason'],
+        message: '停用字典值必须填写原因',
+      })
+    }
   }),
 )
 
@@ -367,6 +421,9 @@ const { handleSubmit, errors, resetForm, defineField } = useForm({
     typeValue: '',
     valueCode: '',
     order: 1,
+    applicableModule: '',
+    enabled: true,
+    disableReason: '',
     remark: '',
   },
 })
@@ -374,7 +431,14 @@ const [typeCode] = defineField('typeCode')
 const [typeValue] = defineField('typeValue')
 const [valueCode] = defineField('valueCode')
 const [order] = defineField('order')
+const [applicableModule] = defineField('applicableModule')
+const [enabled] = defineField('enabled')
+const [disableReason] = defineField('disableReason')
 const [remark] = defineField('remark')
+
+const selectableDictTypes = computed(() =>
+  isEdit.value ? dictTypes.value : dictTypes.value.filter((item) => isEnabled(item.enabled)),
+)
 
 // 全选相关
 const allSelected = computed(
@@ -468,6 +532,9 @@ const handleAdd = () => {
       typeValue: '',
       valueCode: '',
       order: 1,
+      applicableModule: '',
+      enabled: true,
+      disableReason: '',
       remark: '',
     },
   })
@@ -475,7 +542,7 @@ const handleAdd = () => {
 }
 
 // 编辑
-const handleEdit = (row) => {
+const handleEdit = (row: DictValue) => {
   isEdit.value = true
   editingValueId.value = row.id ?? null
   resetForm({
@@ -484,6 +551,9 @@ const handleEdit = (row) => {
       typeValue: row.typeValue ?? '',
       valueCode: row.valueCode ?? '',
       order: Number(row.order ?? 1),
+      applicableModule: row.applicableModule ?? '',
+      enabled: isEnabled(row.enabled),
+      disableReason: row.disableReason ?? '',
       remark: row.remark ?? '',
     },
   })
@@ -502,8 +572,8 @@ const handleDelete = async (row: DictValue) => {
     await deleteDictValue(row.id!)
     messageTip('删除成功', 'success')
     await loadData()
-  } catch {
-    messageTip('删除失败', 'error')
+  } catch (error) {
+    messageTip(resolveDictMutationError(error, '删除失败'), 'error')
   }
 }
 
@@ -522,8 +592,8 @@ const handleBatchDelete = async () => {
     await batchDeleteDictValues(selectedIds.value)
     messageTip('批量删除成功', 'success')
     await loadData()
-  } catch {
-    messageTip('批量删除失败', 'error')
+  } catch (error) {
+    messageTip(resolveDictMutationError(error, '批量删除失败'), 'error')
   }
 }
 
@@ -531,12 +601,15 @@ const doSubmit = async (formData: Record<string, unknown>) => {
   if (submitting.value) return
   submitting.value = true
   try {
-    const requestData = {
-      typeCode: formData.typeCode,
-      typeValue: formData.typeValue,
-      valueCode: formData.valueCode,
-      order: formData.order,
-      remark: formData.remark,
+    const requestData: DictValueForm = {
+      typeCode: String(formData.typeCode ?? ''),
+      typeValue: String(formData.typeValue ?? ''),
+      valueCode: String(formData.valueCode ?? ''),
+      order: Number(formData.order ?? 1),
+      applicableModule: optionalString(formData.applicableModule),
+      enabled: formData.enabled !== false,
+      disableReason: optionalString(formData.disableReason),
+      remark: optionalString(formData.remark),
     }
     if (isEdit.value) {
       if (editingValueId.value === null) {
@@ -555,8 +628,8 @@ const doSubmit = async (formData: Record<string, unknown>) => {
     } catch {
       messageTip('操作已成功，但列表刷新失败', 'warning')
     }
-  } catch {
-    messageTip(isEdit.value ? '更新失败' : '创建失败', 'error')
+  } catch (error) {
+    messageTip(resolveDictMutationError(error, isEdit.value ? '更新失败' : '创建失败'), 'error')
   } finally {
     submitting.value = false
   }
@@ -571,6 +644,22 @@ function handleCurrentChange(val: number) {
 
 function startIndex(index: number) {
   return (currentPage.value - 1) * pageSize.value + index + 1
+}
+
+function isEnabled(value: unknown) {
+  return value === true || value === 1 || value === undefined || value === null
+}
+
+function optionalString(value: unknown) {
+  const text = String(value ?? '').trim()
+  return text || undefined
+}
+
+function resolveDictMutationError(error: unknown, fallback: string) {
+  if (error instanceof ApiError && error.code === API_ERROR_CODE.RESOURCE_IN_USE) {
+    return '字典已被业务引用或属于内置项，不能执行该操作'
+  }
+  return fallback
 }
 
 onMounted(() => {

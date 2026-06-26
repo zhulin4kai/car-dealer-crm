@@ -6,8 +6,11 @@ import com.autodealer.crm.model.TDicType;
 import com.autodealer.crm.model.TDicValue;
 import com.autodealer.crm.query.DicQuery;
 import com.autodealer.crm.audit.OperationAuditRecorder;
+import com.autodealer.crm.exception.BusinessException;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.DicServiceImpl;
 import com.github.pagehelper.PageInfo;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -36,6 +39,11 @@ class DicServiceImplTest {
 
     @Mock
     private OperationAuditRecorder auditRecorder;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(redisManager.deletePattern(anyString())).thenReturn(true);
+    }
 
     @Test
     void testGetDicTypes() {
@@ -170,7 +178,6 @@ class DicServiceImplTest {
         verify(dicMapper).insertDicType(dicType);
         verify(redisManager).deletePattern("cdrm:dict:type:*");
         verify(redisManager).deletePattern("cdrm:dict:value:*");
-        verify(redisManager).deletePattern("cdrm:dict:list:*");
     }
 
     @Test
@@ -225,11 +232,11 @@ class DicServiceImplTest {
     void testUpdateDicType() {
         TDicType oldType = new TDicType();
         oldType.setId(1);
-        oldType.setTypeCode("old_code");
+        oldType.setTypeCode("industry");
         oldType.setTypeName("Old Name");
 
         TDicType newType = new TDicType();
-        newType.setTypeCode("new_code");
+        newType.setTypeCode("industry");
         newType.setTypeName("New Name");
 
         when(redisManager.get("cdrm:dict:type:1")).thenReturn(oldType);
@@ -240,6 +247,27 @@ class DicServiceImplTest {
         assertTrue(result);
         verify(dicMapper).updateDicType(1, newType);
         verify(redisManager, atLeast(1)).deletePattern("cdrm:dict:type:*");
+    }
+
+    @Test
+    void updateDicType_shouldRejectStableCodeChange() {
+        TDicType oldType = new TDicType();
+        oldType.setId(1);
+        oldType.setTypeCode("industry");
+        oldType.setTypeName("Industry");
+
+        TDicType newType = new TDicType();
+        newType.setTypeCode("changed_industry");
+        newType.setTypeName("Industry");
+
+        when(redisManager.get("cdrm:dict:type:1")).thenReturn(oldType);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+            () -> dicService.updateDicType(1, newType));
+
+        assertEquals(CodeEnum.PARAM_ERROR, exception.getCodeEnum());
+        verify(dicMapper, never()).updateDicType(anyInt(), any());
+        verify(redisManager, never()).deletePattern(anyString());
     }
 
     @Test
@@ -262,10 +290,12 @@ class DicServiceImplTest {
         oldValue.setId(1);
         oldValue.setTypeCode("industry");
         oldValue.setTypeValue("IT");
+        oldValue.setValueCode("it");
 
         TDicValue newValue = new TDicValue();
         newValue.setTypeCode("industry");
         newValue.setTypeValue("IT Updated");
+        newValue.setValueCode("it");
 
         when(redisManager.get("cdrm:dict:value:1")).thenReturn(oldValue);
         when(dicMapper.updateDicValue(any(TDicValue.class))).thenReturn(1);
@@ -274,6 +304,51 @@ class DicServiceImplTest {
 
         assertTrue(result);
         verify(dicMapper).updateDicValue(argThat(v -> v.getId().equals(1)));
+    }
+
+    @Test
+    void updateDicValue_shouldRejectStableCodeChange() {
+        TDicValue oldValue = new TDicValue();
+        oldValue.setId(1);
+        oldValue.setTypeCode("industry");
+        oldValue.setTypeValue("IT");
+        oldValue.setValueCode("it");
+
+        TDicValue newValue = new TDicValue();
+        newValue.setTypeCode("industry");
+        newValue.setTypeValue("IT");
+        newValue.setValueCode("changed_it");
+
+        when(redisManager.get("cdrm:dict:value:1")).thenReturn(oldValue);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+            () -> dicService.updateDicValue(1, newValue));
+
+        assertEquals(CodeEnum.PARAM_ERROR, exception.getCodeEnum());
+        verify(dicMapper, never()).updateDicValue(any());
+        verify(redisManager, never()).deletePattern(anyString());
+    }
+
+    @Test
+    void updateDicValue_shouldRejectTypeCodeChange() {
+        TDicValue oldValue = new TDicValue();
+        oldValue.setId(1);
+        oldValue.setTypeCode("source");
+        oldValue.setTypeValue("网络广告");
+        oldValue.setValueCode("online_ad");
+
+        TDicValue newValue = new TDicValue();
+        newValue.setTypeCode("changed_source");
+        newValue.setTypeValue("网络广告");
+        newValue.setValueCode("online_ad");
+
+        when(redisManager.get("cdrm:dict:value:1")).thenReturn(oldValue);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+            () -> dicService.updateDicValue(1, newValue));
+
+        assertEquals(CodeEnum.PARAM_ERROR, exception.getCodeEnum());
+        verify(dicMapper, never()).updateDicValue(any());
     }
 
     @Test
@@ -292,7 +367,11 @@ class DicServiceImplTest {
 
     @Test
     void testDeleteDicType() {
-        when(dicMapper.selectTypeCodeById(1)).thenReturn("industry");
+        TDicType dicType = new TDicType();
+        dicType.setId(1);
+        dicType.setTypeCode("industry");
+
+        when(dicMapper.selectDicTypeById(1)).thenReturn(dicType);
         when(dicMapper.selectDicValueIdsByTypeCode("industry")).thenReturn(Arrays.asList(10, 20));
         when(dicMapper.selectRemarkCountByDicValueIds(Arrays.asList(10, 20))).thenReturn(0); // 没有业务引用
         when(dicMapper.deleteDicValuesByIds(Arrays.asList(10, 20))).thenReturn(2);
@@ -301,19 +380,22 @@ class DicServiceImplTest {
         boolean result = dicService.deleteDicType(1);
 
         assertTrue(result);
-        verify(dicMapper).selectTypeCodeById(1);
+        verify(dicMapper).selectDicTypeById(1);
         verify(dicMapper).selectDicValueIdsByTypeCode("industry");
         verify(dicMapper).selectRemarkCountByDicValueIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicValuesByIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicType(1);
         verify(redisManager).deletePattern("cdrm:dict:type:*");
         verify(redisManager).deletePattern("cdrm:dict:value:*");
-        verify(redisManager).deletePattern("cdrm:dict:list:*");
     }
 
     @Test
     void testDeleteDicType_hasBusinessReferences_shouldThrowException() {
-        when(dicMapper.selectTypeCodeById(1)).thenReturn("industry");
+        TDicType dicType = new TDicType();
+        dicType.setId(1);
+        dicType.setTypeCode("industry");
+
+        when(dicMapper.selectDicTypeById(1)).thenReturn(dicType);
         when(dicMapper.selectDicValueIdsByTypeCode("industry")).thenReturn(Arrays.asList(10, 20));
         when(dicMapper.selectRemarkCountByDicValueIds(Arrays.asList(10, 20))).thenReturn(5); // 有5条业务引用
 
@@ -321,7 +403,7 @@ class DicServiceImplTest {
                 () -> dicService.deleteDicType(1));
 
         assertEquals("该字典类型下有业务数据引用，无法删除", exception.getMessage());
-        verify(dicMapper).selectTypeCodeById(1);
+        verify(dicMapper).selectDicTypeById(1);
         verify(dicMapper).selectDicValueIdsByTypeCode("industry");
         verify(dicMapper).selectRemarkCountByDicValueIds(Arrays.asList(10, 20));
         verify(dicMapper, never()).deleteDicValuesByIds(anyList());
@@ -330,7 +412,7 @@ class DicServiceImplTest {
 
     @Test
     void testDeleteDicTypeNotFound() {
-        when(dicMapper.selectTypeCodeById(999)).thenReturn(null);
+        when(dicMapper.selectDicTypeById(999)).thenReturn(null);
 
         boolean result = dicService.deleteDicType(999);
 
@@ -340,7 +422,11 @@ class DicServiceImplTest {
 
     @Test
     void testDeleteDicTypeNoValues() {
-        when(dicMapper.selectTypeCodeById(1)).thenReturn("empty_type");
+        TDicType dicType = new TDicType();
+        dicType.setId(1);
+        dicType.setTypeCode("empty_type");
+
+        when(dicMapper.selectDicTypeById(1)).thenReturn(dicType);
         when(dicMapper.selectDicValueIdsByTypeCode("empty_type")).thenReturn(Collections.emptyList());
         when(dicMapper.deleteDicType(1)).thenReturn(1);
 
@@ -358,17 +444,35 @@ class DicServiceImplTest {
         dicValue.setTypeCode("industry");
 
         when(dicMapper.selectDicValueById(1)).thenReturn(dicValue);
-        when(dicMapper.deleteRemarksByDicValueId(1)).thenReturn(1);
+        when(dicMapper.selectRemarkCountByDicValueIds(Collections.singletonList(1))).thenReturn(0);
         when(dicMapper.deleteDicValue(1)).thenReturn(1);
 
         boolean result = dicService.deleteDicValue(1);
 
         assertTrue(result);
-        verify(dicMapper).deleteRemarksByDicValueId(1);
+        verify(dicMapper, never()).deleteRemarksByDicValueId(anyInt());
         verify(dicMapper).deleteDicValue(1);
         verify(redisManager).deletePattern("cdrm:dict:type:*");
         verify(redisManager).deletePattern("cdrm:dict:value:*");
-        verify(redisManager).deletePattern("cdrm:dict:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:values:type:*");
+    }
+
+    @Test
+    void deleteDicValue_withBusinessReference_shouldThrowAndKeepHistory() {
+        TDicValue dicValue = new TDicValue();
+        dicValue.setId(1);
+        dicValue.setTypeCode("noteWay");
+
+        when(dicMapper.selectDicValueById(1)).thenReturn(dicValue);
+        when(dicMapper.selectRemarkCountByDicValueIds(Collections.singletonList(1))).thenReturn(1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+            () -> dicService.deleteDicValue(1));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(dicMapper, never()).deleteRemarksByDicValueId(anyInt());
+        verify(dicMapper, never()).deleteDicValue(anyInt());
+        verify(redisManager, never()).deletePattern(anyString());
     }
 
     @Test
@@ -387,7 +491,7 @@ class DicServiceImplTest {
 
         verify(redisManager).deletePattern("cdrm:dict:type:*");
         verify(redisManager).deletePattern("cdrm:dict:value:*");
-        verify(redisManager).deletePattern("cdrm:dict:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:values:type:*");
     }
 
     @Test
@@ -461,7 +565,7 @@ class DicServiceImplTest {
         List<Integer> ids = Arrays.asList(1, 2);
         when(dicMapper.selectTypeCodesByIds(ids)).thenReturn(Arrays.asList("type_a", "type_b"));
         when(dicMapper.selectDicValueIdsByTypeCodes(Arrays.asList("type_a", "type_b"))).thenReturn(Arrays.asList(10, 20));
-        when(dicMapper.deleteRemarksByDicValueIds(anyList())).thenReturn(1);
+        when(dicMapper.selectRemarkCountByDicValueIds(Arrays.asList(10, 20))).thenReturn(0);
         when(dicMapper.deleteDicValuesByIds(anyList())).thenReturn(1);
         when(dicMapper.deleteDicTypesByIds(ids)).thenReturn(2);
 
@@ -470,12 +574,12 @@ class DicServiceImplTest {
         assertTrue(result);
         verify(dicMapper).selectTypeCodesByIds(ids);
         verify(dicMapper).selectDicValueIdsByTypeCodes(Arrays.asList("type_a", "type_b"));
-        verify(dicMapper).deleteRemarksByDicValueIds(Arrays.asList(10, 20));
+        verify(dicMapper, never()).deleteRemarksByDicValueIds(anyList());
         verify(dicMapper).deleteDicValuesByIds(Arrays.asList(10, 20));
         verify(dicMapper).deleteDicTypesByIds(ids);
         verify(redisManager).deletePattern("cdrm:dict:type:*");
         verify(redisManager).deletePattern("cdrm:dict:value:*");
-        verify(redisManager).deletePattern("cdrm:dict:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:values:type:*");
     }
 
     @Test
@@ -497,17 +601,31 @@ class DicServiceImplTest {
     @Test
     void testDeleteDicValuesByIds() {
         List<Integer> ids = Arrays.asList(1, 2, 3);
-        when(dicMapper.deleteRemarksByDicValueIds(ids)).thenReturn(3);
+        when(dicMapper.selectRemarkCountByDicValueIds(ids)).thenReturn(0);
         when(dicMapper.deleteDicValuesByIds(ids)).thenReturn(3);
 
         boolean result = dicService.deleteDicValuesByIds(ids);
 
         assertTrue(result);
-        verify(dicMapper).deleteRemarksByDicValueIds(ids);
+        verify(dicMapper, never()).deleteRemarksByDicValueIds(anyList());
         verify(dicMapper).deleteDicValuesByIds(ids);
         verify(redisManager).deletePattern("cdrm:dict:type:*");
         verify(redisManager).deletePattern("cdrm:dict:value:*");
-        verify(redisManager).deletePattern("cdrm:dict:list:*");
+        verify(redisManager).deletePattern("cdrm:dict:values:type:*");
+    }
+
+    @Test
+    void deleteDicValuesByIds_withBusinessReference_shouldThrowAndKeepHistory() {
+        List<Integer> ids = Arrays.asList(1, 2, 3);
+        when(dicMapper.selectRemarkCountByDicValueIds(ids)).thenReturn(2);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+            () -> dicService.deleteDicValuesByIds(ids));
+
+        assertEquals(CodeEnum.RESOURCE_IN_USE, exception.getCodeEnum());
+        verify(dicMapper, never()).deleteRemarksByDicValueIds(anyList());
+        verify(dicMapper, never()).deleteDicValuesByIds(anyList());
+        verify(redisManager, never()).deletePattern(anyString());
     }
 
     @Test

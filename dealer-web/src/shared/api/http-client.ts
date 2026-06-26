@@ -146,18 +146,22 @@ export const httpClient = {
 }
 
 // 仅保留为旧调用方兼容入口；业务页面应通过各领域 module API 访问后端。
+/** @deprecated 新业务代码请使用 httpClient 或领域 module API。 */
 export function doGet<T>(url: string, params?: unknown): Promise<T> {
   return httpClient.get<T>(url, { params })
 }
 
+/** @deprecated 新业务代码请使用 httpClient 或领域 module API。 */
 export function doPost<T>(url: string, data?: unknown): Promise<T> {
   return httpClient.post<T>(url, data)
 }
 
+/** @deprecated 新业务代码请使用 httpClient 或领域 module API。 */
 export function doPut<T>(url: string, data?: unknown): Promise<T> {
   return httpClient.put<T>(url, data)
 }
 
+/** @deprecated 新业务代码请使用 httpClient 或领域 module API。 */
 export function doDelete<T>(url: string, data?: unknown): Promise<T> {
   return httpClient.delete<T>(url, data)
 }

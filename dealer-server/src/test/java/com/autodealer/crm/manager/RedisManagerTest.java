@@ -5,13 +5,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -32,9 +30,6 @@ class RedisManagerTest {
 
     @Mock
     private ValueOperations<String, Object> valueOperations;
-
-    @Mock
-    private ListOperations<String, Object> listOperations;
 
     @Test
     void testGet() {
@@ -81,23 +76,4 @@ class RedisManagerTest {
         verify(redisTemplate, never()).delete(anyCollection());
     }
 
-    @Test
-    void testGetList() {
-        when(redisTemplate.opsForList()).thenReturn(listOperations);
-        when(listOperations.range("testKey", 0, -1)).thenReturn(Arrays.asList("item1", "item2"));
-
-        Object result = redisManager.getList("testKey");
-
-        assertNotNull(result);
-    }
-
-    @Test
-    void testSetList() {
-        when(redisTemplate.opsForList()).thenReturn(listOperations);
-        Collection<String> data = Arrays.asList("item1", "item2");
-
-        redisManager.setList("testKey", data);
-
-        verify(listOperations).leftPushAll(eq("testKey"), any(Object[].class));
-    }
 }

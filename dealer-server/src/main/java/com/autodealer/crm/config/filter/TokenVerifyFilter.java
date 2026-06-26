@@ -1,7 +1,7 @@
 package com.autodealer.crm.config.filter;
 
 import com.autodealer.crm.config.security.SecurityPaths;
-import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
@@ -61,7 +61,7 @@ public class TokenVerifyFilter extends OncePerRequestFilter {
         }
 
         Integer userId = JWTUtils.parseUserIdFromJWT(token);
-        String redisToken = redisManager.get(Constants.REDIS_JWT_KEY + userId);
+        String redisToken = redisManager.get(RedisKeys.userLogin(userId));
         if (!StringUtils.hasText(redisToken)) {
             writeAuthFailure(response, CodeEnum.TOKEN_IS_EXPIRED);
             return;
@@ -101,7 +101,7 @@ public class TokenVerifyFilter extends OncePerRequestFilter {
 
     private boolean revokeSession(HttpServletResponse response, Integer userId) {
         try {
-            if (redisManager.delete(Constants.REDIS_JWT_KEY + userId)) {
+            if (redisManager.delete(RedisKeys.userLogin(userId))) {
                 return true;
             }
         } catch (RuntimeException ignored) {

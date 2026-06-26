@@ -4,6 +4,12 @@ export interface DictType {
   id?: EntityId
   typeCode?: string
   typeName?: string
+  applicableModule?: string
+  enabled?: boolean
+  builtIn?: boolean
+  disableReason?: string
+  disabledBy?: number
+  disabledTime?: string
   remark?: string
 }
 
@@ -13,6 +19,12 @@ export interface DictValue {
   typeValue?: string
   valueCode?: string
   order?: number
+  applicableModule?: string
+  enabled?: boolean
+  builtIn?: boolean
+  disableReason?: string
+  disabledBy?: number
+  disabledTime?: string
   remark?: string
 }
 
@@ -22,11 +34,17 @@ export interface DictQuery {
   typeCode?: string
   typeName?: string
   typeValue?: string
+  valueCode?: string
+  applicableModule?: string
+  enabled?: boolean
 }
 
 export interface DictTypeForm {
   typeCode: string
   typeName: string
+  applicableModule?: string
+  enabled?: boolean
+  disableReason?: string
   remark?: string
 }
 
@@ -35,7 +53,8 @@ export interface DictValueForm {
   typeValue: string
   valueCode: string
   order: number
+  applicableModule?: string
+  enabled?: boolean
+  disableReason?: string
   remark?: string
 }
-
-export type DictForm = DictTypeForm | DictValueForm

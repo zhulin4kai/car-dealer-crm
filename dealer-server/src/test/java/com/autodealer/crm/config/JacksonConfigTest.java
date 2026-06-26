@@ -42,6 +42,18 @@ class JacksonConfigTest {
     }
 
     @Test
+    void localDateTimeShouldAcceptIsoOffsetDateTimeFormat() throws Exception {
+        contextRunner.run(context -> {
+            ObjectMapper objectMapper = context.getBean(ObjectMapper.class);
+            UpdateTranRequest request = objectMapper.readValue(
+                    "{\"id\":1,\"expectedDeliveryDate\":\"2026-07-12T08:30:15+08:00\"}",
+                    UpdateTranRequest.class);
+
+            assertEquals(LocalDateTime.of(2026, 7, 12, 8, 30, 15), request.getExpectedDeliveryDate());
+        });
+    }
+
+    @Test
     void localDateTimeShouldAcceptDateOnlyAsStartOfDay() throws Exception {
         contextRunner.run(context -> {
             ObjectMapper objectMapper = context.getBean(ObjectMapper.class);

@@ -1,9 +1,11 @@
 package com.autodealer.crm.config.handler;
 
+import com.autodealer.crm.audit.LoginAuditRecorder;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.util.JSONUtils;
 import com.autodealer.crm.util.ResponseUtils;
+import jakarta.annotation.Resource;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,12 +24,22 @@ import java.io.IOException;
 @Slf4j
 public class MyAuthenticationFailureHandler implements AuthenticationFailureHandler {
 
+    @Resource
+    private LoginAuditRecorder loginAuditRecorder;
+
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
+        String loginAct = request.getParameter("loginAct");
         log.warn("登录失败: loginAct={}, exception={}, reason={}",
-                sanitizeForLog(request.getParameter("loginAct")),
+                sanitizeForLog(loginAct),
                 exception.getClass().getSimpleName(),
                 exception.getMessage());
+
+        try {
+            loginAuditRecorder.recordFailure(loginAct, exception, request);
+        } catch (RuntimeException auditException) {
+            log.warn("登录失败审计写入失败 loginAct={}", sanitizeForLog(loginAct), auditException);
+        }
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         ResponseUtils.write(response, JSONUtils.toJSON(R.FAIL(CodeEnum.AUTH_LOGIN_FAILED)));

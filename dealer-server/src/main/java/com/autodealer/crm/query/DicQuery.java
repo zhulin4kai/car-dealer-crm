@@ -11,11 +11,14 @@ public class DicQuery extends BaseQuery {
     private String typeName;
     private String valueId;
     private String typeValue;
+    private String valueCode;
+    private Boolean enabled;
+    private String applicableModule;
     private String text;
     private String orderNo;
     private String remark;
-    
+
     // 分页参数
     private Integer page;
     private Integer size;
-} 
+}

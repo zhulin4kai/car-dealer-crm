@@ -80,12 +80,15 @@ class OperationAuditRecorderTest {
         assertEquals("管理员", log.getUserName());
         assertEquals("USER_CREATE", log.getActionCode());
         assertEquals("用户管理", log.getModuleName());
+        assertEquals("USER", log.getObjectType());
         assertEquals("100", log.getResourceId());
+        assertEquals("SUCCESS", log.getResult());
         assertNotNull(log.getDetail());
         assertTrue(log.getDetail().contains("SUCCESS"));
         assertTrue(log.getDetail().contains("{\"loginAct\":\"testuser\"}"));
         assertNotNull(log.getCreateTime());
         assertNotNull(log.getIp());
+        assertNotNull(log.getRequestId());
     }
 
     @Test
@@ -101,7 +104,9 @@ class OperationAuditRecorderTest {
 
         assertEquals("CLUE_IMPORT", log.getActionCode());
         assertEquals("线索管理", log.getModuleName());
+        assertEquals("CLUE", log.getObjectType());
         assertEquals("200", log.getResourceId());
+        assertEquals("SUCCESS", log.getResult());
         assertTrue(log.getDetail().contains("SUCCESS"));
     }
 
@@ -201,6 +206,7 @@ class OperationAuditRecorderTest {
         ArgumentCaptor<TOperationLog> captor = ArgumentCaptor.forClass(TOperationLog.class);
         verify(tOperationLogMapper).insert(captor.capture());
 
+        assertEquals("FAILURE", captor.getValue().getResult());
         assertTrue(captor.getValue().getDetail().contains("FAILURE"));
         assertTrue(captor.getValue().getDetail().contains("审批不通过"));
     }

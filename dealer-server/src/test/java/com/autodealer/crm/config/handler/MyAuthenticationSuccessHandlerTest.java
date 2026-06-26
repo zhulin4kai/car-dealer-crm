@@ -1,6 +1,8 @@
 package com.autodealer.crm.config.handler;
 
+import com.autodealer.crm.audit.LoginAuditRecorder;
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
@@ -34,6 +36,9 @@ class MyAuthenticationSuccessHandlerTest {
     @Mock
     private RedisManager redisManager;
 
+    @Mock
+    private LoginAuditRecorder loginAuditRecorder;
+
     @Test
     void testOnAuthenticationSuccessShouldReturnJwtToken() throws IOException, ServletException {
         try (MockedStatic<JWTUtils> jwtUtils = mockStatic(JWTUtils.class)) {
@@ -48,7 +53,7 @@ class MyAuthenticationSuccessHandlerTest {
             when(authentication.getPrincipal()).thenReturn(user);
 
             jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.DEFAULT_EXPIRE_TIME)).thenReturn("generated.jwt.token");
-            when(redisManager.set(Constants.REDIS_JWT_KEY + 1, "generated.jwt.token", Constants.DEFAULT_EXPIRE_TIME))
+            when(redisManager.set(RedisKeys.userLogin(1), "generated.jwt.token", Constants.DEFAULT_EXPIRE_TIME))
                     .thenReturn(true);
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
@@ -58,7 +63,7 @@ class MyAuthenticationSuccessHandlerTest {
             assertTrue(content.contains("generated.jwt.token"));
             assertTrue(content.contains("200"));
 
-            verify(redisManager).set(Constants.REDIS_JWT_KEY + 1, "generated.jwt.token", Constants.DEFAULT_EXPIRE_TIME);
+            verify(redisManager).set(RedisKeys.userLogin(1), "generated.jwt.token", Constants.DEFAULT_EXPIRE_TIME);
         }
     }
 
@@ -77,12 +82,12 @@ class MyAuthenticationSuccessHandlerTest {
             when(authentication.getPrincipal()).thenReturn(user);
 
             jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.EXPIRE_TIME)).thenReturn("jwt.token");
-            when(redisManager.set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.EXPIRE_TIME))
+            when(redisManager.set(RedisKeys.userLogin(1), "jwt.token", Constants.EXPIRE_TIME))
                     .thenReturn(true);
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
-            verify(redisManager).set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.EXPIRE_TIME);
+            verify(redisManager).set(RedisKeys.userLogin(1), "jwt.token", Constants.EXPIRE_TIME);
         }
     }
 
@@ -100,12 +105,12 @@ class MyAuthenticationSuccessHandlerTest {
             when(authentication.getPrincipal()).thenReturn(user);
 
             jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.DEFAULT_EXPIRE_TIME)).thenReturn("jwt.token");
-            when(redisManager.set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.DEFAULT_EXPIRE_TIME))
+            when(redisManager.set(RedisKeys.userLogin(1), "jwt.token", Constants.DEFAULT_EXPIRE_TIME))
                     .thenReturn(true);
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
 
-            verify(redisManager).set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.DEFAULT_EXPIRE_TIME);
+            verify(redisManager).set(RedisKeys.userLogin(1), "jwt.token", Constants.DEFAULT_EXPIRE_TIME);
         }
     }
 
@@ -123,7 +128,7 @@ class MyAuthenticationSuccessHandlerTest {
             when(authentication.getPrincipal()).thenReturn(user);
 
             jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.DEFAULT_EXPIRE_TIME)).thenReturn("jwt.token");
-            when(redisManager.set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.DEFAULT_EXPIRE_TIME))
+            when(redisManager.set(RedisKeys.userLogin(1), "jwt.token", Constants.DEFAULT_EXPIRE_TIME))
                     .thenReturn(true);
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
@@ -146,7 +151,7 @@ class MyAuthenticationSuccessHandlerTest {
             when(authentication.getPrincipal()).thenReturn(user);
 
             jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.DEFAULT_EXPIRE_TIME)).thenReturn("jwt.token");
-            when(redisManager.set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.DEFAULT_EXPIRE_TIME))
+            when(redisManager.set(RedisKeys.userLogin(1), "jwt.token", Constants.DEFAULT_EXPIRE_TIME))
                     .thenReturn(false);
 
             successHandler.onAuthenticationSuccess(request, response, authentication);
@@ -172,7 +177,7 @@ class MyAuthenticationSuccessHandlerTest {
             when(authentication.getPrincipal()).thenReturn(user);
 
             jwtUtils.when(() -> JWTUtils.createJWT(1, "admin", Constants.DEFAULT_EXPIRE_TIME)).thenReturn("jwt.token");
-            when(redisManager.set(Constants.REDIS_JWT_KEY + 1, "jwt.token", Constants.DEFAULT_EXPIRE_TIME))
+            when(redisManager.set(RedisKeys.userLogin(1), "jwt.token", Constants.DEFAULT_EXPIRE_TIME))
                     .thenThrow(new IllegalStateException("redis unavailable"));
 
             successHandler.onAuthenticationSuccess(request, response, authentication);

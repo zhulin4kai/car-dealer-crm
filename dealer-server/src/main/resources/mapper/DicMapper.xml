@@ -5,6 +5,12 @@
         <id column="id" property="id"/>
         <result column="type_code" property="typeCode"/>
         <result column="type_name" property="typeName"/>
+        <result column="applicable_module" property="applicableModule"/>
+        <result column="enabled" property="enabled"/>
+        <result column="built_in" property="builtIn"/>
+        <result column="disable_reason" property="disableReason"/>
+        <result column="disabled_by" property="disabledBy"/>
+        <result column="disabled_time" property="disabledTime"/>
         <result column="remark" property="remark"/>
     </resultMap>
 
@@ -14,6 +20,12 @@
         <result column="type_value" property="typeValue"/>
         <result column="value_code" property="valueCode"/>
         <result column="order" property="order"/>
+        <result column="applicable_module" property="applicableModule"/>
+        <result column="enabled" property="enabled"/>
+        <result column="built_in" property="builtIn"/>
+        <result column="disable_reason" property="disableReason"/>
+        <result column="disabled_by" property="disabledBy"/>
+        <result column="disabled_time" property="disabledTime"/>
         <result column="remark" property="remark"/>
     </resultMap>
 
@@ -22,6 +34,12 @@
             dt.id,
             dt.type_code,
             dt.type_name,
+            dt.applicable_module,
+            dt.enabled,
+            dt.built_in,
+            dt.disable_reason,
+            dt.disabled_by,
+            dt.disabled_time,
             dt.remark
         FROM t_dic_type dt
         <where>
@@ -31,8 +49,14 @@
             <if test="typeName != null and typeName != ''">
                 AND dt.type_name LIKE CONCAT('%', #{typeName}, '%')
             </if>
+            <if test="enabled != null">
+                AND dt.enabled = #{enabled}
+            </if>
+            <if test="applicableModule != null and applicableModule != ''">
+                AND dt.applicable_module = #{applicableModule}
+            </if>
         </where>
-        ORDER BY dt.type_code
+        ORDER BY dt.type_code, dt.id
     </select>
 
     <select id="selectDicValues" resultMap="DicValueMap">
@@ -42,6 +66,12 @@
             dv.type_value,
             dv.value_code,
             dv.`order`,
+            dv.applicable_module,
+            dv.enabled,
+            dv.built_in,
+            dv.disable_reason,
+            dv.disabled_by,
+            dv.disabled_time,
             dv.remark
         FROM t_dic_value dv
         LEFT JOIN t_dic_type dt ON dv.type_code = dt.type_code
@@ -52,8 +82,17 @@
             <if test="typeValue != null and typeValue != ''">
                 AND dv.type_value LIKE CONCAT('%', #{typeValue}, '%')
             </if>
+            <if test="valueCode != null and valueCode != ''">
+                AND dv.value_code LIKE CONCAT('%', #{valueCode}, '%')
+            </if>
+            <if test="enabled != null">
+                AND dv.enabled = #{enabled}
+            </if>
+            <if test="applicableModule != null and applicableModule != ''">
+                AND dv.applicable_module = #{applicableModule}
+            </if>
         </where>
-        ORDER BY dv.`order`
+        ORDER BY dv.type_code, dv.`order`, dv.id
     </select>
 
     <select id="selectDicTypeById" resultMap="DicTypeMap">
@@ -61,6 +100,12 @@
             id,
             type_code,
             type_name,
+            applicable_module,
+            enabled,
+            built_in,
+            disable_reason,
+            disabled_by,
+            disabled_time,
             remark
         FROM t_dic_type
         <where>
@@ -77,6 +122,12 @@
             type_value,
             value_code,
             `order`,
+            applicable_module,
+            enabled,
+            built_in,
+            disable_reason,
+            disabled_by,
+            disabled_time,
             remark
         FROM t_dic_value
         <where>
@@ -91,6 +142,12 @@
             id,
             type_code,
             type_name,
+            applicable_module,
+            enabled,
+            built_in,
+            disable_reason,
+            disabled_by,
+            disabled_time,
             remark
         FROM t_dic_type
         <where>
@@ -107,6 +164,12 @@
             dv.type_value,
             dv.value_code,
             dv.`order`,
+            dv.applicable_module,
+            dv.enabled,
+            dv.built_in,
+            dv.disable_reason,
+            dv.disabled_by,
+            dv.disabled_time,
             dv.remark
         FROM t_dic_value dv
         INNER JOIN t_dic_type dt ON dv.type_code = dt.type_code
@@ -114,8 +177,10 @@
             <if test="typeId != null">
                 dt.id = #{typeId}
             </if>
+            AND dv.enabled = 1
+            AND dt.enabled = 1
         </where>
-        ORDER BY dv.`order`
+        ORDER BY dv.`order`, dv.id
     </select>
 
     <insert id="insertDicType" useGeneratedKeys="true" keyProperty="id">
@@ -123,11 +188,17 @@
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="typeCode != null and typeCode != ''">type_code,</if>
             <if test="typeName != null and typeName != ''">type_name,</if>
+            <if test="applicableModule != null and applicableModule != ''">applicable_module,</if>
+            <if test="enabled != null">enabled,</if>
+            <if test="builtIn != null">built_in,</if>
             <if test="remark != null and remark != ''">remark,</if>
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
             <if test="typeCode != null and typeCode != ''">#{typeCode},</if>
             <if test="typeName != null and typeName != ''">#{typeName},</if>
+            <if test="applicableModule != null and applicableModule != ''">#{applicableModule},</if>
+            <if test="enabled != null">#{enabled},</if>
+            <if test="builtIn != null">#{builtIn},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
         </trim>
     </insert>
@@ -139,6 +210,9 @@
             <if test="typeValue != null and typeValue != ''">type_value,</if>
             <if test="valueCode != null and valueCode != ''">value_code,</if>
             <if test="order != null">`order`,</if>
+            <if test="applicableModule != null and applicableModule != ''">applicable_module,</if>
+            <if test="enabled != null">enabled,</if>
+            <if test="builtIn != null">built_in,</if>
             <if test="remark != null and remark != ''">remark,</if>
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
@@ -146,6 +220,9 @@
             <if test="typeValue != null and typeValue != ''">#{typeValue},</if>
             <if test="valueCode != null and valueCode != ''">#{valueCode},</if>
             <if test="order != null">#{order},</if>
+            <if test="applicableModule != null and applicableModule != ''">#{applicableModule},</if>
+            <if test="enabled != null">#{enabled},</if>
+            <if test="builtIn != null">#{builtIn},</if>
             <if test="remark != null and remark != ''">#{remark},</if>
         </trim>
     </insert>
@@ -153,8 +230,14 @@
     <update id="updateDicType">
         UPDATE t_dic_type
         <set>
-            <if test="dicType.typeCode != null">type_code = #{dicType.typeCode},</if>
             <if test="dicType.typeName != null">type_name = #{dicType.typeName},</if>
+            <if test="dicType.applicableModule != null">applicable_module = #{dicType.applicableModule},</if>
+            <if test="dicType.enabled != null">
+                enabled = #{dicType.enabled},
+                disable_reason = #{dicType.disableReason},
+                disabled_by = #{dicType.disabledBy},
+                disabled_time = #{dicType.disabledTime},
+            </if>
             <if test="dicType.remark != null">remark = #{dicType.remark}</if>
         </set>
         WHERE id = #{id}
@@ -163,10 +246,15 @@
     <update id="updateDicValue">
         UPDATE t_dic_value
         <set>
-            <if test="typeCode != null">type_code = #{typeCode},</if>
             <if test="typeValue != null">type_value = #{typeValue},</if>
-            <if test="valueCode != null">value_code = #{valueCode},</if>
             <if test="order != null">`order` = #{order},</if>
+            <if test="applicableModule != null">applicable_module = #{applicableModule},</if>
+            <if test="enabled != null">
+                enabled = #{enabled},
+                disable_reason = #{disableReason},
+                disabled_by = #{disabledBy},
+                disabled_time = #{disabledTime},
+            </if>
             <if test="remark != null">remark = #{remark}</if>
         </set>
         WHERE id = #{id}
@@ -245,6 +333,12 @@
             id,
             type_code,
             type_name,
+            applicable_module,
+            enabled,
+            built_in,
+            disable_reason,
+            disabled_by,
+            disabled_time,
             remark
         FROM t_dic_type
         WHERE id IN
@@ -286,12 +380,69 @@
 
     <!-- 检查字典值是否被业务数据引用 -->
     <select id="selectRemarkCountByDicValueIds" resultType="java.lang.Integer">
-        SELECT COUNT(*)
-        FROM t_tran_remark
-        WHERE note_way IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
+        SELECT
+            (SELECT COUNT(*) FROM t_tran_remark WHERE note_way IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            )
+            + (SELECT COUNT(*) FROM t_clue_remark WHERE note_way IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            )
+            + (SELECT COUNT(*) FROM t_customer_remark WHERE note_way IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            )
+            + (SELECT COUNT(*) FROM t_activity_remark WHERE note_way IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            )
+            + (SELECT COUNT(*) FROM t_clue WHERE appellation IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            OR need_loan IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            OR intention_state IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            OR state IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            OR source IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            )
+            + (SELECT COUNT(*) FROM t_customer WHERE appellation IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            OR need_loan IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            OR intention_state IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            OR source IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            OR original_clue_source IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+            )
     </select>
 
     <!-- 批量查询字典值ID（通过多个类型代码） -->

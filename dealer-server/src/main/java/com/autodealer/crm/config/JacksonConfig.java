@@ -10,26 +10,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
 
 @Configuration
 public class JacksonConfig {
 
-    private static final DateTimeFormatter API_DATE_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final List<DateTimeFormatter> LOCAL_DATE_TIME_FORMATTERS = List.of(
-            API_DATE_TIME_FORMATTER,
-            DateTimeFormatter.ISO_LOCAL_DATE_TIME
-    );
-
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonDateTimeCustomizer() {
         return builder -> {
-            builder.serializerByType(LocalDateTime.class, new LocalDateTimeSerializer(API_DATE_TIME_FORMATTER));
+            builder.serializerByType(LocalDateTime.class,
+                    new LocalDateTimeSerializer(ApiDateTimeParser.PROJECT_DATE_TIME_FORMATTER));
             builder.deserializerByType(LocalDateTime.class, new FlexibleLocalDateTimeDeserializer());
             builder.featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         };
@@ -44,20 +35,13 @@ public class JacksonConfig {
             }
 
             String trimmedValue = value.trim();
-            for (DateTimeFormatter formatter : LOCAL_DATE_TIME_FORMATTERS) {
-                try {
-                    return LocalDateTime.parse(trimmedValue, formatter);
-                } catch (DateTimeParseException ignored) {
-                    // Try the next supported API format.
-                }
-            }
             try {
-                return LocalDate.parse(trimmedValue, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
-            } catch (DateTimeParseException ignored) {
+                return ApiDateTimeParser.parseLocalDateTime(trimmedValue);
+            } catch (DateTimeParseException ex) {
                 return (LocalDateTime) context.handleWeirdStringValue(
                         LocalDateTime.class,
                         value,
-                        "日期时间格式必须为 yyyy-MM-dd HH:mm:ss、yyyy-MM-dd 或 ISO-8601");
+                        ex.getMessage());
             }
         }
     }

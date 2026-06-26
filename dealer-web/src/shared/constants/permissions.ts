@@ -5,6 +5,9 @@ export const PERMISSIONS = {
     add: 'activity:add',
     edit: 'activity:edit',
     delete: 'activity:delete',
+    review: 'activity:review',
+    close: 'activity:close',
+    export: 'activity:export',
   },
   clue: {
     list: 'clue:list',
@@ -75,6 +78,29 @@ export const PERMISSIONS = {
     shelve: 'opportunity:shelve',
     restore: 'opportunity:restore',
   },
+  testDrive: {
+    list: 'test-drive:list',
+    view: 'test-drive:view',
+    create: 'test-drive:create',
+    reschedule: 'test-drive:reschedule',
+    cancel: 'test-drive:cancel',
+    checkIn: 'test-drive:check-in',
+    complete: 'test-drive:complete',
+  },
+  followTask: {
+    list: 'follow-task:list',
+    view: 'follow-task:view',
+    create: 'follow-task:create',
+    update: 'follow-task:update',
+    cancel: 'follow-task:cancel',
+    complete: 'follow-task:complete',
+  },
+  communicationRecord: {
+    list: 'communication-record:list',
+    create: 'communication-record:create',
+    correct: 'communication-record:correct',
+    void: 'communication-record:void',
+  },
   product: {
     list: 'product:list',
     view: 'product:view',
@@ -93,6 +119,7 @@ export const PERMISSIONS = {
       view: 'product:promotion:view',
       add: 'product:promotion:add',
       edit: 'product:promotion:edit',
+      status: 'product:promotion:status',
       delete: 'product:promotion:delete',
     },
     stock: {
@@ -116,6 +143,18 @@ export const PERMISSIONS = {
       delete: 'dict:value:delete',
     },
     refresh: 'dict:cache:refresh',
+  },
+  audit: {
+    login: {
+      list: 'audit:login:list',
+      detail: 'audit:login:detail',
+      export: 'audit:login:export',
+    },
+    operation: {
+      list: 'audit:operation:list',
+      detail: 'audit:operation:detail',
+      export: 'audit:operation:export',
+    },
   },
   user: {
     list: 'user:list',

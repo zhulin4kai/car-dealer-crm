@@ -1,6 +1,7 @@
 package com.autodealer.crm.mapper;
 
 import com.autodealer.crm.model.TOperationLog;
+import com.autodealer.crm.query.AuditOperationLogQuery;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.util.List;
@@ -17,5 +18,12 @@ public interface TOperationLogMapper {
 
     List<TOperationLog> selectByUserId(@Param("userId") Integer userId,
                                         @Param("offset") Integer offset,
+                                        @Param("limit") Integer limit);
+
+    List<TOperationLog> selectByQuery(AuditOperationLogQuery query);
+
+    TOperationLog selectById(Integer id);
+
+    List<TOperationLog> selectForExport(@Param("query") AuditOperationLogQuery query,
                                         @Param("limit") Integer limit);
 }

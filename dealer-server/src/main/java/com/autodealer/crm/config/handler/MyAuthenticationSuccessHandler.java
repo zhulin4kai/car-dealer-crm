@@ -1,6 +1,8 @@
 package com.autodealer.crm.config.handler;
 
+import com.autodealer.crm.audit.LoginAuditRecorder;
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
@@ -23,6 +25,9 @@ public class MyAuthenticationSuccessHandler implements AuthenticationSuccessHand
     @Resource
     private RedisManager redisManager;
 
+    @Resource
+    private LoginAuditRecorder loginAuditRecorder;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         // 登录成功，执行该方法，在该方法中返回 json 给前端
@@ -36,12 +41,20 @@ public class MyAuthenticationSuccessHandler implements AuthenticationSuccessHand
 
         boolean stored;
         try {
-            stored = redisManager.set(Constants.REDIS_JWT_KEY + tUser.getId(), jwt, expirationSeconds);
+            stored = redisManager.set(RedisKeys.userLogin(tUser.getId()), jwt, expirationSeconds);
         } catch (RuntimeException exception) {
             writeSystemFailure(response);
             return;
         }
         if (!stored) {
+            writeSystemFailure(response);
+            return;
+        }
+
+        try {
+            loginAuditRecorder.recordSuccess(tUser, request);
+        } catch (RuntimeException exception) {
+            redisManager.delete(RedisKeys.userLogin(tUser.getId()));
             writeSystemFailure(response);
             return;
         }

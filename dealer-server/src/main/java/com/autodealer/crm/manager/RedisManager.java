@@ -10,7 +10,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -111,10 +110,10 @@ public class RedisManager {
      *
      * @param pattern 匹配模式
      */
-    public void deletePattern(String pattern) {
+    public boolean deletePattern(String pattern) {
         if (pattern == null || pattern.isEmpty()) {
             log.warn("Redis deletePattern: pattern 不能为空");
-            return;
+            return false;
         }
         try {
             Set<String> keys = redisTemplate.execute((RedisCallback<Set<String>>) connection -> {
@@ -130,32 +129,11 @@ public class RedisManager {
                 redisTemplate.delete(keys);
                 log.debug("Redis deletePattern: 删除 {} 个 key, pattern: {}", keys.size(), pattern);
             }
+            return true;
         } catch (DataAccessException e) {
             log.error("Redis deletePattern 异常, pattern: {}", pattern, e);
+            return false;
         }
-    }
-
-    /**
-     * 获取 List 类型缓存，返回完整列表。
-     *
-     * @param key 缓存键
-     * @return List 数据
-     */
-    public Object getList(String key) {
-        return redisTemplate.opsForList().range(key, 0, -1);
-    }
-
-    /**
-     * 设置 List 类型缓存，将集合数据从左侧批量写入。
-     *
-     * @param key  缓存键
-     * @param data 集合数据
-     * @return 写入后的列表长度
-     */
-    public <T> Object setList(String key, Collection<T> data) {
-        Object[] t = new Object[data.size()];
-        data.toArray(t);
-        return redisTemplate.opsForList().leftPushAll(key, t);
     }
 
     /**

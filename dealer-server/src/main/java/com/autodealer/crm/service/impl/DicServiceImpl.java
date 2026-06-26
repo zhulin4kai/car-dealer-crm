@@ -2,6 +2,7 @@ package com.autodealer.crm.service.impl;
 
 import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
+import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.DicMapper;
@@ -15,11 +16,12 @@ import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.result.CodeEnum;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Arrays;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -35,6 +37,9 @@ public class DicServiceImpl implements DicService {
 
     @Resource
     private OperationAuditRecorder auditRecorder;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
 
     private static final long CACHE_EXPIRE_SECONDS = 24 * 60 * 60; // 24小时
 
@@ -75,6 +80,8 @@ public class DicServiceImpl implements DicService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean addDicType(TDicType dicType) {
+        dicType.setEnabled(defaultTrue(dicType.getEnabled()));
+        dicType.setBuiltIn(Boolean.FALSE);
         boolean result = dicMapper.insertDicType(dicType) > 0;
         if (result) {
             evictDictionaryCaches();
@@ -91,7 +98,12 @@ public class DicServiceImpl implements DicService {
         if (existingType == null) {
             throw new BusinessException(CodeEnum.NOT_FOUND, "无法添加字典值：字典类型 " + dicValue.getTypeCode() + " 不存在");
         }
+        if (Boolean.FALSE.equals(existingType.getEnabled())) {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, "字典类型已停用，不能新增字典值");
+        }
 
+        dicValue.setEnabled(defaultTrue(dicValue.getEnabled()));
+        dicValue.setBuiltIn(Boolean.FALSE);
         boolean result = dicMapper.insertDicValue(dicValue) > 0;
         if (result) {
             evictDictionaryCaches();
@@ -108,6 +120,8 @@ public class DicServiceImpl implements DicService {
         if (oldDicType == null) {
             return false;
         }
+        ensureTypeCodeUnchanged(oldDicType, dicType);
+        applyTypeDisableMetadata(oldDicType, dicType);
 
         boolean result = dicMapper.updateDicType(id, dicType) > 0;
         if (result) {
@@ -125,6 +139,8 @@ public class DicServiceImpl implements DicService {
         if (oldDicValue == null) {
             return false;
         }
+        ensureValueCodeUnchanged(oldDicValue, dicValue);
+        applyValueDisableMetadata(oldDicValue, dicValue);
 
         // 设置 ID 用于更新
         dicValue.setId(id);
@@ -141,24 +157,22 @@ public class DicServiceImpl implements DicService {
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteDicType(Integer id) {
         try {
-            // 1. 获取字典类型代码
-            String typeCode = dicMapper.selectTypeCodeById(id);
-            if (typeCode == null) {
+            TDicType dicType = dicMapper.selectDicTypeById(id);
+            if (dicType == null) {
                 return false;
             }
+            ensureNotBuiltIn(dicType.getBuiltIn(), "系统内置字典类型不能删除");
+
+            // 1. 获取字典类型代码
+            String typeCode = dicType.getTypeCode();
 
             // 2. 获取关联的字典值ID列表
             List<Integer> dicValueIds = dicMapper.selectDicValueIdsByTypeCode(typeCode);
 
             // 3. 检查是否有业务数据引用
-            if (dicValueIds != null && !dicValueIds.isEmpty()) {
-                int remarkCount = dicMapper.selectRemarkCountByDicValueIds(dicValueIds);
-                if (remarkCount > 0) {
-                    throw new BusinessException(CodeEnum.RESOURCE_IN_USE, "该字典类型下有业务数据引用，无法删除");
-                }
-            }
+            ensureValuesNotReferenced(dicValueIds, "该字典类型下有业务数据引用，无法删除");
 
-            // 4. 删除字典值 (t_dic_value中的type_code引用t_dic_type的type_code)
+            // 4. 删除未被引用的字典值，不删除任何业务历史或备注
             if (dicValueIds != null && !dicValueIds.isEmpty()) {
                 dicMapper.deleteDicValuesByIds(dicValueIds);
             }
@@ -186,16 +200,18 @@ public class DicServiceImpl implements DicService {
             if (dicValue == null) {
                 return false;
             }
+            ensureNotBuiltIn(dicValue.getBuiltIn(), "系统内置字典值不能删除");
+            ensureValuesNotReferenced(List.of(id), "该字典值已被业务引用，无法删除");
 
-            // 1. 先删除关联的备注记录
-            dicMapper.deleteRemarksByDicValueId(id);
-            // 2. 再删除字典值
+            // 只删除字典值本身，业务备注和历史事实必须保留
             boolean result = dicMapper.deleteDicValue(id) > 0;
             if (result) {
                 evictDictionaryCaches();
                 auditRecorder.record(AuditActionEnum.DICT_VALUE_DELETE, String.valueOf(id));
             }
             return result;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new BusinessException(CodeEnum.OPERATION_FAILED, "删除字典值失败", e);
         }
@@ -223,9 +239,12 @@ public class DicServiceImpl implements DicService {
 
     @Override
     public void evictDictionaryCaches() {
-        redisManager.deletePattern(RedisKeys.dictTypePattern());
-        redisManager.deletePattern(RedisKeys.dictValuePattern());
-        redisManager.deletePattern(RedisKeys.dictListPattern());
+        boolean typeDeleted = redisManager.deletePattern(RedisKeys.dictTypePattern());
+        boolean valueDeleted = redisManager.deletePattern(RedisKeys.dictValuePattern());
+        boolean valuesByTypeDeleted = redisManager.deletePattern(RedisKeys.dictValuesByTypePattern());
+        if (!typeDeleted || !valueDeleted || !valuesByTypeDeleted) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "字典缓存失效失败");
+        }
         log.info("Dictionary cache evicted");
     }
 
@@ -242,16 +261,20 @@ public class DicServiceImpl implements DicService {
             if (typeCodes == null || typeCodes.isEmpty()) {
                 return false;
             }
+            List<TDicType> dicTypes = dicMapper.selectDicTypesByIds(ids);
+            if (dicTypes != null) {
+                for (TDicType dicType : dicTypes) {
+                    ensureNotBuiltIn(dicType.getBuiltIn(), "系统内置字典类型不能删除");
+                }
+            }
 
             // 2. 批量获取关联的字典值ID
             List<Integer> dicValueIds = dicMapper.selectDicValueIdsByTypeCodes(typeCodes);
 
-            // 3. 先删除关联的备注记录
-            if (dicValueIds != null && !dicValueIds.isEmpty()) {
-                dicMapper.deleteRemarksByDicValueIds(dicValueIds);
-            }
+            // 3. 检查业务引用，禁止为了删除字典而删除业务历史
+            ensureValuesNotReferenced(dicValueIds, "所选字典类型下有业务数据引用，无法删除");
 
-            // 4. 再删除字典值
+            // 4. 再删除未被引用的字典值
             if (dicValueIds != null && !dicValueIds.isEmpty()) {
                 dicMapper.deleteDicValuesByIds(dicValueIds);
             }
@@ -263,6 +286,8 @@ public class DicServiceImpl implements DicService {
                 auditRecorder.record(AuditActionEnum.DICT_TYPE_DELETE, ids.toString());
             }
             return result;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new BusinessException(CodeEnum.OPERATION_FAILED, "批量删除字典类型失败", e);
         }
@@ -276,15 +301,16 @@ public class DicServiceImpl implements DicService {
         }
 
         try {
-            // 1. 先删除关联的备注记录
-            dicMapper.deleteRemarksByDicValueIds(ids);
-            // 2. 再删除字典值
+            ensureValuesNotReferenced(ids, "所选字典值已被业务引用，无法删除");
+            // 只删除未被引用的字典值，不删除任何业务备注或历史记录
             boolean result = dicMapper.deleteDicValuesByIds(ids) > 0;
             if (result) {
                 evictDictionaryCaches();
                 auditRecorder.record(AuditActionEnum.DICT_VALUE_DELETE, ids.toString());
             }
             return result;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new BusinessException(CodeEnum.OPERATION_FAILED, "批量删除字典值失败", e);
         }
@@ -293,7 +319,7 @@ public class DicServiceImpl implements DicService {
     @Override
     public void refreshTypeCache() {
         // 清除字典类型相关缓存
-        redisManager.deletePattern(RedisKeys.dictTypePattern());
+        ensureCacheDeleted(redisManager.deletePattern(RedisKeys.dictTypePattern()));
         // 重新加载字典类型数据到缓存
         DicQuery query = new DicQuery();
         List<TDicType> types = dicMapper.selectDicTypes(query);
@@ -307,7 +333,8 @@ public class DicServiceImpl implements DicService {
     @Override
     public void refreshValueCache() {
         // 清除字典值相关缓存
-        redisManager.deletePattern(RedisKeys.dictValuePattern());
+        ensureCacheDeleted(redisManager.deletePattern(RedisKeys.dictValuePattern())
+            && redisManager.deletePattern(RedisKeys.dictValuesByTypePattern()));
         // 重新加载字典值数据到缓存
         DicQuery query = new DicQuery();
         List<TDicValue> values = dicMapper.selectDicValues(query);
@@ -316,5 +343,98 @@ public class DicServiceImpl implements DicService {
             redisManager.set(cacheKey, value, CACHE_EXPIRE_SECONDS);
         }
         log.info("Dictionary value cache refreshed, {} values loaded", values.size());
+    }
+
+    private Boolean defaultTrue(Boolean value) {
+        return value == null ? Boolean.TRUE : value;
+    }
+
+    private void ensureTypeCodeUnchanged(TDicType oldDicType, TDicType newDicType) {
+        if (StringUtils.hasText(newDicType.getTypeCode())
+            && !Objects.equals(oldDicType.getTypeCode(), newDicType.getTypeCode())) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "字典类型编码不能修改");
+        }
+    }
+
+    private void ensureValueCodeUnchanged(TDicValue oldDicValue, TDicValue newDicValue) {
+        if (StringUtils.hasText(newDicValue.getTypeCode())
+            && !Objects.equals(oldDicValue.getTypeCode(), newDicValue.getTypeCode())) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "字典值所属类型不能修改");
+        }
+        if (StringUtils.hasText(newDicValue.getValueCode())
+            && !Objects.equals(oldDicValue.getValueCode(), newDicValue.getValueCode())) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "字典值编码不能修改");
+        }
+    }
+
+    private void applyTypeDisableMetadata(TDicType oldDicType, TDicType newDicType) {
+        if (newDicType.getEnabled() == null) {
+            return;
+        }
+        if (Boolean.TRUE.equals(oldDicType.getBuiltIn()) && Boolean.FALSE.equals(newDicType.getEnabled())) {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, "系统内置字典类型不能停用");
+        }
+        applyDisableMetadata(oldDicType.getEnabled(), newDicType.getEnabled(), newDicType.getDisableReason(),
+            newDicType::setDisableReason, newDicType::setDisabledBy, newDicType::setDisabledTime);
+    }
+
+    private void applyValueDisableMetadata(TDicValue oldDicValue, TDicValue newDicValue) {
+        if (newDicValue.getEnabled() == null) {
+            return;
+        }
+        if (Boolean.TRUE.equals(oldDicValue.getBuiltIn()) && Boolean.FALSE.equals(newDicValue.getEnabled())) {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, "系统内置字典值不能停用");
+        }
+        applyDisableMetadata(oldDicValue.getEnabled(), newDicValue.getEnabled(), newDicValue.getDisableReason(),
+            newDicValue::setDisableReason, newDicValue::setDisabledBy, newDicValue::setDisabledTime);
+    }
+
+    private void applyDisableMetadata(Boolean oldEnabled, Boolean newEnabled, String reason,
+                                      java.util.function.Consumer<String> reasonSetter,
+                                      java.util.function.Consumer<Integer> disabledBySetter,
+                                      java.util.function.Consumer<LocalDateTime> disabledTimeSetter) {
+        if (Boolean.FALSE.equals(newEnabled)) {
+            if (Boolean.TRUE.equals(defaultTrue(oldEnabled)) && !StringUtils.hasText(reason)) {
+                throw new BusinessException(CodeEnum.PARAM_ERROR, "停用字典必须填写原因");
+            }
+            reasonSetter.accept(reason);
+            disabledBySetter.accept(currentUserIdOrNull());
+            disabledTimeSetter.accept(LocalDateTime.now());
+            return;
+        }
+        reasonSetter.accept(null);
+        disabledBySetter.accept(null);
+        disabledTimeSetter.accept(null);
+    }
+
+    private Integer currentUserIdOrNull() {
+        try {
+            return currentUserProvider == null ? null : currentUserProvider.getCurrentUserId();
+        } catch (RuntimeException ex) {
+            log.warn("Dictionary disable audit user unavailable: {}", ex.getMessage());
+            return null;
+        }
+    }
+
+    private void ensureNotBuiltIn(Boolean builtIn, String message) {
+        if (Boolean.TRUE.equals(builtIn)) {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, message);
+        }
+    }
+
+    private void ensureValuesNotReferenced(List<Integer> valueIds, String message) {
+        if (valueIds == null || valueIds.isEmpty()) {
+            return;
+        }
+        int referenceCount = dicMapper.selectRemarkCountByDicValueIds(valueIds);
+        if (referenceCount > 0) {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, message);
+        }
+    }
+
+    private void ensureCacheDeleted(boolean success) {
+        if (!success) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "字典缓存失效失败");
+        }
     }
 }
