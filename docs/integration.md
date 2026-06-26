@@ -58,16 +58,24 @@
 | mergeCustomer | POST | /api/customer/{id}/merge | data: {sourceCustomerId, reason} | R\<CustomerMergeResponse\> | CustomerController.mergeCustomer | 合并重复客户，迁移跟进、交易和报价引用 |
 | deleteCustomer | DELETE | /api/customer/{id} | 路径参数: id | R | CustomerController.deleteCustomer | 仅允许删除无业务关系客户；存在引用返回 422 RESOURCE_IN_USE |
 
-### 1.4 市场活动模块 (activity.js)
+### 1.4 市场活动模块 (activity-api.ts)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getActivityList | GET | /api/activitys | params: {current, ...activityQuery} | R\<PageInfo\<TActivity\>\> | ActivityController.activityPage | 分页查询活动列表 |
+| getActivityList | GET | /api/activities | params: {page, size, ...activityQuery} | R\<PageInfo\<TActivity\>\> | ActivityController.activityPage | 分页查询活动列表；历史 `/api/activitys` 仅保留 deprecated 兼容 |
 | getActivityById | GET | /api/activity/{id} | 路径参数: id | R\<TActivity\> | ActivityController.loadActivity | 获取活动详情 |
-| createActivity | POST | /api/activity | data: ActivityQuery对象 (FormData) | R | ActivityController.addActivity | 新增活动 |
-| updateActivity | PUT | /api/activity | data: ActivityQuery对象 (FormData) | R | ActivityController.editActivity | 编辑活动 |
-| deleteActivity | DELETE | /api/activity/{id} | 路径参数: id | R | ActivityController.deleteActivity | 删除单个活动 |
-| batchDeleteActivities | POST | /api/activity/batch | data: List\<Integer\> (JSON数组) | R | ActivityController.batchDeleteActivities | 批量删除活动 |
+| fetchActivityRoi | GET | /api/activity/{id}/roi | 路径参数: id | R\<ActivityRoiResponse\> | ActivityController.activityRoi | 查询活动 ROI |
+| createActivity | POST | /api/activity | data: CreateActivityRequest (JSON) | R | ActivityController.addActivity | 新增草稿活动，负责人和状态由后端生成 |
+| updateActivity | PUT | /api/activity | data: UpdateActivityRequest (JSON) | R | ActivityController.editActivity | 编辑未锁定活动核心字段 |
+| publishActivity | PUT | /api/activity/{id}/publish | 路径参数: id | R\<TActivity\> | ActivityController.publishActivity | 草稿发布为待开始 |
+| startActivity | PUT | /api/activity/{id}/start | 路径参数: id | R\<TActivity\> | ActivityController.startActivity | 待开始活动进入进行中 |
+| endActivity | PUT | /api/activity/{id}/end | 路径参数: id | R\<TActivity\> | ActivityController.endActivity | 进行中活动进入已结束 |
+| reviewActivity | PUT | /api/activity/{id}/review | data: ReviewActivityRequest (JSON) | R\<TActivity\> | ActivityController.reviewActivity | 已结束活动复盘并锁定实际成本和结果 |
+| cancelActivity | PUT | /api/activity/{id}/cancel | data: {reason} (JSON) | R\<TActivity\> | ActivityController.cancelActivity | 取消活动，不影响线索或商机状态 |
+| closeActivity | PUT | /api/activity/{id}/close | data: {reason} (JSON) | R\<TActivity\> | ActivityController.closeActivity | 关闭活动，不影响历史归因 |
+| exportActivities | GET | /api/activity/export | params: activityQuery | Excel Blob | ActivityController.exportActivities | 按权限和数据范围导出活动 ROI |
+| deleteActivity | DELETE | /api/activity/{id} | 路径参数: id | R | ActivityController.deleteActivity | 仅删除无引用草稿活动 |
+| batchDeleteActivities | POST | /api/activity/batch | data: List\<Integer\> (JSON数组) | R | ActivityController.batchDeleteActivities | 批量删除无引用草稿活动 |
 
 ### 1.5 产品管理模块 (product.js)
 
@@ -86,13 +94,19 @@
 | reserveProductVehicle | POST | /api/productstock/vehicles/{vehicleId}/reserve | 路径参数: vehicleId, data: ReserveProductVehicleRequest (JSON) | Result\<ProductVehicle\> | ProductStockController.reserveVehicle | 占用车辆实例并写入占用流水 |
 | releaseProductVehicle | POST | /api/productstock/vehicles/{vehicleId}/release | 路径参数: vehicleId, data: ReleaseProductVehicleRequest (JSON) | Result\<ProductVehicle\> | ProductStockController.releaseVehicle | 释放车辆实例占用并关联原占用流水 |
 | getPromotionList | GET | /api/product-promotions | params: {page, size} | Result\<PageInfo\<ProductPromotion\>\> | ProductPromotionController.getPromotionList | 分页查询促销列表 |
-| createPromotion | POST | /api/product-promotions | data: ProductPromotion对象 (JSON) | Result\<Void\> | ProductPromotionController.addPromotion | 新增促销 |
+| createPromotion | POST | /api/product-promotions | data: ProductPromotionRequest (JSON, 不含 status) | Result\<Void\> | ProductPromotionController.addPromotion | 新增促销，服务端默认 DRAFT |
+| updatePromotion | PUT | /api/product-promotions/{id} | 路径参数: id, data: ProductPromotionRequest (JSON, 不含 status) | Result\<Void\> | ProductPromotionController.updatePromotion | 编辑促销规则；终态和生效中规则受后端状态校验限制 |
+| publishPromotion | PUT | /api/product-promotions/{id}/publish | 路径参数: id | Result\<ProductPromotion\> | ProductPromotionController.publishPromotion | 草稿发布为待生效或生效中 |
+| activatePromotion | PUT | /api/product-promotions/{id}/activate | 路径参数: id | Result\<ProductPromotion\> | ProductPromotionController.activatePromotion | 待生效或暂停促销恢复生效 |
+| pausePromotion | PUT | /api/product-promotions/{id}/pause | 路径参数: id, data: {reason} | Result\<ProductPromotion\> | ProductPromotionController.pausePromotion | 暂停促销并记录原因 |
+| endPromotion | PUT | /api/product-promotions/{id}/end | 路径参数: id, data: {reason} | Result\<ProductPromotion\> | ProductPromotionController.endPromotion | 结束促销并记录原因 |
+| voidPromotion | PUT | /api/product-promotions/{id}/void | 路径参数: id, data: {reason} | Result\<ProductPromotion\> | ProductPromotionController.voidPromotion | 作废促销并记录原因 |
+| deletePromotion | DELETE | /api/product-promotions/{id} | 路径参数: id | Result\<Void\> | ProductPromotionController.deletePromotion | 仅允许删除未引用草稿；已被报价、订单或使用流水引用时返回 422 RESOURCE_IN_USE |
 
 产品 `status` 请求值必须使用 `ON_SALE` 或 `OFF_SALE`，前端只把“上架/下架”作为展示 label。
+促销 `status` 响应值必须使用稳定 code：`DRAFT`、`PENDING_EFFECTIVE`、`ACTIVE`、`PAUSED`、`ENDED`、`VOIDED`、`EXHAUSTED`；前端只展示中文 label，不提交中文状态。
 商品删除失败时前端按 `ApiError.code === 422` 映射“已被业务引用，不能直接删除”，不匹配中文 msg 或数据库外键文案。
 分类删除失败时前端同样按 `ApiError.code === 422` 映射“已被商品或历史记录引用，不能直接删除”。
-| updatePromotion | PUT | /api/product-promotions/{id} | 路径参数: id, data: ProductPromotion对象 (JSON) | Result\<Void\> | ProductPromotionController.updatePromotion | 编辑促销 |
-| deletePromotion | DELETE | /api/product-promotions/{id} | 路径参数: id | Result\<Void\> | ProductPromotionController.deletePromotion | 删除促销 |
 | getCategoryList | GET | /api/product-categories | params: {page, size} | Result\<PageInfo\<ProductCategory\>\> | ProductCategoryController.getCategoryList | 分页查询分类列表 |
 | createCategory | POST | /api/product-categories | data: ProductCategory对象 (JSON) | Result\<Void\> | ProductCategoryController.addCategory | 新增分类 |
 | updateCategory | PUT | /api/product-categories/{id} | 路径参数: id, data: ProductCategory对象 (JSON) | Result\<Void\> | ProductCategoryController.updateCategory | 编辑分类 |
@@ -115,7 +129,41 @@
 
 商机阶段、报价状态、车辆状态、商品状态等业务状态在接口层统一使用稳定英文编码，前端负责展示中文 label，不匹配中文 msg 或中文状态做业务分支。
 
-### 1.7 报价订单模块 (quote-api.ts)
+### 1.7 试驾管理模块 (test-drive-api.ts)
+
+| 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
+|-----------|---------|---------|-------------|-------------|-------------------|-------------|
+| fetchTestDrivePage | GET | /api/test-drives | params: {page, size, customerId?, opportunityId?, vehicleId?, ownerId?, status?, keyword?} | R\<PageInfo\<TTestDrive\>\> | TestDriveController.list | 分页查询试驾记录，按服务端当前用户数据范围过滤 |
+| fetchTestDriveDetail | GET | /api/test-drives/{id} | 路径参数: id | R\<TTestDrive\> | TestDriveController.detail | 查询试驾详情 |
+| fetchTestDriveHistory | GET | /api/test-drives/{id}/history | 路径参数: id | R\<List\<TTestDriveStatusHistory\>\> | TestDriveController.history | 查询状态历史 |
+| createTestDrive | POST | /api/test-drives | data: CreateTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.create | 创建试驾预约，校验客户、商机、车辆和时间段冲突，写入车辆时间占用 |
+| rescheduleTestDrive | PUT | /api/test-drives/{id}/reschedule | 路径参数: id, data: RescheduleTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.reschedule | 先校验新时段，再释放原占用并创建新占用 |
+| cancelTestDrive | PUT | /api/test-drives/{id}/cancel | 路径参数: id, data: CancelTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.cancel | 取消试驾必须填写原因并释放时间占用 |
+| markTestDriveNoShow | PUT | /api/test-drives/{id}/no-show | 路径参数: id, data: CancelTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.noShow | 标记客户爽约，不伪装为完成 |
+| checkInTestDrive | PUT | /api/test-drives/{id}/check-in | 路径参数: id, data: CheckInTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.checkIn | 记录到店时间、签到人和客户确认方式 |
+| completeTestDrive | PUT | /api/test-drives/{id}/complete | 路径参数: id, data: CompleteTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.complete | 完成试驾必须已签到和安全确认，记录反馈，不自动创建报价或订单 |
+
+试驾状态、商机阶段、报价状态、车辆状态等业务状态在接口层统一使用稳定英文编码，前端负责展示中文 label，不匹配中文 msg 或中文状态做业务分支。
+
+### 1.8 跟进任务模块 (follow-api.ts)
+
+| 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
+|-----------|---------|---------|-------------|-------------|-------------------|-------------|
+| fetchFollowTaskPage | GET | /api/follow-tasks | params: {page, size, status?, taskType?, relatedObjectType?, relatedObjectId?, ownerId?, overdueOnly?, keyword?} | R\<PageInfo\<TFollowTask\>\> | FollowTaskController.list | 分页查询跟进任务，按当前用户数据范围过滤并维护逾期状态 |
+| createFollowTask | POST | /api/follow-tasks | data: CreateFollowTaskRequest (JSON) | R\<TFollowTask\> | FollowTaskController.create | 创建独立跟进任务，服务端校验关联对象可见性和负责人有效性 |
+| fetchFollowTaskDetail | GET | /api/follow-tasks/{id} | 路径参数: id | R\<TFollowTask\> | FollowTaskController.detail | 查询跟进任务详情，按服务端数据范围过滤 |
+| startFollowTask | PUT | /api/follow-tasks/{id}/start | 路径参数: id | R\<TFollowTask\> | FollowTaskController.start | 将未终态任务标记为 IN_PROGRESS |
+| postponeFollowTask | PUT | /api/follow-tasks/{id}/postpone | 路径参数: id, data: {newPlanTime, reason} | R\<TFollowTask\> | FollowTaskController.postpone | 延期任务并保留原计划时间和原因 |
+| cancelFollowTask | PUT | /api/follow-tasks/{id}/cancel | 路径参数: id, data: {reason} | R\<TFollowTask\> | FollowTaskController.cancel | 取消非终态任务并保留取消原因 |
+| completeFollowTask | PUT | /api/follow-tasks/{id}/complete | 路径参数: id, data: CompleteFollowTaskRequest (JSON) | R\<TFollowTask\> | FollowTaskController.complete | 完成任务，同事务写沟通记录并回写最近跟进事实 |
+| fetchCommunicationRecordPage | GET | /api/communication-records | params: {page, size, relatedObjectType?, relatedObjectId?, followTaskId?, ownerId?, method?, status?} | R\<PageInfo\<TCommunicationRecord\>\> | CommunicationRecordController.list | 分页查询沟通记录，按当前用户数据范围过滤 |
+| createCommunicationRecord | POST | /api/communication-records | data: CreateCommunicationRecordRequest (JSON) | R\<TCommunicationRecord\> | CommunicationRecordController.create | 创建沟通记录，可关联同一对象下的跟进任务 |
+| correctCommunicationRecord | PUT | /api/communication-records/{id}/correct | 路径参数: id, data: CorrectCommunicationRecordRequest (JSON) | R\<TCommunicationRecord\> | CommunicationRecordController.correct | 原记录置为 CORRECTED 并插入新 ACTIVE 记录 |
+| voidCommunicationRecord | PUT | /api/communication-records/{id}/void | 路径参数: id, data: {reason} | R\<TCommunicationRecord\> | CommunicationRecordController.voidRecord | 沟通记录作废为 VOIDED，不物理删除 |
+
+跟进任务状态、任务类型、沟通方式和沟通记录状态均使用稳定英文编码，前端只做中文展示映射，不匹配中文 msg 做业务分支。
+
+### 1.9 报价订单模块 (quote-api.ts)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
@@ -128,38 +176,38 @@
 
 报价状态、车辆状态、商品状态等业务状态在接口层统一使用稳定英文编码，前端负责展示中文 label，不匹配中文 msg 或中文状态做业务分支。
 
-### 1.8 交易管理模块 (tran.js)
+### 1.10 交易管理模块 (tran.js)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
 | getTranList | GET | /api/tran/list | params: {page, size, ...query} | R\<PageInfo\<TTran\>\> | TranController.list | 分页查询交易列表 |
 | getTranDetail | GET | /api/tran/{id} | 路径参数: id | R\<TTran\> | TranController.detail | 获取交易详情 |
 | getTranProducts | GET | /api/tran/products/{id} | 路径参数: id | R\<List\<TTranProduct\>\> | TranController.getTransactionProducts | 获取交易产品历史快照列表；商品主档修改后名称、编码、配置和指导价不随之变化 |
-| createTran | POST | /api/tran/create | data: TranCreateRequest对象 (JSON) | R\<Integer\> | TranController.create | 创建交易 |
+| createTran | POST | /api/transactions | data: CreateTranRequest对象 (JSON) | R\<Integer\> | TranController.create | 创建交易；历史 `/api/tran/create` 仅保留 deprecated 兼容 |
 | updateTran | PUT | /api/tran/update | data: TranCreateRequest对象 (JSON) | R\<Boolean\> | TranController.update | 更新交易 |
 | fetchSettlementPreview | POST | /api/tran/{id}/settlement-preview | 路径参数: id, data: {promotionId?} | R\<SettlementPreviewResponse\> | TranController.settlementPreview | 服务端结算预览 |
 | settleTran | PUT | /api/tran/{id}/settle | 路径参数: id, data: {promotionId?, expectedVersion, pricingFingerprint} | R\<SettlementPreviewResponse\> | TranController.settle | CAS 确认结算 |
 | approveTran | PUT | /api/tran/approve/{id} | 路径参数: id, data: {approved, comment} (JSON) | R\<Boolean\> | TranController.approve | 审批交易 |
 | getTranApprove | GET | /api/tran/approve/info/{tranId} | 路径参数: tranId | R\<TTranApprove\> | TranController.getApproveInfo | 获取审批信息 |
-| createInvoice | POST | /api/tran/invoice | data: CreateTranInvoiceRequest (JSON) | R\<Boolean\> | TranController.createInvoice | 创建待开具发票；支持部分开票和多票 |
+| createInvoice | POST | /api/tran/invoice | data: CreateTranInvoiceRequest (JSON) | R\<Boolean\> | TranController.createInvoice | 创建待开具发票；支持部分开票和多票；超额返回 409 和 availableAmount |
 | getTranInvoiceList | GET | /api/tran/invoice/{tranId} | 路径参数: tranId | R\<List\<TTranInvoice\>\> | TranController.getInvoiceList | 获取交易发票列表；无敏感权限时后端脱敏 |
 | updateInvoiceStatus | PUT | /api/tran/invoice/{invoiceId}/status | 路径参数: invoiceId, data: {status, reason?} (JSON) | R\<Boolean\> | TranController.updateInvoiceStatus | 标记已开具、失败或作废；失败/作废必须有原因；ISSUED 后触发交易完成聚合 |
-| redReverseInvoice | POST | /api/tran/invoice/{invoiceId}/red-reversal | 路径参数: invoiceId, data: {amount, reason} (JSON) | R\<TTranInvoice\> | TranController.redReverseInvoice | 创建负数红字发票并保留原票 |
-| reissueInvoice | POST | /api/tran/invoice/{invoiceId}/reissue | 路径参数: invoiceId, data: ReissueInvoiceRequest (JSON) | R\<TTranInvoice\> | TranController.reissueInvoice | 基于作废或红冲事实重开发票 |
+| redReverseInvoice | POST | /api/tran/invoice/{invoiceId}/red-reversal | 路径参数: invoiceId, data: {amount, reason} (JSON) | R\<TTranInvoice\> | TranController.redReverseInvoice | 创建负数红字发票并保留原票；超额返回 409 和 availableAmount |
+| reissueInvoice | POST | /api/tran/invoice/{invoiceId}/reissue | 路径参数: invoiceId, data: ReissueInvoiceRequest (JSON) | R\<TTranInvoice\> | TranController.reissueInvoice | 基于作废或红冲事实重开发票；超额返回 409 和 availableAmount |
 | recordPayment | POST | /api/tran/payment | data: CreatePaymentRequest (JSON) | R\<TPayment\> | TranController.recordPayment | 登记待确认收款；金额由服务端按剩余应收计算 |
 | confirmPayment | PUT | /api/tran/payment/{id}/confirm | 路径参数: id, data: ConfirmPaymentRequest (JSON) | R\<TPayment\> | TranController.confirmPayment | 财务确认或退回待确认收款；确认到账后只触发交易完成聚合，不由收款单独完成交易 |
 | fetchTranPayments | GET | /api/tran/payment/{tranId} | 路径参数: tranId | R\<List\<TPayment\>\> | TranController.getPayments | 查询交易收款和退款流水 |
 | fetchTranRefundRequests | GET | /api/tran/refund-requests/{tranId} | 路径参数: tranId | R\<List\<TRefundRequest\>\> | TranController.getRefundRequests | 查询交易退款申请 |
-| createRefundRequest | POST | /api/tran/payment/{id}/refund-requests | 路径参数: 原收款 id, data: CreateRefundRequest (JSON) | R\<TRefundRequest\> | TranController.createRefundRequest | 创建待审批退款申请 |
+| createRefundRequest | POST | /api/tran/payment/{id}/refund-requests | 路径参数: 原收款 id, data: CreateRefundRequest (JSON) | R\<TRefundRequest\> | TranController.createRefundRequest | 基于已确认原收款创建待审批退款申请；支持 PAYMENT、DELIVERY、CANCELLED 交易，超额返回 409 和 availableAmount |
 | approveRefundRequest | PUT | /api/tran/refund-requests/{id}/approve | 路径参数: id, data: ApproveRefundRequest (JSON) | R\<TRefundRequest\> | TranController.approveRefundRequest | 审批通过进入待执行，驳回保留原因 |
-| executeRefundRequest | POST | /api/tran/refund-requests/{id}/execute | 路径参数: id, data: ExecuteRefundRequest (JSON) | R\<TRefundRequest\> | TranController.executeRefundRequest | 记录退款执行成功或失败；成功新增负数退款流水 |
-| cancelTran | PUT | /api/tran/{id}/cancel | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.cancel | 取消交易；存在收款、发票、退款中、已出库或已签收事实时返回冲突，保留历史事实并写入原因 |
+| executeRefundRequest | POST | /api/tran/refund-requests/{id}/execute | 路径参数: id, data: ExecuteRefundRequest (JSON) | R\<TRefundRequest\> | TranController.executeRefundRequest | 记录退款执行成功或失败；成功新增负数退款流水；不直接取消交易或释放库存 |
+| cancelTran | PUT | /api/tran/{id}/cancel | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.cancel | 取消交易；存在收款、发票、退款中、已出库或已签收事实时返回冲突；未出库订单占用会写 RELEASE 流水并恢复车辆/商品可售库存，保留历史事实并写入原因 |
 | closeTran | PUT | /api/tran/{id}/close | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.close | 关闭交易；保留历史事实并写入原因 |
 | deleteTran | DELETE | /api/tran/{id} | 路径参数: id | R\<String\> | TranController.delete | 已废弃；交易历史不允许物理删除，返回状态冲突 |
 | batchDeleteTran | POST | /api/tran/batch-delete | data: {ids: List\<Integer\>} (JSON) | R\<String\> | TranController.batchDelete | 已废弃；批量物理删除返回状态冲突 |
 | getTranStatus | GET | /api/tran/status/{id} | 路径参数: id | - | **后端未实现** | 前端调用但后端无对应接口 |
 
-### 1.9 交付管理模块 (delivery-api.ts)
+### 1.11 交付管理模块 (delivery-api.ts)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
@@ -171,33 +219,40 @@
 | updateDeliveryCheckItem | PUT | /api/deliveries/check-items/{itemId} | 路径参数: itemId, data: {status, remark?} | R\<TDeliveryCheckItem\> | DeliveryController.updateCheckItem | 更新准备项状态，状态使用稳定编码 PENDING/COMPLETED/BLOCKED |
 | signDelivery | POST | /api/deliveries/{id}/sign | 路径参数: id, data: SignDeliveryRequest (JSON) | R\<TDelivery\> | DeliveryController.sign | 客户签收并联动库存出库；签收后触发交易完成聚合，不由交付单独完成交易 |
 | markDeliveryException | POST | /api/deliveries/{id}/exception | 路径参数: id, data: {exceptionType, reason} | R\<TDelivery\> | DeliveryController.markException | 登记交付异常并保留历史 |
-| cancelDelivery | POST | /api/deliveries/{id}/cancel | 路径参数: id, data: {reason} | R\<TDelivery\> | DeliveryController.cancel | 取消交付并保留历史 |
+| cancelDelivery | POST | /api/deliveries/{id}/cancel | 路径参数: id, data: {reason} | R\<TDelivery\> | DeliveryController.cancel | 取消未签收交付并保留历史；同一事务内引用原订单占用流水写 RELEASE 流水、恢复车辆和商品可售库存，重复释放不重复加库存 |
 
-### 1.10 字典管理模块 (dict.js)
+### 1.12 字典管理模块 (dict.js)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
 | getDictTypeList | GET | /api/dict/types | params: {page, size, ...query} | R | DicController.getDicTypes | 分页查询字典类型 |
 | getDictTypeDetail | GET | /api/dict/type/get/{id} | 路径参数: id | R | DicController.getDicTypeById | 获取字典类型详情 |
-| createDictType | POST | /api/dict/type/create | data: TDicType对象 (JSON) | R | DicController.addDicType | 新增字典类型 |
-| updateDictType | PUT | /api/dict/type/update/{id} | 路径参数: id, data: TDicType对象 (JSON) | R | DicController.updateDicType | 编辑字典类型 |
-| deleteDictType | DELETE | /api/dict/type/delete/{id} | 路径参数: id | R | DicController.deleteDicType | 删除字典类型 |
-| batchDeleteDictTypes | DELETE | /api/dict/types/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicTypes | 批量删除字典类型 |
+| createDictType | POST | /api/dict/type/create | data: CreateDicTypeRequest (JSON) | R | DicController.addDicType | 新增字典类型，默认启用且非内置 |
+| updateDictType | PUT | /api/dict/type/update/{id} | 路径参数: id, data: UpdateDicTypeRequest (JSON) | R | DicController.updateDicType | 编辑字典类型，typeCode 不可改，停用需原因 |
+| deleteDictType | DELETE | /api/dict/type/delete/{id} | 路径参数: id | R | DicController.deleteDicType | 删除未被引用且非内置的字典类型；引用返回 422 |
+| batchDeleteDictTypes | DELETE | /api/dict/types/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicTypes | 批量删除未被引用且非内置的字典类型 |
 | getDictValueList | GET | /api/dict/values | params: {page, size, ...query} | R | DicController.getDicValues | 分页查询字典值 |
 | getDictValueDetail | GET | /api/dict/value/get/{id} | 路径参数: id | R | DicController.getDicValueById | 获取字典值详情 |
-| createDictValue | POST | /api/dict/value/create | data: TDicValue对象 (JSON) | R | DicController.addDicValue | 新增字典值 |
-| updateDictValue | PUT | /api/dict/value/update/{id} | 路径参数: id, data: TDicValue对象 (JSON) | R | DicController.updateDicValue | 编辑字典值 |
-| deleteDictValue | DELETE | /api/dict/value/delete/{id} | 路径参数: id | R | DicController.deleteDicValue | 删除字典值 |
-| batchDeleteDictValues | DELETE | /api/dict/value/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicValues | 批量删除字典值 |
+| createDictValue | POST | /api/dict/value/create | data: CreateDicValueRequest (JSON) | R | DicController.addDicValue | 新增字典值，默认启用且非内置 |
+| updateDictValue | PUT | /api/dict/value/update/{id} | 路径参数: id, data: UpdateDicValueRequest (JSON) | R | DicController.updateDicValue | 编辑字典值，typeCode/valueCode 不可改，停用需原因 |
+| deleteDictValue | DELETE | /api/dict/value/delete/{id} | 路径参数: id | R | DicController.deleteDicValue | 删除未被引用且非内置的字典值；引用返回 422 |
+| batchDeleteDictValues | DELETE | /api/dict/value/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicValues | 批量删除未被引用且非内置的字典值 |
 | clearCache | GET | /api/dict/clear | params: {forceRefresh: true} | R | DicController.clearCache | 清除字典缓存 |
 
-### 1.11 审计日志模块
+### 1.13 审计日志模块
 
-审计日志已确认为后续正式模块，业务规格见 `docs/spec/审计日志/`。接口尚未实现，本文不声明可调用的审计日志 API。
+| 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
+|-----------|---------|---------|-------------|-------------|-------------------|-------------|
+| fetchLoginLogPage | GET | /api/audit/login-logs | params: {page, size, loginAct?, userName?, result?, reasonCode?, ip?, requestId?, startTime?, endTime?} | R\<PageInfo\<TLoginLog\>\> | AuditLogController.listLoginLogs | 分页查询登录记录，后端按 `audit:login:list` 校验权限 |
+| fetchLoginLogDetail | GET | /api/audit/login-logs/{id} | 路径参数: id | R\<TLoginLog\> | AuditLogController.getLoginLog | 查询登录记录详情 |
+| exportLoginLogs | GET | /api/audit/login-logs/export | 同登录记录过滤参数 | text/csv | AuditLogController.exportLoginLogs | 导出 UTF-8 CSV，并写 `AUDIT_LOGIN_EXPORT` 操作审计 |
+| fetchOperationLogPage | GET | /api/audit/operation-logs | params: {page, size, userName?, actionCode?, moduleName?, objectType?, resourceId?, result?, ip?, requestId?, startTime?, endTime?} | R\<PageInfo\<TOperationLog\>\> | AuditLogController.listOperationLogs | 分页查询操作记录，后端按 `audit:operation:list` 校验权限 |
+| fetchOperationLogDetail | GET | /api/audit/operation-logs/{id} | 路径参数: id | R\<TOperationLog\> | AuditLogController.getOperationLog | 查询操作记录详情 |
+| exportOperationLogs | GET | /api/audit/operation-logs/export | 同操作记录过滤参数 | text/csv | AuditLogController.exportOperationLogs | 导出 UTF-8 CSV，并写 `AUDIT_OPERATION_EXPORT` 操作审计 |
 
 旧系统配置与系统监控接口已下线，不再提供 `/api/system/*` 和 `/api/monitor/*`。
 
-### 1.12 统计模块
+### 1.14 统计模块
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|
@@ -207,15 +262,15 @@
 
 统计接口不接收前端范围参数，后端按当前登录用户的数据范围聚合；非管理员统计结果必须能由同范围明细反算。
 
-### 1.13 活动备注模块 (后端提供，前端未定义API文件)
+### 1.15 活动备注模块 (后端提供，前端未定义API文件)
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|
-| /api/activity/remark | POST | ActivityRemarkController.addActivityRemark | R | **前端未发现API调用** |
-| /api/activity/remark | GET | ActivityRemarkController.activityRemarkPage | R\<PageInfo\<TActivityRemark\>\> | **前端未发现API调用** |
+| /api/activity/remark | POST | ActivityRemarkController.addActivityRemark | R | `createActivityRemark` |
+| /api/activity/remark | GET | ActivityRemarkController.activityRemarkPage | R\<PageInfo\<TActivityRemark\>\> | `fetchActivityRemarkPage` |
 | /api/activity/remark/{id} | GET | ActivityRemarkController.activityRemarkPage | R\<TActivityRemark\> | **前端未发现API调用** |
 | /api/activity/remark | PUT | ActivityRemarkController.editActivityRemark | R | **前端未发现API调用** |
-| /api/activity/remark/{id} | DELETE | ActivityRemarkController.delActivityRemark | R | **前端未发现API调用** |
+| /api/activity/remark/{id} | DELETE | ActivityRemarkController.delActivityRemark | R | `deleteActivityRemark` |
 
 ---
 
@@ -226,7 +281,7 @@
 | 问题类型 | 前端路径 | 后端路径 | 问题描述 | 严重程度 |
 |---------|---------|---------|---------|---------|
 | **路径不匹配** | /api/tran/status/{id} | 无对应接口 | 前端调用获取交易状态接口，后端未实现 | **高** |
-| 路径命名不一致 | /api/activitys | /api/activitys | 前后端一致，但命名不规范(应为activities) | 低 |
+| 历史路径兼容 | /api/activitys | /api/activitys | 已标记 deprecated，新页面使用 /api/activities | 低 |
 
 ### 2.2 HTTP方法匹配问题
 
@@ -241,8 +296,8 @@
 
 | 前端函数 | 前端发送格式 | 后端期望格式 | 问题描述 | 严重程度 |
 |---------|-------------|-------------|---------|---------|
-| createActivity | FormData | FormData (无@RequestBody) | 一致 | - |
-| updateActivity | FormData | FormData (无@RequestBody) | 一致 | - |
+| createActivity | JSON | JSON (@RequestBody CreateActivityRequest) | 一致 | - |
+| updateActivity | JSON | JSON (@RequestBody UpdateActivityRequest) | 一致 | - |
 | addClue | FormData | FormData (无@RequestBody) | 一致 | - |
 | updateClue | FormData | FormData (无@RequestBody) | 一致 | - |
 | createUser | JSON | JSON (@RequestBody CreateUserRequest) | 一致 | - |
@@ -307,7 +362,7 @@
                     ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
                     │ 1.生成JWT    │   │ 2.存入Redis  │   │ 3.设置过期   │
                     │ (用户信息    │   │ key:         │   │ 记住我:7天   │
-                    │  作为负载)   │   │ cdrm:user:   │   │ 否则:30分钟  │
+                    │  作为负载)   │   │ cdrm:user:   │   │ 否则:4小时   │
                     │              │   │ login:{id}   │   │              │
                     └──────────────┘   └──────────────┘   └──────────────┘
                             │
@@ -330,7 +385,7 @@
 | 3 | 认证成功处理器 | MyAuthenticationSuccessHandler.onAuthenticationSuccess() |
 | 4 | 生成JWT | JWTUtils.createJWT(userJSON), 负载为用户信息JSON |
 | 5 | 存储到Redis | key: `cdrm:user:login:{userId}`, value: jwt |
-| 6 | 设置过期时间 | rememberMe=true: 7天, rememberMe=false: 30分钟 |
+| 6 | 设置过期时间 | rememberMe=true: 7天, rememberMe=false: 4小时 |
 | 7 | 返回JWT给前端 | 仅 Redis 写入成功后返回 R.OK(jwt) |
 | 8 | Redis 写入失败 | 返回 HTTP 500 和 SYSTEM_ERROR，不返回 JWT |
 
@@ -442,7 +497,7 @@ axios.interceptors.request.use((config) => {
 |-----|---------|---------|-----------|
 | 每次请求 | Token校验通过后 | 异步执行(threadPoolTaskExecutor) | - |
 | 记住我模式 | rememberMe=true | redisService.expire() | 7天 |
-| 普通模式 | rememberMe=false | redisService.expire() | 30分钟 |
+| 普通模式 | rememberMe=false | redisService.expire() | 4小时 |
 
 ### 3.6 Token过期/错误处理
 
@@ -597,7 +652,7 @@ Token 统一通过 `Authorization: Bearer <token>` 请求头传递，包括文�
 |---------|-------|---------|------|
 | getUserList | current | Query参数 | /api/users?current=1 |
 | getCurrentClues | current | Query参数 | /api/clues?current=1 |
-| getActivityList | current | Query参数 | /api/activitys?current=1 |
+| getActivityList | page, size | Query参数 | /api/activities?page=1&size=10 |
 | getCustomerList | page, size | Query参数 | /api/customer/list?page=1&size=10 |
 | getProductList | page, size | Query参数 | /api/products?page=1&size=10 |
 | getTranList | page, size | Query参数 | /api/tran/list?page=1&size=10 |

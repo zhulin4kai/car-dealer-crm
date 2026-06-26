@@ -1,6 +1,7 @@
 package com.autodealer.crm.integration;
 
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.util.JWTUtils;
@@ -109,7 +110,7 @@ public abstract class BackendIntegrationTestBase {
                     + result.getResponse().getContentAsString());
         }
         // Make sure the token is in our fake Redis so TokenVerifyFilter can find it.
-        tokenStore.put(Constants.REDIS_JWT_KEY + expectedUserId, token);
+        tokenStore.put(RedisKeys.userLogin(expectedUserId), token);
         return "Bearer " + token;
     }
 
@@ -120,7 +121,7 @@ public abstract class BackendIntegrationTestBase {
      */
     protected String buildDirectToken(TUser user) {
         String token = JWTUtils.createJWT(user.getId(), user.getLoginAct(), Constants.DEFAULT_EXPIRE_TIME);
-        tokenStore.put(Constants.REDIS_JWT_KEY + user.getId(), token);
+        tokenStore.put(RedisKeys.userLogin(user.getId()), token);
         return "Bearer " + token;
     }
 }

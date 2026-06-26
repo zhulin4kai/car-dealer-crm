@@ -89,4 +89,16 @@ public class ImportContext {
         TActivity activity = activityMap.get(trimmed);
         return activity != null ? activity.getId() : null;
     }
+
+    /**
+     * 根据活动名称查找可写入业务记录的活动名称快照。
+     */
+    public String findActivityNameSnapshot(String activityName) {
+        if (activityName == null || activityName.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = activityName.trim();
+        TActivity activity = activityMap.get(trimmed);
+        return activity != null ? activity.getName() : null;
+    }
 }

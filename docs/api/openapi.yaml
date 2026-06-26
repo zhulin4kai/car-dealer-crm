@@ -35,8 +35,14 @@ tags:
     description: 交付记录、准备清单、签收和异常
   - name: Opportunity
     description: 商机、销售阶段、输赢单和阶段历史
+  - name: TestDrive
+    description: 试驾预约、改期、签到、完成、取消和爽约
+  - name: Follow
+    description: 跟进任务和沟通记录
   - name: Transaction
     description: 交易、结算、审批、发票、收款和退款
+  - name: Audit
+    description: 登录记录和操作审计
   - name: Statistic
     description: 经营统计
 
@@ -114,6 +120,281 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/audit/login-logs:
+    get:
+      tags: [Audit]
+      operationId: listAuditLoginLogs
+      summary: 分页查询登录记录
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/PageSize"
+        - name: loginAct
+          in: query
+          schema:
+            type: string
+          description: 登录账号，模糊查询。
+        - name: userName
+          in: query
+          schema:
+            type: string
+          description: 用户姓名，模糊查询。
+        - name: result
+          in: query
+          schema:
+            $ref: "#/components/schemas/AuditResult"
+        - name: reasonCode
+          in: query
+          schema:
+            type: string
+        - name: ip
+          in: query
+          schema:
+            type: string
+        - name: requestId
+          in: query
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          $ref: "#/components/responses/AuditLoginLogPageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/audit/login-logs/{id}:
+    get:
+      tags: [Audit]
+      operationId: getAuditLoginLog
+      summary: 查询登录记录详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/AuditLoginLogObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/audit/login-logs/export:
+    get:
+      tags: [Audit]
+      operationId: exportAuditLoginLogs
+      summary: 导出登录记录 CSV
+      parameters:
+        - name: loginAct
+          in: query
+          schema:
+            type: string
+        - name: userName
+          in: query
+          schema:
+            type: string
+        - name: result
+          in: query
+          schema:
+            $ref: "#/components/schemas/AuditResult"
+        - name: reasonCode
+          in: query
+          schema:
+            type: string
+        - name: ip
+          in: query
+          schema:
+            type: string
+        - name: requestId
+          in: query
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: 导出成功，响应为 UTF-8 CSV 文件。
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/audit/operation-logs:
+    get:
+      tags: [Audit]
+      operationId: listAuditOperationLogs
+      summary: 分页查询操作记录
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/PageSize"
+        - name: userName
+          in: query
+          schema:
+            type: string
+          description: 用户姓名，模糊查询。
+        - name: actionCode
+          in: query
+          schema:
+            type: string
+        - name: moduleName
+          in: query
+          schema:
+            type: string
+        - name: objectType
+          in: query
+          schema:
+            type: string
+        - name: resourceId
+          in: query
+          schema:
+            type: string
+        - name: result
+          in: query
+          schema:
+            $ref: "#/components/schemas/AuditResult"
+        - name: ip
+          in: query
+          schema:
+            type: string
+        - name: requestId
+          in: query
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          $ref: "#/components/responses/AuditOperationLogPageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/audit/operation-logs/{id}:
+    get:
+      tags: [Audit]
+      operationId: getAuditOperationLog
+      summary: 查询操作记录详情
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/AuditOperationLogObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/audit/operation-logs/export:
+    get:
+      tags: [Audit]
+      operationId: exportAuditOperationLogs
+      summary: 导出操作记录 CSV
+      parameters:
+        - name: userName
+          in: query
+          schema:
+            type: string
+        - name: actionCode
+          in: query
+          schema:
+            type: string
+        - name: moduleName
+          in: query
+          schema:
+            type: string
+        - name: objectType
+          in: query
+          schema:
+            type: string
+        - name: resourceId
+          in: query
+          schema:
+            type: string
+        - name: result
+          in: query
+          schema:
+            $ref: "#/components/schemas/AuditResult"
+        - name: ip
+          in: query
+          schema:
+            type: string
+        - name: requestId
+          in: query
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: 导出成功，响应为 UTF-8 CSV 文件。
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/owner:
     get:
       tags: [User]
@@ -167,7 +448,7 @@ paths:
           description: 邮箱，模糊查询。
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/UserPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -454,7 +735,7 @@ paths:
         - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/CluePageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -787,7 +1068,7 @@ paths:
             type: integer
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ClueRemarkPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -999,7 +1280,7 @@ paths:
         - $ref: "#/components/parameters/Current"
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/CustomerPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1038,13 +1319,15 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /api/activitys:
+  /api/activities:
     get:
       tags: [Activity]
       operationId: listActivities
       summary: 分页查询市场活动
+      description: 正式活动列表入口，分页参数使用 page/size；时间查询参数优先使用 ISO-8601 带时区格式，兼容 yyyy-MM-dd HH:mm:ss。
       parameters:
-        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
         - name: ownerId
           in: query
           schema:
@@ -1053,19 +1336,77 @@ paths:
           in: query
           schema:
             type: string
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ActivityStatus"
+        - name: channel
+          in: query
+          schema:
+            type: string
         - name: startTime
           in: query
+          description: 活动开始时间下限；推荐 ISO-8601 带时区，兼容 yyyy-MM-dd HH:mm:ss。
           schema:
             type: string
             format: date-time
         - name: endTime
           in: query
+          description: 活动结束时间上限；推荐 ISO-8601 带时区，兼容 yyyy-MM-dd HH:mm:ss。
           schema:
             type: string
             format: date-time
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ActivityPageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/activitys:
+    get:
+      tags: [Activity]
+      operationId: listActivitiesLegacy
+      summary: 分页查询市场活动（历史路径）
+      deprecated: true
+      description: 历史拼写兼容入口，兼容窗口至 2026-12-31；新客户端必须使用 GET /api/activities。
+      parameters:
+        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/PageSize"
+        - name: ownerId
+          in: query
+          schema:
+            type: integer
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ActivityStatus"
+        - name: channel
+          in: query
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          description: 历史接口兼容 yyyy-MM-dd HH:mm:ss，同时接受 ISO-8601 带时区格式。
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          description: 历史接口兼容 yyyy-MM-dd HH:mm:ss，同时接受 ISO-8601 带时区格式。
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          $ref: "#/components/responses/ActivityPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1081,12 +1422,9 @@ paths:
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
-              $ref: "#/components/schemas/ActivityQuery"
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: "#/components/schemas/ActivityQuery"
+              $ref: "#/components/schemas/CreateActivityRequest"
       responses:
         "200":
           $ref: "#/components/responses/EmptyOk"
@@ -1105,12 +1443,9 @@ paths:
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
-              $ref: "#/components/schemas/ActivityQuery"
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: "#/components/schemas/ActivityQuery"
+              $ref: "#/components/schemas/UpdateActivityRequest"
       responses:
         "200":
           $ref: "#/components/responses/EmptyOk"
@@ -1124,6 +1459,41 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/ServerError"
+
+  /api/activity/export:
+    get:
+      tags: [Activity]
+      operationId: exportActivities
+      summary: 导出活动 ROI 数据
+      parameters:
+        - name: ownerId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ActivityStatus"
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: channel
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Excel 文件
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /api/activity/{id}:
     get:
@@ -1163,6 +1533,137 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/activity/{id}/roi:
+    get:
+      tags: [Activity]
+      operationId: getActivityRoi
+      summary: 查询活动 ROI
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ActivityRoiObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/activity/{id}/publish:
+    put:
+      tags: [Activity]
+      operationId: publishActivity
+      summary: 发布活动为待开始
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ActivityObjectOk"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/activity/{id}/start:
+    put:
+      tags: [Activity]
+      operationId: startActivity
+      summary: 开始活动
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ActivityObjectOk"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/activity/{id}/end:
+    put:
+      tags: [Activity]
+      operationId: endActivity
+      summary: 结束活动
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ActivityObjectOk"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/activity/{id}/review:
+    put:
+      tags: [Activity]
+      operationId: reviewActivity
+      summary: 活动复盘
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewActivityRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ActivityObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/activity/{id}/cancel:
+    put:
+      tags: [Activity]
+      operationId: cancelActivity
+      summary: 取消活动
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ActivityObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/activity/{id}/close:
+    put:
+      tags: [Activity]
+      operationId: closeActivity
+      summary: 关闭活动
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ActivityObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
   /api/activity/batch:
     post:
       tags: [Activity]
@@ -1198,7 +1699,7 @@ paths:
             type: integer
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ActivityRemarkPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1259,7 +1760,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/ActivityRemarkObjectOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1302,9 +1803,17 @@ paths:
           in: query
           schema:
             type: string
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+        - name: applicableModule
+          in: query
+          schema:
+            type: string
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/DicTypePageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1321,7 +1830,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/DicTypeObjectOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1382,6 +1891,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1447,9 +1958,17 @@ paths:
           in: query
           schema:
             type: string
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+        - name: applicableModule
+          in: query
+          schema:
+            type: string
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/DicValuePageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1466,7 +1985,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/DicValueObjectOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1527,6 +2046,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1625,7 +2146,7 @@ paths:
         - $ref: "#/components/parameters/Size"
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ProductPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1665,7 +2186,7 @@ paths:
         - $ref: "#/components/parameters/LongId"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/ProductObjectOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1745,7 +2266,7 @@ paths:
             format: int64
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ProductPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1763,7 +2284,7 @@ paths:
         - $ref: "#/components/parameters/Size"
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ProductCategoryPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1803,7 +2324,7 @@ paths:
         - $ref: "#/components/parameters/LongId"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/ProductCategoryObjectOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1870,7 +2391,7 @@ paths:
         - $ref: "#/components/parameters/Size"
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ProductPromotionPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1910,7 +2431,7 @@ paths:
         - $ref: "#/components/parameters/LongId"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/ProductPromotionObjectOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1966,6 +2487,135 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/product-promotions/{id}/publish:
+    put:
+      tags: [ProductPromotion]
+      operationId: publishProductPromotion
+      summary: 发布促销政策
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ProductPromotionObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/product-promotions/{id}/activate:
+    put:
+      tags: [ProductPromotion]
+      operationId: activateProductPromotion
+      summary: 促销政策生效或恢复
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ProductPromotionObjectOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/product-promotions/{id}/pause:
+    put:
+      tags: [ProductPromotion]
+      operationId: pauseProductPromotion
+      summary: 暂停促销政策
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPromotionLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ProductPromotionObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/product-promotions/{id}/end:
+    put:
+      tags: [ProductPromotion]
+      operationId: endProductPromotion
+      summary: 结束促销政策
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPromotionLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ProductPromotionObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/product-promotions/{id}/void:
+    put:
+      tags: [ProductPromotion]
+      operationId: voidProductPromotion
+      summary: 作废促销政策
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPromotionLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ProductPromotionObjectOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/productstock/restock:
     post:
       tags: [ProductStock]
@@ -2016,7 +2666,7 @@ paths:
         - $ref: "#/components/parameters/Size"
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ProductVehiclePageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2133,7 +2783,7 @@ paths:
         - $ref: "#/components/parameters/Size"
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/ProductStockRecordPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2422,6 +3072,535 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/follow-tasks:
+    get:
+      tags: [Follow]
+      operationId: listFollowTasks
+      summary: 分页查询跟进任务
+      description: 列表按服务端当前用户数据范围过滤；查询前服务端维护已逾期任务状态。
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/FollowTaskStatus"
+        - name: taskType
+          in: query
+          schema:
+            $ref: "#/components/schemas/FollowTaskType"
+        - name: relatedObjectType
+          in: query
+          schema:
+            $ref: "#/components/schemas/FollowRelatedObjectType"
+        - name: relatedObjectId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: ownerId
+          in: query
+          schema:
+            type: integer
+        - name: overdueOnly
+          in: query
+          schema:
+            type: boolean
+        - name: keyword
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/FollowTaskPageOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Follow]
+      operationId: createFollowTask
+      summary: 创建跟进任务
+      description: 服务端校验关联对象可见性和负责人有效性；createBy/updateBy 来自当前登录上下文。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFollowTaskRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/FollowTaskObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/follow-tasks/{id}:
+    get:
+      tags: [Follow]
+      operationId: getFollowTask
+      summary: 查询跟进任务详情
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/FollowTaskObject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/follow-tasks/{id}/start:
+    put:
+      tags: [Follow]
+      operationId: startFollowTask
+      summary: 开始处理跟进任务
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/FollowTaskObject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/follow-tasks/{id}/postpone:
+    put:
+      tags: [Follow]
+      operationId: postponeFollowTask
+      summary: 延期跟进任务
+      description: 延期必须填写原因和新的计划时间，原计划时间和延期次数保留。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostponeFollowTaskRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/FollowTaskObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/follow-tasks/{id}/cancel:
+    put:
+      tags: [Follow]
+      operationId: cancelFollowTask
+      summary: 取消跟进任务
+      description: 取消必须填写原因；已完成、已取消和已关闭任务不能普通取消。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelFollowTaskRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/FollowTaskObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/follow-tasks/{id}/complete:
+    put:
+      tags: [Follow]
+      operationId: completeFollowTask
+      summary: 完成跟进任务
+      description: 完成时写入沟通记录，CAS 更新任务状态，并回写线索、客户或商机最近跟进事实。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteFollowTaskRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/FollowTaskObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/communication-records:
+    get:
+      tags: [Follow]
+      operationId: listCommunicationRecords
+      summary: 分页查询沟通记录
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: followTaskId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: relatedObjectType
+          in: query
+          schema:
+            $ref: "#/components/schemas/FollowRelatedObjectType"
+        - name: relatedObjectId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: ownerId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/CommunicationRecordStatus"
+        - name: keyword
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/CommunicationRecordPageOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Follow]
+      operationId: createCommunicationRecord
+      summary: 新增沟通记录
+      description: 沟通记录必须关联受控业务对象；可选择关联跟进任务并生成下一步任务。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommunicationRecordRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/CommunicationRecordObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/communication-records/{id}/correct:
+    put:
+      tags: [Follow]
+      operationId: correctCommunicationRecord
+      summary: 更正沟通记录
+      description: 更正会把原记录标记为 CORRECTED，并插入新的 ACTIVE 记录，不覆盖旧内容。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CorrectCommunicationRecordRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/CommunicationRecordObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/communication-records/{id}/void:
+    put:
+      tags: [Follow]
+      operationId: voidCommunicationRecord
+      summary: 作废沟通记录
+      description: 沟通记录不可物理删除；作废只写入 VOIDED 状态和原因。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoidCommunicationRecordRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/CommunicationRecordObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/test-drives:
+    get:
+      tags: [TestDrive]
+      operationId: listTestDrives
+      summary: 分页查询试驾记录
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: opportunityId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: vehicleId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: ownerId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/TestDriveStatus"
+        - name: keyword
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDrivePageOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [TestDrive]
+      operationId: createTestDrive
+      summary: 创建试驾预约
+      description: 预约基于客户和可用车辆创建，服务端校验客户数据范围、商机归属和车辆时间段冲突。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTestDriveRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDriveObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/test-drives/{id}:
+    get:
+      tags: [TestDrive]
+      operationId: getTestDrive
+      summary: 查询试驾详情
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDriveObject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/test-drives/{id}/history:
+    get:
+      tags: [TestDrive]
+      operationId: listTestDriveHistory
+      summary: 查询试驾状态历史
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDriveStatusHistoryArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/test-drives/{id}/reschedule:
+    put:
+      tags: [TestDrive]
+      operationId: rescheduleTestDrive
+      summary: 试驾改期
+      description: 先校验新车辆时段可用，再在同一事务内释放旧占用、创建新占用并记录历史。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RescheduleTestDriveRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDriveObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/test-drives/{id}/cancel:
+    put:
+      tags: [TestDrive]
+      operationId: cancelTestDrive
+      summary: 取消试驾
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelTestDriveRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDriveObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/test-drives/{id}/no-show:
+    put:
+      tags: [TestDrive]
+      operationId: markTestDriveNoShow
+      summary: 标记试驾爽约
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelTestDriveRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDriveObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/test-drives/{id}/check-in:
+    put:
+      tags: [TestDrive]
+      operationId: checkInTestDrive
+      summary: 试驾到店签到
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInTestDriveRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDriveObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/test-drives/{id}/complete:
+    put:
+      tags: [TestDrive]
+      operationId: completeTestDrive
+      summary: 完成试驾并记录反馈
+      description: 完成试驾必须已签到并完成安全确认；不会自动生成报价、订单、收款或交付。
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteTestDriveRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TestDriveObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/quotes:
     get:
       tags: [Quote]
@@ -2444,7 +3623,7 @@ paths:
             $ref: "#/components/schemas/QuoteStatus"
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/QuotePageOk"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2792,7 +3971,10 @@ paths:
     post:
       tags: [Delivery]
       operationId: cancelDelivery
-      summary: 取消交付并保留交付历史
+      summary: 取消交付并释放未出库订单占用
+      description: |
+        取消交付必须提交原因。未签收交付会在同一事务内引用原订单 RESERVE 流水写入 RELEASE 流水，
+        恢复车辆可售和商品可售库存；重复释放同一占用不重复增加库存。已签收/已完成交付不能通过普通取消处理。
       parameters:
         - $ref: "#/components/parameters/LongId"
       requestBody:
@@ -2868,7 +4050,7 @@ paths:
             type: string
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/TransactionPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2885,7 +4067,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/TransactionObjectOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2918,12 +4100,12 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /api/tran/create:
+  /api/transactions:
     post:
       tags: [Transaction]
       operationId: createTransaction
       summary: 创建交易
-      description: 创建待报价交易并保存商品价格快照；报价创建不扣减、不占用商品库存。
+      description: 正式交易创建入口；创建待报价交易并保存商品价格快照，报价创建不扣减、不占用商品库存。
       requestBody:
         required: true
         content:
@@ -2932,16 +4114,36 @@ paths:
               $ref: "#/components/schemas/CreateTranRequest"
       responses:
         "200":
-          description: 创建成功，data 为交易 ID。
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/R"
-                  - type: object
-                    properties:
-                      data:
-                        type: integer
+          $ref: "#/components/responses/TransactionIdOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/create:
+    post:
+      tags: [Transaction]
+      operationId: createTransactionLegacy
+      summary: 创建交易（历史路径）
+      deprecated: true
+      description: 历史交易创建入口，兼容窗口至 2026-12-31；新客户端必须使用 POST /api/transactions。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTranRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TransactionIdOk"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3030,7 +4232,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/TransactionPaymentArrayOk"
+          $ref: "#/components/responses/ProductPromotionArrayOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3116,7 +4318,7 @@ paths:
         - $ref: "#/components/parameters/TranId"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/TransactionApproveObjectOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3131,6 +4333,7 @@ paths:
       tags: [Transaction]
       operationId: createTransactionInvoice
       summary: 创建交易发票
+      description: 创建待开具发票；支持部分开票和多票，金额不得超过服务端计算的当前可开票余额。余额不足时返回 409，错误 data.availableAmount 为当前可开票余额。
       requestBody:
         required: true
         content:
@@ -3213,7 +4416,7 @@ paths:
       tags: [Transaction]
       operationId: redReverseTransactionInvoice
       summary: 红冲交易发票
-      description: 创建负数红字发票记录并关联原票；原票保留并标记为部分红冲或已红冲，不更新交易履约阶段。
+      description: 创建负数红字发票记录并关联原票；原票保留并标记为部分红冲或已红冲，不更新交易履约阶段。红冲金额超过原票剩余可红冲金额时返回 409，错误 data.availableAmount 为剩余可红冲金额。
       parameters:
         - name: invoiceId
           in: path
@@ -3247,7 +4450,7 @@ paths:
       tags: [Transaction]
       operationId: reissueTransactionInvoice
       summary: 重开交易发票
-      description: 基于作废或红冲事实创建新的待开票记录并关联原票，不覆盖历史发票事实。
+      description: 基于作废或红冲事实创建新的待开票记录并关联原票，不覆盖历史发票事实。重开金额超过当前可开票余额时返回 409，错误 data.availableAmount 为当前可开票余额。
       parameters:
         - name: invoiceId
           in: path
@@ -3285,7 +4488,7 @@ paths:
         - $ref: "#/components/parameters/TranId"
       responses:
         "200":
-          $ref: "#/components/responses/ArrayOk"
+          $ref: "#/components/responses/TransactionRemarkArrayOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3304,7 +4507,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ArrayOk"
+          $ref: "#/components/responses/TransactionProductArrayOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3344,7 +4547,10 @@ paths:
       tags: [Transaction]
       operationId: cancelTransaction
       summary: 取消交易
-      description: 取消交易必须提交原因；存在收款、待确认收款、退款处理中、未处理发票、已出库或已签收事实时返回 409，不删除历史记录。
+      description: |
+        取消交易必须提交原因；存在收款、待确认收款、退款处理中、未处理发票、已出库或已签收事实时返回 409。
+        未出库的订单占用车辆会在同一事务内引用原 RESERVE 流水写入 RELEASE 流水并恢复商品可售库存。
+        取消不删除商品快照、审批、收款、退款、发票、交付或库存流水历史。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -3491,7 +4697,7 @@ paths:
         - $ref: "#/components/parameters/TranId"
       responses:
         "200":
-          $ref: "#/components/responses/ArrayOk"
+          $ref: "#/components/responses/TransactionPaymentArrayOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3512,7 +4718,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/TransactionPaymentObject"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3535,7 +4741,7 @@ paths:
         - $ref: "#/components/parameters/TranId"
       responses:
         "200":
-          $ref: "#/components/responses/ArrayOk"
+          $ref: "#/components/responses/RefundRequestArrayOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3550,6 +4756,7 @@ paths:
       tags: [Transaction]
       operationId: createTransactionRefundRequest
       summary: 创建退款申请
+      description: 基于已确认原收款创建待审批退款申请；交易处于 PAYMENT、DELIVERY 或 CANCELLED 时允许发起。退款原因必填，超出当前可退金额时返回 409，错误 data.availableAmount 为服务端计算的当前可退余额。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -3560,7 +4767,7 @@ paths:
               $ref: "#/components/schemas/CreateRefundRequest"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/RefundRequestObject"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3591,7 +4798,7 @@ paths:
               $ref: "#/components/schemas/ApproveRefundRequest"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/RefundRequestObject"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3612,7 +4819,7 @@ paths:
       tags: [Transaction]
       operationId: executeTransactionRefundRequest
       summary: 执行退款
-      description: 仅执行待执行退款申请；成功时先记录 EXECUTING 再新增负数退款流水并把申请标记为 COMPLETED，失败时标记为 FAILED 并保留失败原因；重复执行已完成或已失败申请返回当前申请状态，不覆盖原收款确认状态，不直接取消交易或释放库存。
+      description: 仅执行 PAYMENT、DELIVERY 或 CANCELLED 交易下的待执行退款申请；成功时先记录 EXECUTING 再新增负数退款流水并把申请标记为 COMPLETED，失败时标记为 FAILED 并保留失败原因；重复执行已完成或已失败申请返回当前申请状态，不覆盖原收款确认状态，不直接取消交易或释放库存。超出当前可退金额时返回 409，错误 data.availableAmount 为服务端计算的当前可退余额。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -3647,7 +4854,7 @@ paths:
       description: 指标由后端按当前登录用户的数据范围聚合，前端不能传入范围参数扩大查询。
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/SummaryDataOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3731,6 +4938,7 @@ components:
         type: integer
         default: 10
         minimum: 1
+        maximum: 100
       description: 历史分页大小。
     Page:
       name: page
@@ -3749,6 +4957,7 @@ components:
         type: integer
         default: 10
         minimum: 1
+        maximum: 100
       description: 分页大小。
 
   requestBodies:
@@ -3881,6 +5090,133 @@ components:
                 properties:
                   data:
                     $ref: "#/components/schemas/PageInfo"
+    ActivityPageOk:
+      description: 分页查询成功，data.list 为市场活动。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Activity"
+    ActivityRoiObjectOk:
+      description: 查询成功，data 为活动 ROI 汇总。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ActivityRoiResponse"
+    TransactionPageOk:
+      description: 分页查询成功，data.list 为交易记录。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Tran"
+    TransactionObjectOk:
+      description: 查询成功，data 为交易详情。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Tran"
+    TransactionIdOk:
+      description: 创建成功，data 为交易 ID。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: integer
+    AuditLoginLogPageOk:
+      description: 分页查询成功，data.list 为登录记录。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/AuditLoginLog"
+    AuditLoginLogObjectOk:
+      description: 查询成功，data 为登录记录详情。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AuditLoginLog"
+    AuditOperationLogPageOk:
+      description: 分页查询成功，data.list 为操作记录。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/AuditOperationLog"
+    AuditOperationLogObjectOk:
+      description: 查询成功，data 为操作记录详情。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AuditOperationLog"
     CustomerPageOk:
       description: 分页查询成功，data.list 为客户列表响应；敏感字段由后端按权限脱敏。
       content:
@@ -4009,6 +5345,106 @@ components:
                     type: array
                     items:
                       $ref: "#/components/schemas/OpportunityStageHistory"
+    FollowTaskObject:
+      description: 跟进任务命令或详情查询成功，data 为跟进任务对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/FollowTask"
+    FollowTaskPageOk:
+      description: 分页查询成功，data.list 为跟进任务数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/FollowTask"
+    CommunicationRecordObject:
+      description: 沟通记录命令成功，data 为沟通记录对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/CommunicationRecord"
+    CommunicationRecordPageOk:
+      description: 分页查询成功，data.list 为沟通记录数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/CommunicationRecord"
+    TestDriveObject:
+      description: 试驾命令或详情查询成功，data 为试驾对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/TestDrive"
+    TestDrivePageOk:
+      description: 分页查询成功，data.list 为试驾记录数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/TestDrive"
+    TestDriveStatusHistoryArrayOk:
+      description: 查询成功，data 为试驾状态历史数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TestDriveStatusHistory"
     ProductVehicleObject:
       description: 库存车辆实例命令成功，data 为车辆实例当前状态。
       content:
@@ -4193,6 +5629,349 @@ components:
                     type: array
                     items:
                       $ref: "#/components/schemas/TransactionInvoice"
+    UserPageOk:
+      description: 分页查询成功，data.list 为用户详情数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/UserDetailResponse"
+    CluePageOk:
+      description: 分页查询成功，data.list 为线索数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Clue"
+    ClueRemarkPageOk:
+      description: 分页查询成功，data.list 为线索备注数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ClueRemark"
+    ActivityObjectOk:
+      description: 查询或状态命令成功，data 为市场活动对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Activity"
+    ActivityRemarkObjectOk:
+      description: 查询成功，data 为活动备注对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ActivityRemark"
+    ActivityRemarkPageOk:
+      description: 分页查询成功，data.list 为活动备注数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ActivityRemark"
+    DicTypeObjectOk:
+      description: 查询成功，data 为字典类型对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/DicType"
+    DicTypePageOk:
+      description: 分页查询成功，data.list 为字典类型数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/DicType"
+    DicValueObjectOk:
+      description: 查询成功，data 为字典值对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/DicValue"
+    DicValuePageOk:
+      description: 分页查询成功，data.list 为字典值数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/DicValue"
+    ProductObjectOk:
+      description: 查询成功，data 为商品对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Product"
+    ProductPageOk:
+      description: 分页查询成功，data.list 为商品数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Product"
+    ProductCategoryObjectOk:
+      description: 查询成功，data 为商品分类对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ProductCategory"
+    ProductCategoryPageOk:
+      description: 分页查询成功，data.list 为商品分类数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ProductCategory"
+    ProductPromotionObjectOk:
+      description: 查询或状态命令成功，data 为促销政策对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ProductPromotion"
+    ProductPromotionArrayOk:
+      description: 查询成功，data 为促销政策数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ProductPromotion"
+    ProductPromotionPageOk:
+      description: 分页查询成功，data.list 为促销政策数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ProductPromotion"
+    ProductVehiclePageOk:
+      description: 分页查询成功，data.list 为库存车辆实例数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ProductVehicle"
+    ProductStockRecordPageOk:
+      description: 分页查询成功，data.list 为库存流水数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ProductStockRecord"
+    QuotePageOk:
+      description: 分页查询成功，data.list 为报价数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Quote"
+    TransactionApproveObjectOk:
+      description: 查询成功，data 为交易审批信息。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/TransactionApprove"
+    TransactionRemarkArrayOk:
+      description: 查询成功，data 为交易备注数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TransactionRemark"
+    TransactionProductArrayOk:
+      description: 查询成功，data 为交易商品明细数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TranProduct"
     BadRequest:
       description: 请求参数错误。
       content:
@@ -4263,6 +6042,7 @@ components:
           nullable: true
     PageInfo:
       type: object
+      required: [pageNum, pageSize, total, pages, list]
       properties:
         pageNum:
           type: integer
@@ -4278,6 +6058,86 @@ components:
           items:
             type: object
             additionalProperties: true
+    AuditResult:
+      type: string
+      enum:
+        - SUCCESS
+        - FAILURE
+    AuditLoginLog:
+      type: object
+      required: [id, loginAct, result, reasonCode, createTime]
+      properties:
+        id:
+          type: integer
+        loginAct:
+          type: string
+        userId:
+          type: integer
+          nullable: true
+        userName:
+          type: string
+          nullable: true
+        result:
+          $ref: "#/components/schemas/AuditResult"
+        reasonCode:
+          type: string
+          description: 稳定原因编码，例如 SUCCESS、BAD_CREDENTIALS、ACCOUNT_LOCKED。
+        reasonMessage:
+          type: string
+          nullable: true
+        ip:
+          type: string
+          nullable: true
+        browser:
+          type: string
+          nullable: true
+        os:
+          type: string
+          nullable: true
+        requestId:
+          type: string
+          nullable: true
+        createTime:
+          type: string
+          format: date-time
+    AuditOperationLog:
+      type: object
+      required: [id, actionCode, createTime]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+          nullable: true
+        userName:
+          type: string
+          nullable: true
+        actionCode:
+          type: string
+        moduleName:
+          type: string
+          nullable: true
+        objectType:
+          type: string
+          nullable: true
+        resourceId:
+          type: string
+          nullable: true
+        result:
+          $ref: "#/components/schemas/AuditResult"
+        detail:
+          type: string
+          nullable: true
+          description: 脱敏后的结构化摘要 JSON 字符串。
+        ip:
+          type: string
+          nullable: true
+        requestId:
+          type: string
+          nullable: true
+        createTime:
+          type: string
+          format: date-time
     User:
       type: object
       properties:
@@ -4683,6 +6543,62 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CustomerDuplicateSummary"
+    ActivityStatus:
+      type: string
+      enum: [DRAFT, PLANNED, ONGOING, ENDED, REVIEWED, CLOSED, CANCELED]
+      description: 活动生命周期稳定编码，中文仅用于前端展示
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+        ownerId:
+          type: integer
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ActivityStatus"
+        channel:
+          type: string
+        targetModel:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+          description: 兼容返回 yyyy-MM-dd HH:mm:ss；新接口逐步迁移到 ISO-8601 带时区。
+        endTime:
+          type: string
+          format: date-time
+          description: 兼容返回 yyyy-MM-dd HH:mm:ss；新接口逐步迁移到 ISO-8601 带时区。
+        cost:
+          type: number
+        actualCost:
+          type: number
+        description:
+          type: string
+        resultSummary:
+          type: string
+        reviewConclusion:
+          type: string
+        reviewedBy:
+          type: integer
+        reviewedTime:
+          type: string
+          format: date-time
+        closedReason:
+          type: string
+        canceledReason:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        editTime:
+          type: string
+          format: date-time
+        editBy:
+          type: integer
     ActivityQuery:
       type: object
       properties:
@@ -4691,6 +6607,10 @@ components:
         ownerId:
           type: integer
         name:
+          type: string
+        status:
+          $ref: "#/components/schemas/ActivityStatus"
+        channel:
           type: string
         startTime:
           type: string
@@ -4702,6 +6622,93 @@ components:
           type: number
         description:
           type: string
+    CreateActivityRequest:
+      type: object
+      required: [name, channel, startTime, endTime, cost]
+      properties:
+        name:
+          type: string
+          maxLength: 128
+        channel:
+          type: string
+          maxLength: 64
+        targetModel:
+          type: string
+          maxLength: 128
+        startTime:
+          type: string
+          format: date-time
+          example: "2026-07-01 09:30:00"
+        endTime:
+          type: string
+          format: date-time
+          example: "2026-07-01 18:00:00"
+        cost:
+          type: number
+          minimum: 0
+        description:
+          type: string
+          maxLength: 255
+    UpdateActivityRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateActivityRequest"
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+    ReviewActivityRequest:
+      type: object
+      required: [actualCost, resultSummary, reviewConclusion]
+      properties:
+        actualCost:
+          type: number
+          minimum: 0
+        resultSummary:
+          type: string
+          maxLength: 500
+        reviewConclusion:
+          type: string
+          maxLength: 500
+    ActivityLifecycleRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+    ActivityRoiResponse:
+      type: object
+      properties:
+        activityId:
+          type: integer
+        activityName:
+          type: string
+        status:
+          $ref: "#/components/schemas/ActivityStatus"
+        plannedCost:
+          type: number
+        actualCost:
+          type: number
+        clueCount:
+          type: integer
+        validClueCount:
+          type: integer
+        customerCount:
+          type: integer
+        opportunityCount:
+          type: integer
+        testDriveCount:
+          type: integer
+        quoteCount:
+          type: integer
+        orderCount:
+          type: integer
+        dealAmount:
+          type: number
+        roi:
+          type: number
+          nullable: true
     CreateActivityRemarkRequest:
       type: object
       required: [activityId, noteContent]
@@ -4728,19 +6735,134 @@ components:
           type: string
         valueCode:
           type: string
+    ClueRemark:
+      type: object
+      properties:
+        id:
+          type: integer
+        clueId:
+          type: integer
+        noteWay:
+          type: integer
+        noteContent:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        editTime:
+          type: string
+          format: date-time
+        editBy:
+          type: integer
+        deleted:
+          type: integer
+        noteWayDO:
+          $ref: "#/components/schemas/DictionaryValueSummary"
+    ActivityRemark:
+      type: object
+      properties:
+        id:
+          type: integer
+        activityId:
+          type: integer
+        noteContent:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        editTime:
+          type: string
+          format: date-time
+        editBy:
+          type: integer
+        deleted:
+          type: integer
+    DicType:
+      type: object
+      properties:
+        id:
+          type: integer
+        typeCode:
+          type: string
+          description: 稳定字典类型编码，创建后不得修改。
+        typeName:
+          type: string
+        applicableModule:
+          type: string
+        enabled:
+          type: boolean
+        builtIn:
+          type: boolean
+        disableReason:
+          type: string
+        disabledBy:
+          type: integer
+        disabledTime:
+          type: string
+          format: date-time
+        remark:
+          type: string
+        dicValueList:
+          type: array
+          items:
+            $ref: "#/components/schemas/DicValue"
+    DicValue:
+      type: object
+      properties:
+        id:
+          type: integer
+        typeCode:
+          type: string
+        typeValue:
+          type: string
+        valueCode:
+          type: string
+          description: 稳定字典值编码，创建后不得修改。
+        order:
+          type: integer
+        applicableModule:
+          type: string
+        enabled:
+          type: boolean
+        builtIn:
+          type: boolean
+        disableReason:
+          type: string
+        disabledBy:
+          type: integer
+        disabledTime:
+          type: string
+          format: date-time
+        remark:
+          type: string
     DicTypeRequest:
       type: object
       required: [typeCode, typeName]
+      description: 新增时写入稳定 typeCode；更新时 typeCode 必须与原值一致，不能作为改码入口。
       properties:
         typeCode:
           type: string
         typeName:
           type: string
+        applicableModule:
+          type: string
+          description: 适用业务模块。
+        enabled:
+          type: boolean
+          default: true
+        disableReason:
+          type: string
+          description: enabled=false 时必填。
         remark:
           type: string
     DicValueRequest:
       type: object
       required: [typeCode, typeValue, valueCode]
+      description: 新增时写入稳定 valueCode；更新时 typeCode 与 valueCode 必须与原值一致，不能作为改码入口。
       properties:
         typeCode:
           type: string
@@ -4750,8 +6872,134 @@ components:
           type: string
         order:
           type: integer
+        applicableModule:
+          type: string
+          description: 适用业务模块。
+        enabled:
+          type: boolean
+          default: true
+        disableReason:
+          type: string
+          description: enabled=false 时必填。
         remark:
           type: string
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        sku:
+          type: string
+        name:
+          type: string
+        categoryId:
+          type: integer
+          format: int64
+        categoryName:
+          type: string
+        specification:
+          type: string
+        price:
+          type: number
+        stock:
+          type: integer
+          description: 当前库存汇总；资料编辑接口不得直接修改该字段。
+        minStock:
+          type: integer
+        status:
+          type: string
+          enum: [ON_SALE, OFF_SALE]
+          description: 商品状态稳定编码，中文只用于页面展示。
+        createTime:
+          type: string
+          format: date-time
+        updateTime:
+          type: string
+          format: date-time
+    ProductCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        sort:
+          type: integer
+        status:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        updateTime:
+          type: string
+          format: date-time
+    ProductPromotion:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        code:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/ProductPromotionType"
+        discount:
+          type: number
+        ruleSummary:
+          type: string
+        applicableStore:
+          type: string
+        customerType:
+          type: string
+        applicableChannel:
+          type: string
+        inventoryScope:
+          type: string
+        stackable:
+          type: boolean
+        priority:
+          type: integer
+        budgetLimit:
+          type: number
+          nullable: true
+        usedBudget:
+          type: number
+        usageLimit:
+          type: integer
+          nullable: true
+        usedCount:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/ProductPromotionStatus"
+        pauseReason:
+          type: string
+        endReason:
+          type: string
+        voidReason:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        updateTime:
+          type: string
+          format: date-time
     CreateProductRequest:
       type: object
       required: [sku, name, price, status]
@@ -4811,27 +7059,85 @@ components:
           type: integer
         status:
           type: string
+    ProductPromotionStatus:
+      type: string
+      enum:
+        - DRAFT
+        - PENDING_EFFECTIVE
+        - ACTIVE
+        - PAUSED
+        - ENDED
+        - VOIDED
+        - EXHAUSTED
+      description: 促销政策状态稳定编码，中文只用于页面展示。
+    ProductPromotionType:
+      type: string
+      enum:
+        - AMOUNT
+        - PERCENTAGE
+        - EXCHANGE_SUBSIDY
+        - FINANCE_SUBSIDY
+        - GIFT
+        - MAINTENANCE
+        - INSURANCE_SUBSIDY
+        - LIMITED_TIME
+        - INVENTORY_CLEARANCE
+      description: PERCENTAGE 按成交价格比例保存，例如八折为 0.8；AMOUNT 和补贴类按每台直减金额计算。
     ProductPromotionRequest:
       type: object
-      required: [productId, name, type, discount]
+      required: [productId, code, name, type, discount, ruleSummary, startTime, endTime]
+      description: 创建和编辑不接收 status；创建默认 DRAFT，状态流转使用独立生命周期接口。
       properties:
         productId:
           type: integer
           format: int64
+        code:
+          type: string
         name:
           type: string
         type:
-          type: string
+          $ref: "#/components/schemas/ProductPromotionType"
         discount:
           type: number
+        ruleSummary:
+          type: string
+        applicableStore:
+          type: string
+          default: ALL
+        customerType:
+          type: string
+          default: ALL
+        applicableChannel:
+          type: string
+          default: ALL
+        inventoryScope:
+          type: string
+          default: ALL
+        stackable:
+          type: boolean
+          default: false
+        priority:
+          type: integer
+          default: 0
+        budgetLimit:
+          type: number
+          nullable: true
+        usageLimit:
+          type: integer
+          nullable: true
         startTime:
           type: string
           format: date-time
         endTime:
           type: string
           format: date-time
-        status:
+    ProductPromotionLifecycleRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
           type: string
+          description: 暂停、结束或作废原因。
     RestockRequest:
       type: object
       required: [productId, quantity]
@@ -5154,6 +7460,535 @@ components:
         nextActionTime:
           type: string
           format: date
+    FollowRelatedObjectType:
+      type: string
+      enum:
+        - CLUE
+        - CUSTOMER
+        - OPPORTUNITY
+        - TEST_DRIVE
+        - ORDER
+      description: 跟进任务和沟通记录可关联的受控对象类型。
+    FollowTaskStatus:
+      type: string
+      enum:
+        - PENDING
+        - IN_PROGRESS
+        - POSTPONED
+        - OVERDUE
+        - COMPLETED
+        - CANCELLED
+        - CLOSED
+    FollowTaskType:
+      type: string
+      enum:
+        - FIRST_CONTACT
+        - PHONE_FOLLOW_UP
+        - STORE_INVITATION
+        - TEST_DRIVE_CONFIRM
+        - QUOTE_COMMUNICATION
+        - PRICE_NEGOTIATION
+        - CONTRACT_SIGN_REMINDER
+        - PAYMENT_REMINDER
+        - DELIVERY_CONFIRM
+        - POST_DELIVERY_FOLLOW_UP
+        - LONG_TERM_MAINTENANCE
+    FollowTaskPriority:
+      type: string
+      enum:
+        - LOW
+        - NORMAL
+        - HIGH
+        - URGENT
+    CommunicationMethod:
+      type: string
+      enum:
+        - PHONE
+        - STORE_VISIT
+        - WECHAT
+        - SMS
+        - EMAIL
+        - OTHER
+    CommunicationRecordStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - CORRECTED
+        - VOIDED
+    FollowTask:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        taskType:
+          $ref: "#/components/schemas/FollowTaskType"
+        relatedObjectType:
+          $ref: "#/components/schemas/FollowRelatedObjectType"
+        relatedObjectId:
+          type: integer
+          format: int64
+        relatedObjectName:
+          type: string
+        ownerId:
+          type: integer
+        ownerName:
+          type: string
+        priority:
+          $ref: "#/components/schemas/FollowTaskPriority"
+        dueTime:
+          type: string
+          format: date-time
+        remindTime:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/FollowTaskStatus"
+        result:
+          type: string
+        postponeReason:
+          type: string
+        originalDueTime:
+          type: string
+          format: date-time
+        postponeCount:
+          type: integer
+        cancelReason:
+          type: string
+        communicationRecordId:
+          type: integer
+          format: int64
+        completedTime:
+          type: string
+          format: date-time
+        completedBy:
+          type: integer
+        createTime:
+          type: string
+          format: date-time
+        updateTime:
+          type: string
+          format: date-time
+    CommunicationRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        followTaskId:
+          type: integer
+          format: int64
+        parentRecordId:
+          type: integer
+          format: int64
+        relatedObjectType:
+          $ref: "#/components/schemas/FollowRelatedObjectType"
+        relatedObjectId:
+          type: integer
+          format: int64
+        relatedObjectName:
+          type: string
+        ownerId:
+          type: integer
+        ownerName:
+          type: string
+        communicationMethod:
+          $ref: "#/components/schemas/CommunicationMethod"
+        communicationTime:
+          type: string
+          format: date-time
+        summary:
+          type: string
+        customerFeedback:
+          type: string
+        nextAction:
+          type: string
+        nextFollowTime:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/CommunicationRecordStatus"
+        correctionReason:
+          type: string
+        voidReason:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        updateTime:
+          type: string
+          format: date-time
+    CreateFollowTaskRequest:
+      type: object
+      required: [title, taskType, relatedObjectType, relatedObjectId, ownerId, dueTime]
+      properties:
+        title:
+          type: string
+          maxLength: 128
+        taskType:
+          $ref: "#/components/schemas/FollowTaskType"
+        relatedObjectType:
+          $ref: "#/components/schemas/FollowRelatedObjectType"
+        relatedObjectId:
+          type: integer
+          format: int64
+        ownerId:
+          type: integer
+        priority:
+          $ref: "#/components/schemas/FollowTaskPriority"
+        dueTime:
+          type: string
+          format: date-time
+        remindTime:
+          type: string
+          format: date-time
+    PostponeFollowTaskRequest:
+      type: object
+      required: [newDueTime, reason]
+      properties:
+        newDueTime:
+          type: string
+          format: date-time
+        remindTime:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    CancelFollowTaskRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    CompleteFollowTaskRequest:
+      type: object
+      required: [communicationMethod, summary, result]
+      properties:
+        communicationMethod:
+          $ref: "#/components/schemas/CommunicationMethod"
+        communicationTime:
+          type: string
+          format: date-time
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 500
+        customerFeedback:
+          type: string
+          maxLength: 500
+        result:
+          type: string
+          minLength: 1
+          maxLength: 500
+        nextAction:
+          type: string
+          maxLength: 500
+        nextFollowTime:
+          type: string
+          format: date-time
+        createNextTask:
+          type: boolean
+        nextTaskType:
+          $ref: "#/components/schemas/FollowTaskType"
+        nextTaskTitle:
+          type: string
+        nextTaskPriority:
+          $ref: "#/components/schemas/FollowTaskPriority"
+        nextTaskDueTime:
+          type: string
+          format: date-time
+        nextTaskRemindTime:
+          type: string
+          format: date-time
+    CreateCommunicationRecordRequest:
+      type: object
+      required: [relatedObjectType, relatedObjectId, communicationMethod, summary]
+      properties:
+        followTaskId:
+          type: integer
+          format: int64
+        relatedObjectType:
+          $ref: "#/components/schemas/FollowRelatedObjectType"
+        relatedObjectId:
+          type: integer
+          format: int64
+        communicationMethod:
+          $ref: "#/components/schemas/CommunicationMethod"
+        communicationTime:
+          type: string
+          format: date-time
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 500
+        customerFeedback:
+          type: string
+          maxLength: 500
+        nextAction:
+          type: string
+          maxLength: 500
+        nextFollowTime:
+          type: string
+          format: date-time
+        createNextTask:
+          type: boolean
+        nextTaskType:
+          $ref: "#/components/schemas/FollowTaskType"
+        nextTaskTitle:
+          type: string
+        nextTaskPriority:
+          $ref: "#/components/schemas/FollowTaskPriority"
+        nextTaskDueTime:
+          type: string
+          format: date-time
+        nextTaskRemindTime:
+          type: string
+          format: date-time
+    CorrectCommunicationRecordRequest:
+      type: object
+      required: [communicationMethod, summary, correctionReason]
+      properties:
+        communicationMethod:
+          $ref: "#/components/schemas/CommunicationMethod"
+        communicationTime:
+          type: string
+          format: date-time
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 500
+        customerFeedback:
+          type: string
+          maxLength: 500
+        nextAction:
+          type: string
+          maxLength: 500
+        nextFollowTime:
+          type: string
+          format: date-time
+        correctionReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    VoidCommunicationRecordRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    TestDriveStatus:
+      type: string
+      enum:
+        - PENDING_CONFIRM
+        - SCHEDULED
+        - RESCHEDULED
+        - CHECKED_IN
+        - COMPLETED
+        - CANCELED
+        - NO_SHOW
+        - EXCEPTION_CLOSED
+      description: 试驾状态稳定编码，中文只用于页面展示；不得覆盖商机、报价、订单、库存或交付状态。
+    TestDrive:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        testDriveNo:
+          type: string
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        opportunityId:
+          type: integer
+          format: int64
+        opportunityNo:
+          type: string
+        vehicleId:
+          type: integer
+          format: int64
+        vin:
+          type: string
+        vehicleName:
+          type: string
+        ownerId:
+          type: integer
+        ownerName:
+          type: string
+        plannedStartTime:
+          type: string
+          format: date-time
+        plannedEndTime:
+          type: string
+          format: date-time
+        actualArriveTime:
+          type: string
+          format: date-time
+        actualStartTime:
+          type: string
+          format: date-time
+        actualEndTime:
+          type: string
+          format: date-time
+        safetyConfirmedAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/TestDriveStatus"
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        result:
+          type: string
+        customerFeedback:
+          type: string
+        nextAction:
+          type: string
+        cancelType:
+          type: string
+        cancelReason:
+          type: string
+        remark:
+          type: string
+        rescheduleCount:
+          type: integer
+        createTime:
+          type: string
+          format: date-time
+        updateTime:
+          type: string
+          format: date-time
+    TestDriveStatusHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        testDriveId:
+          type: integer
+          format: int64
+        fromStatus:
+          $ref: "#/components/schemas/TestDriveStatus"
+        toStatus:
+          $ref: "#/components/schemas/TestDriveStatus"
+        actionType:
+          type: string
+        reason:
+          type: string
+        oldStartTime:
+          type: string
+          format: date-time
+        oldEndTime:
+          type: string
+          format: date-time
+        newStartTime:
+          type: string
+          format: date-time
+        newEndTime:
+          type: string
+          format: date-time
+        operateBy:
+          type: integer
+        operateTime:
+          type: string
+          format: date-time
+    CreateTestDriveRequest:
+      type: object
+      required: [customerId, vehicleId, plannedStartTime, plannedEndTime, contactName, contactPhone]
+      properties:
+        customerId:
+          type: integer
+          description: 客户 ID；负责销售和数据范围由服务端根据客户主档和当前用户确定。
+        opportunityId:
+          type: integer
+          format: int64
+          description: 可选关联商机；提交时必须属于同一客户、在当前用户数据范围内且未终态。
+        vehicleId:
+          type: integer
+          format: int64
+        plannedStartTime:
+          type: string
+          format: date-time
+        plannedEndTime:
+          type: string
+          format: date-time
+        contactName:
+          type: string
+          minLength: 1
+        contactPhone:
+          type: string
+          minLength: 1
+        remark:
+          type: string
+    RescheduleTestDriveRequest:
+      type: object
+      required: [plannedStartTime, plannedEndTime, reason]
+      properties:
+        vehicleId:
+          type: integer
+          format: int64
+          description: 为空时沿用原车辆；提交时必须为可试驾车辆。
+        plannedStartTime:
+          type: string
+          format: date-time
+        plannedEndTime:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 1
+    CancelTestDriveRequest:
+      type: object
+      required: [cancelType, reason]
+      properties:
+        cancelType:
+          type: string
+          enum: [CUSTOMER_CANCEL, STORE_CANCEL, VEHICLE_UNAVAILABLE, OTHER, NO_SHOW]
+        reason:
+          type: string
+          minLength: 1
+    CheckInTestDriveRequest:
+      type: object
+      required: [customerConfirmMethod]
+      properties:
+        arrivedAt:
+          type: string
+          format: date-time
+        customerConfirmMethod:
+          type: string
+          minLength: 1
+    CompleteTestDriveRequest:
+      type: object
+      required: [safetyConfirmed, result, customerFeedback, nextAction]
+      properties:
+        actualStartTime:
+          type: string
+          format: date-time
+        actualEndTime:
+          type: string
+          format: date-time
+        safetyConfirmed:
+          type: boolean
+          description: 必须为 true，安全确认未完成时不能完成试驾。
+        result:
+          type: string
+          minLength: 1
+        customerFeedback:
+          type: string
+          minLength: 1
+        nextAction:
+          type: string
+          minLength: 1
     DeliveryStatus:
       type: string
       enum:
@@ -5409,10 +8244,16 @@ components:
         promotionId:
           type: integer
           format: int64
+        promotionCode:
+          type: string
         promotionName:
+          type: string
+        promotionRuleSummary:
           type: string
         promotionAmount:
           type: number
+        promotionSnapshot:
+          type: string
         createTime:
           type: string
           format: date-time
@@ -5522,6 +8363,50 @@ components:
         - CLOSED
         - CANCELLED
       description: 当前枚举以后端 TranStage 为准。
+    Tran:
+      type: object
+      properties:
+        id:
+          type: integer
+        tranNo:
+          type: string
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        money:
+          type: number
+        expectedDate:
+          type: string
+          format: date-time
+        stage:
+          $ref: "#/components/schemas/TranStage"
+        description:
+          type: string
+        nextContactTime:
+          type: string
+          format: date-time
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        editTime:
+          type: string
+          format: date-time
+        editBy:
+          type: integer
+        version:
+          type: integer
+        promotionId:
+          type: integer
+          format: int64
+        originalAmount:
+          type: number
+        discountAmount:
+          type: number
+        promotionSnapshot:
+          type: string
     TransactionLifecycleRequest:
       type: object
       required: [reason]
@@ -5566,6 +8451,50 @@ components:
         createTime:
           type: string
           format: date-time
+    TransactionApprove:
+      type: object
+      properties:
+        id:
+          type: integer
+        tranId:
+          type: integer
+        approveResult:
+          type: boolean
+        approveComment:
+          type: string
+        approveTime:
+          type: string
+          format: date-time
+        approveBy:
+          type: integer
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+    TransactionRemark:
+      type: object
+      properties:
+        id:
+          type: integer
+        tranId:
+          type: integer
+        noteWay:
+          type: integer
+        noteContent:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        editTime:
+          type: string
+          format: date-time
+        editBy:
+          type: integer
+        deleted:
+          type: integer
     CreateTranRequest:
       type: object
       required: [customerId, products]

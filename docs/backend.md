@@ -19,12 +19,15 @@
 - [11. 统计报表模块](#11-统计报表模块)
 - [12. 交付管理模块](#12-交付管理模块)
 - [13. 商机管理模块](#13-商机管理模块)
-- [14. 安全配置](#14-安全配置)
-- [15. AOP 切面](#15-aop-切面)
-- [16. 工具类](#16-工具类)
-- [17. 数据字典缓存机制](#17-数据字典缓存机制)
-- [18. Mapper XML SQL 汇总](#18-mapper-xml-sql-汇总)
-- [19. 数据库表汇总](#19-数据库表汇总)
+- [14. 试驾管理模块](#14-试驾管理模块)
+- [15. 跟进任务模块](#15-跟进任务模块)
+- [16. 审计日志模块](#16-审计日志模块)
+- [17. 安全配置](#17-安全配置)
+- [18. AOP 切面](#18-aop-切面)
+- [19. 工具类](#19-工具类)
+- [20. 数据字典缓存机制](#20-数据字典缓存机制)
+- [21. Mapper XML SQL 汇总](#21-mapper-xml-sql-汇总)
+- [22. 数据库表汇总](#22-数据库表汇总)
 
 ---
 
@@ -90,10 +93,12 @@ dealer-server/src/main/java/com/autodealer/crm/
 5. 登录成功 → MyAuthenticationSuccessHandler
    → JWTUtils.createJWT() 生成 JWT
    → RedisManager.set() 存储 JWT 到 Redis（key: cdrm:user:login:{userId}）
-   → 设置过期时间：rememberMe=true → 7天，否则 30分钟
-   → Redis 写入成功后返回 JWT 给前端
+   → 设置过期时间：rememberMe=true → 7天，否则 4小时
+   → Redis 写入成功后写入 t_login_log 成功登录记录
+   → 登录审计写入成功后返回 JWT 给前端
 6. Redis 写入失败 → 返回 HTTP 500 和 SYSTEM_ERROR，不返回 JWT
-7. 登录失败 → MyAuthenticationFailureHandler → 返回 HTTP 401 和稳定错误码
+7. 登录审计写入失败 → 删除已写 Redis 会话，返回 HTTP 500 和 SYSTEM_ERROR，不返回 JWT
+8. 登录失败 → MyAuthenticationFailureHandler → 写入失败登录记录，返回 HTTP 401 和稳定错误码
 ```
 
 #### Token 验证流程（TokenVerifyFilter）
@@ -148,6 +153,12 @@ dealer-server/src/main/java/com/autodealer/crm/
 | PUT /api/user/{id}/roles | `user:role` |
 | PUT /api/user/{id}/password | `user:password` |
 | PUT /api/user/{id}/handover | `user:status` |
+| GET /api/audit/login-logs | `audit:login:list` |
+| GET /api/audit/login-logs/{id} | `audit:login:detail` |
+| GET /api/audit/login-logs/export | `audit:login:export` |
+| GET /api/audit/operation-logs | `audit:operation:list` |
+| GET /api/audit/operation-logs/{id} | `audit:operation:detail` |
+| GET /api/audit/operation-logs/export | `audit:operation:export` |
 | GET /api/deliveries | `delivery:list` |
 | POST /api/deliveries | `delivery:create` |
 | GET /api/deliveries/{id} | `delivery:view` |
@@ -157,6 +168,17 @@ dealer-server/src/main/java/com/autodealer/crm/
 | POST /api/deliveries/{id}/sign | `delivery:sign` |
 | POST /api/deliveries/{id}/exception | `delivery:exception` |
 | POST /api/deliveries/{id}/cancel | `delivery:cancel` |
+| GET /api/follow-tasks | `follow-task:list` |
+| POST /api/follow-tasks | `follow-task:create` |
+| GET /api/follow-tasks/{id} | `follow-task:view` |
+| PUT /api/follow-tasks/{id}/start | `follow-task:update` |
+| PUT /api/follow-tasks/{id}/postpone | `follow-task:update` |
+| PUT /api/follow-tasks/{id}/cancel | `follow-task:cancel` |
+| PUT /api/follow-tasks/{id}/complete | `follow-task:complete` |
+| GET /api/communication-records | `communication-record:list` |
+| POST /api/communication-records | `communication-record:create` |
+| PUT /api/communication-records/{id}/correct | `communication-record:correct` |
+| PUT /api/communication-records/{id}/void | `communication-record:void` |
 | GET /api/dict/clear | `admin` |
 
 ---
@@ -499,7 +521,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **流程**: `TranController.detail()` → `TranServiceImpl.getTransactionById()` → `TTranMapper.selectByPrimaryKey()`
 
 #### 创建交易
-- **接口**: `POST /api/tran/create`
+- **接口**: `POST /api/transactions`（历史 `POST /api/tran/create` 仅保留 deprecated 兼容）
 - **流程**: `TranController.create()` → `TranServiceImpl.createTransaction()`
   1. 生成交易编号（TN + 年月日 + 6位随机数）
   2. 服务端校验客户数据范围和商品可售状态，并按数据库商品价格计算报价金额
@@ -539,6 +561,7 @@ dealer-server/src/main/java/com/autodealer/crm/
   2. 锁定交易行后按可开票余额校验，允许同一交易部分开票和多张发票
   3. `TTranInvoiceMapper.insertSelective()` 插入待开具发票
   4. 发票创建只写发票事实，不更新交易阶段
+  5. 可开票余额不足返回 `TRAN_STATE_CONFLICT`，响应 data 中包含 `availableAmount`
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 获取发票列表
@@ -561,6 +584,7 @@ dealer-server/src/main/java/com/autodealer/crm/
   - 红冲创建负数红字发票并通过 `original_invoice_id` 关联原票，原票状态标记为 `PARTIAL_RED_REVERSED` 或 `RED_REVERSED`。
   - 重开基于作废或红冲事实创建新的 `PENDING` 发票记录并关联来源发票。
   - 红冲恢复的可开票余额只来自已完成红冲负数发票。
+  - 红冲或重开金额超过当前服务端可用余额时返回 `TRAN_STATE_CONFLICT`，响应 data 中包含 `availableAmount`。
 
 #### 登记收款
 - **接口**: `POST /api/tran/payment`
@@ -598,7 +622,8 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **接口**: `POST /api/tran/payment/{id}/refund-requests`、`PUT /api/tran/refund-requests/{id}/approve`、`POST /api/tran/refund-requests/{id}/execute`
 - **流程**: → `TranServiceImpl.createRefundRequest()/approveRefundRequest()/executeRefundRequest()`
   - 退款必须先基于已确认原收款创建申请，申请记录保留退款原因、金额、申请人和状态。
-  - 可退金额由已确认原收款、已完成退款和待审批/待执行/执行中冻结退款共同计算，超额返回冲突或参数错误。
+  - `PAYMENT`、`DELIVERY` 和 `CANCELLED` 交易允许基于原收款继续处理退款，退款动作本身不负责取消交易或释放库存。
+  - 可退金额由已确认原收款、已完成退款和待审批/待执行/执行中冻结退款共同计算，超额返回 `TRAN_STATE_CONFLICT`，响应 data 中包含 `availableAmount`。
   - 审批通过后进入待执行，驳回保留申请和驳回原因。
   - 执行退款成功时先标记 `EXECUTING`，再新增负数退款流水并把退款申请标记为 `COMPLETED`。
   - 执行退款失败时把退款申请标记为 `FAILED` 并保留失败原因，不生成退款流水。
@@ -621,8 +646,9 @@ dealer-server/src/main/java/com/autodealer/crm/
   2. 使用交易行锁读取当前交易，并按旧状态做 CAS 更新。
   3. 已完成、已取消或已关闭交易不得再次进入其他终态。
   4. 存在已确认收款、待确认收款、处理中退款、待处理发票、已出库、已签收或待交付阶段关闭时返回状态冲突。
-  5. 写入 `t_tran_history.reason` 保留操作原因，并记录审计日志。
-  6. 只更新交易终态，不删除商品快照、备注、审批、收款、退款或发票事实。
+  5. 取消交易存在未出库订单占用车辆时，先引用原 `RESERVE` 流水写入 `RELEASE` 流水，把车辆从 `ORDER_RESERVED` 释放回 `AVAILABLE`，并恢复商品可售库存；释放 CAS 失败时不更新交易阶段。
+  6. 写入 `t_tran_history.reason` 保留操作原因，并记录审计日志。
+  7. 不删除商品快照、备注、审批、收款、退款、发票、交付或库存流水事实。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 废弃删除入口
@@ -634,11 +660,10 @@ dealer-server/src/main/java/com/autodealer/crm/
 
 | 缓存 Key | 用途 | 过期时间 |
 |----------|------|---------|
-| `cdrm:tran:detail:{tranId}` | 交易详情 | 24小时 |
-| `cdrm:tran:list:*` | 交易列表 | 24小时 |
-| `cdrm:tran:products:{tranId}` | 交易产品 | 24小时 |
-| `cdrm:tran:production:{tranId}` | 交易生产 | 24小时 |
-| `cdrm:tran:invoices:{tranId}` | 交易发票 | 24小时 |
+| `cdrm:tran:products:{tranId}` | 交易商品列表，统一通过 `RedisKeys.transactionProducts()` 构造 | 24小时 |
+| `cdrm:tran:invoices:{tranId}` | 交易发票列表，统一通过 `RedisKeys.transactionInvoices()` 构造 | 24小时 |
+
+交易详情、交易列表、交易支付和交易生产缓存没有有效生产者/消费者，已移除，避免无收益的 Redis 失效和 SCAN 清理。
 
 ### 6.5 涉及数据库表
 - `t_tran` - 交易表
@@ -738,18 +763,21 @@ ACCEPTED → CONVERTED_TO_ORDER
 | XML | `resources/mapper/TActivityMapper.xml`, `resources/mapper/TActivityRemarkMapper.xml` |
 | Model | `model/TActivity.java`, `model/TActivityRemark.java` |
 | Query | `query/ActivityQuery.java`, `query/ActivityRemarkQuery.java` |
+| DTO/Result | `dto/CreateActivityRequest.java`, `dto/UpdateActivityRequest.java`, `dto/ReviewActivityRequest.java`, `dto/ActivityLifecycleRequest.java`, `dto/ActivityRoiResponse.java`, `result/ActivityExportRow.java` |
+| Enum | `enums/ActivityStatus.java` |
 
 ### 8.2 接口方法及业务流程
 
 #### 活动列表分页查询
-- **接口**: `GET /api/activitys?current=1`
+- **接口**: `GET /api/activities?page=1&size=10`（历史 `GET /api/activitys?current=1&pageSize=10` 仅保留 deprecated 兼容）
 - **流程**: `ActivityController.activityPage()` → `ActivityServiceImpl.getActivityByPage()` → `TActivityMapper.selectActivityByPage()`
-- **支持查询条件**: 所属人、名称、时间范围、预算、创建时间
-- **SQL 包含**: `${filterSQL}` 数据权限过滤
+- **支持查询条件**: 所属人、名称、状态、渠道、时间范围、预算、创建时间
+- **数据范围**: `@DataScope(tableAlias = "ta", tableField = "owner_id")` 注入负责人范围过滤，SQL 自身保持稳定排序。
 
 #### 新增活动
 - **接口**: `POST /api/activity`
 - **流程**: → `ActivityServiceImpl.saveActivity()` → `TActivityMapper.insertSelective()`
+- **请求体**: `CreateActivityRequest` JSON；负责人、状态、创建人均由服务端生成，默认状态为 `DRAFT`。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 活动详情
@@ -759,11 +787,23 @@ ACCEPTED → CONVERTED_TO_ORDER
 #### 编辑活动
 - **接口**: `PUT /api/activity`
 - **流程**: → `ActivityServiceImpl.updateActivity()` → `TActivityMapper.updateByPrimaryKeySelective()`
+- **规则**: `ENDED`、`REVIEWED`、`CLOSED`、`CANCELED` 锁定活动核心事实，不能再编辑预算、渠道、目标车型和活动时间。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 活动状态与复盘
+- **发布/开始/结束**: `PUT /api/activity/{id}/publish|start|end`，服务端按旧状态执行 CAS 更新。
+- **复盘**: `PUT /api/activity/{id}/review`，只能从 `ENDED` 进入 `REVIEWED`，写入实际成本、复盘结果、复盘结论、复盘人和复盘时间。
+- **取消/关闭**: `PUT /api/activity/{id}/cancel|close`，原因必填，不反向修改线索、客户、商机或订单状态。
+- **审计**: 创建、编辑、状态变更、复盘、删除草稿、导出均写 `OperationAuditRecorder`。
+
+#### 活动 ROI 与导出
+- **ROI 查询**: `GET /api/activity/{id}/roi`，从活动来源串起线索、客户、商机、试驾、报价和交易成交金额。
+- **导出**: `GET /api/activity/export`，权限为 `activity:export`，导出使用同一 ROI 口径并写审计。
 
 #### 删除活动
 - **接口**: `DELETE /api/activity/{id}`
 - **流程**: → `ActivityServiceImpl.deleteActivity()` → `TActivityMapper.deleteByPrimaryKey()`
+- **规则**: 仅允许物理删除无业务引用的 `DRAFT` 活动；已有备注、线索、客户、商机、试驾、报价或交易引用时返回 `RESOURCE_IN_USE(422)`。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 批量删除活动
@@ -779,8 +819,9 @@ ACCEPTED → CONVERTED_TO_ORDER
 - **删除**: `DELETE /api/activity/remark/{id}` → 逻辑删除（设置 deleted=1）
 
 ### 8.3 涉及数据库表
-- `t_activity` - 市场活动表
+- `t_activity` - 市场活动表，包含 `status`、`channel`、`target_model`、`actual_cost`、复盘、关闭和取消字段。
 - `t_activity_remark` - 活动备注表
+- `t_clue.activity_name_snapshot`、`t_customer.activity_name_snapshot` - 来源活动名称快照，避免活动改名或关闭影响历史归因。
 - `t_user` - 用户表（关联查询）
 
 ---
@@ -831,9 +872,16 @@ ACCEPTED → CONVERTED_TO_ORDER
 |------|------|------|
 | `GET /api/product-promotions` | 促销列表 | 无 |
 | `GET /api/product-promotions/{id}` | 促销详情 | 无 |
-| `POST /api/product-promotions` | 新增促销 | `@Transactional` |
-| `PUT /api/product-promotions/{id}` | 更新促销 | `@Transactional` |
-| `DELETE /api/product-promotions/{id}` | 删除促销 | `@Transactional` |
+| `POST /api/product-promotions` | 新增促销，默认 `DRAFT` | `@Transactional` |
+| `PUT /api/product-promotions/{id}` | 更新促销规则，不接收状态 | `@Transactional` |
+| `PUT /api/product-promotions/{id}/publish` | 发布促销 | `@Transactional` |
+| `PUT /api/product-promotions/{id}/activate` | 生效或恢复促销 | `@Transactional` |
+| `PUT /api/product-promotions/{id}/pause` | 暂停促销 | `@Transactional` |
+| `PUT /api/product-promotions/{id}/end` | 结束促销 | `@Transactional` |
+| `PUT /api/product-promotions/{id}/void` | 作废促销 | `@Transactional` |
+| `DELETE /api/product-promotions/{id}` | 删除未引用草稿促销 | `@Transactional` |
+
+促销状态使用稳定 code：`DRAFT`、`PENDING_EFFECTIVE`、`ACTIVE`、`PAUSED`、`ENDED`、`VOIDED`、`EXHAUSTED`。报价和交易结算通过 `ProductPromotionService.requireApplicablePromotion()` 校验状态、时间、商品、适用范围、预算和名额；交易结算通过 `reserveUsage()` 在同一事务内写入 `t_product_promotion_usage` 并原子扣减预算/名额。报价版本商品快照保留促销 code、名称、规则摘要、优惠金额和完整快照 JSON。
 
 #### 库存管理
 | 接口 | 方法 | 事务 |
@@ -883,21 +931,21 @@ ProductStockController.restock()
 | 接口 | 方法 | 事务 | 缓存 |
 |------|------|------|------|
 | `GET /api/dict/types` | 分页查询字典类型 | 无 | 无 |
-| `GET /api/dict/type/get/{id}` | 获取字典类型详情 | 无 | Redis: `dic:type:{id}` |
-| `POST /api/dict/type/create` | 新增字典类型 | `@Transactional` | 清除 `dic:types:*` |
-| `PUT /api/dict/type/update/{id}` | 更新字典类型 | `@Transactional` | 清除相关缓存 |
-| `DELETE /api/dict/type/delete/{id}` | 删除字典类型 | `@Transactional` | 清除所有 dic 缓存 |
-| `DELETE /api/dict/types/batch` | 批量删除字典类型 | `@Transactional` | 清除所有 dic 缓存 |
+| `GET /api/dict/type/get/{id}` | 获取字典类型详情 | 无 | Redis: `cdrm:dict:type:{id}` |
+| `POST /api/dict/type/create` | 新增字典类型 | `@Transactional` | 清除统一字典缓存 |
+| `PUT /api/dict/type/update/{id}` | 更新字典类型；稳定 `typeCode` 不可变，停用需原因 | `@Transactional` | 清除统一字典缓存 |
+| `DELETE /api/dict/type/delete/{id}` | 删除未被引用且非内置的字典类型 | `@Transactional` | 清除统一字典缓存 |
+| `DELETE /api/dict/types/batch` | 批量删除未被引用且非内置的字典类型 | `@Transactional` | 清除统一字典缓存 |
 
 #### 字典值管理
 | 接口 | 方法 | 事务 | 缓存 |
 |------|------|------|------|
 | `GET /api/dict/values` | 分页查询字典值 | 无 | 无 |
-| `GET /api/dict/value/get/{id}` | 获取字典值详情 | 无 | Redis: `dic:value:{id}` |
-| `POST /api/dict/value/create` | 新增字典值 | `@Transactional` | 清除 `dic:values:*` |
-| `PUT /api/dict/value/update/{id}` | 更新字典值 | `@Transactional` | 清除相关缓存 |
-| `DELETE /api/dict/value/delete/{id}` | 删除字典值 | `@Transactional` | 清除所有 dic 缓存 |
-| `DELETE /api/dict/value/batch` | 批量删除字典值 | `@Transactional` | 清除所有 dic 缓存 |
+| `GET /api/dict/value/get/{id}` | 获取字典值详情 | 无 | Redis: `cdrm:dict:value:{id}` |
+| `POST /api/dict/value/create` | 新增字典值 | `@Transactional` | 清除统一字典缓存 |
+| `PUT /api/dict/value/update/{id}` | 更新字典值；稳定 `typeCode/valueCode` 不可变，停用需原因 | `@Transactional` | 清除统一字典缓存 |
+| `DELETE /api/dict/value/delete/{id}` | 删除未被引用且非内置的字典值 | `@Transactional` | 清除统一字典缓存 |
+| `DELETE /api/dict/value/batch` | 批量删除未被引用且非内置的字典值 | `@Transactional` | 清除统一字典缓存 |
 
 #### 缓存管理
 | 接口 | 方法 | 权限 |
@@ -905,20 +953,22 @@ ProductStockController.restock()
 | `GET /api/dict/clear?forceRefresh=true` | 清除缓存 | `@PreAuthorize("hasAuthority('admin')")` |
 | `GET /api/dict/refresh?type=type\|value` | 刷新缓存 | 无 |
 
-### 10.3 删除字典类型的级联逻辑
+### 10.3 字典删除与缓存规则
 ```
 deleteDicType(id):
-  1. 获取字典类型代码 typeCode
-  2. 获取关联的字典值ID列表
-  3. 删除关联的交易备注记录 (t_tran_remark.note_way)
-  4. 删除字典值 (t_dic_value)
-  5. 删除字典类型 (t_dic_type)
+  1. 获取字典类型并检查 built_in
+  2. 获取关联字典值 ID 列表
+  3. 检查交易备注、线索备注、客户备注、活动备注、线索主档和客户主档引用
+  4. 存在引用时返回 RESOURCE_IN_USE，不删除任何业务备注或历史记录
+  5. 无引用时删除字典值和字典类型
 ```
+
+字典类型和值均保留 `typeCode/valueCode` 稳定编码、`enabled` 启停、`built_in` 内置保护、`applicable_module` 适用模块和停用原因/操作人/时间。字典变更后统一清理 `cdrm:dict:type:*`、`cdrm:dict:value:*` 和 `cdrm:dict:values:type:*`；Redis 删除失败返回业务失败，不伪装成功。
 
 ### 10.4 涉及数据库表
 - `t_dic_type` - 字典类型表
 - `t_dic_value` - 字典值表
-- `t_tran_remark` - 交易备注表（级联删除）
+- `t_tran_remark`、`t_clue_remark`、`t_customer_remark`、`t_activity_remark` - 字典引用检查，不做级联删除
 
 ---
 
@@ -1012,6 +1062,10 @@ deleteDicType(id):
 - **接口**: `POST /api/deliveries/{id}/exception`、`POST /api/deliveries/{id}/cancel`
 - **权限**: `delivery:exception`、`delivery:cancel`
 - **流程**: 异常和取消必须提交原因，保留交付记录和准备项历史，写入操作审计。
+  - 取消交付会先校验原订单 `RESERVE` 库存占用流水。
+  - 未签收交付取消时，同一事务内将车辆从 `ORDER_RESERVED` 释放回 `AVAILABLE`，恢复商品可售库存，并写入关联原占用流水的 `RELEASE` 流水。
+  - 同一原占用已有 `RELEASE` 流水时，取消交付不重复恢复库存。
+  - 已签收或已完成交付不得通过普通取消处理，后续应走退款、红冲和库存恢复等纠错流程。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 ### 12.3 涉及数据库表
@@ -1066,9 +1120,147 @@ deleteDicType(id):
 
 ---
 
-## 14. 安全配置
+## 14. 试驾管理模块
 
-### 14.1 SecurityConfig
+### 14.1 文件路径
+
+| 层级 | 文件路径 |
+|------|----------|
+| Controller | `web/TestDriveController.java` |
+| Service | `service/TestDriveService.java` → `service/impl/TestDriveServiceImpl.java` |
+| Mapper | `mapper/TTestDriveMapper.java`, `mapper/TTestDriveVehicleHoldMapper.java`, `mapper/TTestDriveStatusHistoryMapper.java` |
+| XML | `resources/mapper/TTestDriveMapper.xml`, `resources/mapper/TTestDriveVehicleHoldMapper.xml`, `resources/mapper/TTestDriveStatusHistoryMapper.xml` |
+| Model | `model/TTestDrive.java`, `model/TTestDriveVehicleHold.java`, `model/TTestDriveStatusHistory.java` |
+| DTO | `dto/CreateTestDriveRequest.java`, `dto/RescheduleTestDriveRequest.java`, `dto/CancelTestDriveRequest.java`, `dto/CheckInTestDriveRequest.java`, `dto/CompleteTestDriveRequest.java` |
+| Enum | `enums/TestDriveStatus.java` |
+| Query | `query/TestDriveQuery.java` |
+
+### 14.2 接口方法及业务流程
+
+#### 预约与车辆时间占用
+- **接口**: `GET /api/test-drives`、`POST /api/test-drives`
+- **权限**: `test-drive:list`、`test-drive:create`
+- **流程**: 预约基于客户和可用库存车辆创建；客户数据范围由服务端校验，负责销售来自客户主档或当前登录人。服务端锁定车辆行、校验车辆可用、检查车辆和负责销售时间段冲突，写入 `t_test_drive`、`t_test_drive_vehicle_hold` 和 `t_test_drive_status_history`。
+- **边界**: 试驾时间占用不扣减商品库存，不把车辆状态改成订单占用，不自动创建报价、订单、收款或交付。
+
+#### 改期、取消和爽约
+- **接口**: `PUT /api/test-drives/{id}/reschedule`、`/cancel`、`/no-show`
+- **权限**: `test-drive:reschedule`、`test-drive:cancel`
+- **流程**: 改期先校验新车辆和新时段，再在同一事务内释放原占用并创建新占用；取消和爽约必须填写原因并释放未开始试驾的时间占用，记录历史事实。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 签到与完成
+- **接口**: `PUT /api/test-drives/{id}/check-in`、`/complete`
+- **权限**: `test-drive:check-in`、`test-drive:complete`
+- **流程**: 签到记录到店时间、签到人和客户确认方式；完成必须已签到并完成安全确认，记录实际开始/结束、试驾结果、客户反馈和下一步动作，释放车辆时间占用。
+- **边界**: 试驾完成只形成客户体验和后续动作事实，不自动赢单、不自动创建报价或交易。
+
+### 14.3 涉及数据库表
+- `t_test_drive` - 试驾预约与执行主表
+- `t_test_drive_vehicle_hold` - 试驾车辆时间段占用表
+- `t_test_drive_status_history` - 试驾状态历史表
+- `t_product_vehicle` - 试驾车辆实例和车辆可用性
+- `t_customer`、`t_opportunity` - 客户与商机关联及数据范围
+
+---
+
+## 15. 跟进任务模块
+
+### 15.1 文件路径
+
+| 层级 | 文件路径 |
+|------|----------|
+| Controller | `web/FollowTaskController.java`, `web/CommunicationRecordController.java` |
+| Service | `service/FollowTaskService.java`, `service/CommunicationRecordService.java` |
+| Service 实现 | `service/impl/FollowTaskServiceImpl.java`, `service/impl/CommunicationRecordServiceImpl.java`, `service/impl/FollowRelatedObjectResolver.java` |
+| Mapper | `mapper/TFollowTaskMapper.java`, `mapper/TCommunicationRecordMapper.java` |
+| XML | `resources/mapper/TFollowTaskMapper.xml`, `resources/mapper/TCommunicationRecordMapper.xml` |
+| Model | `model/TFollowTask.java`, `model/TCommunicationRecord.java` |
+| DTO | `dto/CreateFollowTaskRequest.java`, `dto/PostponeFollowTaskRequest.java`, `dto/CancelFollowTaskRequest.java`, `dto/CompleteFollowTaskRequest.java`, `dto/CreateCommunicationRecordRequest.java`, `dto/CorrectCommunicationRecordRequest.java`, `dto/VoidCommunicationRecordRequest.java` |
+| Enum | `enums/FollowRelatedObjectType.java`, `enums/FollowTaskStatus.java`, `enums/FollowTaskType.java`, `enums/FollowTaskPriority.java`, `enums/CommunicationMethod.java`, `enums/CommunicationRecordStatus.java` |
+| Query | `query/FollowTaskQuery.java`, `query/CommunicationRecordQuery.java` |
+
+### 15.2 跟进任务流程
+
+- **接口**: `GET /api/follow-tasks`、`POST /api/follow-tasks`
+- **权限**: `follow-task:list`、`follow-task:create`
+- **流程**: 跟进任务独立于线索、客户、商机、试驾和订单主流程；创建时必须提供关联对象、负责人、计划时间、任务类型和优先级。服务端校验关联对象可见性、负责人有效性和数据范围，不信任客户端提交的创建人或数据范围。
+- **逾期维护**: 列表查询前按当前时间把当前用户数据范围内的 `PENDING`、`IN_PROGRESS`、`POSTPONED` 到期任务标记为 `OVERDUE`，前端只展示稳定英文状态的中文 label。
+
+### 15.3 状态迁移
+
+- **开始**: `PUT /api/follow-tasks/{id}/start`，只允许非终态任务进入 `IN_PROGRESS`。
+- **延期**: `PUT /api/follow-tasks/{id}/postpone`，必须记录延期原因、原计划时间和新计划时间，终态任务不可延期。
+- **取消**: `PUT /api/follow-tasks/{id}/cancel`，必须记录取消原因，终态任务不可取消。
+- **完成**: `PUT /api/follow-tasks/{id}/complete`，同一事务内写入沟通记录、更新任务为 `COMPLETED`，并回写线索、客户或商机最近跟进时间和摘要。
+- **并发**: 状态迁移基于当前状态和影响行数判断，CAS 失败返回业务冲突，不把旧状态请求伪装为成功。
+
+### 15.4 沟通记录
+
+- **接口**: `GET /api/communication-records`、`POST /api/communication-records`
+- **权限**: `communication-record:list`、`communication-record:create`
+- **流程**: 沟通记录必须包含关联对象、沟通方式、沟通时间和摘要，可关联跟进任务；关联任务时必须与任务对象一致，服务端校验对象可见性。
+- **更正**: `PUT /api/communication-records/{id}/correct` 将原记录置为 `CORRECTED` 并插入新 `ACTIVE` 记录，保留 `parentRecordId` 追溯关系。
+- **作废**: `PUT /api/communication-records/{id}/void` 仅置为 `VOIDED` 并记录原因，不物理删除历史事实。
+
+### 15.5 涉及数据库表
+
+- `t_follow_task` - 跟进任务主表，记录负责人、关联对象、计划时间、状态和延期/取消/完成事实。
+- `t_communication_record` - 沟通记录表，记录沟通方式、时间、摘要、反馈、下一步动作和更正/作废事实。
+- `t_clue`、`t_customer`、`t_opportunity` - 最近跟进时间和摘要回写目标。
+- `t_test_drive`、`t_tran` - 跟进任务和沟通记录可关联对象。
+
+---
+
+## 16. 审计日志模块
+
+### 16.1 模块概述
+
+审计日志分为登录记录和操作记录两类：
+
+- 登录记录写入 `t_login_log`，由 `LoginAuditRecorder` 在登录成功和登录失败链路统一落库。
+- 操作记录写入 `t_operation_log`，业务模块通过 `OperationAuditRecorder` 记录，调用方事务回滚时关键业务审计一同回滚。
+- 普通 Token 过期、权限不足和退出登录不作为第一阶段登录记录写入；这些边界以业务 Spec 为准。
+
+### 16.2 文件路径
+
+| 层级 | 文件路径 |
+|------|----------|
+| Controller | `web/AuditLogController.java` |
+| Service | `service/AuditLogService.java` → `service/impl/AuditLogServiceImpl.java` |
+| Recorder | `audit/LoginAuditRecorder.java`, `audit/OperationAuditRecorder.java` |
+| Mapper | `mapper/TLoginLogMapper.java`, `mapper/TOperationLogMapper.java` |
+| XML | `resources/mapper/TLoginLogMapper.xml`, `resources/mapper/TOperationLogMapper.xml` |
+| Model | `model/TLoginLog.java`, `model/TOperationLog.java` |
+| Query | `query/AuditLoginLogQuery.java`, `query/AuditOperationLogQuery.java` |
+
+### 16.3 登录记录
+
+- 登录成功：Redis 会话写入成功后写入 `t_login_log`，记录登录账号、用户 ID、用户名、结果、原因编码、IP、浏览器、操作系统、requestId 和时间。
+- 登录审计写入失败：删除已写 Redis 会话，返回 HTTP 500，不向前端发 JWT。
+- 登录失败：写入失败记录，`reason_code` 使用稳定编码，例如 `BAD_CREDENTIALS`、`ACCOUNT_LOCKED`；失败记录不保存密码、JWT、Cookie 或异常堆栈。
+- 登录失败审计写入失败不改变原始 401 登录失败结果，只记录应用日志。
+
+### 16.4 操作记录
+
+- `TOperationLog` 保存 `action_code`、`module_name`、`object_type`、`resource_id`、`result`、`detail`、`ip`、`request_id` 和操作时间。
+- `detail` 仅保存脱敏后的结构化摘要，敏感字段必须由调用方预先排除。
+- 导出登录记录和操作记录本身也通过 `AUDIT_LOGIN_EXPORT`、`AUDIT_OPERATION_EXPORT` 写操作审计。
+
+### 16.5 查询与导出接口
+
+| 接口 | 权限 | 说明 |
+|------|------|------|
+| GET `/api/audit/login-logs` | `audit:login:list` | 分页查询登录记录，支持账号、姓名、结果、原因、IP、requestId、时间区间过滤 |
+| GET `/api/audit/login-logs/{id}` | `audit:login:detail` | 查询登录记录详情 |
+| GET `/api/audit/login-logs/export` | `audit:login:export` | 按过滤条件导出 UTF-8 CSV |
+| GET `/api/audit/operation-logs` | `audit:operation:list` | 分页查询操作记录，支持用户、动作、模块、对象、结果、IP、requestId、时间区间过滤 |
+| GET `/api/audit/operation-logs/{id}` | `audit:operation:detail` | 查询操作记录详情 |
+| GET `/api/audit/operation-logs/export` | `audit:operation:export` | 按过滤条件导出 UTF-8 CSV |
+
+## 17. 安全配置
+
+### 17.1 SecurityConfig
 **路径**: `config/SecurityConfig.java`
 
 ```java
@@ -1087,27 +1279,27 @@ public class SecurityConfig {
 }
 ```
 
-### 14.2 TokenVerifyFilter
+### 17.2 TokenVerifyFilter
 **路径**: `config/filter/TokenVerifyFilter.java`
 
 **执行逻辑**:
 1. 登录请求放行
-2. 从 Header 或参数获取 token
-3. 验证 token 非空、签名有效、Redis 中存在且匹配
+2. 仅从 `Authorization: Bearer <token>` 请求头获取 token
+3. 验证 token 非空、Bearer 格式正确、签名有效、Redis 中存在且匹配
 4. 设置 SecurityContext
-5. 异步刷新 token 过期时间
+5. 当前用户已停用、锁定或删除时删除 Redis 会话；删除失败返回 HTTP 500
 
-### 14.3 Handler 处理器
+### 17.3 Handler 处理器
 
 | Handler | 路径 | 功能 |
 |---------|------|------|
-| MyAuthenticationSuccessHandler | `config/handler/MyAuthenticationSuccessHandler.java` | 登录成功：生成 JWT、存入 Redis、返回 token |
-| MyAuthenticationFailureHandler | `config/handler/MyAuthenticationFailureHandler.java` | 登录失败：返回错误信息 |
+| MyAuthenticationSuccessHandler | `config/handler/MyAuthenticationSuccessHandler.java` | 登录成功：生成 JWT、存入 Redis、写登录审计、返回 token |
+| MyAuthenticationFailureHandler | `config/handler/MyAuthenticationFailureHandler.java` | 登录失败：写失败登录审计并返回 401 |
 | MyLogoutSuccessHandler | `config/handler/MyLogoutSuccessHandler.java` | 退出成功：删除 Redis 中的 JWT |
 | MyAccessDeniedHandler | `config/handler/MyAccessDeniedHandler.java` | 权限不足：返回 ACCESS_DENIED |
 | GlobalExceptionHandler | `config/handler/GlobalExceptionHandler.java` | 全局异常处理：统一返回错误 |
 
-### 14.4 GlobalExceptionHandler 异常处理
+### 17.4 GlobalExceptionHandler 异常处理
 
 | 异常类型 | 处理方式 |
 |----------|---------|
@@ -1118,7 +1310,7 @@ public class SecurityConfig {
 | `HttpMessageNotReadableException` | 返回请求体格式错误 |
 | `Exception` | 返回通用错误信息 |
 
-### 14.5 CorsConfig
+### 17.5 CorsConfig
 **路径**: `config/CorsConfig.java`
 
 - 允许所有源（`addAllowedOriginPattern("*")`）
@@ -1129,9 +1321,9 @@ public class SecurityConfig {
 
 ---
 
-## 15. AOP 切面
+## 18. AOP 切面
 
-### 15.1 DataScopeAspect
+### 18.1 DataScopeAspect
 **路径**: `aspect/DataScopeAspect.java`
 
 **功能**: 数据权限过滤，根据用户角色动态添加 SQL 过滤条件。
@@ -1155,7 +1347,7 @@ public class DataScopeAspect {
 }
 ```
 
-### 15.2 DataScope 注解
+### 18.2 DataScope 注解
 **路径**: `commons/DataScope.java`
 
 ```java
@@ -1175,9 +1367,9 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 
 ---
 
-## 16. 工具类
+## 19. 工具类
 
-### 16.1 JWTUtils
+### 19.1 JWTUtils
 **路径**: `util/JWTUtils.java`
 
 | 方法 | 功能 |
@@ -1188,7 +1380,7 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 
 **密钥**: 从环境变量 `JWT_SECRET` 获取；未配置时应用启动失败，避免使用可预测的默认签名密钥。
 
-### 16.2 CacheUtils
+### 19.2 CacheUtils
 **路径**: `util/CacheUtils.java`
 
 | 方法 | 功能 |
@@ -1196,7 +1388,7 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 | `getCacheData(Supplier cacheSelector, Supplier databaseSelector, Consumer cacheSave)` | 通用缓存查询：先查缓存，未命中查数据库并缓存 |
 | `generateKey(Object... params)` | 生成缓存 key |
 
-### 16.3 JSONUtils
+### 19.3 JSONUtils
 **路径**: `util/JSONUtils.java`
 
 | 方法 | 功能 |
@@ -1204,14 +1396,14 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 | `toJSON(Object object)` | Java 对象转 JSON 字符串 |
 | `toBean(String json, Class<T> clazz)` | JSON 字符串转 Java 对象 |
 
-### 16.4 ResponseUtils
+### 19.4 ResponseUtils
 **路径**: `util/ResponseUtils.java`
 
 | 方法 | 功能 |
 |------|------|
 | `write(HttpServletResponse response, String result)` | 将 JSON 结果写入 HttpServletResponse |
 
-### 16.5 RedisManager
+### 19.5 RedisManager
 **路径**: `manager/RedisManager.java`
 
 | 方法 | 功能 |
@@ -1220,14 +1412,12 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 | `set(String key, Object value, long seconds)` | 设置缓存值（带过期时间） |
 | `delete(String key)` | 删除缓存 |
 | `deletePattern(String pattern)` | 模式匹配删除缓存 |
-| `getValue(String key)` | 获取 List 类型缓存 |
-| `setValue(String key, Collection<T> data)` | 设置 List 类型缓存 |
 
 ---
 
-## 17. 数据字典缓存机制
+## 20. 数据字典缓存机制
 
-### 17.1 缓存架构
+### 20.1 缓存架构
 
 ```
 DicController
@@ -1239,37 +1429,37 @@ CacheUtils.getCacheData()
 RedisManager (Redis)  ←→  DicMapper (MySQL)
 ```
 
-### 17.2 缓存策略
+### 20.2 缓存策略
 
 | 缓存 Key 模式 | 内容 | 过期时间 |
 |---------------|------|---------|
-| `dic:type:{id}` | 字典类型详情 | 24 小时 |
-| `dic:type:code:{typeCode}` | 按类型代码查询 | 24 小时 |
-| `dic:value:{id}` | 字典值详情 | 24 小时 |
-| `dic:values:type:{typeId}` | 按类型ID查询字典值列表 | 24 小时 |
+| `cdrm:dict:type:{id}` | 字典类型详情 | 24 小时 |
+| `cdrm:dict:type:code:{typeCode}` | 按类型代码查询 | 24 小时 |
+| `cdrm:dict:value:{id}` | 字典值详情 | 24 小时 |
+| `cdrm:dict:values:type:{typeId}` | 按类型ID查询启用字典值列表 | 24 小时 |
 
-### 17.3 缓存刷新逻辑
+### 20.3 缓存刷新逻辑
 
 #### refreshTypeCache()
 ```java
 1. 删除所有 dic:type:* 缓存
 2. 查询所有字典类型
-3. 遍历写入 Redis：dic:type:{typeCode} → TDicType
+3. 遍历写入 Redis：`cdrm:dict:type:code:{typeCode}` → TDicType
 ```
 
 #### refreshValueCache()
 ```java
 1. 删除所有 dic:value:* 缓存
 2. 查询所有字典值
-3. 遍历写入 Redis：dic:value:{typeCode}:{id} → TDicValue
+3. 遍历写入 Redis：`cdrm:dict:value:{id}` → TDicValue
 ```
 
 #### clearCache()
 ```java
-删除所有 dic:type:*, dic:value:*, dic:list:* 缓存
+删除所有 `cdrm:dict:type:*`、`cdrm:dict:value:*`、`cdrm:dict:values:type:*` 缓存
 ```
 
-### 17.4 Excel 导入时的数据解析
+### 20.4 Excel 导入时的数据解析
 
 Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。当前流程由 `ClueServiceImpl.importExcel()` 使用 EasyExcel 读取 `ClueExcelRaw`，再由 `ClueImportValidator` 一次性加载字典、负责人、活动和商品映射，逐行做公式前缀拦截、手机号归一化、必填校验、字典转换、同文件查重和对象转换。
 
@@ -1277,9 +1467,9 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 
 ---
 
-## 18. Mapper XML SQL 汇总
+## 21. Mapper XML SQL 汇总
 
-### 18.1 TClueMapper.xml (t_clue)
+### 21.1 TClueMapper.xml (t_clue)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1304,7 +1494,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `countActiveByPhoneExcludingId` | SELECT | 恢复线索前检查相同手机号活跃线索 |
 | `countByIntentionProductId` | SELECT | 检查商品是否被线索意向引用 |
 
-### 18.2 TCustomerMapper.xml (t_customer)
+### 21.2 TCustomerMapper.xml (t_customer)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1328,7 +1518,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新客户 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新客户 |
 
-### 18.3 TTranMapper.xml (t_tran)
+### 21.3 TTranMapper.xml (t_tran)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1347,7 +1537,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新交易 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新交易 |
 
-### 18.4 TUserMapper.xml (t_user)
+### 21.4 TUserMapper.xml (t_user)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1370,7 +1560,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新用户 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新用户 |
 
-### 18.5 TActivityMapper.xml (t_activity)
+### 21.5 TActivityMapper.xml (t_activity)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1386,7 +1576,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新活动 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新活动 |
 
-### 18.6 TProductMapper.xml (t_product)
+### 21.6 TProductMapper.xml (t_product)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1403,7 +1593,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `deleteById` | DELETE | 删除产品 |
 | `updateStock` | UPDATE | 更新库存（支持正负数） |
 
-### 18.7 DicMapper.xml (t_dic_type, t_dic_value)
+### 21.7 DicMapper.xml (t_dic_type, t_dic_value)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1424,10 +1614,9 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `deleteDicValue` | DELETE | 删除字典值 |
 | `deleteDicTypesByIds` | DELETE | 批量删除字典类型 |
 | `deleteDicValuesByIds` | DELETE | 批量删除字典值 |
-| `deleteRemarksByDicValueId` | DELETE | 删除关联的交易备注 |
-| `deleteRemarksByDicValueIds` | DELETE | 批量删除关联的交易备注 |
+| `selectRemarkCountByDicValueIds` | SELECT | 统计交易备注、线索备注、客户备注、活动备注、线索主档和客户主档引用 |
 
-### 18.8 TTranProductMapper.xml (t_tran_product)
+### 21.8 TTranProductMapper.xml (t_tran_product)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1440,7 +1629,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新 |
 
-### 18.9 TTranInvoiceMapper.xml (t_tran_invoice)
+### 21.9 TTranInvoiceMapper.xml (t_tran_invoice)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1452,7 +1641,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新发票 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新发票 |
 
-### 18.10 TTranApproveMapper.xml (t_tran_approve)
+### 21.10 TTranApproveMapper.xml (t_tran_approve)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1463,7 +1652,7 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新 |
 
-### 18.11 TTranRemarkMapper.xml (t_tran_remark)
+### 21.11 TTranRemarkMapper.xml (t_tran_remark)
 
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
@@ -1476,7 +1665,20 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新 |
 
-## 19. 数据库表汇总
+### 21.12 审计日志 Mapper
+
+| Mapper | SQL ID | 类型 | 用途 |
+|--------|--------|------|------|
+| `TLoginLogMapper.xml` | `insert` | INSERT | 写入登录记录 |
+| `TLoginLogMapper.xml` | `selectByQuery` | SELECT | 按过滤条件分页查询登录记录 |
+| `TLoginLogMapper.xml` | `selectById` | SELECT | 查询登录记录详情 |
+| `TLoginLogMapper.xml` | `selectForExport` | SELECT | 按过滤条件导出登录记录 |
+| `TOperationLogMapper.xml` | `insert` | INSERT | 写入操作记录 |
+| `TOperationLogMapper.xml` | `selectByQuery` | SELECT | 按过滤条件分页查询操作记录 |
+| `TOperationLogMapper.xml` | `selectById` | SELECT | 查询操作记录详情 |
+| `TOperationLogMapper.xml` | `selectForExport` | SELECT | 按过滤条件导出操作记录 |
+
+## 22. 数据库表汇总
 
 | 表名 | 说明 | 主要字段 |
 |------|------|---------|
@@ -1485,43 +1687,45 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `t_user_role` | 用户角色关联表 | id, user_id, role_id |
 | `t_permission` | 权限表 | id, name, code, url, type, parent_id |
 | `t_role_permission` | 角色权限关联表 | id, role_id, permission_id |
-| `t_clue` | 线索表 | id, owner_id, activity_id, full_name, phone, state, source |
+| `t_clue` | 线索表 | id, owner_id, activity_id, activity_name_snapshot, full_name, phone, state, source |
 | `t_clue_remark` | 线索跟踪记录表 | id, clue_id, note_way, note_content |
 | `t_customer` | 客户主档表 | id, clue_id, owner_id, customer_name, phone, source, original_clue_source, customer_status, product, description |
 | `t_customer_owner_history` | 客户归属转移历史表 | id, customer_id, from_owner_id, to_owner_id, reason, operator_id, transfer_time |
 | `t_customer_remark` | 客户跟踪记录表 | id, customer_id, note_way, note_content |
 | `t_opportunity` | 商机主表 | id, opportunity_no, customer_id, owner_id, product_id, stage, requirement, expected_amount, expected_close_date, order_tran_id |
 | `t_opportunity_stage_history` | 商机阶段历史表 | id, opportunity_id, from_stage, to_stage, reason, operate_by, operate_time |
+| `t_test_drive` | 试驾预约与执行表 | id, test_drive_no, customer_id, opportunity_id, vehicle_id, owner_id, planned_start_time, planned_end_time, status |
+| `t_test_drive_vehicle_hold` | 试驾车辆时间占用表 | id, test_drive_id, vehicle_id, start_time, end_time, status, release_reason |
+| `t_test_drive_status_history` | 试驾状态历史表 | id, test_drive_id, from_status, to_status, action_type, reason, operate_by, operate_time |
 | `t_tran` | 交易表 | id, tran_no, customer_id, money, stage |
 | `t_tran_product` | 交易产品关联表 | id, tran_id, product_id, quantity, price, product_sku, product_name, product_specification, guide_price |
 | `t_tran_invoice` | 交易发票表 | id, tran_id, invoice_no, amount, status |
 | `t_tran_approve` | 交易审批表 | id, tran_id, approve_result, approve_comment |
 | `t_tran_remark` | 交易跟踪记录表 | id, tran_id, note_way, note_content |
-| `t_activity` | 市场活动表 | id, owner_id, name, start_time, end_time, cost |
+| `t_activity` | 市场活动表 | id, owner_id, name, status, channel, target_model, start_time, end_time, cost, actual_cost |
 | `t_activity_remark` | 活动备注表 | id, activity_id, note_content |
 | `t_product` | 产品表 | id, sku, name, category, price, stock, min_stock, status |
 | `t_product_category` | 产品分类表 | id, name, code, description, sort, status |
-| `t_product_promotion` | 产品促销表 | id, name, type, discount, start_time, end_time, status |
+| `t_product_promotion` | 产品促销表 | id, product_id, code, name, type, discount, rule_summary, applicable_store, customer_type, applicable_channel, inventory_scope, stackable, budget_limit, used_budget, usage_limit, used_count, start_time, end_time, status |
+| `t_product_promotion_usage` | 促销使用流水表 | id, promotion_id, source_type, source_id, discount_amount, create_time, create_by |
 | `t_product_stock_record` | 库存变动记录表 | id, product_id, quantity, type, remark |
 | `t_dic_type` | 字典类型表 | id, type_code, type_name, remark |
 | `t_dic_value` | 字典值表 | id, type_code, type_value, order, remark |
+| `t_login_log` | 登录审计日志表 | id, login_act, user_id, result, reason_code, ip, browser, os, request_id, create_time |
+| `t_operation_log` | 操作审计日志表 | id, user_id, action_code, module_name, object_type, resource_id, result, detail, ip, request_id, create_time |
 
 ---
 
 ## 附录：常量定义
 
-**路径**: `constant/Constants.java`
+**路径**: `constant/Constants.java`、`constant/RedisKeys.java`
 
 | 常量 | 值 | 用途 |
 |------|-----|------|
 | `LOGIN_URI` | `/api/login` | 登录接口 |
-| `REDIS_JWT_KEY` | `cdrm:user:login:` | JWT Redis Key 前缀 |
-| `REDIS_OWNER_KEY` | `cdrm:user:owner` | 负责人列表 Redis Key |
 | `EXPIRE_TIME` | `7 * 24 * 60 * 60L` | JWT 过期时间（7天） |
-| `DEFAULT_EXPIRE_TIME` | `30 * 60L` | JWT 默认过期时间（30分钟） |
+| `DEFAULT_EXPIRE_TIME` | `4 * 60 * 60L` | JWT 默认过期时间（4小时） |
 | `PAGE_SIZE` | `10` | 分页每页条数 |
 | `CACHE_EXPIRE_TIME` | `24 * 60 * 60L` | 缓存过期时间（1天） |
-| `CACHE_KEY_TRAN` | `cdrm:tran:detail:` | 交易详情缓存前缀 |
-| `CACHE_KEY_TRAN_LIST` | `cdrm:tran:list:` | 交易列表缓存前缀 |
-| `CACHE_KEY_TRAN_PRODUCTS` | `cdrm:tran:products:` | 交易产品缓存前缀 |
-| `CACHE_KEY_TRAN_INVOICES` | `cdrm:tran:invoices:` | 交易发票缓存前缀 |
+| `RedisKeys.userLogin(userId)` | `cdrm:user:login:{userId}` | JWT Redis Key |
+| `RedisKeys.ownerList()` | `cdrm:user:owner` | 负责人列表 Redis Key，单 value 序列化列表，300 秒 TTL |

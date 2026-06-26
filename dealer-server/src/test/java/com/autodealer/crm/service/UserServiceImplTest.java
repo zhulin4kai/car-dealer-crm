@@ -336,7 +336,6 @@ class UserServiceImplTest {
 
         assertEquals(cachedOwners, result);
         verify(tUserMapper, never()).selectByOwner();
-        verify(redisManager, never()).setList(anyString(), anyCollection());
         verify(redisManager, never()).set(eq(RedisKeys.ownerList()), any(), anyLong());
     }
 
@@ -353,8 +352,6 @@ class UserServiceImplTest {
 
         assertEquals(owners, result);
         verify(redisManager).set(eq(RedisKeys.ownerList()), eq(owners), eq(300L));
-        verify(redisManager, never()).getList(anyString());
-        verify(redisManager, never()).setList(anyString(), anyCollection());
     }
 
     @Test

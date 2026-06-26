@@ -15,7 +15,7 @@ src/
   router/       # 路由表、守卫、meta 类型
   stores/       # Pinia 全局状态
   shared/       # HTTP、storage、utils、基础类型、通用 UI
-  modules/      # activity/clue/customer/dict/opportunity/product/quote/statistic/tran/user
+  modules/      # activity/audit/clue/customer/dict/follow/opportunity/product/quote/statistic/test-drive/tran/user
 ```
 
 旧目录 `src/view`、`src/api`、`src/http`、`src/util` 已移除。入口文件为 `src/app/main.ts`，Vite 配置为 `vite.config.ts`。
@@ -76,7 +76,10 @@ interface ApiEnvelope<T> {
 interface PageResult<T> {
   list: T[]
   total: number
-  pageSize?: number
+  pageSize: number
+  pageNum: number
+  pages: number
+  size: number
 }
 ```
 
@@ -88,6 +91,7 @@ HTTP 层集中处理：
 - `code !== 200` 抛出 `ApiError`
 - 会话失效（code 510-513）通过 `shared/auth/session-invalid-handler.ts` 单飞处理：应用启动时注册处理器，`notifySessionInvalid` 持有 `inFlight` Promise 守卫，并发失效只触发一次 `authStore.forceLogout()` + `permissionStore.clearPermissions()` + `router.replace({ name: 'login' })`
 - 业务页只能按 `ApiError.code` 和 HTTP 状态处理稳定业务分支；商品删除等引用保护场景按 `RESOURCE_IN_USE(422)` 映射提示，不解析中文 `msg` 或数据库约束文案。
+- 跟进任务页面使用 `modules/follow/api/follow-api.ts` 和 `modules/follow/model/follow.types.ts`；任务状态、任务类型、对象类型、沟通方式和记录状态均按稳定英文 code 分支，中文只作为 label 展示。
 - 403（code 520）和网络错误不清会话
 - `ApiError` 携带 `isSessionInvalid` 标志，页面可据此跳过重复提示
 - 文件下载使用 `httpClient.download()`，返回 `{ blob, filename }`，自动解析 `Content-Disposition`；Blob 错误响应转换为 `ApiError` 并进入统一会话失效流程
@@ -129,9 +133,10 @@ token 存储策略：
 - `/dashboard/customer/:id`
 - `/dashboard/product`
 - `/dashboard/product/category`
-- `/dashboard/product/promotion`
+- `/dashboard/product/promotion`：使用稳定促销状态 code 映射中文展示；表单只维护规则字段，发布、生效、暂停、结束和作废走独立状态按钮，暂停/结束/作废必须填写原因。
 - `/dashboard/product/stock`
 - `/dashboard/opportunity`
+- `/dashboard/test-drive`
 - `/dashboard/quote`
 - `/dashboard/tran`
 - `/dashboard/tran/:id`
@@ -140,6 +145,8 @@ token 存储策略：
 - `/dashboard/delivery`
 - `/dashboard/dict/type`
 - `/dashboard/dict/value`
+- `/dashboard/audit/login`
+- `/dashboard/audit/operation`
 
 `DashboardLayout.vue` 只负责主框架布局、菜单、用户入口和退出登录。
 
@@ -149,6 +156,14 @@ token 存储策略：
 
 `/dashboard/clue/detail/:id` 展示线索详情、跟踪记录和责任历史。转派线索必须通过 `transferClueOwner` 提交目标负责人和原因，详情页转派成功后重新加载当前负责人和 `getClueOwnerHistory` 返回的历史记录；关闭和恢复分别通过 `closeClue`、`restoreClue` 提交原因，按钮显示基于 `stateDO.valueCode` 的稳定状态 code，不匹配中文状态文本。前端权限只控制按钮显示，后端负责数据范围、目标负责人资格、状态迁移、重复活跃线索校验和并发旧状态校验。
 
+`/dashboard/activity` 使用 `modules/activity/api/activity-api.ts` 查询活动列表、创建/编辑活动、执行发布、开始、结束、复盘、取消、关闭和导出 ROI。页面只提交 `DRAFT`、`PLANNED`、`ONGOING`、`ENDED`、`REVIEWED`、`CLOSED`、`CANCELED` 等稳定活动状态编码，中文只做展示；创建和编辑表单提交 JSON，不提交负责人、状态、复盘人或金额汇总。已结束、已复盘、已关闭和已取消活动的核心字段在页面只读，后端仍做最终锁定校验。导出按钮按 `activity:export` 显示并走 `httpClient.download()`。
+
+`/dashboard/activity/:id` 使用 `fetchActivityById`、`fetchActivityRoi` 展示活动核心事实、复盘结果和 ROI 指标，活动备注仍走活动备注模块 API。ROI 展示只读取后端聚合结果，不在前端重新反算客户、商机、试驾、报价或交易金额。
+
+`/dashboard/dict/type` 和 `/dashboard/dict/value` 展示稳定编码、展示名称、启停状态、内置标识、适用模块和停用原因。编辑时 `typeCode`、`valueCode` 只读，停用必须填写原因；新增业务选择默认过滤停用字典类型。删除和批量删除失败时按 `RESOURCE_IN_USE` 的 422 code 展示引用/内置保护提示，不解析中文 `msg`。
+
+`/dashboard/audit/login` 和 `/dashboard/audit/operation` 使用 `modules/audit/api/audit-api.ts` 查询、查看详情和导出审计日志。页面展示中文结果和原因文案，业务分支仍以稳定 `result`、`reasonCode`、权限 code 和 HTTP 状态为准；导出复用 `httpClient.download()` 和 `saveBlob()`，按钮按 `audit:login:export`、`audit:operation:export` 控制显示。
+
 `/dashboard/customer` 使用 `modules/customer/api/customer-api.ts` 查询客户主档列表和导出客户。列表展示客户状态、客户来源和负责人，字段来自客户主档响应；手机号、微信等敏感字段直接展示后端返回值，不在前端自行脱敏或还原。
 
 `/dashboard/customer/:id` 使用 `fetchCustomerDetail` 查询客户详情，并通过模块 API 执行 `transferCustomerOwner`、`mergeCustomer`、`deleteCustomer`。归属转移和合并必须提交原因，高风险删除必须确认并按 `RESOURCE_IN_USE` 的 422 code 展示阻断；页面权限只控制按钮展示，不能替代后端权限和数据范围。
@@ -156,6 +171,8 @@ token 存储策略：
 `/dashboard/product/stock` 使用 `modules/product/api/product-api.ts` 中的库存 API 查询商品库存汇总、库存流水和车辆实例。页面展示库存车辆实例状态时必须使用稳定编码映射中文文案，不能直接显示 `ORDER_RESERVED`、`RELEASE` 等后端枚举值；车辆入库、占用、释放命令统一走模块 API，不在页面临时拼装请求结构。
 
 `/dashboard/opportunity` 使用 `modules/opportunity/api/opportunity-api.ts` 查询商机列表、详情、阶段历史并执行创建、编辑、阶段推进、赢单、输单、搁置和恢复命令。页面只提交 `INITIAL_CONTACT`、`NEEDS_ANALYSIS`、`QUOTING`、`WON`、`LOST`、`SHELVED` 等稳定商机阶段编码，中文阶段只做展示；商机表单只提交客户、需求、意向车型、预计金额、预计成交日期和下一步日期，不提交交易、收款、发票、库存或交付字段。
+
+`/dashboard/test-drive` 使用 `modules/test-drive/api/test-drive-api.ts` 查询试驾列表、详情、状态历史并执行预约、改期、取消、爽约、签到和完成命令。页面只提交 `SCHEDULED`、`RESCHEDULED`、`CHECKED_IN`、`COMPLETED`、`CANCELED`、`NO_SHOW` 等稳定试驾状态编码，中文状态只做展示；预约表单只提交客户、可用车辆、可选商机、预约时间和联系方式，不提交负责人、库存汇总、交易、报价、订单或交付字段。
 
 `/dashboard/tran` 使用 `modules/tran/api/tran-api.ts` 查询交易列表并触发交易终态命令。交易列表不再提供物理删除或批量删除入口；待报价、审批拒绝等未进入履约事实的交易可关闭，已审批、待收款和待交付交易可取消，操作必须填写原因并走 `cancelTran` 或 `closeTran` 模块 API。页面只按 `tran.cancel`、`tran.close` 权限做体验控制，后端仍负责最终授权、状态冲突和历史事实保留。
 审批拒绝后的重新提交只把交易回到待报价，旧审批记录保留；前端确认文案不得暗示会清除审批历史。
@@ -189,6 +206,7 @@ modules/<module>/
 - `product`
 - `quote`
 - `statistic`
+- `test-drive`
 - `tran`
 - `user`
 
@@ -196,7 +214,7 @@ modules/<module>/
 
 `product` 模块商品状态提交值固定为 `ON_SALE`、`OFF_SALE`，页面只将其展示为“上架/下架”。
 
-`tran` 模块收款、退款、发票和阶段状态统一提交稳定英文编码。交易详情页将 `PENDING`、`COMPLETED`、`PENDING_EXECUTION`、`FAILED` 等编码映射为中文展示；退款执行弹窗支持记录执行成功或执行失败，失败时必须填写失败原因，不向用户直接展示后端英文枚举值。
+`tran` 模块收款、退款、发票和阶段状态统一提交稳定英文编码。交易详情页将 `PENDING`、`COMPLETED`、`PENDING_EXECUTION`、`FAILED` 等编码映射为中文展示；退款执行弹窗支持记录执行成功或执行失败，失败时必须填写失败原因，不向用户直接展示后端英文枚举值。交易详情页基于原收款、已完成退款和处理中退款申请展示可申请退款余额，已取消交易的已确认原收款仍可进入退款申请，但最终额度仍由后端校验。
 
 ## 列表请求基础设施
 

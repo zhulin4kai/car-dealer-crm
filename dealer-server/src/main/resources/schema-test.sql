@@ -7,16 +7,32 @@ CREATE TABLE IF NOT EXISTS t_activity
     id          INTEGER NOT NULL AUTO_INCREMENT,
     owner_id    INTEGER,
     name        VARCHAR(128),
+    status      VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
+    channel     VARCHAR(64) NOT NULL DEFAULT 'OFFLINE_EVENT',
+    target_model VARCHAR(128),
     start_time  TIMESTAMP,
     end_time    TIMESTAMP,
     cost        DECIMAL(11, 2),
+    actual_cost DECIMAL(11, 2),
     description VARCHAR(255),
+    result_summary VARCHAR(500),
+    review_conclusion VARCHAR(500),
+    reviewed_by INTEGER,
+    reviewed_time TIMESTAMP,
+    closed_reason VARCHAR(500),
+    canceled_reason VARCHAR(500),
     create_time TIMESTAMP,
     create_by   INTEGER,
     edit_time   TIMESTAMP,
     edit_by           INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT chk_activity_status CHECK (status IN ('DRAFT', 'PLANNED', 'ONGOING', 'ENDED', 'REVIEWED', 'CLOSED', 'CANCELED')),
+    CONSTRAINT chk_activity_cost CHECK (cost IS NULL OR cost >= 0),
+    CONSTRAINT chk_activity_actual_cost CHECK (actual_cost IS NULL OR actual_cost >= 0),
+    CONSTRAINT chk_activity_time_range CHECK (start_time IS NULL OR end_time IS NULL OR end_time > start_time)
 );
+
+CREATE INDEX IF NOT EXISTS idx_activity_status_time ON t_activity(status, start_time, id);
 
 CREATE TABLE IF NOT EXISTS t_activity_remark
 (
@@ -37,6 +53,7 @@ CREATE TABLE IF NOT EXISTS t_clue
     id                INTEGER NOT NULL AUTO_INCREMENT,
     owner_id          INTEGER,
     activity_id       INTEGER,
+    activity_name_snapshot VARCHAR(128),
     full_name         VARCHAR(64),
     appellation       INTEGER,
     phone             VARCHAR(18),
@@ -54,6 +71,8 @@ CREATE TABLE IF NOT EXISTS t_clue
     source            INTEGER,
     description       VARCHAR(255),
     next_contact_time TIMESTAMP,
+    last_follow_time  TIMESTAMP,
+    last_follow_summary VARCHAR(255),
     create_time       TIMESTAMP,
     create_by         INTEGER,
     edit_time         TIMESTAMP,
@@ -83,6 +102,7 @@ CREATE TABLE IF NOT EXISTS t_customer
     clue_id           INTEGER,
     owner_id          INTEGER,
     activity_id       INTEGER,
+    activity_name_snapshot VARCHAR(128),
     customer_name     VARCHAR(128),
     appellation       INTEGER,
     phone             VARCHAR(32),
@@ -105,6 +125,8 @@ CREATE TABLE IF NOT EXISTS t_customer
     merge_by          INTEGER,
     description       VARCHAR(255),
     next_contact_time TIMESTAMP,
+    last_follow_time  TIMESTAMP,
+    last_follow_summary VARCHAR(255),
     create_time       TIMESTAMP,
     create_by         INTEGER,
     edit_time         TIMESTAMP,
@@ -147,24 +169,41 @@ CREATE TABLE IF NOT EXISTS t_customer_owner_history
 
 CREATE TABLE IF NOT EXISTS t_dic_type
 (
-    id        INTEGER NOT NULL AUTO_INCREMENT,
-    type_code VARCHAR(64) NOT NULL,
-    type_name VARCHAR(64),
-    remark    VARCHAR(128),
+    id                INTEGER NOT NULL AUTO_INCREMENT,
+    type_code         VARCHAR(64) NOT NULL,
+    type_name         VARCHAR(64),
+    applicable_module VARCHAR(64),
+    enabled           TINYINT NOT NULL DEFAULT 1,
+    built_in          TINYINT NOT NULL DEFAULT 0,
+    disable_reason    VARCHAR(255),
+    disabled_by       INTEGER,
+    disabled_time     TIMESTAMP,
+    remark            VARCHAR(128),
     PRIMARY KEY (id),
-    CONSTRAINT uk_type_code UNIQUE (type_code)
+    CONSTRAINT uk_type_code UNIQUE (type_code),
+    CONSTRAINT chk_dic_type_enabled CHECK (enabled IN (0, 1)),
+    CONSTRAINT chk_dic_type_built_in CHECK (built_in IN (0, 1))
 );
 
 CREATE TABLE IF NOT EXISTS t_dic_value
 (
-    id         INTEGER NOT NULL AUTO_INCREMENT,
-    type_code  VARCHAR(64),
-    type_value VARCHAR(64),
-    value_code VARCHAR(64) NOT NULL,
-    `order`    INTEGER,
-    remark     VARCHAR(64),
+    id                INTEGER NOT NULL AUTO_INCREMENT,
+    type_code         VARCHAR(64) NOT NULL,
+    type_value        VARCHAR(64),
+    value_code        VARCHAR(64) NOT NULL,
+    `order`           INTEGER,
+    applicable_module VARCHAR(64),
+    enabled           TINYINT NOT NULL DEFAULT 1,
+    built_in          TINYINT NOT NULL DEFAULT 0,
+    disable_reason    VARCHAR(255),
+    disabled_by       INTEGER,
+    disabled_time     TIMESTAMP,
+    remark            VARCHAR(64),
     PRIMARY KEY (id),
-    CONSTRAINT uk_type_value_code UNIQUE (type_code, value_code)
+    CONSTRAINT uk_type_value_code UNIQUE (type_code, value_code),
+    CONSTRAINT chk_dic_value_enabled CHECK (enabled IN (0, 1)),
+    CONSTRAINT chk_dic_value_built_in CHECK (built_in IN (0, 1)),
+    CONSTRAINT fk_dic_value_type_code FOREIGN KEY (type_code) REFERENCES t_dic_type(type_code) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_permission
@@ -384,6 +423,8 @@ CREATE TABLE IF NOT EXISTS t_opportunity
     expected_amount     DECIMAL(10, 2),
     expected_close_date DATE,
     next_action_time    DATE,
+    last_follow_time    TIMESTAMP,
+    last_follow_summary VARCHAR(255),
     lost_reason         VARCHAR(500),
     lost_competitor     VARCHAR(255),
     result_remark       VARCHAR(500),
@@ -452,8 +493,11 @@ CREATE TABLE IF NOT EXISTS t_quote_version_item
     quantity              INTEGER NOT NULL,
     line_amount           DECIMAL(10, 2) NOT NULL,
     promotion_id          BIGINT,
+    promotion_code        VARCHAR(64),
     promotion_name        VARCHAR(255),
+    promotion_rule_summary VARCHAR(500),
     promotion_amount      DECIMAL(10, 2),
+    promotion_snapshot    TEXT,
     create_time           TIMESTAMP,
     create_by             INTEGER,
     PRIMARY KEY (id),
@@ -588,13 +632,37 @@ CREATE TABLE IF NOT EXISTS t_operation_log
     user_id     INTEGER,
     user_name   VARCHAR(64),
     action_code VARCHAR(32) NOT NULL,
+    object_type VARCHAR(64),
     module_name VARCHAR(64),
     resource_id VARCHAR(64),
+    result      VARCHAR(32),
     detail      VARCHAR(512),
     ip          VARCHAR(64),
+    request_id  VARCHAR(64),
     create_time TIMESTAMP,
     PRIMARY KEY (id)
 );
+CREATE INDEX IF NOT EXISTS idx_operation_log_time ON t_operation_log(create_time, id);
+CREATE INDEX IF NOT EXISTS idx_operation_log_query ON t_operation_log(module_name, action_code, user_id, result);
+
+CREATE TABLE IF NOT EXISTS t_login_log
+(
+    id             INTEGER NOT NULL AUTO_INCREMENT,
+    login_act      VARCHAR(64) NOT NULL,
+    user_id        INTEGER,
+    user_name      VARCHAR(64),
+    result         VARCHAR(32) NOT NULL,
+    reason_code    VARCHAR(64) NOT NULL,
+    reason_message VARCHAR(255),
+    ip             VARCHAR(64),
+    browser        VARCHAR(128),
+    os             VARCHAR(128),
+    request_id     VARCHAR(64),
+    create_time    TIMESTAMP NOT NULL,
+    PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS idx_login_log_time ON t_login_log(create_time, id);
+CREATE INDEX IF NOT EXISTS idx_login_log_query ON t_login_log(login_act, user_id, result, reason_code);
 
 CREATE TABLE IF NOT EXISTS t_product_category
 (
@@ -627,18 +695,60 @@ ALTER TABLE t_customer_owner_history
 
 CREATE TABLE IF NOT EXISTS t_product_promotion
 (
-    id           BIGINT NOT NULL AUTO_INCREMENT,
-    product_id   BIGINT NOT NULL,
-    name         VARCHAR(255) NOT NULL,
-    type        VARCHAR(50),
-    discount    DECIMAL(10, 2),
-    start_time  TIMESTAMP,
-    end_time    TIMESTAMP,
-    status      VARCHAR(50),
-    create_time TIMESTAMP,
-    update_time TIMESTAMP,
+    id                 BIGINT NOT NULL AUTO_INCREMENT,
+    product_id         BIGINT NOT NULL,
+    code               VARCHAR(64) NOT NULL,
+    name               VARCHAR(255) NOT NULL,
+    type               VARCHAR(50) NOT NULL,
+    discount           DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    rule_summary       VARCHAR(500) NOT NULL,
+    applicable_store   VARCHAR(64) NOT NULL DEFAULT 'ALL',
+    customer_type      VARCHAR(64) NOT NULL DEFAULT 'ALL',
+    applicable_channel VARCHAR(64) NOT NULL DEFAULT 'ALL',
+    inventory_scope    VARCHAR(64) NOT NULL DEFAULT 'ALL',
+    stackable          BOOLEAN NOT NULL DEFAULT FALSE,
+    priority           INTEGER NOT NULL DEFAULT 0,
+    budget_limit       DECIMAL(10, 2),
+    used_budget        DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    usage_limit        INTEGER,
+    used_count         INTEGER NOT NULL DEFAULT 0,
+    start_time         TIMESTAMP NOT NULL,
+    end_time           TIMESTAMP NOT NULL,
+    status             VARCHAR(50) NOT NULL,
+    pause_reason       VARCHAR(500),
+    end_reason         VARCHAR(500),
+    void_reason        VARCHAR(500),
+    create_time        TIMESTAMP,
+    update_time        TIMESTAMP,
     PRIMARY KEY (id),
-    CONSTRAINT fk_product_promotion_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT
+    CONSTRAINT uk_product_promotion_code UNIQUE (code),
+    CONSTRAINT fk_product_promotion_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_product_promotion_status CHECK (status IN ('DRAFT', 'PENDING_EFFECTIVE', 'ACTIVE', 'PAUSED', 'ENDED', 'VOIDED', 'EXHAUSTED')),
+    CONSTRAINT chk_product_promotion_type CHECK (type IN ('AMOUNT', 'PERCENTAGE', 'EXCHANGE_SUBSIDY', 'FINANCE_SUBSIDY', 'GIFT', 'MAINTENANCE', 'INSURANCE_SUBSIDY', 'LIMITED_TIME', 'INVENTORY_CLEARANCE')),
+    CONSTRAINT chk_product_promotion_time CHECK (end_time > start_time),
+    CONSTRAINT chk_product_promotion_discount CHECK (
+        (type = 'PERCENTAGE' AND discount > 0 AND discount < 1)
+        OR (type IN ('AMOUNT', 'EXCHANGE_SUBSIDY', 'FINANCE_SUBSIDY', 'INSURANCE_SUBSIDY', 'LIMITED_TIME', 'INVENTORY_CLEARANCE') AND discount > 0)
+        OR (type IN ('GIFT', 'MAINTENANCE') AND discount >= 0)
+    ),
+    CONSTRAINT chk_product_promotion_budget CHECK (budget_limit IS NULL OR (budget_limit > 0 AND used_budget <= budget_limit)),
+    CONSTRAINT chk_product_promotion_usage CHECK (usage_limit IS NULL OR (usage_limit > 0 AND used_count <= usage_limit)),
+    CONSTRAINT chk_product_promotion_used_non_negative CHECK (used_budget >= 0 AND used_count >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS t_product_promotion_usage
+(
+    id              BIGINT NOT NULL AUTO_INCREMENT,
+    promotion_id    BIGINT NOT NULL,
+    source_type     VARCHAR(50) NOT NULL,
+    source_id       BIGINT NOT NULL,
+    discount_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    create_time     TIMESTAMP NOT NULL,
+    create_by       INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_product_promotion_usage_source UNIQUE (promotion_id, source_type, source_id),
+    CONSTRAINT fk_product_promotion_usage_promotion FOREIGN KEY (promotion_id) REFERENCES t_product_promotion(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_product_promotion_usage_amount CHECK (discount_amount >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS t_product_vehicle
@@ -667,6 +777,179 @@ CREATE TABLE IF NOT EXISTS t_product_vehicle
         'INVENTORY_EXCEPTION', 'UNAVAILABLE'
     ))
 );
+
+CREATE TABLE IF NOT EXISTS t_test_drive
+(
+    id                      BIGINT NOT NULL AUTO_INCREMENT,
+    test_drive_no           VARCHAR(64) NOT NULL,
+    customer_id             INTEGER NOT NULL,
+    opportunity_id          BIGINT,
+    vehicle_id              BIGINT NOT NULL,
+    owner_id                INTEGER NOT NULL,
+    planned_start_time      TIMESTAMP NOT NULL,
+    planned_end_time        TIMESTAMP NOT NULL,
+    actual_arrive_time      TIMESTAMP,
+    actual_start_time       TIMESTAMP,
+    actual_end_time         TIMESTAMP,
+    safety_confirmed_at     TIMESTAMP,
+    safety_confirmed_by     INTEGER,
+    check_in_by             INTEGER,
+    customer_confirm_method VARCHAR(50),
+    status                  VARCHAR(50) NOT NULL,
+    contact_name            VARCHAR(100) NOT NULL,
+    contact_phone           VARCHAR(50) NOT NULL,
+    result                  VARCHAR(100),
+    customer_feedback       VARCHAR(1000),
+    next_action             VARCHAR(500),
+    cancel_type             VARCHAR(50),
+    cancel_reason           VARCHAR(500),
+    remark                  VARCHAR(500),
+    reschedule_count        INTEGER NOT NULL DEFAULT 0,
+    version                 INTEGER NOT NULL DEFAULT 0,
+    create_time             TIMESTAMP,
+    create_by               INTEGER,
+    update_time             TIMESTAMP,
+    update_by               INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_test_drive_no UNIQUE (test_drive_no),
+    CONSTRAINT fk_test_drive_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_test_drive_opportunity FOREIGN KEY (opportunity_id) REFERENCES t_opportunity(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_test_drive_vehicle FOREIGN KEY (vehicle_id) REFERENCES t_product_vehicle(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_test_drive_owner FOREIGN KEY (owner_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_test_drive_status CHECK (status IN (
+        'PENDING_CONFIRM', 'SCHEDULED', 'RESCHEDULED', 'CHECKED_IN',
+        'COMPLETED', 'CANCELED', 'NO_SHOW', 'EXCEPTION_CLOSED'
+    )),
+    CONSTRAINT chk_test_drive_time_range CHECK (planned_start_time < planned_end_time),
+    CONSTRAINT chk_test_drive_reschedule_count CHECK (reschedule_count >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_test_drive_customer_status ON t_test_drive(customer_id, status);
+CREATE INDEX IF NOT EXISTS idx_test_drive_opportunity ON t_test_drive(opportunity_id);
+CREATE INDEX IF NOT EXISTS idx_test_drive_vehicle_time ON t_test_drive(vehicle_id, planned_start_time, planned_end_time);
+CREATE INDEX IF NOT EXISTS idx_test_drive_owner_time ON t_test_drive(owner_id, planned_start_time, planned_end_time);
+
+CREATE TABLE IF NOT EXISTS t_test_drive_vehicle_hold
+(
+    id             BIGINT NOT NULL AUTO_INCREMENT,
+    test_drive_id  BIGINT NOT NULL,
+    vehicle_id     BIGINT NOT NULL,
+    start_time     TIMESTAMP NOT NULL,
+    end_time       TIMESTAMP NOT NULL,
+    status         VARCHAR(30) NOT NULL,
+    release_reason VARCHAR(500),
+    release_time   TIMESTAMP,
+    create_time    TIMESTAMP,
+    create_by      INTEGER,
+    update_time    TIMESTAMP,
+    update_by      INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_test_drive_hold_drive FOREIGN KEY (test_drive_id) REFERENCES t_test_drive(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_test_drive_hold_vehicle FOREIGN KEY (vehicle_id) REFERENCES t_product_vehicle(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_test_drive_hold_status CHECK (status IN ('ACTIVE', 'RELEASED')),
+    CONSTRAINT chk_test_drive_hold_time_range CHECK (start_time < end_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_test_drive_hold_vehicle_time ON t_test_drive_vehicle_hold(vehicle_id, status, start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_test_drive_hold_drive ON t_test_drive_vehicle_hold(test_drive_id, status);
+
+CREATE TABLE IF NOT EXISTS t_test_drive_status_history
+(
+    id             BIGINT NOT NULL AUTO_INCREMENT,
+    test_drive_id  BIGINT NOT NULL,
+    from_status    VARCHAR(50),
+    to_status      VARCHAR(50) NOT NULL,
+    action_type    VARCHAR(50) NOT NULL,
+    reason         VARCHAR(500),
+    old_start_time TIMESTAMP,
+    old_end_time   TIMESTAMP,
+    new_start_time TIMESTAMP,
+    new_end_time   TIMESTAMP,
+    operate_by     INTEGER NOT NULL,
+    operate_time   TIMESTAMP NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_test_drive_history_drive FOREIGN KEY (test_drive_id) REFERENCES t_test_drive(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_test_drive_history_operator FOREIGN KEY (operate_by) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_test_drive_history_to_status CHECK (to_status IN (
+        'PENDING_CONFIRM', 'SCHEDULED', 'RESCHEDULED', 'CHECKED_IN',
+        'COMPLETED', 'CANCELED', 'NO_SHOW', 'EXCEPTION_CLOSED'
+    )),
+    CONSTRAINT chk_test_drive_history_from_status CHECK (from_status IS NULL OR from_status IN (
+        'PENDING_CONFIRM', 'SCHEDULED', 'RESCHEDULED', 'CHECKED_IN',
+        'COMPLETED', 'CANCELED', 'NO_SHOW', 'EXCEPTION_CLOSED'
+    ))
+);
+
+CREATE INDEX IF NOT EXISTS idx_test_drive_history_drive ON t_test_drive_status_history(test_drive_id, operate_time);
+
+CREATE TABLE IF NOT EXISTS t_follow_task
+(
+    id                      BIGINT NOT NULL AUTO_INCREMENT,
+    title                   VARCHAR(128) NOT NULL,
+    task_type               VARCHAR(64) NOT NULL,
+    related_object_type     VARCHAR(32) NOT NULL,
+    related_object_id       BIGINT NOT NULL,
+    owner_id                INTEGER NOT NULL,
+    priority                VARCHAR(32) NOT NULL DEFAULT 'NORMAL',
+    due_time                TIMESTAMP NOT NULL,
+    remind_time             TIMESTAMP,
+    status                  VARCHAR(32) NOT NULL,
+    result                  VARCHAR(500),
+    postpone_reason         VARCHAR(500),
+    original_due_time       TIMESTAMP,
+    postpone_count          INTEGER NOT NULL DEFAULT 0,
+    cancel_reason           VARCHAR(500),
+    communication_record_id BIGINT,
+    completed_time          TIMESTAMP,
+    completed_by            INTEGER,
+    version                 INTEGER NOT NULL DEFAULT 0,
+    create_time             TIMESTAMP,
+    create_by               INTEGER,
+    update_time             TIMESTAMP,
+    update_by               INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT chk_follow_task_object_type CHECK (related_object_type IN ('CLUE', 'CUSTOMER', 'OPPORTUNITY', 'TEST_DRIVE', 'ORDER')),
+    CONSTRAINT chk_follow_task_status CHECK (status IN ('PENDING', 'IN_PROGRESS', 'POSTPONED', 'OVERDUE', 'COMPLETED', 'CANCELLED', 'CLOSED')),
+    CONSTRAINT chk_follow_task_priority CHECK (priority IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')),
+    CONSTRAINT chk_follow_task_postpone_count CHECK (postpone_count >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_follow_task_owner_due ON t_follow_task(owner_id, status, due_time, id);
+CREATE INDEX IF NOT EXISTS idx_follow_task_object ON t_follow_task(related_object_type, related_object_id, due_time, id);
+
+CREATE TABLE IF NOT EXISTS t_communication_record
+(
+    id                   BIGINT NOT NULL AUTO_INCREMENT,
+    follow_task_id       BIGINT,
+    parent_record_id     BIGINT,
+    related_object_type  VARCHAR(32) NOT NULL,
+    related_object_id    BIGINT NOT NULL,
+    owner_id             INTEGER NOT NULL,
+    communication_method VARCHAR(32) NOT NULL,
+    communication_time   TIMESTAMP NOT NULL,
+    summary              VARCHAR(500) NOT NULL,
+    customer_feedback    VARCHAR(500),
+    next_action          VARCHAR(500),
+    next_follow_time     TIMESTAMP,
+    status               VARCHAR(32) NOT NULL,
+    correction_reason    VARCHAR(500),
+    void_reason          VARCHAR(500),
+    version              INTEGER NOT NULL DEFAULT 0,
+    create_time          TIMESTAMP,
+    create_by            INTEGER,
+    update_time          TIMESTAMP,
+    update_by            INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_comm_record_task FOREIGN KEY (follow_task_id) REFERENCES t_follow_task(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_comm_record_parent FOREIGN KEY (parent_record_id) REFERENCES t_communication_record(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_comm_record_object_type CHECK (related_object_type IN ('CLUE', 'CUSTOMER', 'OPPORTUNITY', 'TEST_DRIVE', 'ORDER')),
+    CONSTRAINT chk_comm_record_status CHECK (status IN ('ACTIVE', 'CORRECTED', 'VOIDED')),
+    CONSTRAINT chk_comm_record_method CHECK (communication_method IN ('PHONE', 'STORE_VISIT', 'WECHAT', 'SMS', 'EMAIL', 'OTHER'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_comm_record_owner_time ON t_communication_record(owner_id, communication_time, id);
+CREATE INDEX IF NOT EXISTS idx_comm_record_object ON t_communication_record(related_object_type, related_object_id, communication_time, id);
+CREATE INDEX IF NOT EXISTS idx_comm_record_task ON t_communication_record(follow_task_id, status);
 
 CREATE TABLE IF NOT EXISTS t_product_stock_record
 (

@@ -47,8 +47,9 @@ class SchemaConstraintsTest {
             "t_tran_invoice", "t_tran_approve", "t_tran_remark",
             "t_quote", "t_quote_version", "t_quote_version_item", "t_quote_status_history",
             "t_opportunity", "t_opportunity_stage_history",
-            "t_product", "t_product_category", "t_product_promotion",
+            "t_product", "t_product_category", "t_product_promotion", "t_product_promotion_usage",
             "t_product_vehicle", "t_product_stock_record",
+            "t_test_drive", "t_test_drive_vehicle_hold", "t_test_drive_status_history",
             "t_delivery", "t_delivery_check_item",
             "t_payment", "t_refund_request",
             "t_user", "t_user_role", "t_clue_owner_history"
@@ -232,6 +233,59 @@ class SchemaConstraintsTest {
             jdbcTemplate.execute(
                 "INSERT INTO t_opportunity (id, opportunity_no, customer_id, owner_id, stage, requirement) " +
                 "VALUES (102, 'OPP-STATUS-001', 1, 1, 'PAYMENT', '客户已经付款')"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("重复试驾编号插入失败")
+    void testDuplicateTestDriveNoFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+            "VALUES (130, 1, 'VIN-TD-DUP-001', '黑色', 'A-01', 'AVAILABLE')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_test_drive (id, test_drive_no, customer_id, vehicle_id, owner_id, " +
+            "planned_start_time, planned_end_time, status, contact_name, contact_phone) " +
+            "VALUES (130, 'TD-DUP-001', 1, 130, 1, '2026-07-01 10:00:00', '2026-07-01 11:00:00', " +
+            "'SCHEDULED', '王先生', '13800138000')");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_test_drive (id, test_drive_no, customer_id, vehicle_id, owner_id, " +
+                "planned_start_time, planned_end_time, status, contact_name, contact_phone) " +
+                "VALUES (131, 'TD-DUP-001', 1, 130, 1, '2026-07-01 12:00:00', '2026-07-01 13:00:00', " +
+                "'SCHEDULED', '王先生', '13800138000')"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("非法试驾状态插入失败")
+    void testInvalidTestDriveStatusFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+            "VALUES (132, 1, 'VIN-TD-STATUS-001', '黑色', 'A-01', 'AVAILABLE')");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_test_drive (id, test_drive_no, customer_id, vehicle_id, owner_id, " +
+                "planned_start_time, planned_end_time, status, contact_name, contact_phone) " +
+                "VALUES (132, 'TD-STATUS-001', 1, 132, 1, '2026-07-01 10:00:00', '2026-07-01 11:00:00', " +
+                "'DONE_BY_CLICK', '王先生', '13800138000')"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("非法试驾占用时间插入失败")
+    void testInvalidTestDriveHoldTimeRangeFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+            "VALUES (133, 1, 'VIN-TD-HOLD-001', '黑色', 'A-01', 'AVAILABLE')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_test_drive (id, test_drive_no, customer_id, vehicle_id, owner_id, " +
+            "planned_start_time, planned_end_time, status, contact_name, contact_phone) " +
+            "VALUES (133, 'TD-HOLD-001', 1, 133, 1, '2026-07-01 10:00:00', '2026-07-01 11:00:00', " +
+            "'SCHEDULED', '王先生', '13800138000')");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_test_drive_vehicle_hold (id, test_drive_id, vehicle_id, start_time, end_time, status) " +
+                "VALUES (133, 133, 133, '2026-07-01 11:00:00', '2026-07-01 10:00:00', 'ACTIVE')"));
     }
 
     @Test
@@ -437,7 +491,46 @@ class SchemaConstraintsTest {
     @DisplayName("不存在的产品不能创建促销")
     void testOrphanProductPromotionFails() {
         assertThrows(Exception.class, () -> jdbcTemplate.execute(
-            "INSERT INTO t_product_promotion (product_id, name) VALUES (99999, '孤儿促销')"));
+            "INSERT INTO t_product_promotion (product_id, code, name, type, discount, rule_summary, start_time, end_time, status) " +
+            "VALUES (99999, 'PROMO-ORPHAN', '孤儿促销', 'AMOUNT', 100.00, '直减100', CURRENT_TIMESTAMP, DATEADD('DAY', 1, CURRENT_TIMESTAMP), 'DRAFT')"));
+    }
+
+    @Test
+    @DisplayName("非法促销状态插入失败")
+    void testInvalidProductPromotionStatusFails() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_product_promotion (product_id, code, name, type, discount, rule_summary, start_time, end_time, status) " +
+            "VALUES (1, 'PROMO-BAD-STATUS', '非法状态促销', 'AMOUNT', 100.00, '直减100', CURRENT_TIMESTAMP, DATEADD('DAY', 1, CURRENT_TIMESTAMP), '进行中')"));
+    }
+
+    @Test
+    @DisplayName("非法促销时间范围插入失败")
+    void testInvalidProductPromotionTimeFails() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_product_promotion (product_id, code, name, type, discount, rule_summary, start_time, end_time, status) " +
+            "VALUES (1, 'PROMO-BAD-TIME', '非法时间促销', 'AMOUNT', 100.00, '直减100', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'DRAFT')"));
+    }
+
+    @Test
+    @DisplayName("百分比促销折扣值域错误插入失败")
+    void testInvalidProductPromotionPercentageFails() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_product_promotion (product_id, code, name, type, discount, rule_summary, start_time, end_time, status) " +
+            "VALUES (1, 'PROMO-BAD-PERCENTAGE', '非法折扣促销', 'PERCENTAGE', 8.00, '八折错误写法', CURRENT_TIMESTAMP, DATEADD('DAY', 1, CURRENT_TIMESTAMP), 'DRAFT')"));
+    }
+
+    @Test
+    @DisplayName("重复促销使用流水插入失败")
+    void testDuplicateProductPromotionUsageFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_promotion (id, product_id, code, name, type, discount, rule_summary, start_time, end_time, status) " +
+            "VALUES (140, 1, 'PROMO-USAGE-DUP', '使用流水促销', 'AMOUNT', 100.00, '直减100', CURRENT_TIMESTAMP, DATEADD('DAY', 1, CURRENT_TIMESTAMP), 'ACTIVE')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_promotion_usage (id, promotion_id, source_type, source_id, discount_amount, create_time) " +
+            "VALUES (140, 140, 'TRAN', 1000, 100.00, CURRENT_TIMESTAMP)");
+        assertThrows(Exception.class, () -> jdbcTemplate.execute(
+            "INSERT INTO t_product_promotion_usage (id, promotion_id, source_type, source_id, discount_amount, create_time) " +
+            "VALUES (141, 140, 'TRAN', 1000, 100.00, CURRENT_TIMESTAMP)"));
     }
 
     @Test
@@ -592,6 +685,35 @@ class SchemaConstraintsTest {
     }
 
     @Test
+    @DisplayName("活动状态必须使用稳定编码")
+    void activityShouldRejectInvalidStatusCode() {
+        assertThrows(DataIntegrityViolationException.class,
+            () -> jdbcTemplate.update(
+                "INSERT INTO t_activity (id, name, status, channel) VALUES (?, ?, ?, ?)",
+                710, "非法状态活动", "已复盘", "店内活动"));
+    }
+
+    @Test
+    @DisplayName("活动时间必须满足结束晚于开始")
+    void activityShouldRejectInvalidTimeRange() {
+        assertThrows(DataIntegrityViolationException.class,
+            () -> jdbcTemplate.update(
+                "INSERT INTO t_activity (id, name, status, channel, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)",
+                711, "非法时间活动", "DRAFT", "店内活动",
+                java.sql.Timestamp.valueOf("2026-07-01 10:00:00"),
+                java.sql.Timestamp.valueOf("2026-07-01 09:00:00")));
+    }
+
+    @Test
+    @DisplayName("活动成本不得为负数")
+    void activityShouldRejectNegativeCost() {
+        assertThrows(DataIntegrityViolationException.class,
+            () -> jdbcTemplate.update(
+                "INSERT INTO t_activity (id, name, status, channel, cost) VALUES (?, ?, ?, ?, ?)",
+                712, "非法成本活动", "DRAFT", "店内活动", -1));
+    }
+
+    @Test
     @DisplayName("线索备注存在时禁止删除线索父记录")
     void clueRemarkShouldRestrictClueDeletion() {
         jdbcTemplate.update(
@@ -737,6 +859,35 @@ class SchemaConstraintsTest {
 
     @Test
     @Order(29)
+    @DisplayName("字典类型和值包含启停、内置和适用模块治理字段")
+    void testDicTablesHaveGovernanceColumns() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_dic_type (id, type_code, type_name, applicable_module, enabled, built_in, remark) " +
+            "VALUES (101, 'test_type_governance', 'test', 'clue', 1, 0, 'test')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_dic_value (id, type_code, type_value, value_code, \"order\", applicable_module, enabled, built_in, disable_reason, remark) " +
+            "VALUES (101, 'test_type_governance', 'test', 'TEST_GOV', 1, 'clue', 1, 0, NULL, 'test')");
+
+        Integer enabled = jdbcTemplate.queryForObject(
+            "SELECT enabled FROM t_dic_value WHERE id = 101", Integer.class);
+        Integer builtIn = jdbcTemplate.queryForObject(
+            "SELECT built_in FROM t_dic_value WHERE id = 101", Integer.class);
+
+        assertEquals(1, enabled);
+        assertEquals(0, builtIn);
+    }
+
+    @Test
+    @Order(30)
+    @DisplayName("字典值必须引用已存在字典类型")
+    void testDicValueRejectsMissingTypeCode() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+            "INSERT INTO t_dic_value (id, type_code, type_value, value_code, \"order\") " +
+                "VALUES (102, 'missing_type_code', 'test', 'MISSING_TYPE', 1)"));
+    }
+
+    @Test
+    @Order(31)
     @DisplayName("t_product 包含 CHECK 约束 - 通过插入负数验证")
     void testProductCheckConstraints() {
         // 已验证: testNegativePriceFails 和 testNegativeStockFails 通过了
@@ -752,7 +903,7 @@ class SchemaConstraintsTest {
     }
 
     @Test
-    @Order(30)
+    @Order(32)
     @DisplayName("t_tran_product.product_id 类型为 BIGINT")
     void testTranProductProductIdIsBigint() {
         // 通过插入一个超过 INT 最大值的 ID 来验证 product_id 支持 BIGINT 范围

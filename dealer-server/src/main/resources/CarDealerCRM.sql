@@ -10,18 +10,33 @@ CREATE TABLE `t_activity`
     `id`          int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，活动ID',
     `owner_id`    int                                                           NULL DEFAULT NULL COMMENT '活动所属人ID',
     `name`        varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '活动名称',
+    `status`      varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NOT NULL DEFAULT 'DRAFT' COMMENT '活动状态稳定编码',
+    `channel`     varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NOT NULL DEFAULT 'OFFLINE_EVENT' COMMENT '活动渠道',
+    `target_model` varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '目标车型',
     `start_time`  datetime                                                      NULL DEFAULT NULL COMMENT '活动开始时间',
     `end_time`    datetime                                                      NULL DEFAULT NULL COMMENT '活动结束时间',
     `cost`        decimal(11, 2)                                                NULL DEFAULT NULL COMMENT '活动预算',
+    `actual_cost` decimal(11, 2)                                                NULL DEFAULT NULL COMMENT '活动实际成本',
     `description` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '活动描述',
+    `result_summary` varchar(500) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '复盘结果摘要',
+    `review_conclusion` varchar(500) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '复盘结论',
+    `reviewed_by` int                                                           NULL DEFAULT NULL COMMENT '复盘人',
+    `reviewed_time` datetime                                                    NULL DEFAULT NULL COMMENT '复盘时间',
+    `closed_reason` varchar(500) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '关闭原因',
+    `canceled_reason` varchar(500) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '取消原因',
     `create_time` datetime                                                      NULL DEFAULT NULL COMMENT '活动创建时间',
     `create_by`   int                                                           NULL DEFAULT NULL COMMENT '活动创建人',
     `edit_time`   datetime                                                      NULL DEFAULT NULL COMMENT '活动编辑时间',
     `edit_by`     int                                                           NULL DEFAULT NULL COMMENT '活动编辑人',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `owner` (`owner_id` ASC) USING BTREE,
+    INDEX `idx_activity_status_time` (`status`, `start_time`, `id`) USING BTREE,
     INDEX `create_by` (`create_by` ASC) USING BTREE,
-    INDEX `edit_by` (`edit_by` ASC) USING BTREE
+    INDEX `edit_by` (`edit_by` ASC) USING BTREE,
+    CONSTRAINT `chk_activity_status` CHECK (`status` IN ('DRAFT', 'PLANNED', 'ONGOING', 'ENDED', 'REVIEWED', 'CLOSED', 'CANCELED')),
+    CONSTRAINT `chk_activity_cost` CHECK (`cost` IS NULL OR `cost` >= 0),
+    CONSTRAINT `chk_activity_actual_cost` CHECK (`actual_cost` IS NULL OR `actual_cost` >= 0),
+    CONSTRAINT `chk_activity_time_range` CHECK (`start_time` IS NULL OR `end_time` IS NULL OR `end_time` > `start_time`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 49
   CHARACTER SET = utf8mb3
@@ -33,20 +48,27 @@ CREATE TABLE `t_activity`
 -- ----------------------------
 
 INSERT INTO `t_activity`
-(id, owner_id, name, start_time, end_time, cost, description, create_time, create_by, edit_time, edit_by)
+(id, owner_id, name, status, channel, target_model, start_time, end_time, cost, actual_cost, description,
+ result_summary, review_conclusion, reviewed_by, reviewed_time, create_time, create_by, edit_time, edit_by)
 VALUES
-(1, 5, '六月店庆新车品鉴会', '2026-06-06 09:30:00', '2026-06-07 18:00:00', 38000.00,
+(1, 5, '六月店庆新车品鉴会', 'REVIEWED', '店内活动', '中高端新能源与豪华SUV',
+ '2026-06-06 09:30:00', '2026-06-07 18:00:00', 38000.00, 39500.00,
  '面向近三个月高意向客户的店内品鉴活动，设置车型讲解、金融咨询和置换评估。',
- '2026-05-12 10:00:00', 5, '2026-06-03 16:20:00', 5),
-(2, 9, '周末SUV试驾专场', '2026-06-13 09:00:00', '2026-06-14 17:30:00', 12000.00,
+ '到店率和试驾转化达到预期，金融咨询席位不足。', '后续同类活动需提前配置金融顾问和置换评估工位。', 5, '2026-06-08 18:20:00',
+ '2026-05-12 10:00:00', 5, '2026-06-08 18:20:00', 5),
+(2, 9, '周末SUV试驾专场', 'REVIEWED', '试驾专场', 'SUV',
+ '2026-06-13 09:00:00', '2026-06-14 17:30:00', 12000.00, 12800.00,
  '按预约时段组织SUV道路试驾，重点覆盖家庭增购与换购客户。',
- '2026-05-28 14:10:00', 9, '2026-06-10 11:00:00', 5),
-(3, 5, '企业客户用车方案说明会', '2026-06-18 14:00:00', '2026-06-18 17:00:00', 8000.00,
+ '试驾完成率较高，企业客户转化仍需后续跟进。', '保留周末分时段预约，补充企业采购场景资料。', 9, '2026-06-15 18:00:00',
+ '2026-05-28 14:10:00', 9, '2026-06-15 18:00:00', 5),
+(3, 5, '企业客户用车方案说明会', 'ENDED', '企业说明会', '商务车型',
+ '2026-06-18 14:00:00', '2026-06-18 17:00:00', 8000.00, NULL,
  '邀请园区企业行政与采购负责人，介绍商务车型、开票及批量采购方案。',
- '2026-06-01 09:30:00', 5, NULL, NULL),
-(4, 9, '老客户夏季用车关怀日', '2026-07-04 09:30:00', '2026-07-04 17:00:00', 15000.00,
+ NULL, NULL, NULL, NULL, '2026-06-01 09:30:00', 5, NULL, NULL),
+(4, 9, '老客户夏季用车关怀日', 'PLANNED', '老客户活动', '增购与转介绍',
+ '2026-07-04 09:30:00', '2026-07-04 17:00:00', 15000.00, NULL,
  '为已交付客户提供免费车况检查，并收集增购、换购和转介绍线索。',
- '2026-06-15 10:20:00', 9, NULL, NULL);
+ NULL, NULL, NULL, NULL, '2026-06-15 10:20:00', 9, NULL, NULL);
 
 -- ----------------------------
 -- Table structure for t_activity_remark
@@ -95,6 +117,7 @@ CREATE TABLE `t_clue`
     `id`                int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，线索ID',
     `owner_id`          int                                                           NULL DEFAULT NULL COMMENT '线索所属人ID',
     `activity_id`       int                                                           NULL DEFAULT NULL COMMENT '活动ID',
+    `activity_name_snapshot` varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '来源活动名称快照',
     `full_name`         varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '姓名',
     `appellation`       int                                                           NULL DEFAULT NULL COMMENT '称呼',
     `phone`             varchar(18) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '手机号',
@@ -112,6 +135,8 @@ CREATE TABLE `t_clue`
     `source`            int                                                           NULL DEFAULT NULL COMMENT '线索来源',
     `description`       varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '线索描述',
     `next_contact_time` datetime                                                      NULL DEFAULT NULL COMMENT '下次联系时间',
+    `last_follow_time`  datetime                                                      NULL DEFAULT NULL COMMENT '最近跟进时间',
+    `last_follow_summary` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '最近跟进摘要',
     `create_time`       datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
     `create_by`         int                                                           NULL DEFAULT NULL COMMENT '创建人',
     `edit_time`         datetime                                                      NULL DEFAULT NULL COMMENT '编辑时间',
@@ -238,6 +263,7 @@ CREATE TABLE `t_customer`
     `clue_id`           int                                                           NULL DEFAULT NULL COMMENT '线索ID',
     `owner_id`          int                                                           NULL DEFAULT NULL COMMENT '当前客户负责人ID',
     `activity_id`       int                                                           NULL DEFAULT NULL COMMENT '来源活动ID',
+    `activity_name_snapshot` varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '来源活动名称快照',
     `customer_name`     varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '客户姓名或组织名称',
     `appellation`       int                                                           NULL DEFAULT NULL COMMENT '称呼',
     `phone`             varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '手机号',
@@ -260,6 +286,8 @@ CREATE TABLE `t_customer`
     `merge_by`          int                                                           NULL DEFAULT NULL COMMENT '合并操作人',
     `description`       varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '客户描述',
     `next_contact_time` datetime                                                      NULL DEFAULT NULL COMMENT '下次联系时间',
+    `last_follow_time`  datetime                                                      NULL DEFAULT NULL COMMENT '最近跟进时间',
+    `last_follow_summary` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '最近跟进摘要',
     `create_time`       datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
     `create_by`         int                                                           NULL DEFAULT NULL COMMENT '创建人',
     `edit_time`         datetime                                                      NULL DEFAULT NULL COMMENT '编辑时间',
@@ -387,12 +415,21 @@ CREATE TABLE `t_customer_owner_history`
 DROP TABLE IF EXISTS `t_dic_type`;
 CREATE TABLE `t_dic_type`
 (
-    `id`        int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，字典类型ID',
-    `type_code` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NOT NULL COMMENT '字典类型代码',
-    `type_name` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '字典类型名称',
-    `remark`    varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '备注',
+    `id`                int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，字典类型ID',
+    `type_code`         varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NOT NULL COMMENT '稳定字典类型编码',
+    `type_name`         varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '字典类型展示名称',
+    `applicable_module` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '适用模块',
+    `enabled`           tinyint                                                       NOT NULL DEFAULT 1 COMMENT '是否启用：1启用，0停用',
+    `built_in`          tinyint                                                       NOT NULL DEFAULT 0 COMMENT '是否系统内置',
+    `disable_reason`    varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '停用原因',
+    `disabled_by`       int                                                           NULL DEFAULT NULL COMMENT '停用操作人',
+    `disabled_time`     datetime                                                      NULL DEFAULT NULL COMMENT '停用时间',
+    `remark`            varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (`id`) USING BTREE,
-    INDEX `code` (`type_code` ASC) USING BTREE
+    UNIQUE KEY `uk_dic_type_code` (`type_code`),
+    KEY `idx_dic_type_enabled` (`enabled`),
+    CONSTRAINT `chk_dic_type_enabled` CHECK (`enabled` IN (0, 1)),
+    CONSTRAINT `chk_dic_type_built_in` CHECK (`built_in` IN (0, 1))
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 14
   CHARACTER SET = utf8mb3
@@ -417,6 +454,12 @@ VALUES (1, 'sex', '性别', NULL),
        (12, 'userState', '用户状态', NULL),
        (13, 'noteWay', '跟踪方式', NULL);
 
+UPDATE `t_dic_type`
+SET `built_in` = 1
+WHERE `type_code` IN ('sex', 'appellation', 'clueState', 'returnPriority', 'returnState',
+                      'source', 'stage', 'transactionType', 'intentionState',
+                      'needLoan', 'educational', 'userState', 'noteWay');
+
 
 -- ----------------------------
 -- Table structure for t_dic_value
@@ -424,15 +467,24 @@ VALUES (1, 'sex', '性别', NULL),
 DROP TABLE IF EXISTS `t_dic_value`;
 CREATE TABLE `t_dic_value`
 (
-    `id`         int                                                          NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，字典值ID',
-    `type_code`  varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '字典类型代码',
-    `type_value` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '字典值',
-    `value_code` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '稳定业务编码',
-    `order`      int                                                          NULL DEFAULT NULL COMMENT '字典值排序',
-    `remark`     varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '备注',
+    `id`                int                                                           NOT NULL AUTO_INCREMENT COMMENT '主键，自动增长，字典值ID',
+    `type_code`         varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NOT NULL COMMENT '稳定字典类型编码',
+    `type_value`        varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '字典展示名称',
+    `value_code`        varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NOT NULL COMMENT '稳定业务编码',
+    `order`             int                                                           NULL DEFAULT NULL COMMENT '字典值排序',
+    `applicable_module` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '适用模块',
+    `enabled`           tinyint                                                       NOT NULL DEFAULT 1 COMMENT '是否启用：1启用，0停用',
+    `built_in`          tinyint                                                       NOT NULL DEFAULT 0 COMMENT '是否系统内置',
+    `disable_reason`    varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '停用原因',
+    `disabled_by`       int                                                           NULL DEFAULT NULL COMMENT '停用操作人',
+    `disabled_time`     datetime                                                      NULL DEFAULT NULL COMMENT '停用时间',
+    `remark`            varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci  NULL DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE KEY `uk_type_value_code` (`type_code`, `value_code`),
-    INDEX `t_dic_value_ibfk_1` (`type_code` ASC) USING BTREE
+    KEY `idx_dic_value_type_enabled` (`type_code`, `enabled`, `order`),
+    CONSTRAINT `chk_dic_value_enabled` CHECK (`enabled` IN (0, 1)),
+    CONSTRAINT `chk_dic_value_built_in` CHECK (`built_in` IN (0, 1)),
+    CONSTRAINT `fk_dic_value_type_code` FOREIGN KEY (`type_code`) REFERENCES `t_dic_type` (`type_code`) ON DELETE RESTRICT
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 66
   CHARACTER SET = utf8mb3
@@ -510,6 +562,12 @@ INSERT INTO `t_dic_value` (`id`, `type_code`, `type_value`, `value_code`, `order
 (64, 'noteWay', '面聊', 'in_person', 4, NULL),
 (65, 'noteWay', '其他', 'other', 5, NULL);
 
+UPDATE `t_dic_value`
+SET `built_in` = 1
+WHERE `type_code` IN ('sex', 'appellation', 'clueState', 'returnPriority', 'returnState',
+                      'source', 'stage', 'transactionType', 'intentionState',
+                      'needLoan', 'educational', 'userState', 'noteWay');
+
 -- ----------------------------
 -- Table structure for t_permission
 -- ----------------------------
@@ -546,11 +604,12 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 ('客户管理', 'menu:customer', NULL, 'menu', NULL, 3, 'User', 1),
 ('交易管理', 'menu:tran', NULL, 'menu', NULL, 4, 'Wallet', 1),
 ('商机管理', 'menu:opportunity', NULL, 'menu', NULL, 5, 'Target', 1),
-('报价订单', 'menu:quote', NULL, 'menu', NULL, 6, 'FileText', 1),
-('交付管理', 'menu:delivery', NULL, 'menu', NULL, 7, 'Truck', 1),
-('产品管理', 'menu:product', NULL, 'menu', NULL, 8, 'Memo', 1),
-('字典管理', 'menu:dict', NULL, 'menu', NULL, 9, 'Grid', 1),
-('用户管理', 'menu:user', NULL, 'menu', NULL, 10, 'Stamp', 1);
+('试驾管理', 'menu:test-drive', NULL, 'menu', NULL, 6, 'Car', 1),
+('报价订单', 'menu:quote', NULL, 'menu', NULL, 7, 'FileText', 1),
+('交付管理', 'menu:delivery', NULL, 'menu', NULL, 8, 'Truck', 1),
+('产品管理', 'menu:product', NULL, 'menu', NULL, 9, 'Memo', 1),
+('字典管理', 'menu:dict', NULL, 'menu', NULL, 10, 'Grid', 1),
+('用户管理', 'menu:user', NULL, 'menu', NULL, 11, 'Stamp', 1);
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '市场活动', 'page:activity:list', '/dashboard/activity', 'menu', id, 1, 'CreditCard', 1 FROM `t_permission` WHERE code = 'menu:activity';
@@ -562,6 +621,8 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '交易管理', 'page:tran:list', '/dashboard/tran', 'menu', id, 1, 'Coin', 1 FROM `t_permission` WHERE code = 'menu:tran';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '商机管理', 'page:opportunity:list', '/dashboard/opportunity', 'menu', id, 1, 'Target', 1 FROM `t_permission` WHERE code = 'menu:opportunity';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '试驾管理', 'page:test-drive:list', '/dashboard/test-drive', 'menu', id, 1, 'Car', 1 FROM `t_permission` WHERE code = 'menu:test-drive';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '报价订单', 'page:quote:list', '/dashboard/quote', 'menu', id, 1, 'FileText', 1 FROM `t_permission` WHERE code = 'menu:quote';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -591,6 +652,12 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '市场活动-查看', 'activity:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '市场活动-删除', 'activity:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动-复盘', 'activity:review', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动-关闭', 'activity:close', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '市场活动-导出', 'activity:export', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:activity:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '线索管理-列表', 'clue:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:clue:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -692,6 +759,20 @@ SELECT '商机管理-搁置', 'opportunity:shelve', NULL, 'button', id, NULL, NU
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '商机管理-恢复', 'opportunity:restore', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:opportunity:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '试驾管理-列表', 'test-drive:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:test-drive:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '试驾管理-查看', 'test-drive:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:test-drive:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '试驾管理-预约', 'test-drive:create', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:test-drive:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '试驾管理-改期', 'test-drive:reschedule', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:test-drive:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '试驾管理-取消', 'test-drive:cancel', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:test-drive:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '试驾管理-签到', 'test-drive:check-in', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:test-drive:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '试驾管理-完成', 'test-drive:complete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:test-drive:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '交付管理-列表', 'delivery:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '交付管理-查看', 'delivery:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:delivery:list';
@@ -733,6 +814,8 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '促销管理-录入', 'product:promotion:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '促销管理-编辑', 'product:promotion:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '促销管理-启停作废', 'product:promotion:status', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '促销管理-删除', 'product:promotion:delete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:product:promotion';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -779,6 +862,31 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '用户管理-密码重置', 'user:password', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '统计报表-查看', 'statistic:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:dashboard';
+
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+VALUES ('跟进任务', 'menu:follow', NULL, 'menu', NULL, 6, 'CalendarCheck', 1);
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '我的跟进', 'page:follow:list', '/dashboard/follow', 'menu', id, 1, 'CalendarCheck', 1 FROM `t_permission` WHERE code = 'menu:follow';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '跟进任务-列表', 'follow-task:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '跟进任务-查看', 'follow-task:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '跟进任务-创建', 'follow-task:create', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '跟进任务-处理', 'follow-task:update', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '跟进任务-取消', 'follow-task:cancel', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '跟进任务-完成', 'follow-task:complete', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '沟通记录-列表', 'communication-record:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '沟通记录-新增', 'communication-record:create', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '沟通记录-更正', 'communication-record:correct', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '沟通记录-作废', 'communication-record:void', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
 
 -- ----------------------------
 -- Table structure for t_role
@@ -835,15 +943,15 @@ WHERE r.role = 'admin' AND r.enabled = 1 AND p.enabled = 1;
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'sales_consultant' AND p.code IN ('menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'menu:opportunity', 'page:opportunity:list', 'opportunity:list', 'opportunity:view', 'opportunity:create', 'opportunity:edit', 'opportunity:advance', 'opportunity:lose', 'opportunity:shelve', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:settle', 'tran:resubmit', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:confirm', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception');
+WHERE r.role = 'sales_consultant' AND p.code IN ('menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'menu:opportunity', 'page:opportunity:list', 'opportunity:list', 'opportunity:view', 'opportunity:create', 'opportunity:edit', 'opportunity:advance', 'opportunity:lose', 'opportunity:shelve', 'menu:test-drive', 'page:test-drive:list', 'test-drive:list', 'test-drive:view', 'test-drive:create', 'test-drive:reschedule', 'test-drive:cancel', 'test-drive:check-in', 'test-drive:complete', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:settle', 'tran:resubmit', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:confirm', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'sales_manager' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:delete', 'clue:import', 'clue:transfer', 'clue:close', 'clue:restore', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'customer:export', 'customer:merge', 'customer:delete', 'customer:sensitive:view', 'menu:opportunity', 'page:opportunity:list', 'opportunity:list', 'opportunity:view', 'opportunity:create', 'opportunity:edit', 'opportunity:advance', 'opportunity:win', 'opportunity:lose', 'opportunity:shelve', 'opportunity:restore', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:delete', 'tran:cancel', 'tran:close', 'tran:settle', 'tran:resubmit', 'tran:approve', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:approve', 'quote:confirm', 'quote:order', 'quote:cancel', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception', 'delivery:cancel', 'statistic:view');
+WHERE r.role = 'sales_manager' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'activity:review', 'activity:close', 'activity:export', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:delete', 'clue:import', 'clue:transfer', 'clue:close', 'clue:restore', 'menu:customer', 'page:customer:list', 'customer:list', 'customer:view', 'customer:transfer', 'customer:export', 'customer:merge', 'customer:delete', 'customer:sensitive:view', 'menu:opportunity', 'page:opportunity:list', 'opportunity:list', 'opportunity:view', 'opportunity:create', 'opportunity:edit', 'opportunity:advance', 'opportunity:win', 'opportunity:lose', 'opportunity:shelve', 'opportunity:restore', 'menu:test-drive', 'page:test-drive:list', 'test-drive:list', 'test-drive:view', 'test-drive:create', 'test-drive:reschedule', 'test-drive:cancel', 'test-drive:check-in', 'test-drive:complete', 'menu:tran', 'page:tran:list', 'tran:list', 'tran:view', 'tran:create', 'tran:edit', 'tran:delete', 'tran:cancel', 'tran:close', 'tran:settle', 'tran:resubmit', 'tran:approve', 'menu:quote', 'page:quote:list', 'quote:list', 'quote:view', 'quote:create', 'quote:edit', 'quote:approve', 'quote:confirm', 'quote:order', 'quote:cancel', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:create', 'delivery:check', 'delivery:sign', 'delivery:exception', 'delivery:cancel', 'statistic:view');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'marketing_specialist' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:import', 'statistic:view');
+WHERE r.role = 'marketing_specialist' AND p.code IN ('menu:dashboard', 'menu:activity', 'page:activity:list', 'activity:list', 'activity:view', 'activity:add', 'activity:edit', 'activity:delete', 'activity:review', 'activity:close', 'activity:export', 'menu:clue', 'page:clue:list', 'clue:list', 'clue:view', 'clue:add', 'clue:edit', 'clue:import', 'statistic:view');
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
@@ -851,7 +959,16 @@ WHERE r.role = 'finance_specialist' AND p.code IN ('menu:dashboard', 'menu:tran'
 
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
-WHERE r.role = 'inventory_specialist' AND p.code IN ('menu:product', 'page:product:list', 'page:product:category', 'page:product:promotion', 'page:product:stock', 'product:list', 'product:view', 'product:add', 'product:edit', 'product:delete', 'product:category:list', 'product:category:view', 'product:category:add', 'product:category:edit', 'product:category:delete', 'product:promotion:list', 'product:promotion:view', 'product:promotion:add', 'product:promotion:edit', 'product:promotion:delete', 'product:stock:view', 'product:stock:adjust', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:check', 'delivery:sign', 'delivery:exception');
+WHERE r.role = 'inventory_specialist' AND p.code IN ('menu:product', 'page:product:list', 'page:product:category', 'page:product:promotion', 'page:product:stock', 'product:list', 'product:view', 'product:add', 'product:edit', 'product:delete', 'product:category:list', 'product:category:view', 'product:category:add', 'product:category:edit', 'product:category:delete', 'product:promotion:list', 'product:promotion:view', 'product:promotion:add', 'product:promotion:edit', 'product:promotion:status', 'product:promotion:delete', 'product:stock:view', 'product:stock:adjust', 'menu:delivery', 'page:delivery:list', 'delivery:list', 'delivery:view', 'delivery:check', 'delivery:sign', 'delivery:exception');
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role IN ('sales_consultant', 'sales_manager', 'marketing_specialist')
+  AND p.code IN ('menu:follow', 'page:follow:list', 'follow-task:list', 'follow-task:view',
+                 'follow-task:create', 'follow-task:update', 'follow-task:cancel',
+                 'follow-task:complete', 'communication-record:list',
+                 'communication-record:create', 'communication-record:correct',
+                 'communication-record:void');
 
 -- ----------------------------
 -- Table structure for t_tran
@@ -1202,6 +1319,8 @@ CREATE TABLE `t_opportunity`
     `expected_amount`     DECIMAL(10, 2) DEFAULT NULL COMMENT '销售预测金额',
     `expected_close_date` DATE          DEFAULT NULL COMMENT '预计成交日期',
     `next_action_time`    DATE          DEFAULT NULL COMMENT '下一步跟进日期',
+    `last_follow_time`    DATETIME      DEFAULT NULL COMMENT '最近跟进时间',
+    `last_follow_summary` VARCHAR(255)  DEFAULT NULL COMMENT '最近跟进摘要',
     `lost_reason`         VARCHAR(500)  DEFAULT NULL COMMENT '输单/搁置/关闭原因',
     `lost_competitor`     VARCHAR(255)  DEFAULT NULL COMMENT '输单竞品',
     `result_remark`       VARCHAR(500)  DEFAULT NULL COMMENT '结果备注',
@@ -1264,8 +1383,11 @@ CREATE TABLE `t_quote_version_item`
     `quantity`              INT            NOT NULL COMMENT '数量',
     `line_amount`           DECIMAL(10, 2) NOT NULL COMMENT '行金额',
     `promotion_id`          BIGINT         DEFAULT NULL COMMENT '促销ID快照',
+    `promotion_code`        VARCHAR(64)    DEFAULT NULL COMMENT '促销编码快照',
     `promotion_name`        VARCHAR(255)   DEFAULT NULL COMMENT '促销名称快照',
+    `promotion_rule_summary` VARCHAR(500)  DEFAULT NULL COMMENT '促销规则摘要快照',
     `promotion_amount`      DECIMAL(10, 2) DEFAULT NULL COMMENT '促销金额快照',
+    `promotion_snapshot`    TEXT           DEFAULT NULL COMMENT '促销完整快照JSON',
     `create_time`           DATETIME       DEFAULT NULL COMMENT '创建时间',
     `create_by`             INT            DEFAULT NULL COMMENT '创建人',
     PRIMARY KEY (`id`),
@@ -1317,22 +1439,51 @@ ALTER TABLE `t_customer`
 -- ----------------------------
 -- Table structure for t_product_promotion
 -- ----------------------------
+DROP TABLE IF EXISTS `t_product_promotion_usage`;
 DROP TABLE IF EXISTS `t_product_promotion`;
 CREATE TABLE `t_product_promotion`
 (
-    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '促销活动的唯一标识符',
-    `product_id`  BIGINT       NOT NULL COMMENT '关联的产品ID',
-    `name`        VARCHAR(255) NOT NULL COMMENT '促销名称',
-    `type`        VARCHAR(50)    DEFAULT NULL COMMENT '促销类型',
-    `discount`    DECIMAL(10, 2) DEFAULT NULL COMMENT '折扣或金额',
-    `start_time`  DATETIME       DEFAULT NULL COMMENT '促销开始时间',
-    `end_time`    DATETIME       DEFAULT NULL COMMENT '促销结束时间',
-    `status`      VARCHAR(50)    DEFAULT NULL COMMENT '促销状态',
-    `create_time` DATETIME       DEFAULT NULL COMMENT '创建时间',
-    `update_time` DATETIME       DEFAULT NULL COMMENT '更新时间',
+    `id`                 BIGINT       NOT NULL AUTO_INCREMENT COMMENT '促销活动的唯一标识符',
+    `product_id`         BIGINT       NOT NULL COMMENT '关联的产品ID',
+    `code`               VARCHAR(64)  NOT NULL COMMENT '促销稳定编码',
+    `name`               VARCHAR(255) NOT NULL COMMENT '促销名称',
+    `type`               VARCHAR(50)  NOT NULL COMMENT '促销类型稳定编码',
+    `discount`           DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '折扣比例、金额或权益成本',
+    `rule_summary`       VARCHAR(500) NOT NULL COMMENT '促销规则摘要',
+    `applicable_store`   VARCHAR(64)  NOT NULL DEFAULT 'ALL' COMMENT '适用门店范围',
+    `customer_type`      VARCHAR(64)  NOT NULL DEFAULT 'ALL' COMMENT '适用客户类型',
+    `applicable_channel` VARCHAR(64)  NOT NULL DEFAULT 'ALL' COMMENT '适用渠道',
+    `inventory_scope`    VARCHAR(64)  NOT NULL DEFAULT 'ALL' COMMENT '适用库存范围',
+    `stackable`          TINYINT      NOT NULL DEFAULT 0 COMMENT '是否允许叠加',
+    `priority`           INT          NOT NULL DEFAULT 0 COMMENT '叠加优先级',
+    `budget_limit`       DECIMAL(10, 2) DEFAULT NULL COMMENT '预算上限',
+    `used_budget`        DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '已使用预算',
+    `usage_limit`        INT            DEFAULT NULL COMMENT '使用名额上限',
+    `used_count`         INT          NOT NULL DEFAULT 0 COMMENT '已使用次数',
+    `start_time`         DATETIME     NOT NULL COMMENT '促销开始时间',
+    `end_time`           DATETIME     NOT NULL COMMENT '促销结束时间',
+    `status`             VARCHAR(50)  NOT NULL COMMENT '促销状态稳定编码',
+    `pause_reason`       VARCHAR(500) DEFAULT NULL COMMENT '暂停原因',
+    `end_reason`         VARCHAR(500) DEFAULT NULL COMMENT '结束原因',
+    `void_reason`        VARCHAR(500) DEFAULT NULL COMMENT '作废原因',
+    `create_time`        DATETIME     DEFAULT NULL COMMENT '创建时间',
+    `update_time`        DATETIME     DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_product_promotion_code` (`code`),
     KEY `idx_product_promotion_product` (`product_id`),
-    CONSTRAINT `fk_product_promotion_product` FOREIGN KEY (`product_id`) REFERENCES `t_product` (`id`) ON DELETE RESTRICT
+    KEY `idx_product_promotion_status_time` (`status`, `start_time`, `end_time`),
+    CONSTRAINT `fk_product_promotion_product` FOREIGN KEY (`product_id`) REFERENCES `t_product` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_product_promotion_status` CHECK (`status` IN ('DRAFT', 'PENDING_EFFECTIVE', 'ACTIVE', 'PAUSED', 'ENDED', 'VOIDED', 'EXHAUSTED')),
+    CONSTRAINT `chk_product_promotion_type` CHECK (`type` IN ('AMOUNT', 'PERCENTAGE', 'EXCHANGE_SUBSIDY', 'FINANCE_SUBSIDY', 'GIFT', 'MAINTENANCE', 'INSURANCE_SUBSIDY', 'LIMITED_TIME', 'INVENTORY_CLEARANCE')),
+    CONSTRAINT `chk_product_promotion_time` CHECK (`end_time` > `start_time`),
+    CONSTRAINT `chk_product_promotion_discount` CHECK (
+        (`type` = 'PERCENTAGE' AND `discount` > 0 AND `discount` < 1)
+        OR (`type` IN ('AMOUNT', 'EXCHANGE_SUBSIDY', 'FINANCE_SUBSIDY', 'INSURANCE_SUBSIDY', 'LIMITED_TIME', 'INVENTORY_CLEARANCE') AND `discount` > 0)
+        OR (`type` IN ('GIFT', 'MAINTENANCE') AND `discount` >= 0)
+    ),
+    CONSTRAINT `chk_product_promotion_budget` CHECK (`budget_limit` IS NULL OR (`budget_limit` > 0 AND `used_budget` <= `budget_limit`)),
+    CONSTRAINT `chk_product_promotion_usage` CHECK (`usage_limit` IS NULL OR (`usage_limit` > 0 AND `used_count` <= `usage_limit`)),
+    CONSTRAINT `chk_product_promotion_used_non_negative` CHECK (`used_budget` >= 0 AND `used_count` >= 0)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='产品促销表';
 
@@ -1341,17 +1492,39 @@ CREATE TABLE `t_product_promotion`
 -- ----------------------------
 
 INSERT INTO `t_product_promotion`
-(`id`, `product_id`, `name`, `type`, `discount`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
+(`id`, `product_id`, `code`, `name`, `type`, `discount`, `rule_summary`, `applicable_store`,
+ `customer_type`, `applicable_channel`, `inventory_scope`, `stackable`, `priority`, `budget_limit`,
+ `used_budget`, `usage_limit`, `used_count`, `start_time`, `end_time`, `status`, `create_time`, `update_time`)
 VALUES
-(1, 1, '宝马X5六月现车补贴', 'AMOUNT', 12000.00, '2026-06-01 00:00:00', '2026-06-30 23:59:59', '进行中', '2026-05-20 10:00:00', '2026-06-01 09:00:00'),
-(2, 11, '雷克萨斯ES新能源置换补贴', 'AMOUNT', 8000.00, '2026-06-15 00:00:00', '2026-08-31 23:59:59', '进行中', '2026-06-05 14:00:00', '2026-06-15 09:00:00'),
-(3, 9, '奔驰E级暑期金融贴息', 'AMOUNT', 6000.00, '2026-07-01 00:00:00', '2026-08-31 23:59:59', '待开始', '2026-06-18 11:00:00', '2026-06-18 11:00:00');
+(1, 1, 'PROMO-BMW-X5-202606', '宝马X5六月现车补贴', 'AMOUNT', 12000.00, '每台现车直减12000元', 'ALL', 'ALL', 'ALL', 'IN_STOCK', 0, 10, 300000.00, 0.00, 20, 0, '2026-06-01 00:00:00', '2026-06-30 23:59:59', 'ACTIVE', '2026-05-20 10:00:00', '2026-06-01 09:00:00'),
+(2, 11, 'PROMO-LEXUS-ES-202606', '雷克萨斯ES新能源置换补贴', 'EXCHANGE_SUBSIDY', 8000.00, '符合置换客户每台补贴8000元', 'ALL', 'REPLACEMENT', 'ALL', 'ALL', 0, 8, 200000.00, 0.00, 25, 0, '2026-06-15 00:00:00', '2026-08-31 23:59:59', 'ACTIVE', '2026-06-05 14:00:00', '2026-06-15 09:00:00'),
+(3, 9, 'PROMO-BENZ-E-FINANCE-202607', '奔驰E级暑期金融贴息', 'FINANCE_SUBSIDY', 6000.00, '金融方案成交每台贴息6000元', 'ALL', 'ALL', 'ALL', 'ALL', 0, 5, 180000.00, 0.00, 30, 0, '2026-07-01 00:00:00', '2026-08-31 23:59:59', 'PENDING_EFFECTIVE', '2026-06-18 11:00:00', '2026-06-18 11:00:00');
+
+CREATE TABLE `t_product_promotion_usage`
+(
+    `id`              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '促销使用流水ID',
+    `promotion_id`    BIGINT         NOT NULL COMMENT '促销ID',
+    `source_type`     VARCHAR(50)    NOT NULL COMMENT '来源类型，如QUOTE或TRAN',
+    `source_id`       BIGINT         NOT NULL COMMENT '来源业务ID',
+    `discount_amount` DECIMAL(10, 2) NOT NULL DEFAULT 0 COMMENT '本次优惠金额',
+    `create_time`     DATETIME       NOT NULL COMMENT '创建时间',
+    `create_by`       INT            DEFAULT NULL COMMENT '操作人',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_product_promotion_usage_source` (`promotion_id`, `source_type`, `source_id`),
+    KEY `idx_product_promotion_usage_source` (`source_type`, `source_id`),
+    CONSTRAINT `fk_product_promotion_usage_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `t_product_promotion` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_product_promotion_usage_amount` CHECK (`discount_amount` >= 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='促销使用流水表';
 
 -- ----------------------------
 -- Table structure for t_product_stock_record
 -- ----------------------------
 DROP TABLE IF EXISTS `t_delivery_check_item`;
 DROP TABLE IF EXISTS `t_delivery`;
+DROP TABLE IF EXISTS `t_test_drive_status_history`;
+DROP TABLE IF EXISTS `t_test_drive_vehicle_hold`;
+DROP TABLE IF EXISTS `t_test_drive`;
 DROP TABLE IF EXISTS `t_product_vehicle`;
 CREATE TABLE `t_product_vehicle`
 (
@@ -1381,6 +1554,180 @@ CREATE TABLE `t_product_vehicle`
     ))
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='库存车辆实例表';
+
+DROP TABLE IF EXISTS `t_test_drive`;
+CREATE TABLE `t_test_drive`
+(
+    `id`                      BIGINT       NOT NULL AUTO_INCREMENT COMMENT '试驾记录ID',
+    `test_drive_no`           VARCHAR(64)  NOT NULL COMMENT '试驾业务编号',
+    `customer_id`             INT          NOT NULL COMMENT '客户ID',
+    `opportunity_id`          BIGINT       DEFAULT NULL COMMENT '关联商机ID',
+    `vehicle_id`              BIGINT       NOT NULL COMMENT '试驾车辆实例ID',
+    `owner_id`                INT          NOT NULL COMMENT '负责销售',
+    `planned_start_time`      DATETIME     NOT NULL COMMENT '预约开始时间',
+    `planned_end_time`        DATETIME     NOT NULL COMMENT '预约结束时间',
+    `actual_arrive_time`      DATETIME     DEFAULT NULL COMMENT '到店时间',
+    `actual_start_time`       DATETIME     DEFAULT NULL COMMENT '实际开始时间',
+    `actual_end_time`         DATETIME     DEFAULT NULL COMMENT '实际结束时间',
+    `safety_confirmed_at`     DATETIME     DEFAULT NULL COMMENT '安全确认时间',
+    `safety_confirmed_by`     INT          DEFAULT NULL COMMENT '安全确认人',
+    `check_in_by`             INT          DEFAULT NULL COMMENT '签到人',
+    `customer_confirm_method` VARCHAR(50)  DEFAULT NULL COMMENT '客户确认方式',
+    `status`                  VARCHAR(50)  NOT NULL COMMENT '试驾状态稳定编码',
+    `contact_name`            VARCHAR(100) NOT NULL COMMENT '客户联系人',
+    `contact_phone`           VARCHAR(50)  NOT NULL COMMENT '客户联系电话',
+    `result`                  VARCHAR(100) DEFAULT NULL COMMENT '试驾结果编码或摘要',
+    `customer_feedback`       VARCHAR(1000) DEFAULT NULL COMMENT '客户反馈',
+    `next_action`             VARCHAR(500) DEFAULT NULL COMMENT '下一步动作',
+    `cancel_type`             VARCHAR(50)  DEFAULT NULL COMMENT '取消或爽约类型',
+    `cancel_reason`           VARCHAR(500) DEFAULT NULL COMMENT '取消或爽约原因',
+    `remark`                  VARCHAR(500) DEFAULT NULL COMMENT '备注',
+    `reschedule_count`        INT          NOT NULL DEFAULT 0 COMMENT '改期次数',
+    `version`                 INT          NOT NULL DEFAULT 0 COMMENT '并发版本',
+    `create_time`             DATETIME     DEFAULT NULL COMMENT '创建时间',
+    `create_by`               INT          DEFAULT NULL COMMENT '创建人',
+    `update_time`             DATETIME     DEFAULT NULL COMMENT '更新时间',
+    `update_by`               INT          DEFAULT NULL COMMENT '更新人',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_test_drive_no` (`test_drive_no`),
+    KEY `idx_test_drive_customer_status` (`customer_id`, `status`),
+    KEY `idx_test_drive_opportunity` (`opportunity_id`),
+    KEY `idx_test_drive_vehicle_time` (`vehicle_id`, `planned_start_time`, `planned_end_time`),
+    KEY `idx_test_drive_owner_time` (`owner_id`, `planned_start_time`, `planned_end_time`),
+    CONSTRAINT `chk_test_drive_status` CHECK (`status` IN (
+        'PENDING_CONFIRM', 'SCHEDULED', 'RESCHEDULED', 'CHECKED_IN',
+        'COMPLETED', 'CANCELED', 'NO_SHOW', 'EXCEPTION_CLOSED'
+    )),
+    CONSTRAINT `chk_test_drive_time_range` CHECK (`planned_start_time` < `planned_end_time`),
+    CONSTRAINT `chk_test_drive_reschedule_count` CHECK (`reschedule_count` >= 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='试驾预约与执行表';
+
+DROP TABLE IF EXISTS `t_test_drive_vehicle_hold`;
+CREATE TABLE `t_test_drive_vehicle_hold`
+(
+    `id`            BIGINT      NOT NULL AUTO_INCREMENT COMMENT '试驾车辆时间占用ID',
+    `test_drive_id` BIGINT      NOT NULL COMMENT '试驾记录ID',
+    `vehicle_id`    BIGINT      NOT NULL COMMENT '试驾车辆实例ID',
+    `start_time`    DATETIME    NOT NULL COMMENT '占用开始时间',
+    `end_time`      DATETIME    NOT NULL COMMENT '占用结束时间',
+    `status`        VARCHAR(30) NOT NULL COMMENT '占用状态',
+    `release_reason` VARCHAR(500) DEFAULT NULL COMMENT '释放原因',
+    `release_time`  DATETIME    DEFAULT NULL COMMENT '释放时间',
+    `create_time`   DATETIME    DEFAULT NULL COMMENT '创建时间',
+    `create_by`     INT         DEFAULT NULL COMMENT '创建人',
+    `update_time`   DATETIME    DEFAULT NULL COMMENT '更新时间',
+    `update_by`     INT         DEFAULT NULL COMMENT '更新人',
+    PRIMARY KEY (`id`),
+    KEY `idx_test_drive_hold_vehicle_time` (`vehicle_id`, `status`, `start_time`, `end_time`),
+    KEY `idx_test_drive_hold_drive` (`test_drive_id`, `status`),
+    CONSTRAINT `chk_test_drive_hold_status` CHECK (`status` IN ('ACTIVE', 'RELEASED')),
+    CONSTRAINT `chk_test_drive_hold_time_range` CHECK (`start_time` < `end_time`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='试驾车辆时间占用表';
+
+DROP TABLE IF EXISTS `t_test_drive_status_history`;
+CREATE TABLE `t_test_drive_status_history`
+(
+    `id`             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '试驾状态历史ID',
+    `test_drive_id`  BIGINT       NOT NULL COMMENT '试驾记录ID',
+    `from_status`    VARCHAR(50)  DEFAULT NULL COMMENT '原状态',
+    `to_status`      VARCHAR(50)  NOT NULL COMMENT '目标状态',
+    `action_type`    VARCHAR(50)  NOT NULL COMMENT '动作类型',
+    `reason`         VARCHAR(500) DEFAULT NULL COMMENT '原因或摘要',
+    `old_start_time` DATETIME     DEFAULT NULL COMMENT '原预约开始时间',
+    `old_end_time`   DATETIME     DEFAULT NULL COMMENT '原预约结束时间',
+    `new_start_time` DATETIME     DEFAULT NULL COMMENT '新预约开始时间',
+    `new_end_time`   DATETIME     DEFAULT NULL COMMENT '新预约结束时间',
+    `operate_by`     INT          NOT NULL COMMENT '操作人',
+    `operate_time`   DATETIME     NOT NULL COMMENT '操作时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_test_drive_history_drive` (`test_drive_id`, `operate_time`),
+    CONSTRAINT `chk_test_drive_history_to_status` CHECK (`to_status` IN (
+        'PENDING_CONFIRM', 'SCHEDULED', 'RESCHEDULED', 'CHECKED_IN',
+        'COMPLETED', 'CANCELED', 'NO_SHOW', 'EXCEPTION_CLOSED'
+    )),
+    CONSTRAINT `chk_test_drive_history_from_status` CHECK (`from_status` IS NULL OR `from_status` IN (
+        'PENDING_CONFIRM', 'SCHEDULED', 'RESCHEDULED', 'CHECKED_IN',
+        'COMPLETED', 'CANCELED', 'NO_SHOW', 'EXCEPTION_CLOSED'
+    ))
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='试驾状态历史表';
+
+-- ----------------------------
+-- Table structure for t_follow_task
+-- ----------------------------
+DROP TABLE IF EXISTS `t_communication_record`;
+DROP TABLE IF EXISTS `t_follow_task`;
+CREATE TABLE `t_follow_task`
+(
+    `id`                      BIGINT       NOT NULL AUTO_INCREMENT COMMENT '跟进任务ID',
+    `title`                   VARCHAR(128) NOT NULL COMMENT '任务标题',
+    `task_type`               VARCHAR(64)  NOT NULL COMMENT '任务类型稳定编码',
+    `related_object_type`     VARCHAR(32)  NOT NULL COMMENT '关联对象类型',
+    `related_object_id`       BIGINT       NOT NULL COMMENT '关联对象ID',
+    `owner_id`                INT          NOT NULL COMMENT '负责人',
+    `priority`                VARCHAR(32)  NOT NULL DEFAULT 'NORMAL' COMMENT '优先级',
+    `due_time`                DATETIME     NOT NULL COMMENT '计划时间',
+    `remind_time`             DATETIME     DEFAULT NULL COMMENT '提醒时间',
+    `status`                  VARCHAR(32)  NOT NULL COMMENT '任务状态',
+    `result`                  VARCHAR(500) DEFAULT NULL COMMENT '完成结果',
+    `postpone_reason`         VARCHAR(500) DEFAULT NULL COMMENT '延期原因',
+    `original_due_time`       DATETIME     DEFAULT NULL COMMENT '原计划时间',
+    `postpone_count`          INT          NOT NULL DEFAULT 0 COMMENT '延期次数',
+    `cancel_reason`           VARCHAR(500) DEFAULT NULL COMMENT '取消原因',
+    `communication_record_id` BIGINT       DEFAULT NULL COMMENT '完成关联沟通记录ID',
+    `completed_time`          DATETIME     DEFAULT NULL COMMENT '完成时间',
+    `completed_by`            INT          DEFAULT NULL COMMENT '完成人',
+    `version`                 INT          NOT NULL DEFAULT 0 COMMENT '并发版本',
+    `create_time`             DATETIME     DEFAULT NULL COMMENT '创建时间',
+    `create_by`               INT          DEFAULT NULL COMMENT '创建人',
+    `update_time`             DATETIME     DEFAULT NULL COMMENT '更新时间',
+    `update_by`               INT          DEFAULT NULL COMMENT '更新人',
+    PRIMARY KEY (`id`),
+    KEY `idx_follow_task_owner_due` (`owner_id`, `status`, `due_time`, `id`),
+    KEY `idx_follow_task_object` (`related_object_type`, `related_object_id`, `due_time`, `id`),
+    CONSTRAINT `chk_follow_task_object_type` CHECK (`related_object_type` IN ('CLUE', 'CUSTOMER', 'OPPORTUNITY', 'TEST_DRIVE', 'ORDER')),
+    CONSTRAINT `chk_follow_task_status` CHECK (`status` IN ('PENDING', 'IN_PROGRESS', 'POSTPONED', 'OVERDUE', 'COMPLETED', 'CANCELLED', 'CLOSED')),
+    CONSTRAINT `chk_follow_task_priority` CHECK (`priority` IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')),
+    CONSTRAINT `chk_follow_task_postpone_count` CHECK (`postpone_count` >= 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='跟进任务表';
+
+CREATE TABLE `t_communication_record`
+(
+    `id`                   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '沟通记录ID',
+    `follow_task_id`       BIGINT       DEFAULT NULL COMMENT '关联跟进任务ID',
+    `parent_record_id`     BIGINT       DEFAULT NULL COMMENT '更正前沟通记录ID',
+    `related_object_type`  VARCHAR(32)  NOT NULL COMMENT '关联对象类型',
+    `related_object_id`    BIGINT       NOT NULL COMMENT '关联对象ID',
+    `owner_id`             INT          NOT NULL COMMENT '负责人',
+    `communication_method` VARCHAR(32)  NOT NULL COMMENT '沟通方式',
+    `communication_time`   DATETIME     NOT NULL COMMENT '沟通时间',
+    `summary`              VARCHAR(500) NOT NULL COMMENT '沟通摘要',
+    `customer_feedback`    VARCHAR(500) DEFAULT NULL COMMENT '客户反馈',
+    `next_action`          VARCHAR(500) DEFAULT NULL COMMENT '下一步动作',
+    `next_follow_time`     DATETIME     DEFAULT NULL COMMENT '下次跟进时间',
+    `status`               VARCHAR(32)  NOT NULL COMMENT '记录状态',
+    `correction_reason`    VARCHAR(500) DEFAULT NULL COMMENT '更正原因',
+    `void_reason`          VARCHAR(500) DEFAULT NULL COMMENT '作废原因',
+    `version`              INT          NOT NULL DEFAULT 0 COMMENT '并发版本',
+    `create_time`          DATETIME     DEFAULT NULL COMMENT '创建时间',
+    `create_by`            INT          DEFAULT NULL COMMENT '创建人',
+    `update_time`          DATETIME     DEFAULT NULL COMMENT '更新时间',
+    `update_by`            INT          DEFAULT NULL COMMENT '更新人',
+    PRIMARY KEY (`id`),
+    KEY `idx_comm_record_owner_time` (`owner_id`, `communication_time`, `id`),
+    KEY `idx_comm_record_object` (`related_object_type`, `related_object_id`, `communication_time`, `id`),
+    KEY `idx_comm_record_task` (`follow_task_id`, `status`),
+    KEY `idx_comm_record_parent` (`parent_record_id`),
+    CONSTRAINT `fk_comm_record_task` FOREIGN KEY (`follow_task_id`) REFERENCES `t_follow_task` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_comm_record_parent` FOREIGN KEY (`parent_record_id`) REFERENCES `t_communication_record` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_comm_record_object_type` CHECK (`related_object_type` IN ('CLUE', 'CUSTOMER', 'OPPORTUNITY', 'TEST_DRIVE', 'ORDER')),
+    CONSTRAINT `chk_comm_record_status` CHECK (`status` IN ('ACTIVE', 'CORRECTED', 'VOIDED')),
+    CONSTRAINT `chk_comm_record_method` CHECK (`communication_method` IN ('PHONE', 'STORE_VISIT', 'WECHAT', 'SMS', 'EMAIL', 'OTHER'))
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='沟通记录表';
 
 DROP TABLE IF EXISTS `t_product_stock_record`;
 CREATE TABLE `t_product_stock_record`
@@ -1687,16 +2034,48 @@ CREATE TABLE `t_operation_log`
     `user_id`     int          NULL DEFAULT NULL COMMENT '操作用户ID',
     `user_name`   varchar(64)  NULL DEFAULT NULL COMMENT '操作用户名',
     `action_code` varchar(32)  NOT NULL COMMENT '审计动作代码',
+    `object_type` varchar(64)  NULL DEFAULT NULL COMMENT '业务对象类型',
     `module_name` varchar(64)  NULL DEFAULT NULL COMMENT '模块名称',
     `resource_id` varchar(64)  NULL DEFAULT NULL COMMENT '业务资源ID',
+    `result`      varchar(32)  NULL DEFAULT NULL COMMENT '操作结果',
     `detail`      varchar(512) NULL DEFAULT NULL COMMENT '结构化审计摘要JSON',
     `ip`          varchar(64)  NULL DEFAULT NULL COMMENT '操作IP',
+    `request_id`  varchar(64)  NULL DEFAULT NULL COMMENT '请求标识',
     `create_time` datetime     NULL DEFAULT NULL COMMENT '创建时间',
-    PRIMARY KEY (`id`) USING BTREE
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_operation_log_time` (`create_time` ASC, `id` ASC) USING BTREE,
+    INDEX `idx_operation_log_query` (`module_name` ASC, `action_code` ASC, `user_id` ASC, `result` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
   CHARACTER SET = utf8mb3
   COLLATE = utf8mb3_general_ci COMMENT = '操作审计日志表'
+  ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Table structure for t_login_log
+-- ----------------------------
+DROP TABLE IF EXISTS `t_login_log`;
+CREATE TABLE `t_login_log`
+(
+    `id`             int          NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `login_act`      varchar(64)  NOT NULL COMMENT '登录账号',
+    `user_id`        int          NULL DEFAULT NULL COMMENT '可识别用户ID',
+    `user_name`      varchar(64)  NULL DEFAULT NULL COMMENT '可识别用户名',
+    `result`         varchar(32)  NOT NULL COMMENT '登录结果',
+    `reason_code`    varchar(64)  NOT NULL COMMENT '稳定原因编码',
+    `reason_message` varchar(255) NULL DEFAULT NULL COMMENT '管理员可见原因说明',
+    `ip`             varchar(64)  NULL DEFAULT NULL COMMENT '客户端IP',
+    `browser`        varchar(128) NULL DEFAULT NULL COMMENT '浏览器',
+    `os`             varchar(128) NULL DEFAULT NULL COMMENT '操作系统',
+    `request_id`     varchar(64)  NULL DEFAULT NULL COMMENT '请求标识',
+    `create_time`    datetime     NOT NULL COMMENT '登录时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_login_log_time` (`create_time` ASC, `id` ASC) USING BTREE,
+    INDEX `idx_login_log_query` (`login_act` ASC, `user_id` ASC, `result` ASC, `reason_code` ASC) USING BTREE
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = '登录审计日志表'
   ROW_FORMAT = DYNAMIC;
 
 
@@ -1704,13 +2083,44 @@ CREATE TABLE `t_operation_log`
 -- Records of t_operation_log
 -- ----------------------------
 INSERT INTO `t_operation_log`
-(`id`, `user_id`, `user_name`, `action_code`, `module_name`, `resource_id`, `detail`, `ip`, `create_time`)
+(`id`, `user_id`, `user_name`, `action_code`, `object_type`, `module_name`, `resource_id`, `result`, `detail`, `ip`, `request_id`, `create_time`)
 VALUES
-(1, 2, '陈晨', 'TRAN_CREATE', '交易管理', '2', '{"tranNo":"XS202605220001","customerId":2}', '10.20.1.32', '2026-05-22 14:25:00'),
-(2, 4, '李敏', 'TRAN_APPROVE', '交易审批', '3', '{"result":"APPROVED","money":439900.00}', '10.20.1.18', '2026-06-19 17:10:00'),
-(3, 6, '赵倩', 'PAYMENT_CONFIRM', '收款管理', '4', '{"paymentNo":"SK202606160001","amount":20000.00}', '10.20.2.11', '2026-06-16 14:05:00'),
-(4, 6, '赵倩', 'PAYMENT_REFUND', '退款管理', '5', '{"paymentNo":"TK202606160001","amount":20000.00}', '10.20.2.11', '2026-06-16 14:18:00'),
-(5, 7, '孙强', 'STOCK_LOCK', '库存管理', '9', '{"tranNo":"XS202606120001","quantity":1}', '10.20.3.25', '2026-06-20 09:20:00');
+(1, 2, '陈晨', 'TRAN_CREATE', 'TRAN', '交易管理', '2', 'SUCCESS', '{"tranNo":"XS202605220001","customerId":2}', '10.20.1.32', 'seed-op-1', '2026-05-22 14:25:00'),
+(2, 4, '李敏', 'TRAN_APPROVE', 'TRAN', '交易审批', '3', 'SUCCESS', '{"result":"APPROVED","money":439900.00}', '10.20.1.18', 'seed-op-2', '2026-06-19 17:10:00'),
+(3, 6, '赵倩', 'PAYMENT_CONFIRM', 'PAYMENT', '收款管理', '4', 'SUCCESS', '{"paymentNo":"SK202606160001","amount":20000.00}', '10.20.2.11', 'seed-op-3', '2026-06-16 14:05:00'),
+(4, 6, '赵倩', 'PAYMENT_REFUND', 'PAYMENT', '退款管理', '5', 'SUCCESS', '{"paymentNo":"TK202606160001","amount":20000.00}', '10.20.2.11', 'seed-op-4', '2026-06-16 14:18:00'),
+(5, 7, '孙强', 'PRODUCT_STOCK_RESERVE', 'PRODUCT', '库存管理', '9', 'SUCCESS', '{"tranNo":"XS202606120001","quantity":1}', '10.20.3.25', 'seed-op-5', '2026-06-20 09:20:00');
+
+-- ----------------------------
+-- Audit permissions
+-- ----------------------------
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+VALUES ('审计日志', 'menu:audit', NULL, 'menu', NULL, 10, 'ShieldCheck', 1);
+
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '登录记录', 'page:audit:login', '/dashboard/audit/login', 'menu', id, 1, 'KeyRound', 1 FROM `t_permission` WHERE code = 'menu:audit';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '操作记录', 'page:audit:operation', '/dashboard/audit/operation', 'menu', id, 2, 'ClipboardList', 1 FROM `t_permission` WHERE code = 'menu:audit';
+
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '登录记录-列表', 'audit:login:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:audit:login';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '登录记录-详情', 'audit:login:detail', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:audit:login';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '登录记录-导出', 'audit:login:export', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:audit:login';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '操作记录-列表', 'audit:operation:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:audit:operation';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '操作记录-详情', 'audit:operation:detail', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:audit:operation';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '操作记录-导出', 'audit:operation:export', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:audit:operation';
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role = 'admin' AND p.code LIKE 'audit:%';
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role = 'admin' AND p.code IN ('menu:audit', 'page:audit:login', 'page:audit:operation');
 
 -- ----------------------------
 -- Table structure for t_payment
@@ -1897,6 +2307,22 @@ ALTER TABLE `t_product_stock_record`
     ADD CONSTRAINT `fk_stock_record_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `t_product_vehicle` (`id`) ON DELETE RESTRICT;
 ALTER TABLE `t_product_stock_record`
     ADD CONSTRAINT `fk_stock_record_related` FOREIGN KEY (`related_record_id`) REFERENCES `t_product_stock_record` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_test_drive`
+    ADD CONSTRAINT `fk_test_drive_customer` FOREIGN KEY (`customer_id`) REFERENCES `t_customer` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_test_drive`
+    ADD CONSTRAINT `fk_test_drive_opportunity` FOREIGN KEY (`opportunity_id`) REFERENCES `t_opportunity` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_test_drive`
+    ADD CONSTRAINT `fk_test_drive_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `t_product_vehicle` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_test_drive`
+    ADD CONSTRAINT `fk_test_drive_owner` FOREIGN KEY (`owner_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_test_drive_vehicle_hold`
+    ADD CONSTRAINT `fk_test_drive_hold_drive` FOREIGN KEY (`test_drive_id`) REFERENCES `t_test_drive` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_test_drive_vehicle_hold`
+    ADD CONSTRAINT `fk_test_drive_hold_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `t_product_vehicle` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_test_drive_status_history`
+    ADD CONSTRAINT `fk_test_drive_history_drive` FOREIGN KEY (`test_drive_id`) REFERENCES `t_test_drive` (`id`) ON DELETE RESTRICT;
+ALTER TABLE `t_test_drive_status_history`
+    ADD CONSTRAINT `fk_test_drive_history_operator` FOREIGN KEY (`operate_by`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT;
 ALTER TABLE `t_delivery`
     ADD CONSTRAINT `fk_delivery_tran` FOREIGN KEY (`tran_id`) REFERENCES `t_tran` (`id`) ON DELETE RESTRICT;
 ALTER TABLE `t_delivery`
