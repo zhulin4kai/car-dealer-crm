@@ -67,6 +67,11 @@ class GlobalExceptionHandlerTest {
             throw new BusinessException(CodeEnum.TRAN_NO_PRODUCTS, "交易没有产品信息");
         }
 
+        @GetMapping("/test/resource-in-use")
+        String resourceInUse() {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, "资源被引用");
+        }
+
         @GetMapping("/test/fail")
         String fail() {
             throw new BusinessException(CodeEnum.FAIL, "通用业务失败");
@@ -140,6 +145,14 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value(CodeEnum.TRAN_NO_PRODUCTS.getCode()))
                 .andExpect(jsonPath("$.msg").value("交易没有产品信息"));
+    }
+
+    @Test
+    void businessException_resourceInUse_http422() throws Exception {
+        mockMvc.perform(get("/test/resource-in-use"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value(CodeEnum.RESOURCE_IN_USE.getCode()))
+                .andExpect(jsonPath("$.msg").value("资源被引用"));
     }
 
     @Test

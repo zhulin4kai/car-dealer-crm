@@ -30,6 +30,12 @@ public class CurrentUserProvider {
         return hasRole(getCurrentUser(), ROLE_ADMIN);
     }
 
+    public boolean hasAuthority(String authority) {
+        return getCurrentUser().getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority::equals);
+    }
+
     public Integer getDataScopeUserId() {
         if (isAdmin()) {
             return null;

@@ -19,15 +19,26 @@ public enum AuditActionEnum {
     CLUE_TRANSFORM("CLUE_TRANSFORM", "线索转客户", "线索管理"),
     CLUE_DELETE("CLUE_DELETE", "删除线索", "线索管理"),
     CLUE_UPDATE("CLUE_UPDATE", "编辑线索", "线索管理"),
+    CLUE_TRANSFER("CLUE_TRANSFER", "线索转派", "线索管理"),
+    CLUE_CLOSE("CLUE_CLOSE", "关闭线索", "线索管理"),
+    CLUE_RESTORE("CLUE_RESTORE", "恢复线索", "线索管理"),
 
     CUSTOMER_CONVERT("CUSTOMER_CONVERT", "线索转客户", "客户管理"),
     CUSTOMER_OWNER_CHANGE("CUSTOMER_OWNER_CHANGE", "客户归属变更", "客户管理"),
+    CUSTOMER_MERGE("CUSTOMER_MERGE", "客户合并", "客户管理"),
+    CUSTOMER_DELETE("CUSTOMER_DELETE", "删除客户", "客户管理"),
 
     TRAN_CREATE("TRAN_CREATE", "创建交易", "交易管理"),
     TRAN_SETTLE("TRAN_SETTLE", "交易结算", "交易管理"),
     TRAN_APPROVE("TRAN_APPROVE", "交易审批", "交易管理"),
     TRAN_DELETE("TRAN_DELETE", "删除交易", "交易管理"),
+    TRAN_CANCEL("TRAN_CANCEL", "取消交易", "交易履约"),
+    TRAN_CLOSE("TRAN_CLOSE", "关闭交易", "交易履约"),
     TRAN_RESUBMIT("TRAN_RESUBMIT", "交易重提", "交易管理"),
+
+    QUOTE_CREATE("QUOTE_CREATE", "创建报价", "报价订单"),
+    QUOTE_VERSION_CREATE("QUOTE_VERSION_CREATE", "创建报价版本", "报价订单"),
+    QUOTE_STATUS_CHANGE("QUOTE_STATUS_CHANGE", "报价状态变更", "报价订单"),
 
     PAYMENT_CREATE("PAYMENT_CREATE", "登记收款", "支付管理"),
     PAYMENT_CONFIRM("PAYMENT_CONFIRM", "确认收款", "支付管理"),
@@ -35,10 +46,15 @@ public enum AuditActionEnum {
     PAYMENT_REFUND_REQUEST("PAYMENT_REFUND_REQUEST", "申请退款", "退款管理"),
     PAYMENT_REFUND_APPROVE("PAYMENT_REFUND_APPROVE", "审批退款", "退款管理"),
     PAYMENT_REFUND("PAYMENT_REFUND", "执行退款", "退款管理"),
+    PAYMENT_REFUND_FAILED("PAYMENT_REFUND_FAILED", "退款执行失败", "退款管理"),
     INVOICE_CREATE("INVOICE_CREATE", "创建发票", "发票管理"),
+    INVOICE_REISSUE("INVOICE_REISSUE", "重开发票", "发票管理"),
+    INVOICE_RED_REVERSE("INVOICE_RED_REVERSE", "发票红冲", "发票管理"),
     INVOICE_STATUS("INVOICE_STATUS", "发票状态变更", "发票管理"),
 
     PRODUCT_STOCK_IN("PRODUCT_STOCK_IN", "商品入库", "商品管理"),
+    PRODUCT_STOCK_RESERVE("PRODUCT_STOCK_RESERVE", "库存占用", "库存管理"),
+    PRODUCT_STOCK_RELEASE("PRODUCT_STOCK_RELEASE", "库存释放", "库存管理"),
     PRODUCT_STOCK_ADJUST("PRODUCT_STOCK_ADJUST", "库存调整", "商品管理"),
     PRODUCT_STATUS_CHANGE("PRODUCT_STATUS_CHANGE", "商品状态变更", "商品管理"),
 

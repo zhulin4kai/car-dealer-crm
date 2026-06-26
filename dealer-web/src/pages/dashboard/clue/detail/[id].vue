@@ -6,12 +6,39 @@
         <CardTitle class="text-lg font-semibold">线索详情</CardTitle>
         <div class="flex gap-2">
           <Button
-            v-if="clueDetail.state !== -1"
+            v-if="canConvertClue"
             v-has-permission="PERMISSIONS.customer.transfer"
             variant="secondary"
             @click="convertCustomer"
           >
             转换客户
+          </Button>
+          <Button
+            v-if="canConvertClue"
+            v-has-permission="PERMISSIONS.clue.transfer"
+            variant="outline"
+            @click="openTransferDialog"
+          >
+            <UserRound class="size-4 mr-1" />
+            转派
+          </Button>
+          <Button
+            v-if="canCloseClue"
+            v-has-permission="PERMISSIONS.clue.close"
+            variant="destructive"
+            @click="openLifecycleDialog('close')"
+          >
+            <ArchiveX class="size-4 mr-1" />
+            关闭
+          </Button>
+          <Button
+            v-if="canRestoreClue"
+            v-has-permission="PERMISSIONS.clue.restore"
+            variant="outline"
+            @click="openLifecycleDialog('restore')"
+          >
+            <RotateCcw class="size-4 mr-1" />
+            恢复
           </Button>
           <Button variant="secondary" @click="handleGoBack"> 返 回 </Button>
         </div>
@@ -212,6 +239,41 @@
             </div>
           </div>
         </div>
+
+        <div class="mb-8 last:mb-0">
+          <h4
+            class="text-base font-semibold mb-5 pb-2 border-b-2 border-border relative before:absolute before:bottom-[-2px] before:left-0 before:w-[60px] before:h-[2px] before:bg-primary"
+          >
+            责任历史
+          </h4>
+          <div class="overflow-x-auto rounded-md border border-border">
+            <Table class="min-w-[720px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>原负责人</TableHead>
+                  <TableHead>新负责人</TableHead>
+                  <TableHead>操作人</TableHead>
+                  <TableHead>原因</TableHead>
+                  <TableHead class="w-[180px]">时间</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-if="ownerHistoryList.length === 0">
+                  <TableCell colspan="5" class="h-24 text-center text-muted-foreground">
+                    暂无责任历史
+                  </TableCell>
+                </TableRow>
+                <TableRow v-for="history in ownerHistoryList" :key="history.id">
+                  <TableCell>{{ history.fromOwnerName || '初始分配' }}</TableCell>
+                  <TableCell>{{ history.toOwnerName || history.toOwnerId || '暂无' }}</TableCell>
+                  <TableCell>{{ history.assignedByName || history.assignedBy || '暂无' }}</TableCell>
+                  <TableCell class="max-w-[260px] break-words">{{ history.reason || '暂无' }}</TableCell>
+                  <TableCell>{{ history.assignedTime || '暂无' }}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </CardContent>
     </Card>
 
@@ -383,28 +445,103 @@
       </form>
     </DialogContent>
   </Dialog>
+
+  <Dialog v-model:open="transferDialogVisible">
+    <DialogContent class="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>转派线索</DialogTitle>
+      </DialogHeader>
+
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <Label>目标负责人</Label>
+          <Select v-model="transferOwnerId">
+            <SelectTrigger class="w-full">
+              <SelectValue placeholder="请选择目标负责人" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="item in ownerOptions" :key="item.id" :value="String(item.id)">
+                {{ item.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div class="space-y-2">
+          <Label>转派原因</Label>
+          <Textarea v-model="transferReason" :rows="5" placeholder="请输入转派原因" />
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" @click="transferDialogVisible = false">
+            取 消
+          </Button>
+          <Button type="button" :disabled="transferring" @click="submitTransferOwner">
+            <Loader2 v-if="transferring" class="size-4 animate-spin mr-1" />
+            确认转派
+          </Button>
+        </DialogFooter>
+      </div>
+    </DialogContent>
+  </Dialog>
+
+  <Dialog v-model:open="lifecycleDialogVisible">
+    <DialogContent class="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>{{ lifecycleDialogTitle }}</DialogTitle>
+      </DialogHeader>
+
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <Label>{{ lifecycleReasonLabel }}</Label>
+          <Textarea v-model="lifecycleReason" :rows="5" :placeholder="lifecycleReasonPlaceholder" />
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" @click="lifecycleDialogVisible = false">
+            取 消
+          </Button>
+          <Button
+            type="button"
+            :variant="lifecycleAction === 'close' ? 'destructive' : 'default'"
+            :disabled="lifecycleSubmitting"
+            @click="submitLifecycleAction"
+          >
+            <Loader2 v-if="lifecycleSubmitting" class="size-4 animate-spin mr-1" />
+            {{ lifecycleSubmitText }}
+          </Button>
+        </DialogFooter>
+      </div>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
-import { Pencil, RotateCw, Loader2 } from '@lucide/vue'
+import { ArchiveX, Pencil, RotateCcw, RotateCw, Loader2, UserRound } from '@lucide/vue'
 import { messageTip } from '@/shared/utils/feedback'
 import {
   getClueDetail,
+  getClueOwnerHistory,
   addClueRemark,
   getClueRemarkList,
   convertClueToCustomer,
+  transferClueOwner,
+  closeClue,
+  restoreClue,
 } from '@/modules/clue/api/clue-api'
 import { getDictValueList } from '@/modules/dict/api/dict-api'
 import { getProductList } from '@/modules/product/api/product-api'
-import type { Clue, ClueRemark } from '@/modules/clue/model/clue.types'
+import { getOwnerList } from '@/modules/activity/api/activity-api'
+import type { Clue, ClueOwnerHistory, ClueRemark } from '@/modules/clue/model/clue.types'
 import type { DictValue } from '@/modules/dict/model/dict.types'
 import type { Product } from '@/modules/product/model/product.types'
+import type { User } from '@/modules/user/model/user.types'
 import { fromLocalDateTimeInput } from '@/shared/datetime/local-date'
 
 import { Button } from '@/components/ui/button'
@@ -456,6 +593,7 @@ const clueDetail = ref<Clue>({
 
 // 线索跟踪记录列表
 const clueRemarkList = ref<ClueRemark[]>([])
+const ownerHistoryList = ref<ClueOwnerHistory[]>([])
 
 // 分页
 const currentPage = ref(1)
@@ -467,13 +605,33 @@ const noteWayOptions = ref<DictValue[]>([])
 
 // 意向产品选项
 const productOptions = ref<Product[]>([])
+const ownerOptions = ref<User[]>([])
 
 // 加载状态
 const submitting = ref(false)
 const converting = ref(false)
+const transferring = ref(false)
+const lifecycleSubmitting = ref(false)
 
 // 转换客户弹窗
 const convertCustomerDialogVisible = ref(false)
+const transferDialogVisible = ref(false)
+const transferOwnerId = ref('')
+const transferReason = ref('')
+type LifecycleAction = 'close' | 'restore'
+const lifecycleDialogVisible = ref(false)
+const lifecycleAction = ref<LifecycleAction>('close')
+const lifecycleReason = ref('')
+const clueStateCode = computed(() => clueDetail.value.stateDO?.valueCode)
+const canConvertClue = computed(() => clueStateCode.value !== 'converted' && clueStateCode.value !== 'closed')
+const canCloseClue = computed(() => clueStateCode.value !== 'converted' && clueStateCode.value !== 'closed')
+const canRestoreClue = computed(() => clueStateCode.value === 'closed')
+const lifecycleDialogTitle = computed(() => lifecycleAction.value === 'close' ? '关闭线索' : '恢复线索')
+const lifecycleReasonLabel = computed(() => lifecycleAction.value === 'close' ? '关闭原因' : '恢复原因')
+const lifecycleReasonPlaceholder = computed(() =>
+  lifecycleAction.value === 'close' ? '请输入关闭原因' : '请输入恢复原因',
+)
+const lifecycleSubmitText = computed(() => lifecycleAction.value === 'close' ? '确认关闭' : '确认恢复')
 
 // 跟踪记录表单 schema (zod)
 const remarkFormSchema = toTypedSchema(
@@ -547,6 +705,22 @@ const loadClueDetail = async () => {
   }
 }
 
+const loadOwnerHistory = async () => {
+  try {
+    ownerHistoryList.value = await getClueOwnerHistory(route.params.id)
+  } catch (error) {
+    messageTip('加载责任历史失败', 'error')
+  }
+}
+
+const loadOwnerOptions = async () => {
+  try {
+    ownerOptions.value = await getOwnerList()
+  } catch (error) {
+    messageTip('加载负责人失败', 'error')
+  }
+}
+
 // 提交线索跟踪记录 (严禁修改 API 调用)
 const onSubmitRemark = handleRemarkSubmit(async (formData) => {
   submitting.value = true
@@ -610,6 +784,78 @@ const convertCustomer = async () => {
   convertCustomerDialogVisible.value = true
 }
 
+const openTransferDialog = async () => {
+  await loadOwnerOptions()
+  transferOwnerId.value = ''
+  transferReason.value = ''
+  transferDialogVisible.value = true
+}
+
+const submitTransferOwner = async () => {
+  if (!clueDetail.value.id) {
+    messageTip('线索ID不存在', 'error')
+    return
+  }
+  if (!transferOwnerId.value) {
+    messageTip('请选择目标负责人', 'warning')
+    return
+  }
+  const reason = transferReason.value.trim()
+  if (!reason) {
+    messageTip('请输入转派原因', 'warning')
+    return
+  }
+  transferring.value = true
+  try {
+    await transferClueOwner(clueDetail.value.id, {
+      newOwnerId: Number(transferOwnerId.value),
+      reason,
+    })
+    messageTip('转派成功', 'success')
+    transferDialogVisible.value = false
+    await loadClueDetail()
+    await loadOwnerHistory()
+  } catch (error) {
+    messageTip('转派失败', 'error')
+  } finally {
+    transferring.value = false
+  }
+}
+
+const openLifecycleDialog = (action: LifecycleAction) => {
+  lifecycleAction.value = action
+  lifecycleReason.value = ''
+  lifecycleDialogVisible.value = true
+}
+
+const submitLifecycleAction = async () => {
+  if (!clueDetail.value.id) {
+    messageTip('线索ID不存在', 'error')
+    return
+  }
+  const reason = lifecycleReason.value.trim()
+  if (!reason) {
+    messageTip(lifecycleAction.value === 'close' ? '请输入关闭原因' : '请输入恢复原因', 'warning')
+    return
+  }
+  lifecycleSubmitting.value = true
+  try {
+    if (lifecycleAction.value === 'close') {
+      await closeClue(clueDetail.value.id, { reason })
+      messageTip('关闭成功', 'success')
+    } else {
+      await restoreClue(clueDetail.value.id, { reason })
+      messageTip('恢复成功', 'success')
+    }
+    lifecycleDialogVisible.value = false
+    await loadClueDetail()
+  } catch (error) {
+    messageTip(lifecycleAction.value === 'close' ? '关闭失败' : '恢复失败', 'error')
+  } finally {
+    lifecycleSubmitting.value = false
+  }
+}
+
 // 线索转换客户 (严禁修改 API 调用)
 const onSubmitConvert = handleConvertSubmit(async (formData) => {
   converting.value = true
@@ -656,6 +902,7 @@ watch(
   (newId) => {
     if (newId) {
       loadClueDetail()
+      loadOwnerHistory()
       loadClueRemarkList(1)
       ProductList()
     }
@@ -665,6 +912,7 @@ watch(
 // 组件挂载时执行
 onMounted(() => {
   loadClueDetail()
+  loadOwnerHistory()
   loadClueRemarkList(1)
   ProductList() // 预先加载产品列表
 })

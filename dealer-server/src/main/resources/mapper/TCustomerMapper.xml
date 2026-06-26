@@ -4,7 +4,28 @@
   <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TCustomer">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="clue_id" jdbcType="INTEGER" property="clueId" />
+    <result column="owner_id" jdbcType="INTEGER" property="ownerId" />
+    <result column="activity_id" jdbcType="INTEGER" property="activityId" />
+    <result column="customer_name" jdbcType="VARCHAR" property="customerName" />
+    <result column="appellation" jdbcType="INTEGER" property="appellation" />
+    <result column="phone" jdbcType="VARCHAR" property="phone" />
+    <result column="weixin" jdbcType="VARCHAR" property="weixin" />
+    <result column="qq" jdbcType="VARCHAR" property="qq" />
+    <result column="email" jdbcType="VARCHAR" property="email" />
+    <result column="age" jdbcType="INTEGER" property="age" />
+    <result column="job" jdbcType="VARCHAR" property="job" />
+    <result column="year_income" jdbcType="DECIMAL" property="yearIncome" />
+    <result column="address" jdbcType="VARCHAR" property="address" />
+    <result column="need_loan" jdbcType="INTEGER" property="needLoan" />
+    <result column="intention_state" jdbcType="INTEGER" property="intentionState" />
+    <result column="source" jdbcType="INTEGER" property="source" />
+    <result column="original_clue_source" jdbcType="INTEGER" property="originalClueSource" />
     <result column="product" jdbcType="BIGINT" property="product" />
+    <result column="customer_status" jdbcType="VARCHAR" property="customerStatus" />
+    <result column="merged_to_customer_id" jdbcType="INTEGER" property="mergedToCustomerId" />
+    <result column="merge_reason" jdbcType="VARCHAR" property="mergeReason" />
+    <result column="merge_time" jdbcType="TIMESTAMP" property="mergeTime" />
+    <result column="merge_by" jdbcType="INTEGER" property="mergeBy" />
     <result column="description" jdbcType="VARCHAR" property="description" />
     <result column="next_contact_time" jdbcType="TIMESTAMP" property="nextContactTime" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
@@ -13,125 +34,117 @@
     <result column="edit_by" jdbcType="INTEGER" property="editBy" />
   </resultMap>
 
-  <resultMap id="CustomerResultMap" type="com.autodealer.crm.model.TCustomer">
-    <id column="id" jdbcType="INTEGER" property="id" />
-    <result column="clue_id" jdbcType="INTEGER" property="clueId" />
-    <result column="product" jdbcType="BIGINT" property="product" />
-    <result column="description" jdbcType="VARCHAR" property="description" />
-    <result column="next_contact_time" jdbcType="TIMESTAMP" property="nextContactTime" />
-    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
-    <result column="create_by" jdbcType="INTEGER" property="createBy" />
-    <result column="edit_time" jdbcType="TIMESTAMP" property="editTime" />
-    <result column="edit_by" jdbcType="INTEGER" property="editBy" />
-    <association property="clueDO" javaType="com.autodealer.crm.model.TClue">
-      <id column="clueId" jdbcType="INTEGER" property="id" />
-      <result column="full_name" jdbcType="VARCHAR" property="fullName" />
-      <result column="phone" jdbcType="VARCHAR" property="phone" />
-      <result column="weixin" jdbcType="VARCHAR" property="weixin" />
-      <result column="qq" jdbcType="VARCHAR" property="qq" />
-      <result column="email" jdbcType="VARCHAR" property="email" />
-      <result column="age" jdbcType="INTEGER" property="age" />
-      <result column="job" jdbcType="VARCHAR" property="job" />
-      <result column="year_income" jdbcType="DECIMAL" property="yearIncome" />
-      <result column="address" jdbcType="VARCHAR" property="address" />
-      <association property="ownerDO" javaType="com.autodealer.crm.model.TUser">
-        <id column="ownerId" jdbcType="INTEGER" property="id" />
-        <result column="ownerName" jdbcType="VARCHAR" property="name" />
-      </association>
-      <association property="activityDO" javaType="com.autodealer.crm.model.TActivity">
-        <id column="activityId" jdbcType="INTEGER" property="id" />
-        <result column="activityName" jdbcType="VARCHAR" property="name" />
-      </association>
-      <association property="appellationDO" javaType="com.autodealer.crm.model.TDicValue">
-        <id column="appellationId" jdbcType="INTEGER" property="id" />
-        <result column="appellationName" jdbcType="VARCHAR" property="typeValue" />
-      </association>
-      <association property="needLoanDO" javaType="com.autodealer.crm.model.TDicValue">
-        <id column="needLoanId" jdbcType="INTEGER" property="id" />
-        <result column="needLoanName" jdbcType="VARCHAR" property="typeValue" />
-      </association>
-      <association property="intentionStateDO" javaType="com.autodealer.crm.model.TDicValue">
-        <id column="intentionStateId" jdbcType="INTEGER" property="id" />
-        <result column="intentionStateName" jdbcType="VARCHAR" property="typeValue" />
-      </association>
-      <association property="stateDO" javaType="com.autodealer.crm.model.TDicValue">
-        <id column="stateId" jdbcType="INTEGER" property="id" />
-        <result column="stateName" jdbcType="VARCHAR" property="typeValue" />
-      </association>
-      <association property="sourceDO" javaType="com.autodealer.crm.model.TDicValue">
-        <id column="sourceId" jdbcType="INTEGER" property="id" />
-        <result column="sourceName" jdbcType="VARCHAR" property="typeValue" />
-      </association>
-      <association property="intentionProductDO" javaType="com.autodealer.crm.dto.ProductSimpleDTO">
-        <id column="intentionProductId" jdbcType="INTEGER" property="id" />
-        <result column="intentionProductName" jdbcType="VARCHAR" property="name" />
-      </association>
+  <resultMap id="CustomerResultMap" type="com.autodealer.crm.model.TCustomer" extends="BaseResultMap">
+    <association property="ownerDO" javaType="com.autodealer.crm.model.TUser">
+      <id column="ownerUserId" jdbcType="INTEGER" property="id" />
+      <result column="ownerName" jdbcType="VARCHAR" property="name" />
+    </association>
+    <association property="activityDO" javaType="com.autodealer.crm.model.TActivity">
+      <id column="activityId" jdbcType="INTEGER" property="id" />
+      <result column="activityName" jdbcType="VARCHAR" property="name" />
+    </association>
+    <association property="appellationDO" javaType="com.autodealer.crm.model.TDicValue">
+      <id column="appellationId" jdbcType="INTEGER" property="id" />
+      <result column="appellationName" jdbcType="VARCHAR" property="typeValue" />
+    </association>
+    <association property="needLoanDO" javaType="com.autodealer.crm.model.TDicValue">
+      <id column="needLoanId" jdbcType="INTEGER" property="id" />
+      <result column="needLoanName" jdbcType="VARCHAR" property="typeValue" />
+    </association>
+    <association property="intentionStateDO" javaType="com.autodealer.crm.model.TDicValue">
+      <id column="intentionStateId" jdbcType="INTEGER" property="id" />
+      <result column="intentionStateName" jdbcType="VARCHAR" property="typeValue" />
+    </association>
+    <association property="sourceDO" javaType="com.autodealer.crm.model.TDicValue">
+      <id column="sourceId" jdbcType="INTEGER" property="id" />
+      <result column="sourceName" jdbcType="VARCHAR" property="typeValue" />
+    </association>
+    <association property="originalClueSourceDO" javaType="com.autodealer.crm.model.TDicValue">
+      <id column="originalSourceId" jdbcType="INTEGER" property="id" />
+      <result column="originalSourceName" jdbcType="VARCHAR" property="typeValue" />
+    </association>
+    <association property="productDO" javaType="com.autodealer.crm.dto.ProductSimpleDTO">
+      <id column="productId" jdbcType="BIGINT" property="id" />
+      <result column="productName" jdbcType="VARCHAR" property="name" />
     </association>
   </resultMap>
 
+  <resultMap id="CustomerOptionResultMap" type="com.autodealer.crm.dto.CustomerOption">
+    <result column="customer_id" jdbcType="INTEGER" property="customerId" />
+    <result column="customer_name" jdbcType="VARCHAR" property="customerName" />
+    <result column="clue_id" jdbcType="INTEGER" property="clueId" />
+  </resultMap>
+
+  <resultMap id="CustomerDuplicateSummaryResultMap" type="com.autodealer.crm.dto.CustomerDuplicateSummary">
+    <result column="customer_id" jdbcType="INTEGER" property="customerId" />
+    <result column="customer_name" jdbcType="VARCHAR" property="customerName" />
+    <result column="phone" jdbcType="VARCHAR" property="maskedPhone" />
+    <result column="owner_name" jdbcType="VARCHAR" property="ownerName" />
+  </resultMap>
+
   <sql id="Base_Column_List">
-    id, clue_id, product, description, next_contact_time, create_time, create_by, edit_time, edit_by
+    id, clue_id, owner_id, activity_id, customer_name, appellation, phone, weixin, qq, email,
+    age, job, year_income, address, need_loan, intention_state, source, original_clue_source,
+    product, customer_status, merged_to_customer_id, merge_reason, merge_time, merge_by,
+    description, next_contact_time, create_time, create_by, edit_time, edit_by
   </sql>
 
-  <select id="selectCustomerPage" parameterType="java.lang.Integer" resultMap="CustomerResultMap">
-    select tct.*, tc.id clueId, tc.full_name, tc.phone, tc.weixin,
-      tu1.id ownerId, tu1.name ownerName, ta.id activityId, ta.name activityName,
-      tdv.id appellationId, tdv.type_value appellationName,
-      tdv2.id needLoanId, tdv2.type_value needLoanName,
-      tdv3.id intentionStateId, tdv3.type_value intentionStateName,
-      tdv4.id stateId, tdv4.type_value stateName,
-      tdv5.id sourceId, tdv5.type_value sourceName,
-      tp.id intentionProductId, tp.name intentionProductName
-    from t_customer tct left join t_clue tc on tct.clue_id = tc.id
-      left join t_user tu1 on tc.owner_id = tu1.id
-      left join t_activity ta on tc.activity_id = ta.id
-      left join t_dic_value tdv on tc.appellation = tdv.id
-      left join t_dic_value tdv2 on tc.need_loan = tdv2.id
-      left join t_dic_value tdv3 on tc.intention_state = tdv3.id
-      left join t_dic_value tdv4 on tc.state = tdv4.id
-      left join t_dic_value tdv5 on tc.source = tdv5.id
-      left join t_product tp on tct.product = tp.id
+  <sql id="Customer_Select_List">
+    tct.*,
+    tu1.id ownerUserId, tu1.name ownerName,
+    ta.id activityId, ta.name activityName,
+    tdv.id appellationId, tdv.type_value appellationName,
+    tdv2.id needLoanId, tdv2.type_value needLoanName,
+    tdv3.id intentionStateId, tdv3.type_value intentionStateName,
+    tdv5.id sourceId, tdv5.type_value sourceName,
+    tdv6.id originalSourceId, tdv6.type_value originalSourceName,
+    tp.id productId, tp.name productName
+  </sql>
+
+  <sql id="Customer_Joins">
+    left join t_user tu1 on tct.owner_id = tu1.id
+    left join t_activity ta on tct.activity_id = ta.id
+    left join t_dic_value tdv on tct.appellation = tdv.id
+    left join t_dic_value tdv2 on tct.need_loan = tdv2.id
+    left join t_dic_value tdv3 on tct.intention_state = tdv3.id
+    left join t_dic_value tdv5 on tct.source = tdv5.id
+    left join t_dic_value tdv6 on tct.original_clue_source = tdv6.id
+    left join t_product tp on tct.product = tp.id
+  </sql>
+
+  <select id="selectCustomerPage" resultMap="CustomerResultMap">
+    select <include refid="Customer_Select_List" />
+    from t_customer tct
+    <include refid="Customer_Joins" />
+    order by tct.create_time desc, tct.id desc
   </select>
 
   <select id="selectCustomerByExcel" resultMap="CustomerResultMap">
-    select tct.*, tc.id clueId, tc.full_name, tc.phone, tc.weixin, tc.qq, tc.email, tc.age, tc.job, tc.year_income, tc.address,
-      tu1.id ownerId, tu1.name ownerName, ta.id activityId, ta.name activityName,
-      tdv.id appellationId, tdv.type_value appellationName,
-      tdv2.id needLoanId, tdv2.type_value needLoanName,
-      tdv3.id intentionStateId, tdv3.type_value intentionStateName,
-      tdv4.id stateId, tdv4.type_value stateName,
-      tdv5.id sourceId, tdv5.type_value sourceName,
-      tp.id intentionProductId, tp.name intentionProductName
-    from t_customer tct left join t_clue tc on tct.clue_id = tc.id
-      left join t_user tu1 on tc.owner_id = tu1.id
-      left join t_activity ta on tc.activity_id = ta.id
-      left join t_dic_value tdv on tc.appellation = tdv.id
-      left join t_dic_value tdv2 on tc.need_loan = tdv2.id
-      left join t_dic_value tdv3 on tc.intention_state = tdv3.id
-      left join t_dic_value tdv4 on tc.state = tdv4.id
-      left join t_dic_value tdv5 on tc.source = tdv5.id
-      left join t_product tp on tct.product = tp.id
+    select <include refid="Customer_Select_List" />
+    from t_customer tct
+    <include refid="Customer_Joins" />
     <where>
       <if test="idList != null and idList.size() > 0">
         and tct.id in
         <foreach collection="idList" item="id" open="(" close=")" separator=",">#{id}</foreach>
       </if>
       <if test="dataScopeUserId != null">
-        and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+        and tct.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
       </if>
     </where>
+    order by tct.create_time desc, tct.id desc
     <if test="maxRows != null">limit #{maxRows}</if>
   </select>
 
   <select id="countCustomerByExcel" resultType="int">
-    select count(0) from t_customer tct left join t_clue tc on tct.clue_id = tc.id
+    select count(0) from t_customer tct
     <where>
       <if test="idList != null and idList.size() > 0">
         and tct.id in
         <foreach collection="idList" item="id" open="(" close=")" separator=",">#{id}</foreach>
       </if>
       <if test="dataScopeUserId != null">
-        and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+        and tct.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
       </if>
     </where>
   </select>
@@ -139,10 +152,9 @@
   <select id="selectByCount" resultType="java.lang.Integer">
     select count(0)
     from t_customer tct
-      left join t_clue tc on tct.clue_id = tc.id
     <where>
       <if test="dataScopeUserId != null">
-        tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+        tct.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
       </if>
     </where>
   </select>
@@ -155,18 +167,59 @@
     delete from t_customer where id = #{id,jdbcType=INTEGER}
   </delete>
 
+  <delete id="deleteScopedByPrimaryKey">
+    delete from t_customer
+    where id = #{id,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">and owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
+  </delete>
+
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TCustomer" useGeneratedKeys="true">
-    insert into t_customer (clue_id, product, description, next_contact_time, create_time, create_by, edit_time, edit_by)
-    values (#{clueId,jdbcType=INTEGER}, #{product,jdbcType=BIGINT}, #{description,jdbcType=VARCHAR},
-      #{nextContactTime,jdbcType=TIMESTAMP}, #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER},
-      #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER})
+    insert into t_customer (
+      clue_id, owner_id, activity_id, customer_name, appellation, phone, weixin, qq, email,
+      age, job, year_income, address, need_loan, intention_state, source, original_clue_source,
+      product, customer_status, merged_to_customer_id, merge_reason, merge_time, merge_by,
+      description, next_contact_time, create_time, create_by, edit_time, edit_by
+    ) values (
+      #{clueId,jdbcType=INTEGER}, #{ownerId,jdbcType=INTEGER}, #{activityId,jdbcType=INTEGER},
+      #{customerName,jdbcType=VARCHAR}, #{appellation,jdbcType=INTEGER}, #{phone,jdbcType=VARCHAR},
+      #{weixin,jdbcType=VARCHAR}, #{qq,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR},
+      #{age,jdbcType=INTEGER}, #{job,jdbcType=VARCHAR}, #{yearIncome,jdbcType=DECIMAL},
+      #{address,jdbcType=VARCHAR}, #{needLoan,jdbcType=INTEGER}, #{intentionState,jdbcType=INTEGER},
+      #{source,jdbcType=INTEGER}, #{originalClueSource,jdbcType=INTEGER}, #{product,jdbcType=BIGINT},
+      #{customerStatus,jdbcType=VARCHAR}, #{mergedToCustomerId,jdbcType=INTEGER},
+      #{mergeReason,jdbcType=VARCHAR}, #{mergeTime,jdbcType=TIMESTAMP}, #{mergeBy,jdbcType=INTEGER},
+      #{description,jdbcType=VARCHAR}, #{nextContactTime,jdbcType=TIMESTAMP},
+      #{createTime,jdbcType=TIMESTAMP}, #{createBy,jdbcType=INTEGER},
+      #{editTime,jdbcType=TIMESTAMP}, #{editBy,jdbcType=INTEGER}
+    )
   </insert>
 
   <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TCustomer" useGeneratedKeys="true">
     insert into t_customer
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="clueId != null">clue_id,</if>
+      <if test="ownerId != null">owner_id,</if>
+      <if test="activityId != null">activity_id,</if>
+      <if test="customerName != null">customer_name,</if>
+      <if test="appellation != null">appellation,</if>
+      <if test="phone != null">phone,</if>
+      <if test="weixin != null">weixin,</if>
+      <if test="qq != null">qq,</if>
+      <if test="email != null">email,</if>
+      <if test="age != null">age,</if>
+      <if test="job != null">job,</if>
+      <if test="yearIncome != null">year_income,</if>
+      <if test="address != null">address,</if>
+      <if test="needLoan != null">need_loan,</if>
+      <if test="intentionState != null">intention_state,</if>
+      <if test="source != null">source,</if>
+      <if test="originalClueSource != null">original_clue_source,</if>
       <if test="product != null">product,</if>
+      <if test="customerStatus != null">customer_status,</if>
+      <if test="mergedToCustomerId != null">merged_to_customer_id,</if>
+      <if test="mergeReason != null">merge_reason,</if>
+      <if test="mergeTime != null">merge_time,</if>
+      <if test="mergeBy != null">merge_by,</if>
       <if test="description != null">description,</if>
       <if test="nextContactTime != null">next_contact_time,</if>
       <if test="createTime != null">create_time,</if>
@@ -176,7 +229,28 @@
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="clueId != null">#{clueId,jdbcType=INTEGER},</if>
+      <if test="ownerId != null">#{ownerId,jdbcType=INTEGER},</if>
+      <if test="activityId != null">#{activityId,jdbcType=INTEGER},</if>
+      <if test="customerName != null">#{customerName,jdbcType=VARCHAR},</if>
+      <if test="appellation != null">#{appellation,jdbcType=INTEGER},</if>
+      <if test="phone != null">#{phone,jdbcType=VARCHAR},</if>
+      <if test="weixin != null">#{weixin,jdbcType=VARCHAR},</if>
+      <if test="qq != null">#{qq,jdbcType=VARCHAR},</if>
+      <if test="email != null">#{email,jdbcType=VARCHAR},</if>
+      <if test="age != null">#{age,jdbcType=INTEGER},</if>
+      <if test="job != null">#{job,jdbcType=VARCHAR},</if>
+      <if test="yearIncome != null">#{yearIncome,jdbcType=DECIMAL},</if>
+      <if test="address != null">#{address,jdbcType=VARCHAR},</if>
+      <if test="needLoan != null">#{needLoan,jdbcType=INTEGER},</if>
+      <if test="intentionState != null">#{intentionState,jdbcType=INTEGER},</if>
+      <if test="source != null">#{source,jdbcType=INTEGER},</if>
+      <if test="originalClueSource != null">#{originalClueSource,jdbcType=INTEGER},</if>
       <if test="product != null">#{product,jdbcType=BIGINT},</if>
+      <if test="customerStatus != null">#{customerStatus,jdbcType=VARCHAR},</if>
+      <if test="mergedToCustomerId != null">#{mergedToCustomerId,jdbcType=INTEGER},</if>
+      <if test="mergeReason != null">#{mergeReason,jdbcType=VARCHAR},</if>
+      <if test="mergeTime != null">#{mergeTime,jdbcType=TIMESTAMP},</if>
+      <if test="mergeBy != null">#{mergeBy,jdbcType=INTEGER},</if>
       <if test="description != null">#{description,jdbcType=VARCHAR},</if>
       <if test="nextContactTime != null">#{nextContactTime,jdbcType=TIMESTAMP},</if>
       <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
@@ -190,7 +264,28 @@
     update t_customer
     <set>
       <if test="clueId != null">clue_id = #{clueId,jdbcType=INTEGER},</if>
+      <if test="ownerId != null">owner_id = #{ownerId,jdbcType=INTEGER},</if>
+      <if test="activityId != null">activity_id = #{activityId,jdbcType=INTEGER},</if>
+      <if test="customerName != null">customer_name = #{customerName,jdbcType=VARCHAR},</if>
+      <if test="appellation != null">appellation = #{appellation,jdbcType=INTEGER},</if>
+      <if test="phone != null">phone = #{phone,jdbcType=VARCHAR},</if>
+      <if test="weixin != null">weixin = #{weixin,jdbcType=VARCHAR},</if>
+      <if test="qq != null">qq = #{qq,jdbcType=VARCHAR},</if>
+      <if test="email != null">email = #{email,jdbcType=VARCHAR},</if>
+      <if test="age != null">age = #{age,jdbcType=INTEGER},</if>
+      <if test="job != null">job = #{job,jdbcType=VARCHAR},</if>
+      <if test="yearIncome != null">year_income = #{yearIncome,jdbcType=DECIMAL},</if>
+      <if test="address != null">address = #{address,jdbcType=VARCHAR},</if>
+      <if test="needLoan != null">need_loan = #{needLoan,jdbcType=INTEGER},</if>
+      <if test="intentionState != null">intention_state = #{intentionState,jdbcType=INTEGER},</if>
+      <if test="source != null">source = #{source,jdbcType=INTEGER},</if>
+      <if test="originalClueSource != null">original_clue_source = #{originalClueSource,jdbcType=INTEGER},</if>
       <if test="product != null">product = #{product,jdbcType=BIGINT},</if>
+      <if test="customerStatus != null">customer_status = #{customerStatus,jdbcType=VARCHAR},</if>
+      <if test="mergedToCustomerId != null">merged_to_customer_id = #{mergedToCustomerId,jdbcType=INTEGER},</if>
+      <if test="mergeReason != null">merge_reason = #{mergeReason,jdbcType=VARCHAR},</if>
+      <if test="mergeTime != null">merge_time = #{mergeTime,jdbcType=TIMESTAMP},</if>
+      <if test="mergeBy != null">merge_by = #{mergeBy,jdbcType=INTEGER},</if>
       <if test="description != null">description = #{description,jdbcType=VARCHAR},</if>
       <if test="nextContactTime != null">next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},</if>
       <if test="createTime != null">create_time = #{createTime,jdbcType=TIMESTAMP},</if>
@@ -202,72 +297,171 @@
   </update>
 
   <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TCustomer">
-    update t_customer set clue_id = #{clueId,jdbcType=INTEGER}, product = #{product,jdbcType=BIGINT},
-      description = #{description,jdbcType=VARCHAR}, next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
-      create_time = #{createTime,jdbcType=TIMESTAMP}, create_by = #{createBy,jdbcType=INTEGER},
-      edit_time = #{editTime,jdbcType=TIMESTAMP}, edit_by = #{editBy,jdbcType=INTEGER}
+    update t_customer set
+      clue_id = #{clueId,jdbcType=INTEGER},
+      owner_id = #{ownerId,jdbcType=INTEGER},
+      activity_id = #{activityId,jdbcType=INTEGER},
+      customer_name = #{customerName,jdbcType=VARCHAR},
+      appellation = #{appellation,jdbcType=INTEGER},
+      phone = #{phone,jdbcType=VARCHAR},
+      weixin = #{weixin,jdbcType=VARCHAR},
+      qq = #{qq,jdbcType=VARCHAR},
+      email = #{email,jdbcType=VARCHAR},
+      age = #{age,jdbcType=INTEGER},
+      job = #{job,jdbcType=VARCHAR},
+      year_income = #{yearIncome,jdbcType=DECIMAL},
+      address = #{address,jdbcType=VARCHAR},
+      need_loan = #{needLoan,jdbcType=INTEGER},
+      intention_state = #{intentionState,jdbcType=INTEGER},
+      source = #{source,jdbcType=INTEGER},
+      original_clue_source = #{originalClueSource,jdbcType=INTEGER},
+      product = #{product,jdbcType=BIGINT},
+      customer_status = #{customerStatus,jdbcType=VARCHAR},
+      merged_to_customer_id = #{mergedToCustomerId,jdbcType=INTEGER},
+      merge_reason = #{mergeReason,jdbcType=VARCHAR},
+      merge_time = #{mergeTime,jdbcType=TIMESTAMP},
+      merge_by = #{mergeBy,jdbcType=INTEGER},
+      description = #{description,jdbcType=VARCHAR},
+      next_contact_time = #{nextContactTime,jdbcType=TIMESTAMP},
+      create_time = #{createTime,jdbcType=TIMESTAMP},
+      create_by = #{createBy,jdbcType=INTEGER},
+      edit_time = #{editTime,jdbcType=TIMESTAMP},
+      edit_by = #{editBy,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
 
-  <resultMap id="CustomerOptionResultMap" type="com.autodealer.crm.dto.CustomerOption">
-    <result column="customer_id" jdbcType="INTEGER" property="customerId" />
-    <result column="customer_name" jdbcType="VARCHAR" property="customerName" />
-    <result column="clue_id" jdbcType="INTEGER" property="clueId" />
-  </resultMap>
-
   <select id="selectByQuery" parameterType="com.autodealer.crm.query.CustomerListQuery" resultMap="CustomerResultMap">
-    select tct.*, tc.id clueId, tc.full_name, tc.phone, tc.weixin,
-      tu1.id ownerId, tu1.name ownerName, ta.id activityId, ta.name activityName,
-      tdv.id appellationId, tdv.type_value appellationName,
-      tdv2.id needLoanId, tdv2.type_value needLoanName,
-      tdv3.id intentionStateId, tdv3.type_value intentionStateName,
-      tdv4.id stateId, tdv4.type_value stateName,
-      tdv5.id sourceId, tdv5.type_value sourceName,
-      tp.id intentionProductId, tp.name intentionProductName
-    from t_customer tct left join t_clue tc on tct.clue_id = tc.id
-      left join t_user tu1 on tc.owner_id = tu1.id
-      left join t_activity ta on tc.activity_id = ta.id
-      left join t_dic_value tdv on tc.appellation = tdv.id
-      left join t_dic_value tdv2 on tc.need_loan = tdv2.id
-      left join t_dic_value tdv3 on tc.intention_state = tdv3.id
-      left join t_dic_value tdv4 on tc.state = tdv4.id
-      left join t_dic_value tdv5 on tc.source = tdv5.id
-      left join t_product tp on tct.product = tp.id
+    select <include refid="Customer_Select_List" />
+    from t_customer tct
+    <include refid="Customer_Joins" />
     <where>
       <if test="customerName != null and customerName != ''">
-        and tc.full_name like concat('%', #{customerName}, '%')
+        and tct.customer_name like concat('%', #{customerName}, '%')
       </if>
       <if test="productId != null">and tct.product = #{productId}</if>
-      <if test="dataScopeUserId != null">and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
+      <if test="dataScopeUserId != null">and tct.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
     </where>
+    order by tct.create_time desc, tct.id desc
   </select>
 
   <select id="selectCustomerOptions" resultMap="CustomerOptionResultMap">
-    select DISTINCT tct.id as customer_id, tc.full_name as customer_name, tc.id as clue_id
-    from t_customer tct left join t_clue tc on tct.clue_id = tc.id
-    where tc.full_name is not null and tc.full_name != ''
-    <if test="dataScopeUserId != null">and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
-    order by tc.full_name
+    select distinct tct.id as customer_id, tct.customer_name as customer_name, tct.clue_id as clue_id
+    from t_customer tct
+    where tct.customer_name is not null and tct.customer_name != ''
+      and (tct.customer_status is null or tct.customer_status != 'MERGED')
+    <if test="dataScopeUserId != null">and tct.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
+    order by tct.customer_name, tct.id
   </select>
 
   <select id="countByClueId" resultType="int">
     select count(1)
     from t_customer
     where clue_id = #{clueId,jdbcType=INTEGER}
+      and (customer_status is null or customer_status != 'MERGED')
   </select>
 
   <select id="countByProductId" resultType="int">
     select count(1)
     from t_customer
     where product = #{productId,jdbcType=BIGINT}
+      and (customer_status is null or customer_status != 'MERGED')
   </select>
 
   <select id="selectScopedById" resultMap="CustomerResultMap">
-    select tct.*, tc.id clueId, tc.full_name, tc.phone, tc.weixin,
-      tu1.id ownerId, tu1.name ownerName
-    from t_customer tct left join t_clue tc on tct.clue_id = tc.id
-      left join t_user tu1 on tc.owner_id = tu1.id
+    select <include refid="Customer_Select_List" />
+    from t_customer tct
+    <include refid="Customer_Joins" />
     where tct.id = #{id,jdbcType=INTEGER}
-    <if test="dataScopeUserId != null">and tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
+    <if test="dataScopeUserId != null">and tct.owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
+  </select>
+
+  <sql id="Duplicate_Contact_Condition">
+    <choose>
+      <when test="(phone != null and phone != '') or (weixin != null and weixin != '') or (customerName != null and customerName != '')">
+        and (
+        <trim prefixOverrides="or">
+          <if test="phone != null and phone != ''">or phone = #{phone,jdbcType=VARCHAR}</if>
+          <if test="weixin != null and weixin != ''">or weixin = #{weixin,jdbcType=VARCHAR}</if>
+          <if test="(phone == null or phone == '') and (weixin == null or weixin == '') and customerName != null and customerName != ''">
+            or customer_name = #{customerName,jdbcType=VARCHAR}
+          </if>
+        </trim>
+        )
+      </when>
+      <otherwise>
+        and 1 = 0
+      </otherwise>
+    </choose>
+  </sql>
+
+  <select id="countActiveDuplicateContacts" resultType="int">
+    select count(1)
+    from t_customer
+    where (customer_status is null or customer_status not in ('MERGED', 'INVALID'))
+    <include refid="Duplicate_Contact_Condition" />
+    <if test="excludeId != null">and id != #{excludeId,jdbcType=INTEGER}</if>
+  </select>
+
+  <select id="selectVisibleDuplicateSummaries" resultMap="CustomerDuplicateSummaryResultMap">
+    select id as customer_id, customer_name, phone,
+      (select name from t_user where t_user.id = t_customer.owner_id) as owner_name
+    from t_customer
+    where (customer_status is null or customer_status not in ('MERGED', 'INVALID'))
+    <include refid="Duplicate_Contact_Condition" />
+    <if test="excludeId != null">and id != #{excludeId,jdbcType=INTEGER}</if>
+    <if test="dataScopeUserId != null">and owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
+    order by create_time desc, id desc
+    <if test="limit != null">limit #{limit}</if>
+  </select>
+
+  <update id="updateOwnerAtomic">
+    update t_customer
+    set owner_id = #{toOwnerId,jdbcType=INTEGER},
+        edit_by = #{editBy,jdbcType=INTEGER},
+        edit_time = CURRENT_TIMESTAMP
+    where id = #{id,jdbcType=INTEGER}
+      and owner_id = #{fromOwnerId,jdbcType=INTEGER}
+      and (customer_status is null or customer_status != 'MERGED')
+      <if test="dataScopeUserId != null">and owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
+  </update>
+
+  <update id="markMerged">
+    update t_customer
+    set customer_status = 'MERGED',
+        merged_to_customer_id = #{targetCustomerId,jdbcType=INTEGER},
+        merge_reason = #{reason,jdbcType=VARCHAR},
+        merge_time = CURRENT_TIMESTAMP,
+        merge_by = #{operatorId,jdbcType=INTEGER},
+        edit_time = CURRENT_TIMESTAMP,
+        edit_by = #{operatorId,jdbcType=INTEGER}
+    where id = #{sourceCustomerId,jdbcType=INTEGER}
+      and (customer_status is null or customer_status != 'MERGED')
+      <if test="dataScopeUserId != null">and owner_id = #{dataScopeUserId,jdbcType=INTEGER}</if>
+  </update>
+
+  <update id="reassignCustomerRemarks">
+    update t_customer_remark
+    set customer_id = #{targetCustomerId,jdbcType=INTEGER}
+    where customer_id = #{sourceCustomerId,jdbcType=INTEGER}
+  </update>
+
+  <update id="reassignTransactions">
+    update t_tran
+    set customer_id = #{targetCustomerId,jdbcType=INTEGER}
+    where customer_id = #{sourceCustomerId,jdbcType=INTEGER}
+  </update>
+
+  <update id="reassignQuotes">
+    update t_quote
+    set customer_id = #{targetCustomerId,jdbcType=INTEGER}
+    where customer_id = #{sourceCustomerId,jdbcType=INTEGER}
+  </update>
+
+  <select id="countBusinessReferences" resultType="int">
+    select
+      (select count(1) from t_customer where id = #{id,jdbcType=INTEGER} and clue_id is not null)
+      + (select count(1) from t_customer_remark where customer_id = #{id,jdbcType=INTEGER})
+      + (select count(1) from t_tran where customer_id = #{id,jdbcType=INTEGER})
+      + (select count(1) from t_quote where customer_id = #{id,jdbcType=INTEGER})
   </select>
 </mapper>

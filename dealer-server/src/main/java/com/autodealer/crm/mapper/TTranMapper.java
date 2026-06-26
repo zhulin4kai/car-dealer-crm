@@ -28,6 +28,10 @@ public interface TTranMapper {
 
     int updateByPrimaryKeySelective(TTran record);
 
+    int updateScopedByPrimaryKeySelective(@Param("record") TTran record,
+                                          @Param("transactionAllScope") boolean transactionAllScope,
+                                          @Param("dataScopeUserId") Integer dataScopeUserId);
+
     int updateByPrimaryKey(TTran record);
 
     BigDecimal selectBySuccessTranAmount(@Param("successStage") TranStage successStage,

@@ -1,7 +1,15 @@
 import { httpClient } from '@/shared/api/http-client'
 import type { PageResult } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
-import type { Clue, ClueForm, ClueRemark } from '@/modules/clue/model/clue.types'
+import type {
+  Clue,
+  ClueForm,
+  ClueLifecycleRequest,
+  ClueOwnerHistory,
+  ImportResult,
+  ClueRemark,
+  TransferClueOwnerRequest,
+} from '@/modules/clue/model/clue.types'
 import type { User } from '@/modules/user/model/user.types'
 
 export function batchDeleteCluesByIds(ids: EntityId[]): Promise<unknown> {
@@ -12,8 +20,8 @@ export function fetchCurrentClues(current: number): Promise<PageResult<Clue>> {
   return httpClient.get<PageResult<Clue>>('/api/clues', { params: { current } })
 }
 
-export function importExcelAPI(file: FormData): Promise<unknown> {
-  return httpClient.post('/api/importExcel', file)
+export function importExcelAPI(file: FormData): Promise<ImportResult> {
+  return httpClient.post<ImportResult>('/api/importExcel', file)
 }
 
 export function delClueById(id: EntityId): Promise<unknown> {
@@ -35,6 +43,25 @@ export function getLoginInfo(): Promise<User> {
 
 export function fetchClueDetail(id: EntityId): Promise<Clue> {
   return httpClient.get<Clue>(`/api/clue/detail/${id}`)
+}
+
+export function fetchClueOwnerHistory(id: EntityId): Promise<ClueOwnerHistory[]> {
+  return httpClient.get<ClueOwnerHistory[]>(`/api/clue/${id}/owner-history`)
+}
+
+export function transferClueOwner(
+  id: EntityId,
+  data: TransferClueOwnerRequest,
+): Promise<unknown> {
+  return httpClient.put(`/api/clue/${id}/owner`, data)
+}
+
+export function closeClue(id: EntityId, data: ClueLifecycleRequest): Promise<unknown> {
+  return httpClient.put(`/api/clue/${id}/close`, data)
+}
+
+export function restoreClue(id: EntityId, data: ClueLifecycleRequest): Promise<unknown> {
+  return httpClient.put(`/api/clue/${id}/restore`, data)
 }
 
 export function addClue(formData: ClueForm | FormData): Promise<unknown> {
@@ -82,4 +109,5 @@ export function convertClueToCustomer(
 
 export const getCurrentClues = fetchCurrentClues
 export const getClueDetail = fetchClueDetail
+export const getClueOwnerHistory = fetchClueOwnerHistory
 export const getClueRemarkList = fetchClueRemarkPage

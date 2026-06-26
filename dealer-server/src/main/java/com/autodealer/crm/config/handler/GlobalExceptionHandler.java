@@ -36,7 +36,9 @@ public class GlobalExceptionHandler {
         log.warn("业务异常: {}", e.getMessage());
         CodeEnum codeEnum = e.getCodeEnum();
         HttpStatus httpStatus = mapHttpStatusCode(codeEnum);
-        R body = R.FAIL(codeEnum.getCode(), e.getMessage());
+        R body = e.getData() == null
+                ? R.FAIL(codeEnum.getCode(), e.getMessage())
+                : R.FAIL(codeEnum.getCode(), e.getMessage(), e.getData());
         return ResponseEntity.status(httpStatus).body(body);
     }
 
@@ -154,8 +156,8 @@ public class GlobalExceptionHandler {
         return switch (codeEnum) {
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case PARAM_ERROR -> HttpStatus.BAD_REQUEST;
-            case OPERATION_FAILED, TRAN_NO_PRODUCTS -> HttpStatus.UNPROCESSABLE_ENTITY;
-            case DUPLICATE, TRAN_STATE_CONFLICT, RESOURCE_IN_USE -> HttpStatus.CONFLICT;
+            case OPERATION_FAILED, TRAN_NO_PRODUCTS, RESOURCE_IN_USE -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case DUPLICATE, TRAN_STATE_CONFLICT -> HttpStatus.CONFLICT;
             case ACCESS_DENIED -> HttpStatus.FORBIDDEN;
             case UNAUTHORIZED_ERROR, TOKEN_ERROR, TOKEN_EXPIRED,
                  TOKEN_IS_EMPTY, TOKEN_IS_ERROR, TOKEN_IS_EXPIRED,

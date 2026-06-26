@@ -14,23 +14,37 @@ import com.autodealer.crm.result.CodeEnum;
 public class BusinessException extends RuntimeException {
 
     private final CodeEnum codeEnum;
+    private final Object data;
 
     public BusinessException(CodeEnum codeEnum) {
         super(codeEnum.getMsg());
         this.codeEnum = codeEnum;
+        this.data = null;
     }
 
     public BusinessException(CodeEnum codeEnum, String message) {
         super(message);
         this.codeEnum = codeEnum;
+        this.data = null;
+    }
+
+    public BusinessException(CodeEnum codeEnum, String message, Object data) {
+        super(message);
+        this.codeEnum = codeEnum;
+        this.data = data;
     }
 
     public BusinessException(CodeEnum codeEnum, String message, Throwable cause) {
         super(message, cause);
         this.codeEnum = codeEnum;
+        this.data = null;
     }
 
     public CodeEnum getCodeEnum() {
         return codeEnum;
+    }
+
+    public Object getData() {
+        return data;
     }
 }

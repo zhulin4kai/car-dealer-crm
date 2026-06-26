@@ -8,6 +8,15 @@ export interface PageResult<T> {
   list: T[]
   total: number
   pageSize?: number
+  pageNum?: number
+  pages?: number
+  size?: number
+  startRow?: number
+  endRow?: number
+  hasNextPage?: boolean
+  hasPreviousPage?: boolean
+  isFirstPage?: boolean
+  isLastPage?: boolean
 }
 
 export interface PageQuery {

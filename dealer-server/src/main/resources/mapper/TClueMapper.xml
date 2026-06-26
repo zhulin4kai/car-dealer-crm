@@ -87,6 +87,7 @@
     <association property="stateDO" javaType="com.autodealer.crm.model.TDicValue">
       <id column="stateId" jdbcType="INTEGER" property="id" />
       <result column="stateName" jdbcType="VARCHAR" property="typeValue" />
+      <result column="stateCode" jdbcType="VARCHAR" property="valueCode" />
     </association>
     <!--一对一关联查询的映射-->
     <association property="sourceDO" javaType="com.autodealer.crm.model.TDicValue">
@@ -115,7 +116,7 @@
         tdv2.id needLoanId, tdv2.type_value needLoanName,
         tdv3.id intentionStateId, tdv3.type_value intentionStateName,
         tp.id intentionProductId,  tp.name intentionProductName,
-        tdv4.id stateId, tdv4.type_value stateName,
+        tdv4.id stateId, tdv4.type_value stateName, tdv4.value_code stateCode,
         tdv5.id sourceId, tdv5.type_value sourceName
     from t_clue tc left join t_user tu1 on tc.owner_id = tu1.id
                    left join t_activity ta on tc.activity_id = ta.id
@@ -133,6 +134,7 @@
         tc.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
       </if>
     </where>
+    order by tc.create_time desc, tc.id desc
   </select>
 
   <select id="selectByCount" parameterType="java.lang.String" resultType="java.lang.Integer">
@@ -162,7 +164,7 @@
       tdv2.id needLoanId, tdv2.type_value needLoanName,
       tdv3.id intentionStateId, tdv3.type_value intentionStateName,
       tp.id intentionProductId,  tp.name intentionProductName,
-      tdv4.id stateId, tdv4.type_value stateName,
+      tdv4.id stateId, tdv4.type_value stateName, tdv4.value_code stateCode,
       tdv5.id sourceId, tdv5.type_value sourceName
     from t_clue tc left join t_user tu1 on tc.owner_id = tu1.id
                    left join t_activity ta on tc.activity_id = ta.id
@@ -217,6 +219,14 @@
   <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
     delete from t_clue
     where id = #{id,jdbcType=INTEGER}
+  </delete>
+
+  <delete id="deleteScopedByPrimaryKey">
+    delete from t_clue
+    where id = #{id,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
   </delete>
 
   <!--批量保存-->
@@ -480,6 +490,9 @@
       </if>
     </set>
     where id = #{id,jdbcType=INTEGER}
+    <if test="ownerId != null">
+      and owner_id = #{ownerId,jdbcType=INTEGER}
+    </if>
   </update>
   <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TClue">
     update t_clue
@@ -517,11 +530,49 @@
     </foreach>
   </delete>
 
+  <delete id="batchDeleteScopedByIds">
+    delete from t_clue
+    where id in
+    <foreach collection="ids" item="id" open="(" separator="," close=")">
+      #{id}
+    </foreach>
+    <if test="dataScopeUserId != null">
+      and owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
+  </delete>
+
   <!--原子性更新线索状态为已转客户，防止并发重复转换-->
   <update id="updateStateToConverted">
     UPDATE t_clue
     SET `state` = -1, edit_time = NOW(), edit_by = #{editBy}
     WHERE id = #{id} AND `state` != -1
+    <if test="dataScopeUserId != null">
+      AND owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
+  </update>
+
+  <update id="updateOwnerAtomic">
+    UPDATE t_clue
+    SET owner_id = #{toOwnerId,jdbcType=INTEGER}, edit_time = NOW(), edit_by = #{editBy,jdbcType=INTEGER}
+    WHERE id = #{id,jdbcType=INTEGER}
+      AND owner_id = #{fromOwnerId,jdbcType=INTEGER}
+    <if test="dataScopeUserId != null">
+      AND owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+    </if>
+  </update>
+
+  <update id="updateStateAtomic">
+    UPDATE t_clue
+    SET `state` = #{toState,jdbcType=INTEGER}, edit_time = NOW(), edit_by = #{editBy,jdbcType=INTEGER}
+    WHERE id = #{id,jdbcType=INTEGER}
+    <choose>
+      <when test="fromState == null">
+        AND `state` IS NULL
+      </when>
+      <otherwise>
+        AND `state` = #{fromState,jdbcType=INTEGER}
+      </otherwise>
+    </choose>
     <if test="dataScopeUserId != null">
       AND owner_id = #{dataScopeUserId,jdbcType=INTEGER}
     </if>
@@ -533,6 +584,17 @@
     <foreach collection="phones" item="phone" open="(" separator="," close=")">
       #{phone,jdbcType=VARCHAR}
     </foreach>
+  </select>
+
+  <select id="countActiveByPhoneExcludingId" resultType="int">
+    SELECT count(1)
+    FROM t_clue
+    WHERE phone = #{phone,jdbcType=VARCHAR}
+      AND id != #{excludedId,jdbcType=INTEGER}
+      AND (
+        `state` IS NULL
+        OR `state` NOT IN (#{closedState,jdbcType=INTEGER}, #{convertedState,jdbcType=INTEGER})
+      )
   </select>
 
   <select id="countByIntentionProductId" resultType="int">

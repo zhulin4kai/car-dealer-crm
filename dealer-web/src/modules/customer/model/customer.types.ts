@@ -14,6 +14,9 @@ export interface CustomerListItem {
   intentionStateName?: string
   stateName?: string
   sourceName?: string
+  originalSourceName?: string
+  customerStatus?: string
+  customerStatusName?: string
   intentionProductName?: string
   product?: number | string
   description?: string
@@ -40,6 +43,9 @@ export interface CustomerDetail {
   intentionStateName?: string
   stateName?: string
   sourceName?: string
+  originalSourceName?: string
+  customerStatus?: string
+  customerStatusName?: string
   intentionProductName?: string
   productName?: string
   product?: number | string
@@ -54,4 +60,22 @@ export interface CustomerQuery extends Partial<PageQuery> {
   current?: number
   customerName?: string
   productId?: number | string
+}
+
+export interface TransferCustomerOwnerRequest {
+  newOwnerId: number
+  reason: string
+}
+
+export interface MergeCustomerRequest {
+  sourceCustomerId: number
+  reason: string
+}
+
+export interface CustomerMergeResponse {
+  targetCustomerId: number
+  sourceCustomerId: number
+  migratedRemarkCount: number
+  migratedTranCount: number
+  migratedQuoteCount: number
 }

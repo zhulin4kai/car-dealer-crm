@@ -9,7 +9,10 @@ import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.dto.ConvertCustomerRequest;
 import com.autodealer.crm.dto.CustomerDetailResponse;
 import com.autodealer.crm.dto.CustomerListResponse;
+import com.autodealer.crm.dto.CustomerMergeResponse;
 import com.autodealer.crm.dto.CustomerOption;
+import com.autodealer.crm.dto.MergeCustomerRequest;
+import com.autodealer.crm.dto.TransferCustomerOwnerRequest;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.query.CustomerListQuery;
 import com.autodealer.crm.result.CodeEnum;
@@ -54,8 +57,31 @@ public class CustomerController {
     @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_VIEW + "')")
     public R<CustomerDetailResponse> detail(@PathVariable Integer id) {
         CustomerDetailResponse r = customerService.getCustomerById(id);
-        if (r == null) throw new BusinessException(CodeEnum.FAIL, "客户不存在");
+        if (r == null) throw new BusinessException(CodeEnum.NOT_FOUND, "客户不存在");
         return R.OK(r);
+    }
+
+    @PutMapping("/api/customer/{id}/owner")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_TRANSFER + "')")
+    public R<Void> transferOwner(@PathVariable Integer id,
+                                 @Valid @RequestBody TransferCustomerOwnerRequest request) {
+        customerService.transferOwner(id, request);
+        return R.OK();
+    }
+
+    @PostMapping("/api/customer/{id}/merge")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_MERGE + "')")
+    public R<CustomerMergeResponse> mergeCustomer(@PathVariable Integer id,
+                                                  @Valid @RequestBody MergeCustomerRequest request) {
+        return R.OK(customerService.mergeCustomer(id, request));
+    }
+
+    @DeleteMapping("/api/customer/{id}")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_DELETE + "')")
+    public R<Void> deleteCustomer(@PathVariable Integer id) {
+        boolean deleted = customerService.deleteCustomer(id);
+        if (!deleted) throw new BusinessException(CodeEnum.NOT_FOUND, "客户不存在");
+        return R.OK();
     }
 
     @PostMapping("/api/clue/customer")

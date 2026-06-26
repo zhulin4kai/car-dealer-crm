@@ -2,7 +2,7 @@ import type { PageQuery } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
 
 interface NameSummary { id?: EntityId; name?: string }
-interface DictSummary { id?: EntityId; typeValue?: string }
+interface DictSummary { id?: EntityId; typeValue?: string; valueCode?: string }
 
 export interface Clue {
   id?: EntityId
@@ -44,6 +44,42 @@ export interface ClueRemark {
   editTime?: string
   createByDO?: NameSummary
   editByDO?: NameSummary
+}
+
+export interface ClueOwnerHistory {
+  id: EntityId
+  clueId?: EntityId
+  fromOwnerId?: EntityId
+  toOwnerId?: EntityId
+  assignedBy?: EntityId
+  reason?: string
+  assignedTime?: string
+  fromOwnerName?: string
+  toOwnerName?: string
+  assignedByName?: string
+}
+
+export interface TransferClueOwnerRequest {
+  newOwnerId: EntityId
+  reason: string
+}
+
+export interface ClueLifecycleRequest {
+  reason: string
+}
+
+export interface ImportRowError {
+  row: number
+  column?: string
+  reason?: string
+}
+
+export interface ImportResult {
+  totalRows: number
+  validRows: number
+  failedRows: number
+  importedCount: number
+  errors?: ImportRowError[]
 }
 
 export interface ClueQuery extends Partial<PageQuery> {

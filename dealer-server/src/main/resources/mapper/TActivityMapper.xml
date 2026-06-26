@@ -77,6 +77,7 @@
         and ta.owner_id = #{dataScopeUserId, jdbcType=INTEGER}
       </if>
     </where>
+    order by ta.start_time desc, ta.id desc
   </select>
 
   <select id="selectDetailByPrimaryKey" parameterType="java.lang.Integer" resultMap="ActivityResultMap">

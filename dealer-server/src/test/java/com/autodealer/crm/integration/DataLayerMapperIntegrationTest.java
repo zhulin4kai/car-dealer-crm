@@ -46,7 +46,7 @@ class DataLayerMapperIntegrationTest extends BackendIntegrationTestBase {
         long productId = 3_000_000_000L;
         jdbcTemplate.update(
                 "INSERT INTO t_product (id, sku, name, price, stock, status) " +
-                "VALUES (?, 'BIGINT-DATA-LAYER', 'BIGINT数据层商品', 100, 10, 'on_sale')", productId);
+                "VALUES (?, 'BIGINT-DATA-LAYER', 'BIGINT数据层商品', 100, 10, 'ON_SALE')", productId);
 
         TTranProduct tranProduct = new TTranProduct();
         tranProduct.setId(900);

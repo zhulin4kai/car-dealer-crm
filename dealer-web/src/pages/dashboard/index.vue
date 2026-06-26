@@ -307,7 +307,7 @@ const funnelRates = computed(() => {
   return [
     { label: '线索 -> 客户', value: formatPercent(values[1] ?? 0, values[0] ?? 0) },
     { label: '客户 -> 交易', value: formatPercent(values[2] ?? 0, values[1] ?? 0) },
-    { label: '交易 -> 成交', value: formatPercent(values[3] ?? 0, values[2] ?? 0) },
+    { label: '交易 -> 成交客户', value: formatPercent(values[3] ?? 0, values[2] ?? 0) },
   ]
 })
 

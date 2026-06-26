@@ -38,14 +38,14 @@
   </resultMap>
 
   <sql id="Base_Column_List">
-    t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time,
+    t.id, t.tran_no, t.customer_id, c.customer_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time,
     t.create_time, t.create_by, t.edit_time, t.edit_by, t.version, t.promotion_id, t.original_amount, t.discount_amount, t.promotion_snapshot
   </sql>
 
   <sql id="Transaction_Limited_Data_Scope">
     <choose>
       <when test="dataScopeUserId != null">
-        (t.create_by = #{dataScopeUserId,jdbcType=INTEGER})
+        (c.owner_id = #{dataScopeUserId,jdbcType=INTEGER})
       </when>
       <otherwise>
         (1 = 0)
@@ -54,22 +54,19 @@
   </sql>
 
   <select id="selectByQuery" parameterType="com.autodealer.crm.query.TranQuery" resultMap="BaseResultMap">
-    SELECT DISTINCT
+    SELECT
     <include refid="Base_Column_List" />
     FROM t_tran t
     LEFT JOIN t_customer c ON t.customer_id = c.id
-    LEFT JOIN t_clue cl ON c.clue_id = cl.id
-    LEFT JOIN t_tran_product tp ON t.id = tp.tran_id
-    LEFT JOIN t_tran_invoice ti ON t.id = ti.tran_id
     <where>
       <if test="tranNo != null and tranNo != ''">
-        AND t.tran_no LIKE CONCAT('%', #{tranNo}, '%')
+        AND t.tran_no LIKE CONCAT(#{tranNo}, '%')
       </if>
       <if test="customerId != null">
         AND t.customer_id = #{customerId}
       </if>
       <if test="customerName != null and customerName != ''">
-        AND cl.full_name LIKE CONCAT('%', #{customerName}, '%')
+        AND c.customer_name LIKE CONCAT(#{customerName}, '%')
       </if>
       <if test="stage != null">
         AND t.stage = #{stage,jdbcType=VARCHAR}
@@ -96,25 +93,41 @@
         AND t.create_by = #{createBy}
       </if>
       <if test="productId != null">
-        AND tp.product_id = #{productId}
+        AND EXISTS (
+          SELECT 1
+          FROM t_tran_product tp
+          WHERE tp.tran_id = t.id
+            AND tp.product_id = #{productId}
+        )
       </if>
       <if test="productName != null and productName != ''">
-        AND tp.product_name LIKE CONCAT('%', #{productName}, '%')
+        AND EXISTS (
+          SELECT 1
+          FROM t_tran_product tp
+          WHERE tp.tran_id = t.id
+            AND tp.product_name LIKE CONCAT(#{productName}, '%')
+        )
       </if>
       <if test="invoiceStatus != null and invoiceStatus != ''">
-        AND ti.status = #{invoiceStatus}
+        AND EXISTS (
+          SELECT 1
+          FROM t_tran_invoice ti
+          WHERE ti.tran_id = t.id
+            AND ti.status = #{invoiceStatus}
+        )
       </if>
       <if test="transactionAllScope == false">
         AND <include refid="Transaction_Limited_Data_Scope" />
       </if>
     </where>
-    ORDER BY t.create_time DESC
+    ORDER BY t.create_time DESC, t.id DESC
   </select>
 
   <select id="selectBySuccessTranAmount" resultType="java.math.BigDecimal">
     select
         sum(t.money)
     from t_tran t
+    LEFT JOIN t_customer c ON t.customer_id = c.id
     where t.stage = #{successStage,jdbcType=VARCHAR}
     <if test="transactionAllScope == false">
       AND <include refid="Transaction_Limited_Data_Scope" />
@@ -126,7 +139,6 @@
     <include refid="Base_Column_List" />
     FROM t_tran t
     LEFT JOIN t_customer c ON t.customer_id = c.id
-    LEFT JOIN t_clue cl ON c.clue_id = cl.id
     WHERE t.id = #{id,jdbcType=INTEGER}
     AND <include refid="Transaction_Limited_Data_Scope" />
   </select>
@@ -135,6 +147,7 @@
     select
       sum(t.money)
     from t_tran t
+    LEFT JOIN t_customer c ON t.customer_id = c.id
     <where>
       <if test="transactionAllScope == false">
         AND <include refid="Transaction_Limited_Data_Scope" />
@@ -144,36 +157,33 @@
 
   <select id="selectByTotalTranCount" resultType="java.lang.Integer">
     SELECT
-      count( 0 )
-    FROM
-        ( SELECT DISTINCT t.customer_id FROM t_tran t
-          <where>
-            <if test="transactionAllScope == false">
-              AND <include refid="Transaction_Limited_Data_Scope" />
-            </if>
-          </where>
-        ) scoped_tran
+      count(t.id)
+    FROM t_tran t
+    LEFT JOIN t_customer c ON t.customer_id = c.id
+    <where>
+      <if test="transactionAllScope == false">
+        AND <include refid="Transaction_Limited_Data_Scope" />
+      </if>
+    </where>
   </select>
 
   <select id="selectBySuccessTranCount" resultType="java.lang.Integer">
     SELECT
-      count( 0 )
-    FROM
-        ( SELECT DISTINCT t.customer_id FROM t_tran t
-          WHERE t.stage = #{successStage,jdbcType=VARCHAR}
-          <if test="transactionAllScope == false">
-            AND <include refid="Transaction_Limited_Data_Scope" />
-          </if>
-        ) scoped_tran
+      count(DISTINCT t.customer_id)
+    FROM t_tran t
+    LEFT JOIN t_customer c ON t.customer_id = c.id
+    WHERE t.stage = #{successStage,jdbcType=VARCHAR}
+    <if test="transactionAllScope == false">
+      AND <include refid="Transaction_Limited_Data_Scope" />
+    </if>
   </select>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
     select
-    t.id, t.tran_no, t.customer_id, cl.full_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time,
+    t.id, t.tran_no, t.customer_id, c.customer_name as customer_name, t.money, t.expected_date, t.stage, t.description, t.next_contact_time,
     t.create_time, t.create_by, t.edit_time, t.edit_by, t.version, t.promotion_id, t.original_amount, t.discount_amount, t.promotion_snapshot
     from t_tran t
     LEFT JOIN t_customer c ON t.customer_id = c.id
-    LEFT JOIN t_clue cl ON c.clue_id = cl.id
     where t.id = #{id,jdbcType=INTEGER}
   </select>
 
@@ -182,7 +192,6 @@
     <include refid="Base_Column_List" />
     from t_tran t
     left join t_customer c on t.customer_id = c.id
-    left join t_clue cl on c.clue_id = cl.id
     where t.id = #{id,jdbcType=INTEGER}
     for update
   </select>
@@ -312,6 +321,54 @@
     where id = #{id,jdbcType=INTEGER}
   </update>
 
+  <update id="updateScopedByPrimaryKeySelective">
+    update t_tran
+    <set>
+      <if test="record.tranNo != null">
+        tran_no = #{record.tranNo,jdbcType=VARCHAR},
+      </if>
+      <if test="record.customerId != null">
+        customer_id = #{record.customerId,jdbcType=INTEGER},
+      </if>
+      <if test="record.money != null">
+        money = #{record.money,jdbcType=DECIMAL},
+      </if>
+      <if test="record.expectedDate != null">
+        expected_date = #{record.expectedDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="record.stage != null">
+        stage = #{record.stage,jdbcType=VARCHAR},
+      </if>
+      <if test="record.description != null">
+        description = #{record.description,jdbcType=VARCHAR},
+      </if>
+      <if test="record.nextContactTime != null">
+        next_contact_time = #{record.nextContactTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="record.createTime != null">
+        create_time = #{record.createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="record.createBy != null">
+        create_by = #{record.createBy,jdbcType=INTEGER},
+      </if>
+      <if test="record.editTime != null">
+        edit_time = #{record.editTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="record.editBy != null">
+        edit_by = #{record.editBy,jdbcType=INTEGER},
+      </if>
+    </set>
+    where id = #{record.id,jdbcType=INTEGER}
+    <if test="transactionAllScope == false">
+      and exists (
+        select 1
+        from t_customer c
+        where c.id = t_tran.customer_id
+          and c.owner_id = #{dataScopeUserId,jdbcType=INTEGER}
+      )
+    </if>
+  </update>
+
   <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TTran">
     update t_tran
     set tran_no = #{tranNo,jdbcType=VARCHAR},
@@ -351,7 +408,7 @@
       t.id as tran_id,
       t.tran_no,
       t.customer_id,
-      cl.full_name as customer_name,
+      c.customer_name as customer_name,
       t.money,
       t.expected_date,
       t.stage,
@@ -369,7 +426,6 @@
       ta.create_time as approve_create_time
     FROM t_tran t
     LEFT JOIN t_customer c ON t.customer_id = c.id
-    LEFT JOIN t_clue cl ON c.clue_id = cl.id
     LEFT JOIN t_tran_approve ta ON t.id = ta.tran_id
     WHERE t.id = #{tranId,jdbcType=INTEGER}
   </select>

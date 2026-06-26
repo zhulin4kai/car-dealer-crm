@@ -20,26 +20,44 @@ public final class PermissionCodes {
     public static final String CLUE_VIEW = "clue:view";
     public static final String CLUE_DELETE = "clue:delete";
     public static final String CLUE_IMPORT = "clue:import";
+    public static final String CLUE_TRANSFER = "clue:transfer";
+    public static final String CLUE_CLOSE = "clue:close";
+    public static final String CLUE_RESTORE = "clue:restore";
 
     public static final String CUSTOMER_LIST = "customer:list";
     public static final String CUSTOMER_VIEW = "customer:view";
     public static final String CUSTOMER_EXPORT = "customer:export";
     public static final String CUSTOMER_TRANSFER = "customer:transfer";
+    public static final String CUSTOMER_MERGE = "customer:merge";
+    public static final String CUSTOMER_DELETE = "customer:delete";
+    public static final String CUSTOMER_SENSITIVE_VIEW = "customer:sensitive:view";
 
     public static final String TRAN_LIST = "tran:list";
     public static final String TRAN_VIEW = "tran:view";
     public static final String TRAN_CREATE = "tran:create";
     public static final String TRAN_EDIT = "tran:edit";
     public static final String TRAN_DELETE = "tran:delete";
+    public static final String TRAN_CANCEL = "tran:cancel";
+    public static final String TRAN_CLOSE = "tran:close";
     public static final String TRAN_SETTLE = "tran:settle";
     public static final String TRAN_RESUBMIT = "tran:resubmit";
     public static final String TRAN_APPROVE = "tran:approve";
     public static final String TRAN_INVOICE = "tran:invoice";
+    public static final String TRAN_INVOICE_SENSITIVE = "tran:invoice:sensitive";
     public static final String TRAN_PAYMENT = "tran:payment";
     public static final String TRAN_PAYMENT_CONFIRM = "tran:payment:confirm";
     public static final String TRAN_REFUND = "tran:refund";
     public static final String TRAN_REFUND_APPROVE = "tran:refund:approve";
     public static final String TRAN_REFUND_EXECUTE = "tran:refund:execute";
+
+    public static final String QUOTE_LIST = "quote:list";
+    public static final String QUOTE_VIEW = "quote:view";
+    public static final String QUOTE_CREATE = "quote:create";
+    public static final String QUOTE_EDIT = "quote:edit";
+    public static final String QUOTE_APPROVE = "quote:approve";
+    public static final String QUOTE_CONFIRM = "quote:confirm";
+    public static final String QUOTE_ORDER = "quote:order";
+    public static final String QUOTE_CANCEL = "quote:cancel";
 
     public static final String PRODUCT_LIST = "product:list";
     public static final String PRODUCT_VIEW = "product:view";

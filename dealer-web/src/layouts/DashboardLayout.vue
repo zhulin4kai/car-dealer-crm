@@ -193,6 +193,7 @@ const BUSINESS_MENU_CODES = new Set([
   'menu:activity',
   'menu:clue',
   'menu:customer',
+  'menu:quote',
   'menu:tran',
 ])
 const SYSTEM_MENU_CODES = new Set(['menu:user', DICT_MENU_CODE])
@@ -231,7 +232,9 @@ const NAVIGATION_ITEM_ORDER: Record<string, number> = {
   'menu:activity': 2,
   'menu:clue': 3,
   'menu:customer': 4,
-  'menu:tran': 5,
+  'menu:quote': 5,
+  'page:quote:list': 5,
+  'menu:tran': 6,
   'page:product:list': 1,
   'page:product:category': 2,
   'page:product:promotion': 3,

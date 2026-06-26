@@ -3,13 +3,16 @@ package com.autodealer.crm.web;
 import com.autodealer.crm.constant.PermissionCodes;
 
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.dto.ClueLifecycleRequest;
 import com.autodealer.crm.dto.ImportResult;
+import com.autodealer.crm.dto.TransferClueOwnerRequest;
 import com.autodealer.crm.model.TClue;
 import com.autodealer.crm.query.ClueQuery;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.service.ClueService;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -118,7 +121,36 @@ public class ClueController {
         int update = clueService.updateClue(clueQuery);
 
         return update >= 1 ? R.OK() : R.FAIL();
-    }    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_DELETE + "')")
+    }
+
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_TRANSFER + "')")
+    @PutMapping(value = "/api/clue/{id}/owner")
+    public R transferOwner(@PathVariable(value = "id") Integer id,
+                           @Valid @RequestBody TransferClueOwnerRequest request) {
+        return clueService.transferOwner(id, request) ? R.OK() : R.FAIL();
+    }
+
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_VIEW + "')")
+    @GetMapping(value = "/api/clue/{id}/owner-history")
+    public R getOwnerHistory(@PathVariable(value = "id") Integer id) {
+        return R.OK(clueService.getOwnerHistory(id));
+    }
+
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_CLOSE + "')")
+    @PutMapping(value = "/api/clue/{id}/close")
+    public R closeClue(@PathVariable(value = "id") Integer id,
+                       @Valid @RequestBody ClueLifecycleRequest request) {
+        return clueService.closeClue(id, request) ? R.OK() : R.FAIL();
+    }
+
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_RESTORE + "')")
+    @PutMapping(value = "/api/clue/{id}/restore")
+    public R restoreClue(@PathVariable(value = "id") Integer id,
+                         @Valid @RequestBody ClueLifecycleRequest request) {
+        return clueService.restoreClue(id, request) ? R.OK() : R.FAIL();
+    }
+
+    @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_DELETE + "')")
     @DeleteMapping(value = "/api/clue/{id}")
     public R delClue(@PathVariable(value = "id") Integer id) {
         int del = clueService.delClueById(id);

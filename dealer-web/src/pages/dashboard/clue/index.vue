@@ -275,20 +275,20 @@
             <input
               ref="fileInputRef"
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx"
               class="hidden"
               @change="handleFileChange"
             />
             <Button variant="outline" @click="fileInputRef?.click()">选择Excel文件</Button>
-            <span class="text-sm text-muted-foreground">仅支持后缀名为.xls或.xlsx的文件</span>
+            <span class="text-sm text-muted-foreground">仅支持后缀名为.xlsx的文件</span>
           </div>
 
           <div class="pt-2 text-sm">
             <p class="font-semibold mb-1">重要提示：</p>
             <ul class="list-disc pl-5 space-y-1 text-muted-foreground">
-              <li>上传仅支持后缀名为.xls或.xlsx的文件；</li>
+              <li>上传仅支持后缀名为.xlsx的文件；</li>
               <li>给定Excel文件的第一行将视为字段名；</li>
-              <li>请确认您的文件大小不超过50MB；</li>
+              <li>请确认您的文件大小不超过5MB；</li>
               <li>日期值以文本形式保存，必须符合yyyy-MM-dd格式；</li>
               <li>日期时间以文本形式保存，必须符合yyyy-MM-dd HH:mm:ss的格式；</li>
             </ul>
@@ -514,6 +514,8 @@
 <script setup lang="ts">
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { ref, onMounted, computed, watch } from 'vue'
+import { ApiError } from '@/shared/api/api-error'
+import type { ApiEnvelope } from '@/shared/api/api-types'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import {
   batchDeleteCluesByIds,
@@ -533,7 +535,7 @@ import { useRoute } from 'vue-router'
 import { getProductList } from '@/modules/product/api/product-api'
 import { getActivityList } from '@/modules/activity/api/activity-api'
 import type { Activity } from '@/modules/activity/model/activity.types'
-import type { Clue } from '@/modules/clue/model/clue.types'
+import type { Clue, ImportResult } from '@/modules/clue/model/clue.types'
 import type { DictValue } from '@/modules/dict/model/dict.types'
 import type { Product } from '@/modules/product/model/product.types'
 import type { User } from '@/modules/user/model/user.types'
@@ -609,6 +611,7 @@ const {
 })
 const fileInputRef = ref<HTMLInputElement | null>(null)
 let selectedFile: File | null = null
+const MAX_IMPORT_FILE_SIZE = 5 * 1024 * 1024
 
 // 线索录入/编辑相关数据
 const clueDialogVisible = ref(false)
@@ -616,6 +619,9 @@ const dialogTitle = ref('录入线索')
 const editingClueId = ref<number | string | null>(null)
 const originalPhone = ref('')
 const isEditingClue = computed(() => editingClueId.value !== null)
+
+const normalizeCluePhone = (value: string) => value.trim().replace(/[\s\-()（）]+/g, '')
+const isMainlandMobile = (value: string) => /^1[3-9]\d{9}$/.test(value)
 
 // 加载动态数据
 const activityOptions = ref<Activity[]>([])
@@ -634,13 +640,14 @@ const clueSchema = toTypedSchema(
     phone: z
       .string()
       .min(1, '请输入手机号码')
-      .refine((v) => /^1[3-9]\d{9}$/.test(v), { message: '手机号码格式有误' })
+      .refine((v) => isMainlandMobile(normalizeCluePhone(v)), { message: '手机号码格式有误' })
       .refine(
         async (v) => {
           if (!v) return true
+          const normalizedPhone = normalizeCluePhone(v)
           // 如果是编辑模式且手机号未变化，跳过验证
-          if (editingClueId.value !== null && originalPhone.value === v) return true
-          return isCluePhoneAvailable(v)
+          if (editingClueId.value !== null && originalPhone.value === normalizedPhone) return true
+          return isCluePhoneAvailable(normalizedPhone)
         },
         { message: '该手机号录入过了，不能再录入' },
       ),
@@ -815,27 +822,73 @@ const importExcel = () => {
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    selectedFile = target.files[0]
+    const file = target.files[0]
+    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+      messageTip('仅支持.xlsx格式的Excel文件', 'warning')
+      target.value = ''
+      selectedFile = null
+      return
+    }
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      messageTip('文件大小不能超过5MB', 'warning')
+      target.value = ''
+      selectedFile = null
+      return
+    }
+    selectedFile = file
   }
 }
 
 // 上传文件 (严禁修改 API 调用)
-const uploadFile = () => {
+const uploadFile = async () => {
   if (!selectedFile) {
     messageTip('请选择要导入的Excel文件', 'warning')
     return
   }
-  let formData = new FormData()
+  const formData = new FormData()
   formData.append('file', selectedFile)
-  importExcelAPI(formData).then((resp: unknown) => {
-    messageTip('导入成功', 'success')
+  try {
+    const result = await importExcelAPI(formData)
+    messageTip(formatImportResult(result, '导入成功'), 'success')
     if (fileInputRef.value) {
       fileInputRef.value.value = ''
     }
     selectedFile = null
     getData(currentPage.value)
     importExcelDialogVisible.value = false
-  })
+  } catch (error) {
+    const result = getImportResultFromError(error)
+    if (result) {
+      messageTip(formatImportResult(result, '导入存在错误'), 'warning')
+      if (result.importedCount > 0) {
+        getData(currentPage.value)
+      }
+      return
+    }
+    messageTip('导入失败，请检查文件后重试', 'error')
+  }
+}
+
+const isImportResult = (value: unknown): value is ImportResult => {
+  if (!value || typeof value !== 'object') return false
+  const result = value as Partial<ImportResult>
+  return typeof result.importedCount === 'number'
+    && typeof result.failedRows === 'number'
+    && typeof result.totalRows === 'number'
+}
+
+const getImportResultFromError = (error: unknown): ImportResult | null => {
+  if (!(error instanceof ApiError)) return null
+  const envelope = error.raw as ApiEnvelope<unknown> | null
+  return isImportResult(envelope?.data) ? envelope.data : null
+}
+
+const formatImportResult = (result: ImportResult, prefix: string) => {
+  const firstError = result.errors?.[0]
+  const errorText = firstError
+    ? `；首个错误：第${firstError.row}行${firstError.column ? ` ${firstError.column}` : ''}${firstError.reason ? ` ${firstError.reason}` : ''}`
+    : ''
+  return `${prefix}：成功${result.importedCount}行，失败${result.failedRows}行${errorText}`
 }
 
 // 批量删除（替换 ElMessage/ElMessageBox 直接调用）
@@ -1000,7 +1053,7 @@ const loadClue = async (id: number | string) => {
   if (id) {
     await getClueDetail(id).then((resp: Clue) => {
       editingClueId.value = resp.id ?? id
-      originalPhone.value = resp.phone ?? ''
+      originalPhone.value = normalizeCluePhone(resp.phone ?? '')
       resetForm({
         values: {
         phone: resp.phone ?? '',
@@ -1038,7 +1091,11 @@ const onSubmitClue = handleSubmit((formValues) => {
     }
     const rawValue = formValues[field as keyof typeof formValues]
     const value =
-      field === 'nextContactTime' ? fromLocalDateTimeInput(String(rawValue ?? '')) : rawValue
+      field === 'nextContactTime'
+        ? fromLocalDateTimeInput(String(rawValue ?? ''))
+        : field === 'phone'
+          ? normalizeCluePhone(String(rawValue ?? ''))
+          : rawValue
     if (value) {
       formData.append(field, String(value))
     }

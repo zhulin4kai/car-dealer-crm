@@ -7,19 +7,23 @@ import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.dto.ClueLifecycleRequest;
 import com.autodealer.crm.dto.ImportContext;
 import com.autodealer.crm.dto.ImportResult;
 import com.autodealer.crm.dto.ImportRowError;
 import com.autodealer.crm.dto.ProductSimpleDTO;
+import com.autodealer.crm.dto.TransferClueOwnerRequest;
 import com.autodealer.crm.mapper.DicMapper;
 import com.autodealer.crm.mapper.TActivityMapper;
 import com.autodealer.crm.mapper.TClueMapper;
+import com.autodealer.crm.mapper.TClueOwnerHistoryMapper;
 import com.autodealer.crm.mapper.TClueRemarkMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TUserMapper;
 import com.autodealer.crm.model.TActivity;
 import com.autodealer.crm.model.TClue;
+import com.autodealer.crm.model.TClueOwnerHistory;
 import com.autodealer.crm.model.TDicValue;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TUser;
@@ -30,6 +34,7 @@ import com.autodealer.crm.result.ClueExcelRaw;
 import com.autodealer.crm.service.ClueImportValidator;
 import com.autodealer.crm.service.ClueImportValidator.ValidatedClueImport;
 import com.autodealer.crm.service.ClueService;
+import com.autodealer.crm.util.PhoneNormalizer;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import jakarta.annotation.Resource;
@@ -56,9 +61,16 @@ import java.util.stream.Collectors;
 public class ClueServiceImpl implements ClueService {
 
     private static final Logger log = LoggerFactory.getLogger(ClueServiceImpl.class);
+    private static final String CLUE_STATE_TYPE = "clueState";
+    private static final String CLUE_STATE_CONVERTED = "converted";
+    private static final String CLUE_STATE_CLOSED = "closed";
+    private static final String CLUE_STATE_RESTORE_TARGET = "attempt_contact";
 
     @Resource
     private TClueMapper tClueMapper;
+
+    @Resource
+    private TClueOwnerHistoryMapper clueOwnerHistoryMapper;
 
     @Resource
     private TClueRemarkMapper tClueRemarkMapper;
@@ -142,11 +154,6 @@ public class ClueServiceImpl implements ClueService {
             result.setFailedRows(1);
         }
 
-        // 任一行有错误，不写入数据库
-        if (result.getFailedRows() > 0) {
-            return result;
-        }
-
         // 空数据行（全部合法但无数据）
         if (validClues.isEmpty()) {
             return result;
@@ -159,6 +166,7 @@ public class ClueServiceImpl implements ClueService {
                 .distinct()
                 .collect(Collectors.toList());
 
+        Set<String> duplicatePhones = new HashSet<>();
         if (!phones.isEmpty()) {
             List<String> existingPhones = tClueMapper.selectExistingPhones(phones);
             if (existingPhones != null && !existingPhones.isEmpty()) {
@@ -166,29 +174,36 @@ public class ClueServiceImpl implements ClueService {
                 for (int i = 0; i < validClues.size(); i++) {
                     TClue clue = validClues.get(i);
                     if (existingSet.contains(clue.getPhone())) {
+                        duplicatePhones.add(clue.getPhone());
                         result.addError(new ImportRowError(i + 1, "手机号", "该手机号在数据库中已存在"));
                         result.setFailedRows(result.getFailedRows() + 1);
-                        result.setValidRows(result.getValidRows() - 1);
+                        result.setValidRows(Math.max(0, result.getValidRows() - 1));
                     }
                 }
             }
         }
 
-        // 数据库重复检查后有失败行，不写入
-        if (result.getFailedRows() > 0) {
+        List<TClue> insertableClues = validClues.stream()
+                .filter(clue -> !duplicatePhones.contains(clue.getPhone()))
+                .collect(Collectors.toList());
+
+        if (insertableClues.isEmpty()) {
             return result;
         }
 
         // 5. 批量写入
         try {
-            int affectedRows = tClueMapper.saveClue(validClues);
-            if (affectedRows != validClues.size()) {
+            int affectedRows = tClueMapper.saveClue(insertableClues);
+            if (affectedRows != insertableClues.size()) {
                 throw new com.autodealer.crm.exception.BusinessException(
                         com.autodealer.crm.result.CodeEnum.FAIL,
-                        "批量写入影响行数(" + affectedRows + ")不等于待写入数量(" + validClues.size() + ")，已全部回滚");
+                        "批量写入影响行数(" + affectedRows + ")不等于待写入数量(" + insertableClues.size() + ")，已全部回滚");
             }
-            result.setImportedCount(validClues.size());
-            auditRecorder.record(AuditActionEnum.CLUE_IMPORT, String.valueOf(validClues.size()));
+            for (TClue clue : insertableClues) {
+                writeOwnerHistory(clue.getId(), null, clue.getOwnerId(), operatorId, "线索导入");
+            }
+            result.setImportedCount(insertableClues.size());
+            auditRecorder.record(AuditActionEnum.CLUE_IMPORT, String.valueOf(insertableClues.size()));
         } catch (DuplicateKeyException e) {
             throw new com.autodealer.crm.exception.BusinessException(
                     com.autodealer.crm.result.CodeEnum.DUPLICATE,
@@ -246,20 +261,26 @@ public class ClueServiceImpl implements ClueService {
 
     @Override
     public Boolean checkPhone(String phone) {
-        int count = tClueMapper.selectByCount(phone);
+        String normalizedPhone = PhoneNormalizer.normalizeMainlandMobile(phone);
+        if (!PhoneNormalizer.isMainlandMobile(normalizedPhone)) {
+            return false;
+        }
+        int count = tClueMapper.selectByCount(normalizedPhone);
         return count <= 0; //没有查到手机号是true
     }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public int saveClue(ClueQuery clueQuery) {
-        int count = tClueMapper.selectByCount(clueQuery.getPhone());
+        String normalizedPhone = requireValidPhone(clueQuery.getPhone());
+        int count = tClueMapper.selectByCount(normalizedPhone);
         if (count <= 0) {
             TClue tClue = new TClue();
 
             //把前端提交过来的参数数据对象ClueQuery复制到TClue对象中
             //Spring框架有个工具类BeanUtils可以进行对象的复制,复制的条件要求是：两个对象的字段名要相同，字段的类型也相同，这样才可以复制
             BeanUtils.copyProperties(clueQuery, tClue);
+            tClue.setPhone(normalizedPhone);
 
             Integer operatorId = currentUserProvider.getCurrentUserId();
             tClue.setOwnerId(operatorId);
@@ -273,6 +294,7 @@ public class ClueServiceImpl implements ClueService {
                 throw new BusinessException(CodeEnum.DUPLICATE, "该手机号已经录入过了，不能再录入", e);
             }
             if (rows > 0) {
+                writeOwnerHistory(tClue.getId(), null, tClue.getOwnerId(), operatorId, "线索创建");
                 auditRecorder.record(AuditActionEnum.CLUE_CREATE, String.valueOf(tClue.getId()));
             }
             return rows;
@@ -300,14 +322,24 @@ public class ClueServiceImpl implements ClueService {
         tClue.setOwnerId(originalClue.getOwnerId());
 
         // 如果传入的手机号与原记录不同，忽略手机号字段
-        if (clueQuery.getPhone() != null && !clueQuery.getPhone().equals(originalClue.getPhone())) {
+        String normalizedPhone = PhoneNormalizer.normalizeMainlandMobile(clueQuery.getPhone());
+        if (normalizedPhone != null && !PhoneNormalizer.isMainlandMobile(normalizedPhone)) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "手机号格式不正确");
+        }
+        if (normalizedPhone != null && !normalizedPhone.equals(originalClue.getPhone())) {
             tClue.setPhone(null); // 设置为null，让MyBatis的updateByPrimaryKeySelective跳过该字段
+        } else if (normalizedPhone != null) {
+            tClue.setPhone(normalizedPhone);
         }
 
         tClue.setEditTime(new Date()); //编辑时间
         tClue.setEditBy(currentUserProvider.getCurrentUserId()); //编辑人id
 
-        return tClueMapper.updateByPrimaryKeySelective(tClue);
+        int rows = tClueMapper.updateByPrimaryKeySelective(tClue);
+        if (rows != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "线索归属已变化，请刷新后重试");
+        }
+        return rows;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -316,12 +348,16 @@ public class ClueServiceImpl implements ClueService {
         if (id == null) {
             return 0;
         }
+        Integer dataScopeUserId = currentUserProvider.getDataScopeUserId();
         requireAccessibleClue(id);
         requireClueNotReferenced(id);
         // 先删除关联的线索备注
         tClueRemarkMapper.deleteByClueId(id);
         // 再删除线索
-        int rows = tClueMapper.deleteByPrimaryKey(id);
+        int rows = tClueMapper.deleteScopedByPrimaryKey(id, dataScopeUserId);
+        if (rows != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "线索归属已变化，请刷新后重试");
+        }
         if (rows > 0) {
             auditRecorder.record(AuditActionEnum.CLUE_DELETE, String.valueOf(id));
         }
@@ -335,6 +371,7 @@ public class ClueServiceImpl implements ClueService {
             return 0;
         }
         List<Integer> distinctIds = ids.stream().distinct().sorted().toList();
+        Integer dataScopeUserId = currentUserProvider.getDataScopeUserId();
         distinctIds.forEach(this::requireAccessibleClue);
         distinctIds.forEach(this::requireClueNotReferenced);
         // 先删除关联的线索备注
@@ -342,11 +379,161 @@ public class ClueServiceImpl implements ClueService {
             tClueRemarkMapper.deleteByClueId(id);
         }
         // 再删除线索
-        int rows = tClueMapper.batchDeleteByIds(distinctIds);
+        int rows = tClueMapper.batchDeleteScopedByIds(distinctIds, dataScopeUserId);
+        if (rows != distinctIds.size()) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "线索归属已变化，请刷新后重试");
+        }
         if (rows > 0) {
             auditRecorder.record(AuditActionEnum.CLUE_DELETE, distinctIds.toString());
         }
         return rows;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean transferOwner(Integer id, TransferClueOwnerRequest request) {
+        TClue clue = requireAccessibleClue(id);
+        Integer newOwnerId = requireValidTargetOwner(request.getNewOwnerId());
+        if (newOwnerId.equals(clue.getOwnerId())) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "目标负责人不能与当前负责人相同");
+        }
+        String reason = normalizeReason(request.getReason());
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        int rows = tClueMapper.updateOwnerAtomic(
+                id, clue.getOwnerId(), newOwnerId, operatorId, currentUserProvider.getDataScopeUserId());
+        if (rows != 1) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "线索负责人已变化，请刷新后重试");
+        }
+        writeOwnerHistory(id, clue.getOwnerId(), newOwnerId, operatorId, reason);
+        auditRecorder.record(AuditActionEnum.CLUE_TRANSFER, String.valueOf(id));
+        return true;
+    }
+
+    @Override
+    public List<TClueOwnerHistory> getOwnerHistory(Integer id) {
+        requireAccessibleClue(id);
+        return clueOwnerHistoryMapper.selectByClueId(id);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean closeClue(Integer id, ClueLifecycleRequest request) {
+        TClue clue = requireAccessibleClue(id);
+        String reason = normalizeLifecycleReason(request.getReason(), "关闭原因不能为空");
+        Integer convertedState = resolveClueStateId(CLUE_STATE_CONVERTED);
+        Integer closedState = resolveClueStateId(CLUE_STATE_CLOSED);
+        if (closedState.equals(clue.getState())) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "线索已经关闭");
+        }
+        if (convertedState.equals(clue.getState())) {
+            throw new BusinessException(CodeEnum.RESOURCE_IN_USE, "已转客户线索不能关闭");
+        }
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        int rows = tClueMapper.updateStateAtomic(
+                id, clue.getState(), closedState, operatorId, currentUserProvider.getDataScopeUserId());
+        if (rows != 1) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "线索状态已变化，请刷新后重试");
+        }
+        auditRecorder.record(AuditActionEnum.CLUE_CLOSE, String.valueOf(id), "SUCCESS", reasonSummary(reason));
+        return true;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
+    public boolean restoreClue(Integer id, ClueLifecycleRequest request) {
+        TClue clue = requireAccessibleClue(id);
+        String reason = normalizeLifecycleReason(request.getReason(), "恢复原因不能为空");
+        Integer convertedState = resolveClueStateId(CLUE_STATE_CONVERTED);
+        Integer closedState = resolveClueStateId(CLUE_STATE_CLOSED);
+        Integer restoreState = resolveClueStateId(CLUE_STATE_RESTORE_TARGET);
+        if (!closedState.equals(clue.getState())) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "只有已关闭线索可以恢复");
+        }
+        int activeDuplicates = tClueMapper.countActiveByPhoneExcludingId(
+                clue.getPhone(), id, closedState, convertedState);
+        if (activeDuplicates > 0) {
+            throw new BusinessException(CodeEnum.DUPLICATE, "存在相同手机号的活跃线索，不能恢复");
+        }
+        Integer operatorId = currentUserProvider.getCurrentUserId();
+        int rows = tClueMapper.updateStateAtomic(
+                id, clue.getState(), restoreState, operatorId, currentUserProvider.getDataScopeUserId());
+        if (rows != 1) {
+            throw new BusinessException(CodeEnum.OPERATION_FAILED, "线索状态已变化，请刷新后重试");
+        }
+        auditRecorder.record(AuditActionEnum.CLUE_RESTORE, String.valueOf(id), "SUCCESS", reasonSummary(reason));
+        return true;
+    }
+
+    private Integer requireValidTargetOwner(Integer ownerId) {
+        if (ownerId == null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "目标负责人不能为空");
+        }
+        List<TUser> owners = tUserMapper.selectByOwner();
+        boolean exists = owners != null && owners.stream()
+                .anyMatch(user -> ownerId.equals(user.getId()));
+        if (!exists) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "目标负责人不存在或不可用");
+        }
+        return ownerId;
+    }
+
+    private void writeOwnerHistory(Integer clueId, Integer fromOwnerId, Integer toOwnerId,
+                                   Integer assignedBy, String reason) {
+        TClueOwnerHistory history = new TClueOwnerHistory();
+        history.setClueId(clueId);
+        history.setFromOwnerId(fromOwnerId);
+        history.setToOwnerId(toOwnerId);
+        history.setAssignedBy(assignedBy);
+        history.setReason(reason);
+        history.setAssignedTime(new Date());
+        clueOwnerHistoryMapper.insert(history);
+    }
+
+    private String normalizeReason(String reason) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "转派原因不能为空");
+        }
+        return reason.trim();
+    }
+
+    private String normalizeLifecycleReason(String reason, String message) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, message);
+        }
+        return reason.trim();
+    }
+
+    private Integer resolveClueStateId(String valueCode) {
+        DicQuery query = new DicQuery();
+        query.setTypeCode(CLUE_STATE_TYPE);
+        List<TDicValue> states = dicMapper.selectDicValues(query);
+        if (states == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "线索状态字典缺失: " + valueCode);
+        }
+        return states.stream()
+                .filter(state -> valueCode.equals(state.getValueCode()))
+                .map(TDicValue::getId)
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(CodeEnum.NOT_FOUND, "线索状态字典缺失: " + valueCode));
+    }
+
+    private String reasonSummary(String reason) {
+        return "{\"reason\":\"" + escapeJson(reason) + "\"}";
+    }
+
+    private String escapeJson(String value) {
+        return value.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
+    }
+
+    private String requireValidPhone(String phone) {
+        String normalizedPhone = PhoneNormalizer.normalizeMainlandMobile(phone);
+        if (!PhoneNormalizer.isMainlandMobile(normalizedPhone)) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "手机号格式不正确");
+        }
+        return normalizedPhone;
     }
 
     private TClue requireAccessibleClue(Integer id) {

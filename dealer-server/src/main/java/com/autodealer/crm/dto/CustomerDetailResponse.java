@@ -40,7 +40,17 @@ public class CustomerDetailResponse {
 
     private String needLoanName;
 
+    private String intentionStateName;
+
+    private String stateName;
+
     private String sourceName;
+
+    private String originalSourceName;
+
+    private String customerStatus;
+
+    private String customerStatusName;
 
     private String productName;
 

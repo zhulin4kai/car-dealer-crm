@@ -12,6 +12,9 @@ public interface TClueMapper {
 
     int deleteByPrimaryKey(Integer id);
 
+    int deleteScopedByPrimaryKey(@Param("id") Integer id,
+                                 @Param("dataScopeUserId") Integer dataScopeUserId);
+
     int insert(TClue record);
 
     int insertSelective(TClue record);
@@ -40,9 +43,29 @@ public interface TClueMapper {
 
     int batchDeleteByIds(List<Integer> ids);
 
+    int batchDeleteScopedByIds(@Param("ids") List<Integer> ids,
+                               @Param("dataScopeUserId") Integer dataScopeUserId);
+
     int updateStateToConverted(@Param("id") Integer id,
                                @Param("editBy") Integer editBy,
                                @Param("dataScopeUserId") Integer dataScopeUserId);
+
+    int updateOwnerAtomic(@Param("id") Integer id,
+                          @Param("fromOwnerId") Integer fromOwnerId,
+                          @Param("toOwnerId") Integer toOwnerId,
+                          @Param("editBy") Integer editBy,
+                          @Param("dataScopeUserId") Integer dataScopeUserId);
+
+    int updateStateAtomic(@Param("id") Integer id,
+                          @Param("fromState") Integer fromState,
+                          @Param("toState") Integer toState,
+                          @Param("editBy") Integer editBy,
+                          @Param("dataScopeUserId") Integer dataScopeUserId);
+
+    int countActiveByPhoneExcludingId(@Param("phone") String phone,
+                                      @Param("excludedId") Integer excludedId,
+                                      @Param("closedState") Integer closedState,
+                                      @Param("convertedState") Integer convertedState);
 
     /**
      * 批量查询已存在的手机号，用于 Excel 导入时检测数据库重复。

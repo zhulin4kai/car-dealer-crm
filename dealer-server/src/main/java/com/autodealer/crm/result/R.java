@@ -55,6 +55,10 @@ public class R<T> {
         return new R<>(code, msg);
     }
 
+    public static <T> R<T> FAIL(Integer code, String msg, T data) {
+        return new R<>(code, msg, data);
+    }
+
     public static <T> R<T> FAIL(CodeEnum codeEnum) {
         return new R<>(codeEnum.getCode(), codeEnum.getMsg());
     }

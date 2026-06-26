@@ -45,10 +45,11 @@ class SchemaConstraintsTest {
             "t_permission", "t_role", "t_role_permission",
             "t_tran", "t_tran_history", "t_tran_product",
             "t_tran_invoice", "t_tran_approve", "t_tran_remark",
+            "t_quote", "t_quote_version", "t_quote_version_item", "t_quote_status_history",
             "t_product", "t_product_category", "t_product_promotion",
-            "t_product_stock_record",
-            "t_payment",
-            "t_user", "t_user_role"
+            "t_product_vehicle", "t_product_stock_record",
+            "t_payment", "t_refund_request",
+            "t_user", "t_user_role", "t_clue_owner_history"
         };
         for (String table : tables) {
             Integer count = jdbcTemplate.queryForObject(
@@ -140,6 +141,48 @@ class SchemaConstraintsTest {
 
     @Test
     @Order(8)
+    @DisplayName("重复 VIN 插入失败")
+    void testDuplicateProductVehicleVinFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+            "VALUES (100, 1, 'VIN-DUP-001', '黑色', 'A-01', 'AVAILABLE')");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+                "VALUES (101, 1, 'VIN-DUP-001', '白色', 'A-02', 'AVAILABLE')"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("重复报价单号插入失败")
+    void testDuplicateQuoteNoFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_quote (id, quote_no, customer_id, status) " +
+            "VALUES (100, 'QUOTE-DUP-001', 1, 'DRAFT')");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_quote (id, quote_no, customer_id, status) " +
+                "VALUES (101, 'QUOTE-DUP-001', 1, 'DRAFT')"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("同一报价内重复版本号插入失败")
+    void testDuplicateQuoteVersionNoFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_quote (id, quote_no, customer_id, status) " +
+            "VALUES (102, 'QUOTE-VERSION-001', 1, 'DRAFT')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_quote_version (id, quote_id, version_no, valid_until, total_amount) " +
+            "VALUES (100, 102, 1, CURRENT_TIMESTAMP, 100.00)");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_quote_version (id, quote_id, version_no, valid_until, total_amount) " +
+                "VALUES (101, 102, 1, CURRENT_TIMESTAMP, 200.00)"));
+    }
+
+    @Test
+    @Order(9)
     @DisplayName("重复发票号插入失败")
     void testDuplicateInvoiceNoFails() {
         jdbcTemplate.execute(
@@ -156,7 +199,7 @@ class SchemaConstraintsTest {
     // ==================== 外键约束测试 ====================
 
     @Test
-    @Order(9)
+    @Order(10)
     @DisplayName("不存在父记录的子记录插入失败 - t_tran_product.tran_id")
     void testOrphanTranProductTranFails() {
         assertThrows(Exception.class, () ->
@@ -166,7 +209,7 @@ class SchemaConstraintsTest {
     }
 
     @Test
-    @Order(10)
+    @Order(11)
     @DisplayName("不存在父记录的子记录插入失败 - t_tran_product.product_id")
     void testOrphanTranProductProductFails() {
         jdbcTemplate.execute(
@@ -178,7 +221,7 @@ class SchemaConstraintsTest {
     }
 
     @Test
-    @Order(11)
+    @Order(12)
     @DisplayName("不存在父记录的子记录插入失败 - t_tran_approve.tran_id")
     void testOrphanTranApproveFails() {
         assertThrows(Exception.class, () ->
@@ -188,7 +231,7 @@ class SchemaConstraintsTest {
     }
 
     @Test
-    @Order(12)
+    @Order(13)
     @DisplayName("不存在父记录的子记录插入失败 - t_tran_invoice.tran_id")
     void testOrphanTranInvoiceFails() {
         assertThrows(Exception.class, () ->
@@ -198,7 +241,7 @@ class SchemaConstraintsTest {
     }
 
     @Test
-    @Order(13)
+    @Order(14)
     @DisplayName("不存在父记录的子记录插入失败 - t_tran_history.tran_id")
     void testOrphanTranHistoryFails() {
         assertThrows(Exception.class, () ->
@@ -208,7 +251,7 @@ class SchemaConstraintsTest {
     }
 
     @Test
-    @Order(14)
+    @Order(15)
     @DisplayName("不存在父记录的子记录插入失败 - t_payment.tran_id")
     void testOrphanPaymentTranFails() {
         assertThrows(Exception.class, () ->
@@ -218,13 +261,94 @@ class SchemaConstraintsTest {
     }
 
     @Test
-    @Order(15)
+    @Order(16)
     @DisplayName("不存在父记录的子记录插入失败 - t_product_stock_record.product_id")
     void testOrphanStockRecordProductFails() {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_product_stock_record (id, product_id, quantity) " +
                 "VALUES (100, 99999, 1)"));
+    }
+
+    @Test
+    @Order(17)
+    @DisplayName("不存在父记录的子记录插入失败 - t_product_vehicle.product_id")
+    void testOrphanProductVehicleProductFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_product_vehicle (id, product_id, vin, color, location, status) " +
+                "VALUES (102, 99999, 'VIN-ORPHAN-001', '黑色', 'A-01', 'AVAILABLE')"));
+    }
+
+    @Test
+    @Order(18)
+    @DisplayName("不存在父记录的子记录插入失败 - t_product_stock_record.vehicle_id")
+    void testOrphanStockRecordVehicleFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_product_stock_record (id, product_id, vehicle_id, quantity, type) " +
+                "VALUES (102, 1, 99999, -1, 'RESERVE')"));
+    }
+
+    @Test
+    @Order(19)
+    @DisplayName("不存在父记录的子记录插入失败 - t_product_stock_record.related_record_id")
+    void testOrphanStockRecordRelatedFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_product_stock_record (id, product_id, quantity, type, related_record_id) " +
+                "VALUES (103, 1, 1, 'RELEASE', 99999)"));
+    }
+
+    @Test
+    @DisplayName("不存在父记录的子记录插入失败 - t_quote.customer_id")
+    void testOrphanQuoteCustomerFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_quote (id, quote_no, customer_id, status) " +
+                "VALUES (110, 'QUOTE-ORPHAN-CUSTOMER', 99999, 'DRAFT')"));
+    }
+
+    @Test
+    @DisplayName("不存在父记录的子记录插入失败 - t_quote_version.quote_id")
+    void testOrphanQuoteVersionFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_quote_version (id, quote_id, version_no, valid_until, total_amount) " +
+                "VALUES (110, 99999, 1, CURRENT_TIMESTAMP, 100.00)"));
+    }
+
+    @Test
+    @DisplayName("不存在父记录的子记录插入失败 - t_quote_version_item.quote_version_id")
+    void testOrphanQuoteVersionItemVersionFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_quote_version_item (id, quote_version_id, product_id, unit_price, quantity, line_amount) " +
+                "VALUES (110, 99999, 1, 100.00, 1, 100.00)"));
+    }
+
+    @Test
+    @DisplayName("不存在父记录的子记录插入失败 - t_quote_version_item.product_id")
+    void testOrphanQuoteVersionItemProductFails() {
+        jdbcTemplate.execute(
+            "INSERT INTO t_quote (id, quote_no, customer_id, status) " +
+            "VALUES (111, 'QUOTE-ITEM-ORPHAN', 1, 'DRAFT')");
+        jdbcTemplate.execute(
+            "INSERT INTO t_quote_version (id, quote_id, version_no, valid_until, total_amount) " +
+            "VALUES (111, 111, 1, CURRENT_TIMESTAMP, 100.00)");
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_quote_version_item (id, quote_version_id, product_id, unit_price, quantity, line_amount) " +
+                "VALUES (111, 111, 99999, 100.00, 1, 100.00)"));
+    }
+
+    @Test
+    @DisplayName("不存在父记录的子记录插入失败 - t_quote_status_history.quote_id")
+    void testOrphanQuoteStatusHistoryFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_quote_status_history (id, quote_id, to_status, reason) " +
+                "VALUES (110, 99999, 'DRAFT', 'test')"));
     }
 
     @Test
@@ -271,6 +395,24 @@ class SchemaConstraintsTest {
         assertThrows(Exception.class, () ->
             jdbcTemplate.execute(
                 "INSERT INTO t_user_role (user_id, role_id) VALUES (1, 99999)"));
+    }
+
+    @Test
+    @DisplayName("不存在父记录的子记录插入失败 - t_clue_owner_history.clue_id")
+    void testOrphanClueOwnerHistoryClueFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_clue_owner_history (id, clue_id, to_owner_id, assigned_by, reason, assigned_time) " +
+                "VALUES (100, 99999, 1, 1, 'test', CURRENT_TIMESTAMP)"));
+    }
+
+    @Test
+    @DisplayName("不存在父记录的子记录插入失败 - t_clue_owner_history.to_owner_id")
+    void testOrphanClueOwnerHistoryOwnerFails() {
+        assertThrows(Exception.class, () ->
+            jdbcTemplate.execute(
+                "INSERT INTO t_clue_owner_history (id, clue_id, to_owner_id, assigned_by, reason, assigned_time) " +
+                "VALUES (101, 1, 99999, 1, 'test', CURRENT_TIMESTAMP)"));
     }
 
     // ==================== 非空与 CHECK 约束测试 ====================
@@ -353,6 +495,61 @@ class SchemaConstraintsTest {
         assertEquals(0, count, "role_permission 应随角色级联删除");
     }
 
+    @Test
+    @DisplayName("活动备注存在时禁止删除活动父记录")
+    void activityRemarkShouldRestrictActivityDeletion() {
+        jdbcTemplate.update(
+            "INSERT INTO t_activity (id, name) VALUES (?, ?)",
+            700, "备注外键活动");
+        jdbcTemplate.update(
+            "INSERT INTO t_activity_remark (id, activity_id, note_content) VALUES (?, ?, ?)",
+            700, 700, "保留活动备注");
+
+        assertThrows(DataIntegrityViolationException.class,
+            () -> jdbcTemplate.update("DELETE FROM t_activity WHERE id = ?", 700));
+    }
+
+    @Test
+    @DisplayName("线索备注存在时禁止删除线索父记录")
+    void clueRemarkShouldRestrictClueDeletion() {
+        jdbcTemplate.update(
+            "INSERT INTO t_clue (id, owner_id, full_name, phone) VALUES (?, ?, ?, ?)",
+            701, 1, "备注外键线索", "13900000701");
+        jdbcTemplate.update(
+            "INSERT INTO t_clue_remark (id, clue_id, note_content) VALUES (?, ?, ?)",
+            701, 701, "保留线索备注");
+
+        assertThrows(DataIntegrityViolationException.class,
+            () -> jdbcTemplate.update("DELETE FROM t_clue WHERE id = ?", 701));
+    }
+
+    @Test
+    @DisplayName("交易备注存在时禁止删除交易父记录")
+    void tranRemarkShouldRestrictTranDeletion() {
+        jdbcTemplate.update(
+            "INSERT INTO t_customer (id, customer_name) VALUES (?, ?)",
+            702, "备注外键客户");
+        jdbcTemplate.update(
+            "INSERT INTO t_tran (id, tran_no, customer_id, money) VALUES (?, ?, ?, ?)",
+            702, "TR-REMARK-RESTRICT", 702, 100);
+        jdbcTemplate.update(
+            "INSERT INTO t_tran_remark (id, tran_id, note_content) VALUES (?, ?, ?)",
+            702, 702, "保留交易备注");
+
+        assertThrows(DataIntegrityViolationException.class,
+            () -> jdbcTemplate.update("DELETE FROM t_tran WHERE id = ?", 702));
+    }
+
+    @Test
+    @DisplayName("权限不能将自身设置为父级")
+    void permissionParentShouldRejectSelfReference() {
+        assertThrows(DataIntegrityViolationException.class,
+            () -> jdbcTemplate.update("""
+                INSERT INTO t_permission (id, name, code, type, parent_id)
+                VALUES (?, ?, ?, ?, ?)
+                """, 703, "自引用权限", "permission:self-parent", "menu", 703));
+    }
+
     // ==================== 产品种子数据验证 ====================
 
     @Test
@@ -374,6 +571,49 @@ class SchemaConstraintsTest {
         assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
             "INSERT INTO t_product(id, sku, name, price, stock, status) " +
                 "VALUES (204, 'BAD-STATUS-001', 'test', 100.00, 10, '上架')"));
+    }
+
+    @Test
+    @DisplayName("报价状态必须使用稳定编码")
+    void testQuoteStatusRejectsChineseLabel() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+            "INSERT INTO t_quote(id, quote_no, customer_id, status) " +
+                "VALUES (205, 'BAD-QUOTE-STATUS-001', 1, '待确认')"));
+    }
+
+    @Test
+    @DisplayName("收款状态必须使用稳定编码")
+    void testPaymentStatusRejectsChineseLabel() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+            "INSERT INTO t_payment(id, tran_id, payment_no, amount, payment_method, payment_type, payment_status) " +
+                "VALUES (206, 1, 'BAD-PAYMENT-STATUS-001', 100.00, 'CASH', 'FULL', '已到账')"));
+    }
+
+    @Test
+    @DisplayName("退款申请状态必须使用稳定编码")
+    void testRefundRequestStatusRejectsOldOrChineseLabel() {
+        jdbcTemplate.update(
+            "INSERT INTO t_payment(id, tran_id, payment_no, amount, payment_method, payment_type, payment_status) " +
+                "VALUES (207, 1, 'PAY-FOR-BAD-REFUND-001', 100.00, 'CASH', 'FULL', 'COMPLETED')");
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+            "INSERT INTO t_refund_request(id, tran_id, original_payment_id, amount, refund_type, reason, status) " +
+                "VALUES (208, 1, 207, 100.00, 'ORDER_CANCEL', 'test', 'EXECUTED')"));
+    }
+
+    @Test
+    @DisplayName("发票状态必须使用稳定编码")
+    void testInvoiceStatusRejectsOldVoidCode() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+            "INSERT INTO t_tran_invoice(id, tran_id, invoice_no, type, title, tax_number, amount, status) " +
+                "VALUES (209, 1, 'BAD-INVOICE-STATUS-001', 'VAT_NORMAL', 'test', 'TAX-001', 100.00, 'VOID')"));
+    }
+
+    @Test
+    @DisplayName("发票红冲重开关联必须引用已存在原票")
+    void testInvoiceOriginalReferenceRejectsMissingInvoice() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+            "INSERT INTO t_tran_invoice(id, tran_id, invoice_no, type, title, tax_number, original_invoice_id, amount, status) " +
+                "VALUES (210, 1, 'BAD-INVOICE-ORIGINAL-001', 'VAT_NORMAL', 'test', 'TAX-002', 999999, -100.00, 'RED_REVERSED')"));
     }
 
     // ==================== 生产与测试 Schema 核心表字段对比 ====================

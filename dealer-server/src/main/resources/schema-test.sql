@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS t_activity_remark
     edit_by      INTEGER,
     deleted      INTEGER,
     PRIMARY KEY (id),
-    CONSTRAINT fk_activity_remark_activity FOREIGN KEY (activity_id) REFERENCES t_activity(id) ON DELETE CASCADE
+    CONSTRAINT fk_activity_remark_activity FOREIGN KEY (activity_id) REFERENCES t_activity(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_clue
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS t_clue_remark
     edit_by      INTEGER,
     deleted      INTEGER,
     PRIMARY KEY (id),
-    CONSTRAINT fk_clue_remark_clue FOREIGN KEY (clue_id) REFERENCES t_clue(id) ON DELETE CASCADE
+    CONSTRAINT fk_clue_remark_clue FOREIGN KEY (clue_id) REFERENCES t_clue(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_customer
@@ -281,12 +281,73 @@ CREATE TABLE IF NOT EXISTS t_tran_history
     id            INTEGER NOT NULL AUTO_INCREMENT,
     tran_id       INTEGER,
     stage         VARCHAR(32),
+    reason        VARCHAR(500),
     money         DECIMAL(10, 2),
     expected_date TIMESTAMP,
     create_time   TIMESTAMP,
     create_by     INTEGER,
     PRIMARY KEY (id),
     CONSTRAINT fk_tran_history_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_quote
+(
+    id                 BIGINT NOT NULL AUTO_INCREMENT,
+    quote_no           VARCHAR(64) NOT NULL,
+    customer_id        INTEGER NOT NULL,
+    opportunity_id     BIGINT,
+    current_version_id BIGINT,
+    status             VARCHAR(50) NOT NULL,
+    remark             VARCHAR(500),
+    create_time        TIMESTAMP,
+    create_by          INTEGER,
+    update_time        TIMESTAMP,
+    update_by          INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_quote_no UNIQUE (quote_no),
+    CONSTRAINT fk_quote_customer FOREIGN KEY (customer_id) REFERENCES t_customer(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_quote_status CHECK (status IN (
+        'DRAFT', 'PENDING_SUBMIT', 'PENDING_APPROVAL', 'REJECTED',
+        'PENDING_CUSTOMER_CONFIRMATION', 'ACCEPTED', 'REFUSED',
+        'EXPIRED', 'VOIDED', 'CONVERTED_TO_ORDER'
+    ))
+);
+
+CREATE TABLE IF NOT EXISTS t_quote_version
+(
+    id           BIGINT NOT NULL AUTO_INCREMENT,
+    quote_id     BIGINT NOT NULL,
+    version_no   INTEGER NOT NULL,
+    valid_until  TIMESTAMP NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    remark       VARCHAR(500),
+    create_time  TIMESTAMP,
+    create_by    INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_quote_version_no UNIQUE (quote_id, version_no),
+    CONSTRAINT fk_quote_version_quote FOREIGN KEY (quote_id) REFERENCES t_quote(id) ON DELETE RESTRICT
+);
+
+ALTER TABLE t_quote
+    ADD CONSTRAINT fk_quote_current_version
+        FOREIGN KEY (current_version_id) REFERENCES t_quote_version(id) ON DELETE RESTRICT;
+
+CREATE TABLE IF NOT EXISTS t_quote_status_history
+(
+    id          BIGINT NOT NULL AUTO_INCREMENT,
+    quote_id    BIGINT NOT NULL,
+    from_status VARCHAR(50),
+    to_status   VARCHAR(50) NOT NULL,
+    reason      VARCHAR(500) NOT NULL,
+    confirmed_by_name VARCHAR(100),
+    confirmed_at TIMESTAMP,
+    confirmation_method VARCHAR(50),
+    confirmation_evidence VARCHAR(500),
+    proxy_confirm_reason VARCHAR(500),
+    create_time TIMESTAMP,
+    create_by   INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_quote_status_history_quote FOREIGN KEY (quote_id) REFERENCES t_quote(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_product
@@ -307,6 +368,28 @@ CREATE TABLE IF NOT EXISTS t_product
     CONSTRAINT chk_product_price_nonneg CHECK (price >= 0),
     CONSTRAINT chk_product_stock_nonneg CHECK (stock >= 0),
     CONSTRAINT chk_product_status_code CHECK (status IN ('ON_SALE', 'OFF_SALE'))
+);
+
+CREATE TABLE IF NOT EXISTS t_quote_version_item
+(
+    id                    BIGINT NOT NULL AUTO_INCREMENT,
+    quote_version_id      BIGINT NOT NULL,
+    product_id            BIGINT NOT NULL,
+    product_sku           VARCHAR(100),
+    product_name          VARCHAR(255),
+    product_specification VARCHAR(255),
+    guide_price           DECIMAL(10, 2),
+    unit_price            DECIMAL(10, 2) NOT NULL,
+    quantity              INTEGER NOT NULL,
+    line_amount           DECIMAL(10, 2) NOT NULL,
+    promotion_id          BIGINT,
+    promotion_name        VARCHAR(255),
+    promotion_amount      DECIMAL(10, 2),
+    create_time           TIMESTAMP,
+    create_by             INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_quote_item_version FOREIGN KEY (quote_version_id) REFERENCES t_quote_version(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_quote_item_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_tran_product
@@ -339,6 +422,7 @@ CREATE TABLE IF NOT EXISTS t_tran_invoice
     bank_account VARCHAR(32),
     address      VARCHAR(255),
     phone        VARCHAR(20),
+    original_invoice_id INTEGER,
     amount       DECIMAL(10, 2) NOT NULL,
     status       VARCHAR(20) NOT NULL,
     remark       VARCHAR(255),
@@ -349,7 +433,9 @@ CREATE TABLE IF NOT EXISTS t_tran_invoice
     edit_by      INTEGER,
     PRIMARY KEY (id),
     CONSTRAINT uk_invoice_no UNIQUE (invoice_no),
-    CONSTRAINT fk_tran_invoice_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
+    CONSTRAINT fk_tran_invoice_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_tran_invoice_original FOREIGN KEY (original_invoice_id) REFERENCES t_tran_invoice(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_tran_invoice_status CHECK (status IN ('PENDING', 'ISSUING', 'ISSUED', 'FAILED', 'VOIDED', 'PARTIAL_RED_REVERSED', 'RED_REVERSED', 'NOT_REQUIRED'))
 );
 
 CREATE TABLE IF NOT EXISTS t_tran_approve
@@ -388,7 +474,10 @@ CREATE TABLE IF NOT EXISTS t_payment
     CONSTRAINT uk_payment_no UNIQUE (payment_no),
     CONSTRAINT uk_payment_transaction_ref UNIQUE (transaction_ref),
     CONSTRAINT uk_payment_idempotency_key UNIQUE (idempotency_key),
-    CONSTRAINT fk_payment_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
+    CONSTRAINT fk_payment_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_payment_method CHECK (payment_method IN ('CASH', 'BANK_TRANSFER', 'WECHAT', 'ALIPAY', 'CHECK', 'OTHER')),
+    CONSTRAINT chk_payment_type CHECK (payment_type IN ('DEPOSIT', 'INSTALLMENT', 'FULL', 'BALANCE', 'REFUND')),
+    CONSTRAINT chk_payment_status CHECK (payment_status IN ('PENDING', 'COMPLETED', 'FAILED', 'REVERSED', 'VOIDED'))
 );
 
 CREATE TABLE IF NOT EXISTS t_refund_request
@@ -407,7 +496,11 @@ CREATE TABLE IF NOT EXISTS t_refund_request
     approved_time       TIMESTAMP,
     approve_comment     VARCHAR(500),
     executed_by         INTEGER,
+    execution_started_time TIMESTAMP,
     executed_time       TIMESTAMP,
+    execution_ref       VARCHAR(128),
+    execution_remark    VARCHAR(500),
+    failure_reason      VARCHAR(500),
     create_time         TIMESTAMP,
     create_by           INTEGER,
     edit_time           TIMESTAMP,
@@ -415,7 +508,9 @@ CREATE TABLE IF NOT EXISTS t_refund_request
     PRIMARY KEY (id),
     CONSTRAINT fk_refund_request_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT,
     CONSTRAINT fk_refund_request_original_payment FOREIGN KEY (original_payment_id) REFERENCES t_payment(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_refund_request_refund_payment FOREIGN KEY (refund_payment_id) REFERENCES t_payment(id) ON DELETE RESTRICT
+    CONSTRAINT fk_refund_request_refund_payment FOREIGN KEY (refund_payment_id) REFERENCES t_payment(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_refund_request_type CHECK (refund_type IN ('ORDER_CANCEL', 'OVERPAY', 'PRICE_ADJUSTMENT', 'CUSTOMER_BREACH', 'INTERNAL_CORRECTION')),
+    CONSTRAINT chk_refund_request_status CHECK (status IN ('PENDING_APPROVAL', 'PENDING_EXECUTION', 'EXECUTING', 'COMPLETED', 'REJECTED', 'FAILED', 'CANCELLED'))
 );
 
 CREATE TABLE IF NOT EXISTS t_operation_log
@@ -477,16 +572,52 @@ CREATE TABLE IF NOT EXISTS t_product_promotion
     CONSTRAINT fk_product_promotion_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS t_product_vehicle
+(
+    id            BIGINT NOT NULL AUTO_INCREMENT,
+    product_id    BIGINT NOT NULL,
+    vin           VARCHAR(64) NOT NULL,
+    color         VARCHAR(64) NOT NULL,
+    configuration VARCHAR(255),
+    location      VARCHAR(128) NOT NULL,
+    status        VARCHAR(50) NOT NULL,
+    hold_type     VARCHAR(50),
+    source_type   VARCHAR(50),
+    source_id     BIGINT,
+    hold_until    TIMESTAMP,
+    create_time   TIMESTAMP,
+    create_by     INTEGER,
+    update_time   TIMESTAMP,
+    update_by     INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_product_vehicle_vin UNIQUE (vin),
+    CONSTRAINT fk_product_vehicle_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_product_vehicle_status CHECK (status IN (
+        'PENDING_INBOUND', 'AVAILABLE', 'TEST_DRIVE_RESERVED', 'SALES_LOCKED',
+        'ORDER_RESERVED', 'PENDING_DELIVERY', 'OUTBOUND', 'DELIVERED',
+        'INVENTORY_EXCEPTION', 'UNAVAILABLE'
+    ))
+);
+
 CREATE TABLE IF NOT EXISTS t_product_stock_record
 (
-    id          BIGINT NOT NULL AUTO_INCREMENT,
-    product_id  BIGINT NOT NULL,
-    quantity    INTEGER DEFAULT 0,
-    type        VARCHAR(50),
-    remark      TEXT,
-    create_time TIMESTAMP,
+    id                BIGINT NOT NULL AUTO_INCREMENT,
+    product_id        BIGINT NOT NULL,
+    vehicle_id        BIGINT,
+    quantity          INTEGER DEFAULT 0,
+    type              VARCHAR(50),
+    source_type       VARCHAR(50),
+    source_id         BIGINT,
+    before_status     VARCHAR(50),
+    after_status      VARCHAR(50),
+    related_record_id BIGINT,
+    remark            TEXT,
+    create_time       TIMESTAMP,
+    create_by         INTEGER,
     PRIMARY KEY (id),
-    CONSTRAINT fk_stock_record_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT
+    CONSTRAINT fk_stock_record_product FOREIGN KEY (product_id) REFERENCES t_product(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_stock_record_vehicle FOREIGN KEY (vehicle_id) REFERENCES t_product_vehicle(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_stock_record_related FOREIGN KEY (related_record_id) REFERENCES t_product_stock_record(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS t_tran_remark
@@ -501,5 +632,5 @@ CREATE TABLE IF NOT EXISTS t_tran_remark
     edit_by      INTEGER,
     deleted      INTEGER,
     PRIMARY KEY (id),
-    CONSTRAINT fk_tran_remark_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE CASCADE
+    CONSTRAINT fk_tran_remark_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
 );

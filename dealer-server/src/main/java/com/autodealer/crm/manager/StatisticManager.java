@@ -101,7 +101,7 @@ public class StatisticManager {
         NameValue tran = NameValue.builder().name("交易").value(tranCount).build();
         resultList.add(tran);
 
-        NameValue tranSuccess = NameValue.builder().name("成交").value(tranSuccessCount).build();
+        NameValue tranSuccess = NameValue.builder().name("成交客户").value(tranSuccessCount).build();
         resultList.add(tranSuccess);
 
         return resultList;

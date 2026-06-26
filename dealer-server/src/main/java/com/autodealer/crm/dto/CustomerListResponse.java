@@ -34,6 +34,12 @@ public class CustomerListResponse {
 
     private String sourceName;
 
+    private String originalSourceName;
+
+    private String customerStatus;
+
+    private String customerStatusName;
+
     private String intentionProductName;
 
     private Long product;

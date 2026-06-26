@@ -3,7 +3,10 @@ package com.autodealer.crm.service;
 import com.autodealer.crm.dto.ConvertCustomerRequest;
 import com.autodealer.crm.dto.CustomerDetailResponse;
 import com.autodealer.crm.dto.CustomerListResponse;
+import com.autodealer.crm.dto.CustomerMergeResponse;
 import com.autodealer.crm.dto.CustomerOption;
+import com.autodealer.crm.dto.MergeCustomerRequest;
+import com.autodealer.crm.dto.TransferCustomerOwnerRequest;
 import com.autodealer.crm.query.CustomerListQuery;
 import com.autodealer.crm.result.CustomerExcel;
 import com.github.pagehelper.PageInfo;
@@ -26,4 +29,8 @@ public interface CustomerService {
     List<CustomerExcel> getCustomerByExcel(List<String> idList);
 
     boolean deleteCustomer(Integer id);
+
+    void transferOwner(Integer id, TransferCustomerOwnerRequest request);
+
+    CustomerMergeResponse mergeCustomer(Integer targetCustomerId, MergeCustomerRequest request);
 }

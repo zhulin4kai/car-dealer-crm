@@ -12,9 +12,10 @@
 - [4. 线索管理模块](#4-线索管理模块)
 - [5. 客户管理模块](#5-客户管理模块)
 - [6. 交易管理模块](#6-交易管理模块)
-- [7. 市场活动模块](#7-市场活动模块)
-- [8. 商品管理模块](#8-商品管理模块)
-- [9. 字典管理模块](#9-字典管理模块)
+- [7. 报价订单模块](#7-报价订单模块)
+- [8. 市场活动模块](#8-市场活动模块)
+- [9. 商品管理模块](#9-商品管理模块)
+- [10. 字典管理模块](#10-字典管理模块)
 - [11. 统计报表模块](#11-统计报表模块)
 - [13. 安全配置](#13-安全配置)
 - [14. AOP 切面](#14-aop-切面)
@@ -97,8 +98,8 @@ dealer-server/src/main/java/com/autodealer/crm/
 ```
 1. 请求进入 Filter
 2. 判断是否为 /api/login 请求 → 放行
-3. 从 Header 或参数中获取 Authorization token
-4. token 为空 → 返回 HTTP 401 和 TOKEN_IS_EMPTY
+3. 从 `Authorization: Bearer <token>` 请求头读取 JWT，不接受 URL 参数或裸 token
+4. 请求头缺失或 Bearer 后 token 为空 → 返回 HTTP 401 和 TOKEN_IS_EMPTY
 5. JWTUtils.verifyJWT() 验证签名失败 → 返回 HTTP 401 和 TOKEN_IS_ERROR
 6. JWTUtils.parseUserFromJWT() 解析用户信息
 7. Redis 查询 token → 不存在返回 HTTP 401 和 TOKEN_IS_EXPIRED
@@ -127,14 +128,24 @@ dealer-server/src/main/java/com/autodealer/crm/
 | POST /api/clue | `clue:add` |
 | GET /api/clue/detail/{id} | `clue:view` |
 | PUT /api/clue | `clue:edit` |
+| PUT /api/clue/{id}/owner | `clue:transfer` |
+| GET /api/clue/{id}/owner-history | `clue:view` |
+| PUT /api/clue/{id}/close | `clue:close` |
+| PUT /api/clue/{id}/restore | `clue:restore` |
 | DELETE /api/clue/{id} | `clue:delete` |
 | POST /api/clue/batch | `clue:delete` |
 | GET /api/users | `user:list` |
 | GET /api/user/{id} | `user:view` |
 | POST /api/user | `user:add` |
 | PUT /api/user | `user:edit` |
-| DELETE /api/user/{id} | `user:delete` |
-| DELETE /api/user | `user:delete` |
+| PUT /api/user/{id}/disable | `user:status` |
+| PUT /api/user/{id}/enable | `user:status` |
+| PUT /api/user/{id}/lock | `user:status` |
+| PUT /api/user/{id}/unlock | `user:status` |
+| PUT /api/users/batch-disable | `user:status` |
+| PUT /api/user/{id}/roles | `user:role` |
+| PUT /api/user/{id}/password | `user:password` |
+| PUT /api/user/{id}/handover | `user:status` |
 | GET /api/dict/clear | `admin` |
 
 ---
@@ -190,23 +201,38 @@ dealer-server/src/main/java/com/autodealer/crm/
   - `TUserMapper.updateByPrimaryKeySelective()` 更新
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
-#### 删除用户
-- **接口**: `DELETE /api/user/{id}`
-- **权限**: `@PreAuthorize("hasAuthority('user:delete')")`
-- **流程**: `UserController.delUser()` → `UserServiceImpl.delUserById()` → `TUserMapper.deleteByPrimaryKey()`
+#### 账号启禁用与锁定
+- **接口**: `PUT /api/user/{id}/disable`、`PUT /api/user/{id}/enable`、`PUT /api/user/{id}/lock`、`PUT /api/user/{id}/unlock`
+- **权限**: `@PreAuthorize("hasAuthority('user:status')")`
+- **流程**: `UserController` → `UserServiceImpl.disableUser()/enableUser()/lockUser()/unlockUser()`
+  - 禁用和锁定必须保护内置管理员与最后一个有效管理员。
+  - 禁用前检查当前活动、线索和未合并客户责任引用；仍有引用时要求先交接。
+  - 禁用、锁定、角色分配和密码修改会删除 Redis 登录会话，删除失败返回 `SYSTEM_ERROR`。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
-#### 批量删除用户
-- **接口**: `DELETE /api/user`
-- **权限**: `@PreAuthorize("hasAuthority('user:delete')")`
-- **流程**: `UserController.batchDelUser()` → `UserServiceImpl.batchDelUserIds()` → `TUserMapper.deleteByIds()`
+#### 批量禁用用户
+- **接口**: `PUT /api/users/batch-disable`
+- **权限**: `@PreAuthorize("hasAuthority('user:status')")`
+- **流程**: `UserController.batchDisableUsers()` → `UserServiceImpl.batchDisableUsers()` → `TUserMapper.disableByIds()`
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 责任交接
+- **接口**: `PUT /api/user/{id}/handover`
+- **权限**: `@PreAuthorize("hasAuthority('user:status')")`
+- **请求**: `HandoverUserResponsibilitiesRequest{targetUserId, reason}`
+- **流程**: `UserController.handoverResponsibilities()` → `UserServiceImpl.handoverResponsibilities()`
+  - 原负责人来自路径 ID，目标负责人和原因来自请求体。
+  - 目标负责人必须启用、未锁定且具备销售顾问或销售经理角色。
+  - 当前实现整体转移 `t_activity.owner_id`、`t_clue.owner_id`、`t_customer.owner_id`；线索和客户分别写入 `t_clue_owner_history`、`t_customer_owner_history`。
+  - 每类对象更新行数必须等于转移前查询数量，不一致返回业务失败并回滚。
+  - 成功后写 `USER_HANDOVER` 操作审计。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 获取负责人列表
 - **接口**: `GET /api/owner`
 - **流程**: `UserController.owner()` → `UserServiceImpl.getOwnerList()`
-  - **Redis 缓存**: key=`cdrm:user:owner`，List 结构存储
-  - 使用 `CacheUtils.getCacheData()` 先查 Redis，未命中查数据库并缓存
+  - **Redis 缓存**: key=`cdrm:user:owner`，单 value 存储负责人列表并设置 300 秒 TTL
+  - 未命中时查询启用、未锁定且具备销售负责人资格的账号；账号状态或角色变化后删除缓存，失败时记录并重试
 
 ### 3.3 涉及数据库表
 - `t_user` - 用户表
@@ -226,11 +252,11 @@ dealer-server/src/main/java/com/autodealer/crm/
 | Controller | `web/ClueController.java`, `web/ClueRemarkController.java` |
 | Service | `service/ClueService.java` → `service/impl/ClueServiceImpl.java`, `service/ClueRemarkService.java` → `service/impl/ClueRemarkServiceImpl.java` |
 | Manager | `manager/CustomerManager.java`（线索转客户） |
-| Mapper | `mapper/TClueMapper.java`, `mapper/TClueRemarkMapper.java` |
-| XML | `resources/mapper/TClueMapper.xml`, `resources/mapper/TClueRemarkMapper.xml` |
-| Model | `model/TClue.java`, `model/TClueRemark.java` |
+| Mapper | `mapper/TClueMapper.java`, `mapper/TClueRemarkMapper.java`, `mapper/TClueOwnerHistoryMapper.java` |
+| XML | `resources/mapper/TClueMapper.xml`, `resources/mapper/TClueRemarkMapper.xml`, `resources/mapper/TClueOwnerHistoryMapper.xml` |
+| Model | `model/TClue.java`, `model/TClueRemark.java`, `model/TClueOwnerHistory.java` |
 | Query | `query/ClueQuery.java`, `query/ClueRemarkQuery.java` |
-| Excel | `result/ClueExcel.java`, `config/converter/ClueExcelConverter.java`, `config/listener/UploadDataListener.java` |
+| Excel | `result/ClueExcelRaw.java`, `service/ClueImportValidator.java`, `dto/ImportResult.java` |
 
 ### 4.2 接口方法及业务流程
 
@@ -244,21 +270,24 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **接口**: `POST /api/importExcel`
 - **权限**: `@PreAuthorize("hasAuthority('clue:import')")`
 - **流程**: `ClueController.importExcel()` → `ClueServiceImpl.importExcel()`
-  - EasyExcel 读取 Excel
-  - `UploadDataListener` 监听器逐行处理
-  - `ClueExcelConverter` 转换 Excel 数据
-  - 使用 `DlykServerApplication.cacheMap` 缓存字典数据进行转换
-  - `TClueMapper.saveClue()` 批量插入
+  - EasyExcel 读取 `ClueExcelRaw` 到内存列表。
+  - `ClueImportValidator` 逐行校验并转换，手机号会去除空格、横杠和括号后校验大陆手机号格式。
+  - 同一文件中归一化后手机号重复会进入行级错误。
+  - 写库前再次调用 `TClueMapper.selectExistingPhones()` 检查数据库重复。
+  - 导入允许部分成功；格式错误或重复行保留行级错误，可导入行继续通过 `TClueMapper.saveClue()` 批量插入。
+  - 已插入行写入初始责任历史，并记录 `CLUE_IMPORT` 审计动作。
 
 #### 手机号查重
 - **接口**: `GET /api/clue/{phone}`
 - **流程**: `ClueController.checkPhone()` → `ClueServiceImpl.checkPhone()` → `TClueMapper.selectByCount()`
+- **规则**: 服务端先归一化常见分隔符，再查询 `t_clue.phone`。
 
 #### 新增线索
 - **接口**: `POST /api/clue`
 - **权限**: `@PreAuthorize("hasAuthority('clue:add')")`
 - **流程**: `ClueController.addClue()` → `ClueServiceImpl.saveClue()`
-  - 手机号查重，生产和测试 Schema 均通过 `uk_clue_phone` 唯一约束兜底。
+  - 手机号先归一化常见分隔符，再按规范手机号查重。
+  - 生产和测试 Schema 均通过 `uk_clue_phone` 唯一约束兜底。
   - `BeanUtils.copyProperties()` 复制属性
   - `CurrentUserProvider` 解析创建人和负责人
   - `TClueMapper.insertSelective()` 插入
@@ -274,6 +303,44 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **接口**: `PUT /api/clue`
 - **权限**: `@PreAuthorize("hasAuthority('clue:edit')")`
 - **流程**: `ClueController.editClue()` → `ClueServiceImpl.updateClue()` → `TClueMapper.updateByPrimaryKeySelective()`
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 转派线索负责人
+- **接口**: `PUT /api/clue/{id}/owner`
+- **权限**: `@PreAuthorize("hasAuthority('clue:transfer')")`
+- **流程**: `ClueController.transferOwner()` → `ClueServiceImpl.transferOwner()`
+  - 先按当前用户数据范围校验线索可访问。
+  - 目标负责人必须来自可用负责人列表。
+  - 更新 `t_clue.owner_id` 时校验旧负责人，避免并发覆盖。
+  - 写入 `t_clue_owner_history`，保留原负责人、新负责人、操作人、时间和原因。
+  - 记录 `CLUE_TRANSFER` 审计动作。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 查询线索责任历史
+- **接口**: `GET /api/clue/{id}/owner-history`
+- **权限**: `@PreAuthorize("hasAuthority('clue:view')")`
+- **流程**: `ClueController.getOwnerHistory()` → `ClueServiceImpl.getOwnerHistory()` → `TClueOwnerHistoryMapper.selectByClueId()`
+
+#### 关闭线索
+- **接口**: `PUT /api/clue/{id}/close`
+- **权限**: `@PreAuthorize("hasAuthority('clue:close')")`
+- **流程**: `ClueController.closeClue()` → `ClueServiceImpl.closeClue()` → `TClueMapper.updateStateAtomic()`
+  - 请求体必须提交关闭原因。
+  - 按当前用户数据范围校验线索可访问。
+  - 按 `t_dic_value.value_code` 解析 `converted` 与 `closed` 状态，已转客户线索不得关闭。
+  - 更新状态时校验旧状态，影响行数不是 1 时返回业务失败。
+  - 记录 `CLUE_CLOSE` 审计动作，审计摘要包含原因。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 恢复线索
+- **接口**: `PUT /api/clue/{id}/restore`
+- **权限**: `@PreAuthorize("hasAuthority('clue:restore')")`
+- **流程**: `ClueController.restoreClue()` → `ClueServiceImpl.restoreClue()` → `TClueMapper.updateStateAtomic()`
+  - 请求体必须提交恢复原因。
+  - 只有 `value_code=closed` 的线索可以恢复。
+  - 恢复前通过 `TClueMapper.countActiveByPhoneExcludingId()` 校验相同手机号是否存在其他活跃线索。
+  - 恢复目标状态按 `value_code=attempt_contact` 解析，不写死生产或测试字典 id。
+  - 记录 `CLUE_RESTORE` 审计动作，审计摘要包含原因。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 删除线索
@@ -303,6 +370,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 ### 4.3 涉及数据库表
 - `t_clue` - 线索表
 - `t_clue_remark` - 线索跟踪记录表
+- `t_clue_owner_history` - 线索责任归属历史表
 - `t_user` - 用户表（关联查询）
 - `t_activity` - 活动表（关联查询）
 - `t_dic_value` - 字典值表（关联查询）
@@ -319,9 +387,9 @@ dealer-server/src/main/java/com/autodealer/crm/
 | Controller | `web/CustomerController.java` |
 | Service | `service/CustomerService.java` → `service/impl/CustomerServiceImpl.java` |
 | Manager | `manager/CustomerManager.java` |
-| Mapper | `mapper/TCustomerMapper.java`, `mapper/TClueMapper.java` |
-| XML | `resources/mapper/TCustomerMapper.xml` |
-| Model | `model/TCustomer.java`, `model/CustomerOption.java` |
+| Mapper | `mapper/TCustomerMapper.java`, `mapper/TCustomerOwnerHistoryMapper.java`, `mapper/TClueMapper.java` |
+| XML | `resources/mapper/TCustomerMapper.xml`, `resources/mapper/TCustomerOwnerHistoryMapper.xml` |
+| Model | `model/TCustomer.java`, `model/TCustomerOwnerHistory.java` |
 | Query | `query/CustomerQuery.java` |
 | Excel | `result/CustomerExcel.java` |
 
@@ -330,7 +398,9 @@ dealer-server/src/main/java/com/autodealer/crm/
 #### 客户列表（带查询条件）
 - **接口**: `GET /api/customer/list?page=1&size=10`
 - **流程**: `CustomerController.list()` → `CustomerServiceImpl.getCustomerList()` → `TCustomerMapper.selectByQuery()`
-- **支持查询条件**: 客户名称、产品ID、创建人
+- **支持查询条件**: 客户名称、产品ID。
+- **数据来源**: 客户姓名、联系方式、来源、负责人和状态均来自 `t_customer` 主档字段；不再通过线索联表读取客户事实。
+- **敏感字段**: 手机号、微信等由后端按 `customer:sensitive:view` 权限脱敏。
 
 #### 客户选项（下拉选择）
 - **接口**: `GET /api/customer/options`
@@ -338,15 +408,32 @@ dealer-server/src/main/java/com/autodealer/crm/
 
 #### 客户详情
 - **接口**: `GET /api/customer/{id}`
-- **流程**: `CustomerController.detail()` → `CustomerServiceImpl.getCustomerById()` → `TCustomerMapper.selectByPrimaryKey()`
+- **流程**: `CustomerController.detail()` → `CustomerServiceImpl.getCustomerById()` → `TCustomerMapper.selectScopedById()`
+- **敏感字段**: 手机号、微信、QQ、邮箱和地址由后端按权限脱敏。
 
 #### 线索转客户（核心业务）
 - **接口**: `POST /api/clue/customer`
 - **流程**: `CustomerController.convertCustomer()` → `CustomerServiceImpl.convertCustomer()` → `CustomerManager.convertCustomer()`
-  1. 按当前用户数据范围将线索状态更新为已转客户，重复转化或越权返回失败。
-  2. `TCustomerMapper.insertSelective()` 插入客户记录，保留线索来源、意向产品、描述和下次跟进时间。
-  3. 转客户只创建客户事实，不自动创建交易、报价、订单、收款、发票或库存占用。
+  1. 按当前用户数据范围读取线索，客户主档复制姓名、电话、微信、来源、活动、意向、负责人等快照。
+  2. 创建前按有效联系方式进行重复客户检查；重复命中返回 `DUPLICATE`，越权重复不泄露敏感信息。
+  3. 按当前用户数据范围将线索状态更新为已转客户，重复转化或越权返回失败。
+  4. `TCustomerMapper.insertSelective()` 插入客户主档，`createBy` 记录操作人，`ownerId` 继承线索负责人。
+  5. 转客户只创建客户事实，不自动创建交易、报价、订单、收款、发票或库存占用。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 客户归属转移
+- **接口**: `PUT /api/customer/{id}/owner`
+- **流程**: `CustomerController.transferOwner()` → `CustomerServiceImpl.transferOwner()` → `TCustomerMapper.updateOwnerAtomic()` + `TCustomerOwnerHistoryMapper.insert()`
+- **规则**: 目标负责人必须是有效账号；转移原因必填；写入原负责人、新负责人、操作人和时间。
+
+#### 客户合并
+- **接口**: `POST /api/customer/{id}/merge`
+- **流程**: `CustomerController.mergeCustomer()` → `CustomerServiceImpl.mergeCustomer()`
+- **规则**: 迁移客户跟进、交易和报价引用；被合并客户标记为 `MERGED`，保留合并目标、原因、时间和操作人。
+
+#### 客户删除
+- **接口**: `DELETE /api/customer/{id}`
+- **规则**: 存在线索、跟进、报价、交易等业务关系时返回 `RESOURCE_IN_USE`，不物理删除。
 
 #### 客户分页查询（旧版）
 - **接口**: `GET /api/customers?current=1`
@@ -356,11 +443,14 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **接口**: `GET /api/exportExcel?ids=1,2,3`
 - **流程**: `CustomerController.exportExcel()` → `CustomerServiceImpl.getCustomerByExcel()` → `TCustomerMapper.selectCustomerByExcel()`
   - EasyExcel 写入 Excel
-  - 关联查询线索、用户、活动、字典值、产品信息
+  - 查询客户主档、用户、活动、字典值、产品信息
+  - 导出范围受当前用户数据范围限制，数量上限为 10000 条，敏感字段按权限脱敏。
 
 ### 5.3 涉及数据库表
-- `t_customer` - 客户表
-- `t_clue` - 线索表（关联）
+- `t_customer` - 客户主档表
+- `t_customer_owner_history` - 客户归属转移历史表
+- `t_customer_remark` - 客户跟进记录表
+- `t_clue` - 线索表（只保留历史关联，不作为客户事实来源）
 
 ---
 
@@ -435,21 +525,31 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **接口**: `POST /api/tran/invoice`
 - **流程**: `TranController.createInvoice()` → `TranServiceImpl.createTranInvoice()`
   1. 生成发票号码（INV + 年月日 + 6位随机数）
-  2. `TTranInvoiceMapper.insertSelective()` 插入发票
-  3. 发票创建只写发票事实，不更新交易阶段
+  2. 锁定交易行后按可开票余额校验，允许同一交易部分开票和多张发票
+  3. `TTranInvoiceMapper.insertSelective()` 插入待开具发票
+  4. 发票创建只写发票事实，不更新交易阶段
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 获取发票列表
 - **接口**: `GET /api/tran/invoice/{tranId}`
 - **流程**: → `TranServiceImpl.getTranInvoices()` → `TTranInvoiceMapper.selectByTranId()`
+- **权限**: 无 `tran:invoice:sensitive` 权限时，税号、银行账号、地址和电话由后端脱敏后返回。
 
 #### 更新发票状态
 - **接口**: `PUT /api/tran/invoice/{invoiceId}/status`
 - **流程**: → `TranServiceImpl.updateTranInvoiceStatus()`
   - 发票状态变为 `ISSUED` 时，只更新发票为已开具。
-  - 发票状态变为 `VOID` 时，只更新发票为已作废。
+  - 发票状态变为 `FAILED` 或 `VOIDED` 时，必须记录原因，只更新发票事实。
   - 发票状态不得覆盖收款状态、交付状态或交易履约阶段。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 红冲和重开
+- **红冲接口**: `POST /api/tran/invoice/{invoiceId}/red-reversal`
+- **重开接口**: `POST /api/tran/invoice/{invoiceId}/reissue`
+- **流程**:
+  - 红冲创建负数红字发票并通过 `original_invoice_id` 关联原票，原票状态标记为 `PARTIAL_RED_REVERSED` 或 `RED_REVERSED`。
+  - 重开基于作废或红冲事实创建新的 `PENDING` 发票记录并关联来源发票。
+  - 红冲恢复的可开票余额只来自已完成红冲负数发票。
 
 #### 登记收款
 - **接口**: `POST /api/tran/payment`
@@ -474,9 +574,10 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **接口**: `POST /api/tran/payment/{id}/refund-requests`、`PUT /api/tran/refund-requests/{id}/approve`、`POST /api/tran/refund-requests/{id}/execute`
 - **流程**: → `TranServiceImpl.createRefundRequest()/approveRefundRequest()/executeRefundRequest()`
   - 退款必须先基于已确认原收款创建申请，申请记录保留退款原因、金额、申请人和状态。
-  - 可退金额由已确认原收款、已完成退款和待审批/已审批冻结退款共同计算，超额返回冲突或参数错误。
+  - 可退金额由已确认原收款、已完成退款和待审批/待执行/执行中冻结退款共同计算，超额返回冲突或参数错误。
   - 审批通过后进入待执行，驳回保留申请和驳回原因。
-  - 执行退款只新增负数退款流水并把退款申请标记为 `EXECUTED`。
+  - 执行退款成功时先标记 `EXECUTING`，再新增负数退款流水并把退款申请标记为 `COMPLETED`。
+  - 执行退款失败时把退款申请标记为 `FAILED` 并保留失败原因，不生成退款流水。
   - 原收款保留原始金额、渠道、凭证和 `COMPLETED` 确认状态；退款执行不直接取消交易、不释放库存。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
@@ -489,20 +590,21 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **流程**: → `TranServiceImpl.getTransactionProductDetails()` → `TTranMapper.selectTranProductsByTranId()`
 - **历史展示**: 返回 `t_tran_product` 中保存的商品编码、名称、配置和指导价快照，不再联表读取当前 `t_product.name`。
 
-#### 删除交易
-- **接口**: `DELETE /api/tran/{id}`
-- **流程**: → `TranServiceImpl.deleteTransaction()`
-  1. 校验交易仍处于待报价阶段
-  2. 删除交易产品关联
-  3. 删除交易备注、发票、审批、退款申请和收款记录
-  4. 删除交易主记录
-  5. 清除缓存
+#### 取消或关闭交易
+- **接口**: `PUT /api/tran/{id}/cancel`、`PUT /api/tran/{id}/close`
+- **流程**: → `TranServiceImpl.cancelTransaction()/closeTransaction()`
+  1. 请求体必须提交取消或关闭原因。
+  2. 使用交易行锁读取当前交易，并按旧状态做 CAS 更新。
+  3. 已完成、已取消或已关闭交易不得再次进入其他终态。
+  4. 存在已确认收款、待确认收款、处理中退款、待处理发票或待交付阶段关闭时返回状态冲突。
+  5. 写入 `t_tran_history.reason` 保留操作原因，并记录审计日志。
+  6. 只更新交易终态，不删除商品快照、备注、审批、收款、退款或发票事实。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
-#### 批量删除交易
-- **接口**: `POST /api/tran/batch-delete`
-- **流程**: → `TranServiceImpl.batchDeleteTransactions()`
-- **事务**: `@Transactional(rollbackFor = Exception.class)`
+#### 废弃删除入口
+- **接口**: `DELETE /api/tran/{id}`、`POST /api/tran/batch-delete`
+- **流程**: → `TranServiceImpl.deleteTransaction()/batchDeleteTransactions()`
+- **行为**: 交易历史不再允许物理删除；旧删除和批量删除入口保留兼容路径，但统一返回状态冲突，前端不得再作为正常业务入口使用。
 
 ### 6.4 Redis 缓存
 
@@ -526,9 +628,82 @@ dealer-server/src/main/java/com/autodealer/crm/
 
 ---
 
-## 7. 市场活动模块
+## 7. 报价订单模块
 
 ### 7.1 文件路径
+
+| 层级 | 文件路径 |
+|------|----------|
+| Controller | `web/QuoteController.java` |
+| Service | `service/QuoteService.java` → `service/impl/QuoteServiceImpl.java` |
+| Mapper | `mapper/TQuoteMapper.java`, `mapper/TQuoteVersionMapper.java`, `mapper/TQuoteVersionItemMapper.java`, `mapper/TQuoteStatusHistoryMapper.java` |
+| XML | `resources/mapper/TQuoteMapper.xml`, `resources/mapper/TQuoteVersionMapper.xml`, `resources/mapper/TQuoteVersionItemMapper.xml`, `resources/mapper/TQuoteStatusHistoryMapper.xml` |
+| Model | `model/TQuote.java`, `model/TQuoteVersion.java`, `model/TQuoteVersionItem.java`, `model/TQuoteStatusHistory.java` |
+| DTO | `dto/CreateQuoteRequest.java`, `dto/CreateQuoteVersionRequest.java`, `dto/UpdateQuoteStatusRequest.java`, `dto/QuoteDetailResponse.java` |
+| Query | `query/QuoteQuery.java` |
+
+### 7.2 报价状态流转
+
+报价状态使用稳定英文编码，前端只能做中文展示映射，不能提交或判断中文状态：
+
+```text
+DRAFT → PENDING_SUBMIT → PENDING_APPROVAL → PENDING_CUSTOMER_CONFIRMATION
+PENDING_APPROVAL → REJECTED → DRAFT
+PENDING_CUSTOMER_CONFIRMATION → ACCEPTED / REFUSED / EXPIRED
+ACCEPTED → CONVERTED_TO_ORDER
+任一未终态报价可 VOIDED
+```
+
+### 7.3 接口方法及业务流程
+
+#### 报价列表
+- **接口**: `GET /api/quotes?page=1&size=10`
+- **流程**: `QuoteController.list()` → `QuoteServiceImpl.getQuotePage()` → `TQuoteMapper.selectByQuery()`
+- **数据范围**: 通过客户关联线索负责人过滤，未授权客户的报价不可见。
+
+#### 报价详情
+- **接口**: `GET /api/quotes/{id}`
+- **流程**: `QuoteController.detail()` → `QuoteServiceImpl.getQuoteDetail()` → 报价、当前版本和版本行项查询。
+
+#### 创建报价
+- **接口**: `POST /api/quotes`
+- **流程**: `QuoteController.create()` → `QuoteServiceImpl.createQuote()`
+  1. 校验客户数据范围。
+  2. 校验商品处于 `ON_SALE`。
+  3. 服务端按商品主档价格计算总额并保存商品编码、名称、配置和价格快照。
+  4. 创建报价主档、版本 1、版本行项和状态历史。
+- **库存边界**: 创建报价不扣减、不占用库存。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 创建报价版本
+- **接口**: `POST /api/quotes/{id}/versions`
+- **流程**: `QuoteController.createVersion()` → `QuoteServiceImpl.createVersion()`
+  - 草稿报价覆盖当前版本行项。
+  - 非草稿且未转订单报价创建新版本，并把报价重置为 `DRAFT`。
+  - 已转订单报价禁止继续改版。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 报价状态变更
+- **接口**: `PUT /api/quotes/{id}/status`
+- **流程**: `QuoteController.updateStatus()` → `QuoteServiceImpl.transitionStatus()`
+  - 请求必须提交 `expectedStatus` 和 `targetStatus` 稳定编码。
+  - 服务端校验当前状态、合法迁移和影响行数，使用 CAS 更新。
+  - 状态变化写入 `t_quote_status_history`，并记录审计动作。
+- **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+### 7.4 涉及数据库表
+- `t_quote` - 报价主档表
+- `t_quote_version` - 报价版本表
+- `t_quote_version_item` - 报价版本行项快照表
+- `t_quote_status_history` - 报价状态历史表
+- `t_customer` - 客户表
+- `t_product` - 商品主档表
+
+---
+
+## 8. 市场活动模块
+
+### 8.1 文件路径
 
 | 层级 | 文件路径 |
 |------|----------|
@@ -539,7 +714,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 | Model | `model/TActivity.java`, `model/TActivityRemark.java` |
 | Query | `query/ActivityQuery.java`, `query/ActivityRemarkQuery.java` |
 
-### 7.2 接口方法及业务流程
+### 8.2 接口方法及业务流程
 
 #### 活动列表分页查询
 - **接口**: `GET /api/activitys?current=1`
@@ -578,26 +753,26 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **编辑**: `PUT /api/activity/remark` → `TActivityRemarkMapper.updateByPrimaryKeySelective()`
 - **删除**: `DELETE /api/activity/remark/{id}` → 逻辑删除（设置 deleted=1）
 
-### 7.3 涉及数据库表
+### 8.3 涉及数据库表
 - `t_activity` - 市场活动表
 - `t_activity_remark` - 活动备注表
 - `t_user` - 用户表（关联查询）
 
 ---
 
-## 8. 商品管理模块
+## 9. 商品管理模块
 
-### 8.1 文件路径
+### 9.1 文件路径
 
 | 层级 | 文件路径 |
 |------|----------|
 | Controller | `web/ProductController.java`, `web/ProductCategoryController.java`, `web/ProductPromotionController.java`, `web/ProductStockController.java` |
-| Service | `service/ProductService.java` → `service/impl/ProductServiceImpl.java`, `service/ProductCategoryService.java` → `service/impl/ProductCategoryServiceImpl.java`, `service/ProductPromotionService.java` → `service/impl/ProductPromotionServiceImpl.java`, `service/ProductStockRecordService.java` → `service/impl/ProductStockRecordServiceImpl.java` |
-| Mapper | `mapper/ProductMapper.java`, `mapper/ProductCategoryMapper.java`, `mapper/ProductPromotionMapper.java`, `mapper/ProductStockRecordMapper.java` |
-| XML | `resources/mapper/TProductMapper.xml`, `resources/mapper/TProductCategoryMapper.xml`, `resources/mapper/TProductPromotionMapper.xml`, `resources/mapper/TProductStockRecordMapper.xml` |
-| Model | `model/Product.java`, `model/ProductCategory.java`, `model/ProductPromotion.java`, `model/ProductStockRecord.java`, `model/TProduct.java` |
+| Service | `service/ProductService.java` → `service/impl/ProductServiceImpl.java`, `service/ProductCategoryService.java` → `service/impl/ProductCategoryServiceImpl.java`, `service/ProductPromotionService.java` → `service/impl/ProductPromotionServiceImpl.java`, `service/ProductStockRecordService.java` → `service/impl/ProductStockRecordServiceImpl.java`, `service/ProductVehicleService.java` → `service/impl/ProductVehicleServiceImpl.java` |
+| Mapper | `mapper/ProductMapper.java`, `mapper/ProductCategoryMapper.java`, `mapper/ProductPromotionMapper.java`, `mapper/ProductStockRecordMapper.java`, `mapper/TProductVehicleMapper.java` |
+| XML | `resources/mapper/TProductMapper.xml`, `resources/mapper/TProductCategoryMapper.xml`, `resources/mapper/TProductPromotionMapper.xml`, `resources/mapper/TProductStockRecordMapper.xml`, `resources/mapper/TProductVehicleMapper.xml` |
+| Model | `model/Product.java`, `model/ProductCategory.java`, `model/ProductPromotion.java`, `model/ProductStockRecord.java`, `model/TProduct.java`, `model/TProductVehicle.java`, `model/TProductStockRecord.java` |
 
-### 8.2 接口方法及业务流程
+### 9.2 接口方法及业务流程
 
 #### 产品管理
 | 接口 | 方法 | 事务 |
@@ -640,8 +815,12 @@ dealer-server/src/main/java/com/autodealer/crm/
 |------|------|------|
 | `POST /api/productstock/restock` | 入库 | `@Transactional` |
 | `GET /api/productstock/records/{productId}` | 库存变动记录 | 无 |
+| `GET /api/productstock/vehicles` | 库存车辆实例列表 | 无 |
+| `POST /api/productstock/vehicles` | 库存车辆实例入库 | `@Transactional` |
+| `POST /api/productstock/vehicles/{vehicleId}/reserve` | 占用库存车辆实例 | `@Transactional` |
+| `POST /api/productstock/vehicles/{vehicleId}/release` | 释放库存车辆实例占用 | `@Transactional` |
 
-### 8.3 入库业务流程
+### 9.3 入库业务流程
 ```
 ProductStockController.restock()
 → ProductServiceImpl.restock()
@@ -649,17 +828,20 @@ ProductStockController.restock()
   → ProductStockRecordMapper.insert() 记录库存变动
 ```
 
-### 8.4 涉及数据库表
+库存车辆实例由 `ProductVehicleServiceImpl` 维护，车辆 VIN 使用唯一约束。实例入库会创建 `t_product_vehicle` 的 `AVAILABLE` 车辆、增加商品库存汇总并写入 `INBOUND` 流水；占用会在事务内锁定车辆实例，校验旧状态为 `AVAILABLE` 后通过 CAS 改为 `ORDER_RESERVED`、`TEST_DRIVE_RESERVED` 或 `SALES_LOCKED`，扣减商品库存汇总并写入 `RESERVE` 流水；释放必须引用原占用流水，重复释放按原流水幂等返回当前车辆，不重复增加库存。
+
+### 9.4 涉及数据库表
 - `t_product` - 产品表
 - `t_product_category` - 产品分类表
 - `t_product_promotion` - 产品促销表
-- `t_product_stock_record` - 库存变动记录表
+- `t_product_vehicle` - 库存车辆实例表，记录 VIN、库位、实例状态和业务来源
+- `t_product_stock_record` - 库存变动记录表，记录入库、占用、释放和调整流水，关联车辆实例与原占用流水
 
 ---
 
-## 9. 字典管理模块
+## 10. 字典管理模块
 
-### 9.1 文件路径
+### 10.1 文件路径
 
 | 层级 | 文件路径 |
 |------|----------|
@@ -670,7 +852,7 @@ ProductStockController.restock()
 | Model | `model/TDicType.java`, `model/TDicValue.java` |
 | Query | `query/DicQuery.java` |
 
-### 9.2 接口方法及业务流程
+### 10.2 接口方法及业务流程
 
 #### 字典类型管理
 | 接口 | 方法 | 事务 | 缓存 |
@@ -698,7 +880,7 @@ ProductStockController.restock()
 | `GET /api/dict/clear?forceRefresh=true` | 清除缓存 | `@PreAuthorize("hasAuthority('admin')")` |
 | `GET /api/dict/refresh?type=type\|value` | 刷新缓存 | 无 |
 
-### 9.3 删除字典类型的级联逻辑
+### 10.3 删除字典类型的级联逻辑
 ```
 deleteDicType(id):
   1. 获取字典类型代码 typeCode
@@ -708,7 +890,7 @@ deleteDicType(id):
   5. 删除字典类型 (t_dic_type)
 ```
 
-### 9.4 涉及数据库表
+### 10.4 涉及数据库表
 - `t_dic_type` - 字典类型表
 - `t_dic_value` - 字典值表
 - `t_tran_remark` - 交易备注表（级联删除）
@@ -962,22 +1144,11 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 删除所有 dic:type:*, dic:value:*, dic:list:* 缓存
 ```
 
-### 16.4 Excel 导入时的字典缓存
+### 16.4 Excel 导入时的数据解析
 
-**DlykServerApplication.cacheMap**:
-- 应用启动时加载字典数据到内存 Map
-- Excel 导入时通过 Converter 从 cacheMap 查询字典值 ID
+Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。当前流程由 `ClueServiceImpl.importExcel()` 使用 EasyExcel 读取 `ClueExcelRaw`，再由 `ClueImportValidator` 一次性加载字典、负责人、活动和商品映射，逐行做公式前缀拦截、手机号归一化、必填校验、字典转换、同文件查重和对象转换。
 
-**Converter 列表**:
-| Converter | 转换内容 |
-|-----------|---------|
-| `AppellationConverter` | 称呼：先生/女士 → ID |
-| `SourceConverter` | 线索来源：车展会/网络广告 → ID |
-| `IntentionStateConverter` | 意向状态：意向不明/有意向 → ID |
-| `NeedLoanConverter` | 是否需要贷款：需要/不需要 → ID |
-| `StateConverter` | 线索状态：已联系/未联系 → ID |
-| `IntentionProductConverter` | 意向产品：产品名 → ID |
-| `ClueExcelConverter` | Excel 行数据 → TClue 对象 |
+导入结果使用 `ImportResult` 返回总行数、有效行数、失败行数、成功导入行数和行级错误。存在失败行时接口返回 HTTP 422，但合法行可以已经导入成功，前端必须展示 `importedCount` 和错误明细。
 
 ---
 
@@ -992,6 +1163,7 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `selectClueByCount` | SELECT | 按当前数据范围统计线索总数 |
 | `selectDetailById` | SELECT | 线索详情（多表关联） |
 | `selectByPrimaryKey` | SELECT | 按主键查询 |
+| `selectScopedByPrimaryKey` | SELECT | 按主键和当前数据范围查询 |
 | `selectBySource` | SELECT | 按当前数据范围和来源分组统计（饼图） |
 | `deleteByPrimaryKey` | DELETE | 删除线索 |
 | `saveClue` | INSERT | 批量保存线索（Excel 导入） |
@@ -1000,6 +1172,12 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新线索 |
 | `updateByPrimaryKey` | UPDATE | 全字段更新线索 |
 | `batchDeleteByIds` | DELETE | 批量删除线索 |
+| `updateStateToConverted` | UPDATE | 原子标记线索已转客户 |
+| `updateOwnerAtomic` | UPDATE | 原子转派线索负责人 |
+| `updateStateAtomic` | UPDATE | 原子迁移线索状态并校验旧状态 |
+| `selectExistingPhones` | SELECT | 导入前批量查询数据库已有手机号 |
+| `countActiveByPhoneExcludingId` | SELECT | 恢复线索前检查相同手机号活跃线索 |
+| `countByIntentionProductId` | SELECT | 检查商品是否被线索意向引用 |
 
 ### 17.2 TCustomerMapper.xml (t_customer)
 
@@ -1011,6 +1189,14 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `selectByPrimaryKey` | SELECT | 按主键查询 |
 | `selectByQuery` | SELECT | 按条件查询客户 |
 | `selectCustomerOptions` | SELECT | 客户选项（下拉框） |
+| `countActiveDuplicateContacts` | SELECT | 有效联系方式重复检查 |
+| `selectVisibleDuplicateSummaries` | SELECT | 可见范围内重复客户安全摘要 |
+| `updateOwnerAtomic` | UPDATE | 原子转移客户负责人 |
+| `markMerged` | UPDATE | 标记被合并客户 |
+| `reassignCustomerRemarks` | UPDATE | 合并时迁移客户跟进 |
+| `reassignTransactions` | UPDATE | 合并时迁移交易 |
+| `reassignQuotes` | UPDATE | 合并时迁移报价 |
+| `countBusinessReferences` | SELECT | 删除前业务引用计数 |
 | `deleteByPrimaryKey` | DELETE | 删除客户 |
 | `insert` | INSERT | 插入客户 |
 | `insertSelective` | INSERT | 选择性插入客户 |
@@ -1045,8 +1231,15 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `selectDetailById` | SELECT | 用户详情（关联创建人/编辑人） |
 | `selectByOwner` | SELECT | 查询所有用户（负责人列表） |
 | `selectByPrimaryKey` | SELECT | 按主键查询 |
-| `deleteByPrimaryKey` | DELETE | 删除用户 |
-| `deleteByIds` | DELETE | 批量删除用户 |
+| `countBusinessReferences` | SELECT | 禁用前统计当前责任引用 |
+| `selectOwnedActivityIds` | SELECT | 查询待交接活动 ID |
+| `selectOwnedClueIds` | SELECT | 查询待交接线索 ID |
+| `selectOwnedCustomerIds` | SELECT | 查询待交接客户 ID |
+| `transferOwnedActivities` | UPDATE | 批量交接活动负责人 |
+| `transferOwnedClues` | UPDATE | 批量交接线索负责人 |
+| `transferOwnedCustomers` | UPDATE | 批量交接客户负责人 |
+| `deleteByPrimaryKey` | DELETE | 旧物理删除方法，不用于离职处理 |
+| `deleteByIds` | DELETE | 旧批量物理删除方法，不用于离职处理 |
 | `insert` | INSERT | 插入用户 |
 | `insertSelective` | INSERT | 选择性插入用户 |
 | `updateByPrimaryKeySelective` | UPDATE | 选择性更新用户 |
@@ -1169,7 +1362,8 @@ RedisManager (Redis)  ←→  DicMapper (MySQL)
 | `t_role_permission` | 角色权限关联表 | id, role_id, permission_id |
 | `t_clue` | 线索表 | id, owner_id, activity_id, full_name, phone, state, source |
 | `t_clue_remark` | 线索跟踪记录表 | id, clue_id, note_way, note_content |
-| `t_customer` | 客户表 | id, clue_id, product, description |
+| `t_customer` | 客户主档表 | id, clue_id, owner_id, customer_name, phone, source, original_clue_source, customer_status, product, description |
+| `t_customer_owner_history` | 客户归属转移历史表 | id, customer_id, from_owner_id, to_owner_id, reason, operator_id, transfer_time |
 | `t_customer_remark` | 客户跟踪记录表 | id, customer_id, note_way, note_content |
 | `t_tran` | 交易表 | id, tran_no, customer_id, money, stage |
 | `t_tran_product` | 交易产品关联表 | id, tran_id, product_id, quantity, price, product_sku, product_name, product_specification, guide_price |

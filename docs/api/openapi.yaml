@@ -29,6 +29,8 @@ tags:
     description: 促销政策
   - name: ProductStock
     description: 商品库存调整记录
+  - name: Quote
+    description: 报价、报价版本和报价状态
   - name: Transaction
     description: 交易、结算、审批、发票、收款和退款
   - name: Statistic
@@ -166,6 +168,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -397,6 +401,45 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/user/{id}/handover:
+    put:
+      tags: [User]
+      operationId: handoverUserResponsibilities
+      summary: 交接用户当前负责业务对象
+      description: 将原负责人当前负责的活动、线索和客户整体交接给有效销售负责人；商机、试驾、跟进任务等对象由对应业务域落地负责人字段后纳入。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HandoverUserResponsibilitiesRequest"
+      responses:
+        "200":
+          description: 交接成功。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/HandoverUserResponsibilitiesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/clues:
     get:
       tags: [Clue]
@@ -420,6 +463,7 @@ paths:
       tags: [Clue]
       operationId: importCluesFromExcel
       summary: 导入线索 Excel
+      description: 导入逐行校验并归一化手机号；同文件或数据库中归一化后重复的手机号返回行级错误摘要。存在失败行时返回 422，但合法行可以通过 importedCount 表示已成功导入。
       requestBody:
         required: true
         content:
@@ -451,7 +495,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "422":
-          description: 文件可解析但存在行级导入错误，data 返回 ImportResult。
+          description: 文件可解析但存在行级导入错误，data 返回 ImportResult；合法行可能已经导入成功。
           content:
             application/json:
               schema:
@@ -469,7 +513,7 @@ paths:
       tags: [Clue]
       operationId: createClue
       summary: 新增线索
-      description: 手机号由生产和测试 Schema 的唯一约束兜底；并发重复手机号返回 409 DUPLICATE。
+      description: 手机号先去除空格、横杠和括号等常见分隔符，再由生产和测试 Schema 的唯一约束兜底；并发重复手机号返回 409 DUPLICATE。
       requestBody:
         required: true
         content:
@@ -532,7 +576,7 @@ paths:
           required: true
           schema:
             type: string
-          description: 手机号。
+          description: 手机号；服务端按常见分隔符归一化后检查是否可用。
       responses:
         "200":
           $ref: "#/components/responses/EmptyOk"
@@ -579,13 +623,127 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/ClueObject"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/{id}/owner:
+    put:
+      tags: [Clue]
+      operationId: transferClueOwner
+      summary: 转派线索负责人
+      description: 转派必须提交目标负责人和原因；后端校验数据范围、目标负责人资格并写入责任历史。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferClueOwnerRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/{id}/owner-history:
+    get:
+      tags: [Clue]
+      operationId: listClueOwnerHistory
+      summary: 查询线索责任历史
+      description: 查询前按当前用户数据范围校验线索访问权限。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/ClueOwnerHistoryArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/{id}/close:
+    put:
+      tags: [Clue]
+      operationId: closeClue
+      summary: 关闭线索
+      description: 关闭必须提交原因；后端校验数据范围、当前状态和影响行数，并写入操作审计。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClueLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/clue/{id}/restore:
+    put:
+      tags: [Clue]
+      operationId: restoreClue
+      summary: 恢复线索
+      description: 恢复必须提交原因；后端校验数据范围、关闭状态、重复活跃线索和影响行数，并写入操作审计。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClueLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -673,7 +831,7 @@ paths:
             format: int64
       responses:
         "200":
-          $ref: "#/components/responses/PageOk"
+          $ref: "#/components/responses/CustomerPageOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -688,18 +846,7 @@ paths:
       summary: 查询客户下拉选项
       responses:
         "200":
-          description: 查询成功，data 为交易商品历史快照数组。
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/R"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/TranProduct"
+          $ref: "#/components/responses/CustomerOptionArrayOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -716,13 +863,97 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/CustomerDetailObject"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [Customer]
+      operationId: deleteCustomer
+      summary: 删除无业务关系客户
+      description: 删除前检查线索、跟进、报价、交易等业务关系；存在任一引用时返回 422 RESOURCE_IN_USE，不物理删除。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/customer/{id}/owner:
+    put:
+      tags: [Customer]
+      operationId: transferCustomerOwner
+      summary: 转移客户负责人
+      description: 按当前用户数据范围校验客户，目标负责人必须有效，转移原因必填，并写入客户归属历史。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferCustomerOwnerRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/EmptyOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/customer/{id}/merge:
+    post:
+      tags: [Customer]
+      operationId: mergeCustomer
+      summary: 合并重复客户
+      description: 将被合并客户的跟进、交易和报价迁移到主客户，被合并客户标记为 MERGED 并保留合并事实。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergeCustomerRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/CustomerMergeObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -750,7 +981,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          $ref: "#/components/responses/Conflict"
+          $ref: "#/components/responses/CustomerDuplicateConflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -798,6 +1029,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -897,7 +1130,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/SummaryDataOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1756,6 +1989,130 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/productstock/vehicles:
+    get:
+      tags: [ProductStock]
+      operationId: listProductVehicles
+      summary: 查询库存车辆实例
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ProductVehicleStatus"
+        - name: vin
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [ProductStock]
+      operationId: inboundProductVehicle
+      summary: 登记库存车辆实例入库
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductVehicleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ProductVehicleObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/productstock/vehicles/{vehicleId}/reserve:
+    post:
+      tags: [ProductStock]
+      operationId: reserveProductVehicle
+      summary: 占用库存车辆实例
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReserveProductVehicleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ProductVehicleObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/productstock/vehicles/{vehicleId}/release:
+    post:
+      tags: [ProductStock]
+      operationId: releaseProductVehicle
+      summary: 释放库存车辆实例占用
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReleaseProductVehicleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ProductVehicleObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/productstock/records/{productId}:
     get:
       tags: [ProductStock]
@@ -1779,6 +2136,157 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/quotes:
+    get:
+      tags: [Quote]
+      operationId: listQuotes
+      summary: 分页查询报价
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: quoteNo
+          in: query
+          schema:
+            type: string
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/QuoteStatus"
+      responses:
+        "200":
+          $ref: "#/components/responses/PageOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Quote]
+      operationId: createQuote
+      summary: 创建报价草稿和首个版本
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/QuoteDetailObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/quotes/{id}:
+    get:
+      tags: [Quote]
+      operationId: getQuoteDetail
+      summary: 查询报价详情和当前版本快照
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/QuoteDetailObject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/quotes/{id}/versions:
+    get:
+      tags: [Quote]
+      operationId: listQuoteVersions
+      summary: 查询报价版本历史
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      responses:
+        "200":
+          $ref: "#/components/responses/QuoteVersionArrayOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Quote]
+      operationId: createQuoteVersion
+      summary: 生成报价版本
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteVersionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/QuoteDetailObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/quotes/{id}/status:
+    put:
+      tags: [Quote]
+      operationId: updateQuoteStatus
+      summary: 按状态机推进报价状态
+      parameters:
+        - $ref: "#/components/parameters/LongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQuoteStatusRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/QuoteObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1863,6 +2371,8 @@ paths:
       tags: [Transaction]
       operationId: deleteTransaction
       summary: 删除交易
+      deprecated: true
+      description: 交易历史不再允许物理删除；该入口返回 409，请使用取消或关闭命令。
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -1993,7 +2503,7 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/ArrayOk"
+          $ref: "#/components/responses/TransactionPaymentArrayOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2127,7 +2637,7 @@ paths:
         - $ref: "#/components/parameters/TranId"
       responses:
         "200":
-          $ref: "#/components/responses/ArrayOk"
+          $ref: "#/components/responses/TransactionInvoiceArrayOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2142,7 +2652,7 @@ paths:
       tags: [Transaction]
       operationId: updateTransactionInvoiceStatus
       summary: 更新交易发票状态
-      description: 仅更新发票处理状态；ISSUED、VOID 不得推进或回退交易履约阶段。
+      description: 仅更新发票处理状态；ISSUED、FAILED、VOIDED 不得推进或回退交易履约阶段。FAILED、VOIDED 必须提交原因。
       parameters:
         - name: invoiceId
           in: path
@@ -2158,6 +2668,74 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/BooleanOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/invoice/{invoiceId}/red-reversal:
+    post:
+      tags: [Transaction]
+      operationId: redReverseTransactionInvoice
+      summary: 红冲交易发票
+      description: 创建负数红字发票记录并关联原票；原票保留并标记为部分红冲或已红冲，不更新交易履约阶段。
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedReverseInvoiceRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TransactionInvoiceObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/invoice/{invoiceId}/reissue:
+    post:
+      tags: [Transaction]
+      operationId: reissueTransactionInvoice
+      summary: 重开交易发票
+      description: 基于作废或红冲事实创建新的待开票记录并关联原票，不覆盖历史发票事实。
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReissueInvoiceRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/TransactionInvoiceObject"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2214,6 +2792,8 @@ paths:
       tags: [Transaction]
       operationId: batchDeleteTransactions
       summary: 批量删除交易
+      deprecated: true
+      description: 交易历史不再允许批量物理删除；该入口返回 409，请逐笔取消或关闭交易。
       requestBody:
         $ref: "#/components/requestBodies/BatchIds"
       responses:
@@ -2229,6 +2809,66 @@ paths:
           $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/Unprocessable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/{id}/cancel:
+    put:
+      tags: [Transaction]
+      operationId: cancelTransaction
+      summary: 取消交易
+      description: 取消交易必须提交原因；存在收款、待确认收款、退款处理中或未处理发票事实时返回 409，不删除历史记录。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/BooleanOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tran/{id}/close:
+    put:
+      tags: [Transaction]
+      operationId: closeTransaction
+      summary: 关闭交易
+      description: 关闭交易必须提交原因；关闭只写交易终态和历史原因，不删除审批、收款、发票、商品或备注事实。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionLifecycleRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/BooleanOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -2267,7 +2907,7 @@ paths:
               $ref: "#/components/schemas/CreatePaymentRequest"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/RefundRequestObject"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2299,7 +2939,7 @@ paths:
               $ref: "#/components/schemas/ConfirmPaymentRequest"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/RefundRequestObject"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2445,7 +3085,7 @@ paths:
       tags: [Transaction]
       operationId: executeTransactionRefundRequest
       summary: 执行退款
-      description: 仅执行已审批退款申请，新增负数退款流水并将退款申请标记为 EXECUTED；不覆盖原收款确认状态，不直接取消交易或释放库存。
+      description: 仅执行待执行退款申请；成功时先记录 EXECUTING 再新增负数退款流水并把申请标记为 COMPLETED，失败时标记为 FAILED 并保留失败原因；重复执行已完成或已失败申请返回当前申请状态，不覆盖原收款确认状态，不直接取消交易或释放库存。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -2456,7 +3096,7 @@ paths:
               $ref: "#/components/schemas/ExecuteRefundRequest"
       responses:
         "200":
-          $ref: "#/components/responses/ObjectOk"
+          $ref: "#/components/responses/RefundRequestObject"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2641,6 +3281,28 @@ components:
                   data:
                     type: object
                     additionalProperties: true
+    SummaryDataOk:
+      description: 查询成功，data 为经营摘要指标。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/SummaryData"
+    ClueObject:
+      description: 查询成功，data 为线索详情。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Clue"
     ArrayOk:
       description: 查询成功，data 为数组。
       content:
@@ -2655,6 +3317,19 @@ components:
                     items:
                       type: object
                       additionalProperties: true
+    ClueOwnerHistoryArrayOk:
+      description: 查询成功，data 为线索责任历史数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ClueOwnerHistory"
     NameValueArrayOk:
       description: 查询成功，data 为名称数值数组。
       content:
@@ -2679,6 +3354,70 @@ components:
                 properties:
                   data:
                     $ref: "#/components/schemas/PageInfo"
+    CustomerPageOk:
+      description: 分页查询成功，data.list 为客户列表响应；敏感字段由后端按权限脱敏。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PageInfo"
+                      - type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/CustomerListResponse"
+    CustomerOptionArrayOk:
+      description: 查询成功，data 为客户下拉选项数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CustomerOption"
+    CustomerDetailObject:
+      description: 查询成功，data 为客户详情；敏感字段由后端按权限脱敏。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/CustomerDetailResponse"
+    CustomerMergeObject:
+      description: 合并成功，data 为本次迁移数量。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/CustomerMergeResponse"
+    CustomerDuplicateConflict:
+      description: 客户联系方式疑似重复；越权重复只返回 hiddenConflict，不泄露客户敏感信息。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ErrorR"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/CustomerDuplicateResponse"
     UserObject:
       description: 查询成功，data 为当前用户对象。
       content:
@@ -2701,6 +3440,124 @@ components:
                 properties:
                   data:
                     $ref: "#/components/schemas/UserDetailResponse"
+    ProductVehicleObject:
+      description: 库存车辆实例命令成功，data 为车辆实例当前状态。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ProductVehicle"
+    QuoteObject:
+      description: 报价状态命令成功，data 为报价对象。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Quote"
+    QuoteDetailObject:
+      description: 报价命令或详情查询成功，data 为报价详情。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/QuoteDetail"
+    QuoteVersionArrayOk:
+      description: 查询成功，data 为报价版本数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/QuoteVersion"
+    TransactionPaymentObject:
+      description: 收款命令成功，data 为收款或退款流水。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/TransactionPayment"
+    TransactionPaymentArrayOk:
+      description: 查询成功，data 为收款退款流水数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TransactionPayment"
+    RefundRequestObject:
+      description: 退款申请命令成功，data 为退款申请当前状态。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/RefundRequest"
+    RefundRequestArrayOk:
+      description: 查询成功，data 为退款申请数组。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RefundRequest"
+    TransactionInvoiceObject:
+      description: 发票命令成功，data 为交易发票当前记录。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/TransactionInvoice"
+    TransactionInvoiceArrayOk:
+      description: 查询成功，data 为交易发票数组；无敏感权限时税号、账号、地址、电话等字段由后端脱敏。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TransactionInvoice"
     BadRequest:
       description: 请求参数错误。
       content:
@@ -2797,6 +3654,7 @@ components:
           type: string
         phone:
           type: string
+          description: 手机号；服务端会去除空格、横杠和括号等常见分隔符后按大陆手机号校验和存储。
         email:
           type: string
         roleList:
@@ -2889,6 +3747,32 @@ components:
         newPassword:
           type: string
           format: password
+    HandoverUserResponsibilitiesRequest:
+      type: object
+      required: [targetUserId, reason]
+      properties:
+        targetUserId:
+          type: integer
+          description: 目标负责人 ID，必须为启用、未锁定且具备销售职责的账号。
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 交接原因。
+    HandoverUserResponsibilitiesResponse:
+      type: object
+      required: [sourceUserId, targetUserId, activityCount, clueCount, customerCount]
+      properties:
+        sourceUserId:
+          type: integer
+        targetUserId:
+          type: integer
+        activityCount:
+          type: integer
+        clueCount:
+          type: integer
+        customerCount:
+          type: integer
     ClueQuery:
       type: object
       properties:
@@ -2934,6 +3818,75 @@ components:
         nextContactTime:
           type: string
           format: date-time
+    Clue:
+      allOf:
+        - $ref: "#/components/schemas/ClueQuery"
+        - type: object
+          properties:
+            ownerDO:
+              type: object
+              additionalProperties: true
+            activityDO:
+              type: object
+              additionalProperties: true
+            appellationDO:
+              type: object
+              additionalProperties: true
+            needLoanDO:
+              type: object
+              additionalProperties: true
+            intentionStateDO:
+              type: object
+              additionalProperties: true
+            intentionProductDO:
+              type: object
+              additionalProperties: true
+            stateDO:
+              $ref: "#/components/schemas/DictionaryValueSummary"
+            sourceDO:
+              type: object
+              additionalProperties: true
+    TransferClueOwnerRequest:
+      type: object
+      required: [newOwnerId, reason]
+      properties:
+        newOwnerId:
+          type: integer
+          description: 目标负责人用户 ID。
+        reason:
+          type: string
+          description: 转派原因。
+    ClueLifecycleRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          description: 关闭或恢复原因。
+    ClueOwnerHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        clueId:
+          type: integer
+        fromOwnerId:
+          type: integer
+        toOwnerId:
+          type: integer
+        assignedBy:
+          type: integer
+        reason:
+          type: string
+        assignedTime:
+          type: string
+          format: date-time
+        fromOwnerName:
+          type: string
+        toOwnerName:
+          type: string
+        assignedByName:
+          type: string
     CreateClueRemarkRequest:
       type: object
       required: [clueId, noteContent]
@@ -2961,6 +3914,140 @@ components:
         nextContactTime:
           type: string
           format: date-time
+    CustomerListResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        clueId:
+          type: integer
+        customerName:
+          type: string
+        phone:
+          type: string
+          description: 无 customer:sensitive:view 权限时由后端脱敏。
+        weixin:
+          type: string
+          description: 无 customer:sensitive:view 权限时由后端脱敏。
+        ownerName:
+          type: string
+        activityName:
+          type: string
+        appellationName:
+          type: string
+        needLoanName:
+          type: string
+        intentionStateName:
+          type: string
+        stateName:
+          type: string
+          description: 兼容字段，等同 customerStatusName。
+        sourceName:
+          type: string
+        originalSourceName:
+          type: string
+        customerStatus:
+          type: string
+          enum: [POTENTIAL, INTENTION, VISITED, TEST_DRIVE, DEAL, REPURCHASE, DORMANT, LOST, INVALID, MERGED]
+        customerStatusName:
+          type: string
+        intentionProductName:
+          type: string
+        product:
+          type: integer
+          format: int64
+        description:
+          type: string
+        nextContactTime:
+          type: string
+          format: date-time
+        createTime:
+          type: string
+          format: date-time
+    CustomerDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/CustomerListResponse"
+        - type: object
+          properties:
+            qq:
+              type: string
+              description: 无 customer:sensitive:view 权限时由后端脱敏。
+            email:
+              type: string
+              description: 无 customer:sensitive:view 权限时由后端脱敏。
+            age:
+              type: integer
+            job:
+              type: string
+            yearIncome:
+              type: string
+            address:
+              type: string
+              description: 无 customer:sensitive:view 权限时由后端脱敏。
+            productName:
+              type: string
+    CustomerOption:
+      type: object
+      properties:
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        clueId:
+          type: integer
+    TransferCustomerOwnerRequest:
+      type: object
+      required: [newOwnerId, reason]
+      properties:
+        newOwnerId:
+          type: integer
+        reason:
+          type: string
+          maxLength: 255
+    MergeCustomerRequest:
+      type: object
+      required: [sourceCustomerId, reason]
+      properties:
+        sourceCustomerId:
+          type: integer
+        reason:
+          type: string
+          maxLength: 255
+    CustomerMergeResponse:
+      type: object
+      properties:
+        targetCustomerId:
+          type: integer
+        sourceCustomerId:
+          type: integer
+        migratedRemarkCount:
+          type: integer
+        migratedTranCount:
+          type: integer
+        migratedQuoteCount:
+          type: integer
+    CustomerDuplicateSummary:
+      type: object
+      properties:
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        maskedPhone:
+          type: string
+        ownerName:
+          type: string
+    CustomerDuplicateResponse:
+      type: object
+      properties:
+        duplicated:
+          type: boolean
+        hiddenConflict:
+          type: boolean
+        visibleCustomers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerDuplicateSummary"
     ActivityQuery:
       type: object
       properties:
@@ -2996,6 +4083,15 @@ components:
         activityId:
           type: integer
         noteContent:
+          type: string
+    DictionaryValueSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        typeValue:
+          type: string
+        valueCode:
           type: string
     DicTypeRequest:
       type: object
@@ -3112,6 +4208,340 @@ components:
           type: integer
         remark:
           type: string
+    ProductVehicleStatus:
+      type: string
+      enum:
+        - PENDING_INBOUND
+        - AVAILABLE
+        - TEST_DRIVE_RESERVED
+        - SALES_LOCKED
+        - ORDER_RESERVED
+        - PENDING_DELIVERY
+        - OUTBOUND
+        - DELIVERED
+        - INVENTORY_EXCEPTION
+        - UNAVAILABLE
+      description: 库存车辆实例状态稳定编码，中文只用于页面展示。
+    ProductVehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        productSku:
+          type: string
+        productName:
+          type: string
+        vin:
+          type: string
+        color:
+          type: string
+        configuration:
+          type: string
+        location:
+          type: string
+        status:
+          $ref: "#/components/schemas/ProductVehicleStatus"
+        holdType:
+          type: string
+        sourceType:
+          type: string
+          enum: [INBOUND, ORDER, TEST_DRIVE, SALES_LOCK]
+        sourceId:
+          type: integer
+          format: int64
+        holdUntil:
+          type: string
+          format: date-time
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        updateTime:
+          type: string
+          format: date-time
+        updateBy:
+          type: integer
+    CreateProductVehicleRequest:
+      type: object
+      required: [productId, vin, color, location, remark]
+      properties:
+        productId:
+          type: integer
+          format: int64
+        vin:
+          type: string
+        color:
+          type: string
+        configuration:
+          type: string
+        location:
+          type: string
+        remark:
+          type: string
+    ReserveProductVehicleRequest:
+      type: object
+      required: [holdType, sourceType, sourceId, remark]
+      properties:
+        holdType:
+          type: string
+          enum: [ORDER, TEST_DRIVE, SALES_LOCK]
+        sourceType:
+          type: string
+          enum: [ORDER, TEST_DRIVE, SALES_LOCK]
+        sourceId:
+          type: integer
+          format: int64
+        holdUntil:
+          type: string
+          format: date-time
+        remark:
+          type: string
+    ReleaseProductVehicleRequest:
+      type: object
+      required: [reserveRecordId, reason]
+      properties:
+        reserveRecordId:
+          type: integer
+          format: int64
+        reason:
+          type: string
+    ProductStockRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        vehicleId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+        type:
+          type: string
+          enum: [INBOUND, OUTBOUND, RESERVE, RELEASE, ADJUST]
+        sourceType:
+          type: string
+        sourceId:
+          type: integer
+          format: int64
+        beforeStatus:
+          type: string
+        afterStatus:
+          type: string
+        relatedRecordId:
+          type: integer
+          format: int64
+        remark:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+    QuoteStatus:
+      type: string
+      enum:
+        - DRAFT
+        - PENDING_SUBMIT
+        - PENDING_APPROVAL
+        - REJECTED
+        - PENDING_CUSTOMER_CONFIRMATION
+        - ACCEPTED
+        - REFUSED
+        - EXPIRED
+        - VOIDED
+        - CONVERTED_TO_ORDER
+      description: 报价状态稳定编码，中文只用于页面展示。
+    Quote:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        quoteNo:
+          type: string
+        customerId:
+          type: integer
+        opportunityId:
+          type: integer
+          format: int64
+        currentVersionId:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/QuoteStatus"
+        remark:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+        updateTime:
+          type: string
+          format: date-time
+        updateBy:
+          type: integer
+    QuoteVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        quoteId:
+          type: integer
+          format: int64
+        versionNo:
+          type: integer
+        validUntil:
+          type: string
+          format: date-time
+        totalAmount:
+          type: number
+        remark:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+    QuoteVersionItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        quoteVersionId:
+          type: integer
+          format: int64
+        productId:
+          type: integer
+          format: int64
+        productSku:
+          type: string
+        productName:
+          type: string
+        productSpecification:
+          type: string
+        guidePrice:
+          type: number
+        unitPrice:
+          type: number
+        quantity:
+          type: integer
+        lineAmount:
+          type: number
+        promotionId:
+          type: integer
+          format: int64
+        promotionName:
+          type: string
+        promotionAmount:
+          type: number
+        createTime:
+          type: string
+          format: date-time
+        createBy:
+          type: integer
+    QuoteDetail:
+      type: object
+      properties:
+        quote:
+          $ref: "#/components/schemas/Quote"
+        currentVersion:
+          $ref: "#/components/schemas/QuoteVersion"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteVersionItem"
+    QuoteItemRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          minimum: 1
+        promotionId:
+          type: integer
+          format: int64
+    CreateQuoteRequest:
+      type: object
+      required: [customerId, validUntil, items]
+      properties:
+        customerId:
+          type: integer
+        opportunityId:
+          type: integer
+          format: int64
+          description: 当前商机独立模型未完成时可以为空。
+        validUntil:
+          type: string
+          format: date-time
+        remark:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteItemRequest"
+    CreateQuoteVersionRequest:
+      type: object
+      required: [validUntil, items]
+      properties:
+        validUntil:
+          type: string
+          format: date-time
+        remark:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteItemRequest"
+    QuoteConfirmationMethod:
+      type: string
+      enum:
+        - CUSTOMER_SIGNATURE
+        - CALL_RECORD
+        - WECHAT
+        - EMAIL
+        - SYSTEM_EXPIRE
+        - PROXY
+      description: 报价客户确认方式稳定编码，中文只用于页面展示。
+    UpdateQuoteStatusRequest:
+      type: object
+      required: [expectedStatus, targetStatus, reason]
+      description: targetStatus 为 ACCEPTED、REFUSED 或 EXPIRED 时，必须同时提交确认人、确认时间、确认方式和确认凭证；confirmationMethod 为 PROXY 时还必须提交 proxyConfirmReason。
+      properties:
+        expectedStatus:
+          $ref: "#/components/schemas/QuoteStatus"
+        targetStatus:
+          $ref: "#/components/schemas/QuoteStatus"
+        reason:
+          type: string
+        confirmedByName:
+          type: string
+          maxLength: 100
+        confirmedAt:
+          type: string
+          format: date-time
+        confirmationMethod:
+          $ref: "#/components/schemas/QuoteConfirmationMethod"
+        confirmationEvidence:
+          type: string
+          maxLength: 500
+        proxyConfirmReason:
+          type: string
+          maxLength: 500
     TranStage:
       type: string
       enum:
@@ -3122,8 +4552,16 @@ components:
         - DELIVERY
         - COMPLETED
         - LOST
+        - CLOSED
         - CANCELLED
       description: 当前枚举以后端 TranStage 为准。
+    TransactionLifecycleRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          description: 取消或关闭原因。
     TranProductItemRequest:
       type: object
       required: [productId, quantity]
@@ -3229,9 +4667,65 @@ components:
           type: boolean
         comment:
           type: string
+    InvoiceStatus:
+      type: string
+      enum:
+        - PENDING
+        - ISSUING
+        - ISSUED
+        - FAILED
+        - VOIDED
+        - PARTIAL_RED_REVERSED
+        - RED_REVERSED
+        - NOT_REQUIRED
+      description: 发票处理状态稳定编码，中文只用于页面展示。
+    TransactionInvoice:
+      type: object
+      properties:
+        id:
+          type: integer
+        tranId:
+          type: integer
+        invoiceNo:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+          description: 无敏感权限时可能为脱敏值。
+        taxNumber:
+          type: string
+          description: 无敏感权限时返回脱敏值。
+        bankName:
+          type: string
+        bankAccount:
+          type: string
+          description: 无敏感权限时返回脱敏值。
+        address:
+          type: string
+          description: 无敏感权限时返回脱敏值。
+        phone:
+          type: string
+          description: 无敏感权限时返回脱敏值。
+        originalInvoiceId:
+          type: integer
+          description: 红冲或重开发票关联的原票、红冲或作废事实 ID。
+        amount:
+          type: number
+          description: 正数为普通发票金额，红字发票为负数。
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+        remark:
+          type: string
+        issueTime:
+          type: string
+          format: date-time
+        createTime:
+          type: string
+          format: date-time
     CreateTranInvoiceRequest:
       type: object
-      required: [tranId, amount, type, title]
+      required: [tranId, amount, type, title, taxNumber]
       properties:
         tranId:
           type: integer
@@ -3251,6 +4745,7 @@ components:
           type: string
         amount:
           type: number
+          minimum: 0.01
         remark:
           type: string
     UpdateInvoiceStatusRequest:
@@ -3259,6 +4754,97 @@ components:
       properties:
         status:
           type: string
+          enum: [ISSUED, FAILED, VOIDED]
+        reason:
+          type: string
+          description: 状态为 FAILED 或 VOIDED 时必填。
+    RedReverseInvoiceRequest:
+      type: object
+      required: [amount, reason]
+      properties:
+        amount:
+          type: number
+          minimum: 0.01
+          description: 正数红冲金额，服务端保存为负数红字发票。
+        reason:
+          type: string
+    ReissueInvoiceRequest:
+      type: object
+      required: [amount, reason]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        taxNumber:
+          type: string
+        bankName:
+          type: string
+        bankAccount:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        amount:
+          type: number
+          minimum: 0.01
+        reason:
+          type: string
+    PaymentMethod:
+      type: string
+      enum:
+        - CASH
+        - BANK_TRANSFER
+        - WECHAT
+        - ALIPAY
+        - CHECK
+        - OTHER
+    PaymentType:
+      type: string
+      enum:
+        - DEPOSIT
+        - INSTALLMENT
+        - FULL
+        - BALANCE
+        - REFUND
+    PaymentStatus:
+      type: string
+      enum:
+        - PENDING
+        - COMPLETED
+        - FAILED
+        - REVERSED
+        - VOIDED
+    TransactionPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+        tranId:
+          type: integer
+        paymentNo:
+          type: string
+        amount:
+          type: number
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        paymentType:
+          $ref: "#/components/schemas/PaymentType"
+        paymentStatus:
+          $ref: "#/components/schemas/PaymentStatus"
+        paymentTime:
+          type: string
+          format: date-time
+        transactionRef:
+          type: string
+        idempotencyKey:
+          type: string
+        remark:
+          type: string
+        createTime:
+          type: string
+          format: date-time
     CreatePaymentRequest:
       type: object
       required: [tranId, paymentMethod]
@@ -3269,9 +4855,9 @@ components:
           type: number
           description: 兼容旧客户端字段，服务端不信任此值，按剩余应收计算本次登记金额。
         paymentMethod:
-          type: string
+          $ref: "#/components/schemas/PaymentMethod"
         paymentType:
-          type: string
+          $ref: "#/components/schemas/PaymentType"
           description: 兼容旧客户端字段，服务端按资金事实派生收款类型。
         transactionRef:
           type: string
@@ -3299,9 +4885,57 @@ components:
       type: string
       enum:
         - PENDING_APPROVAL
-        - APPROVED
+        - PENDING_EXECUTION
+        - EXECUTING
+        - COMPLETED
         - REJECTED
-        - EXECUTED
+        - FAILED
+        - CANCELLED
+    RefundRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        tranId:
+          type: integer
+        originalPaymentId:
+          type: integer
+        refundPaymentId:
+          type: integer
+        amount:
+          type: number
+        refundType:
+          $ref: "#/components/schemas/RefundType"
+        reason:
+          type: string
+        status:
+          $ref: "#/components/schemas/RefundRequestStatus"
+        requestedBy:
+          type: integer
+        requestedTime:
+          type: string
+          format: date-time
+        approvedBy:
+          type: integer
+        approvedTime:
+          type: string
+          format: date-time
+        approveComment:
+          type: string
+        executedBy:
+          type: integer
+        executionStartedTime:
+          type: string
+          format: date-time
+        executedTime:
+          type: string
+          format: date-time
+        executionRef:
+          type: string
+        executionRemark:
+          type: string
+        failureReason:
+          type: string
     CreateRefundRequest:
       type: object
       required: [refundType, amount, reason]
@@ -3328,6 +4962,13 @@ components:
           type: string
         remark:
           type: string
+        success:
+          type: boolean
+          default: true
+          description: 为空时按执行成功处理；false 表示记录外部退款执行失败。
+        failureReason:
+          type: string
+          description: success=false 时必填。
     ImportResult:
       type: object
       properties:
@@ -3350,6 +4991,30 @@ components:
                 type: string
               reason:
                 type: string
+    SummaryData:
+      type: object
+      description: 经营摘要指标，所有指标均按当前登录用户服务端数据范围聚合。
+      properties:
+        effectiveActivityCount:
+          type: integer
+          description: 当前范围内有效市场活动数。
+        totalActivityCount:
+          type: integer
+          description: 当前范围内市场活动总数。
+        totalClueCount:
+          type: integer
+          description: 当前范围内线索总数。
+        totalCustomerCount:
+          type: integer
+          description: 当前范围内客户总数。
+        successTranAmount:
+          type: number
+          format: decimal
+          description: 当前范围内已完成交易金额。
+        totalTranAmount:
+          type: number
+          format: decimal
+          description: 当前范围内交易总金额。
     NameValue:
       type: object
       properties:

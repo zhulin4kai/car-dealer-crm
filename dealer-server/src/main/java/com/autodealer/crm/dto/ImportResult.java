@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Excel 导入结果，包含汇总信息和逐行错误详情。
  *
- * <p>全成功策略：任一行有错误时 importedCount 为 0，数据库无写入。
+ * <p>导入允许部分成功：合法行可写入，失败行保留行级错误。
  */
 public class ImportResult {
 
@@ -26,7 +26,7 @@ public class ImportResult {
     private int failedRows;
 
     /**
-     * 成功导入行数（全校验通过后才 > 0）
+     * 成功导入行数
      */
     private int importedCount;
 

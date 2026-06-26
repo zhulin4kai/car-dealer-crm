@@ -6,6 +6,7 @@ import com.autodealer.crm.dto.ImportRowError;
 import com.autodealer.crm.model.TClue;
 import com.autodealer.crm.result.ClueExcelRaw;
 import com.autodealer.crm.result.DicEnum;
+import com.autodealer.crm.util.PhoneNormalizer;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -21,11 +22,6 @@ import java.util.Set;
  */
 @Component
 public class ClueImportValidator {
-
-    /**
-     * 手机号格式校验正则。
-     */
-    private static final String PHONE_REGEX = "^1[3-9]\\d{9}$";
 
     /**
      * Excel 公式注入前缀。
@@ -122,16 +118,17 @@ public class ClueImportValidator {
             rowErrors.add(new ImportRowError(rowNum, "手机号", "不能为空"));
         } else {
             String trimmed = phone.trim();
-            if (!trimmed.matches(PHONE_REGEX)) {
-                rowErrors.add(new ImportRowError(rowNum, "手机号", "格式不正确"));
-            }
             if (isFormula(trimmed)) {
                 rowErrors.add(new ImportRowError(rowNum, "手机号", "包含Excel公式前缀"));
             }
-            if (!seenPhones.add(trimmed)) {
+            String normalized = PhoneNormalizer.normalizeMainlandMobile(trimmed);
+            if (!PhoneNormalizer.isMainlandMobile(normalized)) {
+                rowErrors.add(new ImportRowError(rowNum, "手机号", "格式不正确"));
+            }
+            if (!seenPhones.add(normalized)) {
                 rowErrors.add(new ImportRowError(rowNum, "手机号", "同一文件中重复"));
             }
-            if (trimmed.length() > 18) {
+            if (normalized != null && normalized.length() > 18) {
                 rowErrors.add(new ImportRowError(rowNum, "手机号", "长度超过限制"));
             }
         }
@@ -207,7 +204,7 @@ public class ClueImportValidator {
         clue.setActivityId(safeFindId(raw.getActivityName(), context::findActivityId));
         clue.setFullName(trimOrNull(raw.getFullName()));
         clue.setAppellation(safeFindDicId(DicEnum.APPELLATION.getCode(), raw.getAppellation(), context));
-        clue.setPhone(raw.getPhone() != null ? raw.getPhone().trim() : null);
+        clue.setPhone(PhoneNormalizer.normalizeMainlandMobile(raw.getPhone()));
         clue.setWeixin(trimOrNull(raw.getWeixin()));
         clue.setQq(trimOrNull(raw.getQq()));
         clue.setEmail(trimOrNull(raw.getEmail()));

@@ -109,11 +109,11 @@
               >
               <TableHead
                 sortable
-                sort-key="stateName"
+                sort-key="customerStatusName"
                 :sort-by="sortBy"
                 :sort-direction="sortDirection"
                 @sort="toggleSort"
-                >线索状态</TableHead
+                >客户状态</TableHead
               >
               <TableHead
                 sortable
@@ -121,7 +121,7 @@
                 :sort-by="sortBy"
                 :sort-direction="sortDirection"
                 @sort="toggleSort"
-                >线索来源</TableHead
+                >客户来源</TableHead
               >
               <TableHead
                 sortable
@@ -192,7 +192,10 @@
                 />
               </TableCell>
               <TableCell class="max-w-[150px] truncate">
-                <StatusBadge :label="row.stateName" :tone="getCustomerStateTone(row.stateName)" />
+                <StatusBadge
+                  :label="row.customerStatusName ?? row.stateName"
+                  :tone="getCustomerStateTone(row.customerStatusName ?? row.stateName)"
+                />
               </TableCell>
               <TableCell class="max-w-[150px] truncate">
                 <StatusBadge :label="row.sourceName" tone="info" />
@@ -265,7 +268,7 @@ const {
   weixin: 'weixin',
   needLoanName: 'needLoanName',
   intentionStateName: 'intentionStateName',
-  stateName: 'stateName',
+  customerStatusName: 'customerStatusName',
   sourceName: 'sourceName',
   intentionProductName: 'intentionProductName',
   nextContactTime: 'nextContactTime',

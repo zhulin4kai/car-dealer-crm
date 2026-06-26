@@ -1,6 +1,8 @@
 package com.autodealer.crm.model;
 
+import com.autodealer.crm.dto.ProductSimpleDTO;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Date;
 import lombok.Data;
 
@@ -22,9 +24,114 @@ public class TCustomer implements Serializable {
     private Integer clueId;
 
     /**
+     * 当前客户负责人ID
+     */
+    private Integer ownerId;
+
+    /**
+     * 来源活动ID
+     */
+    private Integer activityId;
+
+    /**
+     * 客户姓名或组织名称
+     */
+    private String customerName;
+
+    /**
+     * 称呼
+     */
+    private Integer appellation;
+
+    /**
+     * 手机号
+     */
+    private String phone;
+
+    /**
+     * 微信号
+     */
+    private String weixin;
+
+    /**
+     * QQ号
+     */
+    private String qq;
+
+    /**
+     * 邮箱
+     */
+    private String email;
+
+    /**
+     * 年龄
+     */
+    private Integer age;
+
+    /**
+     * 职业
+     */
+    private String job;
+
+    /**
+     * 年收入
+     */
+    private BigDecimal yearIncome;
+
+    /**
+     * 地址
+     */
+    private String address;
+
+    /**
+     * 是否需要贷款
+     */
+    private Integer needLoan;
+
+    /**
+     * 意向状态
+     */
+    private Integer intentionState;
+
+    /**
+     * 当前客户来源
+     */
+    private Integer source;
+
+    /**
+     * 原始线索来源快照
+     */
+    private Integer originalClueSource;
+
+    /**
      * 选购产品
      */
     private Long product;
+
+    /**
+     * 客户经营状态
+     */
+    private String customerStatus;
+
+    /**
+     * 合并目标客户ID
+     */
+    private Integer mergedToCustomerId;
+
+    /**
+     * 合并原因
+     */
+    private String mergeReason;
+
+    /**
+     * 合并时间
+     */
+    private Date mergeTime;
+
+    /**
+     * 合并操作人
+     */
+    private Integer mergeBy;
 
     /**
      * 客户描述
@@ -60,6 +167,14 @@ public class TCustomer implements Serializable {
      * 一对一关联
      */
     private TClue clueDO;
+    private TUser ownerDO;
+    private TActivity activityDO;
+    private TDicValue appellationDO;
+    private TDicValue needLoanDO;
+    private TDicValue intentionStateDO;
+    private TDicValue sourceDO;
+    private TDicValue originalClueSourceDO;
+    private ProductSimpleDTO productDO;
 
     private static final long serialVersionUID = 1L;
 }

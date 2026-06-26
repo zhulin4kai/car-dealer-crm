@@ -66,6 +66,18 @@ class ClueImportValidatorTest {
     }
 
     @Test
+    void phoneWithSeparators_shouldNormalizeAndPass() {
+        ClueExcelRaw raw = buildValidRaw();
+        raw.setPhone("138 0013-8000");
+
+        ValidatedClueImport result = validator.validateAndTransform(
+                List.of(raw), context, 42);
+
+        assertEquals(0, result.getResult().getFailedRows());
+        assertEquals("13800138000", result.getClues().get(0).getPhone());
+    }
+
+    @Test
     void emptyPhone_shouldFail() {
         ClueExcelRaw raw = buildValidRaw();
         raw.setPhone("");
@@ -106,6 +118,23 @@ class ClueImportValidatorTest {
         raw1.setPhone("13800138000");
         ClueExcelRaw raw2 = buildValidRaw();
         raw2.setPhone("13800138000");
+        raw2.setFullName("另一个人");
+
+        ValidatedClueImport result = validator.validateAndTransform(
+                List.of(raw1, raw2), context, 1);
+
+        assertEquals(1, result.getResult().getFailedRows());
+        assertEquals(1, result.getResult().getValidRows());
+        assertTrue(result.getResult().getErrors().stream()
+                .anyMatch(e -> e.getReason().contains("重复")));
+    }
+
+    @Test
+    void duplicatePhoneInSameFile_afterNormalization_shouldFail() {
+        ClueExcelRaw raw1 = buildValidRaw();
+        raw1.setPhone("13800138000");
+        ClueExcelRaw raw2 = buildValidRaw();
+        raw2.setPhone("138 0013-8000");
         raw2.setFullName("另一个人");
 
         ValidatedClueImport result = validator.validateAndTransform(

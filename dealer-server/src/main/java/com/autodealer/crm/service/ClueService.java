@@ -1,7 +1,10 @@
 package com.autodealer.crm.service;
 
 import com.autodealer.crm.dto.ImportResult;
+import com.autodealer.crm.dto.ClueLifecycleRequest;
+import com.autodealer.crm.dto.TransferClueOwnerRequest;
 import com.autodealer.crm.model.TClue;
+import com.autodealer.crm.model.TClueOwnerHistory;
 import com.autodealer.crm.query.ClueQuery;
 import com.github.pagehelper.PageInfo;
 
@@ -25,4 +28,12 @@ public interface ClueService {
     int delClueById(Integer id);
 
     int batchDelClueByIds(List<Integer> ids);
+
+    boolean transferOwner(Integer id, TransferClueOwnerRequest request);
+
+    List<TClueOwnerHistory> getOwnerHistory(Integer id);
+
+    boolean closeClue(Integer id, ClueLifecycleRequest request);
+
+    boolean restoreClue(Integer id, ClueLifecycleRequest request);
 }

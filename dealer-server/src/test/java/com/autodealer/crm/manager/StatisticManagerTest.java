@@ -132,7 +132,7 @@ class StatisticManagerTest {
         assertEquals(50, result.get(1).getValue());
         assertEquals("交易", result.get(2).getName());
         assertEquals(30, result.get(2).getValue());
-        assertEquals("成交", result.get(3).getName());
+        assertEquals("成交客户", result.get(3).getName());
         assertEquals(10, result.get(3).getValue());
         verify(tTranMapper).selectBySuccessTranCount(TranStage.COMPLETED, true, null);
     }
