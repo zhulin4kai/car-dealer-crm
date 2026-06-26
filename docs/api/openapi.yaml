@@ -128,8 +128,6 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Size"
-        - $ref: "#/components/parameters/Current"
-        - $ref: "#/components/parameters/PageSize"
         - name: loginAct
           in: query
           schema:
@@ -258,8 +256,6 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Size"
-        - $ref: "#/components/parameters/Current"
-        - $ref: "#/components/parameters/PageSize"
         - name: userName
           in: query
           schema:
@@ -425,7 +421,8 @@ paths:
       operationId: listUsers
       summary: 分页查询用户列表
       parameters:
-        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
         - name: loginAct
           in: query
           schema:
@@ -731,8 +728,8 @@ paths:
       operationId: listClues
       summary: 分页查询线索
       parameters:
-        - $ref: "#/components/parameters/Current"
-        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
       responses:
         "200":
           $ref: "#/components/responses/CluePageOk"
@@ -1060,7 +1057,8 @@ paths:
       operationId: listClueRemarks
       summary: 分页查询线索备注
       parameters:
-        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
         - name: clueId
           in: query
           required: true
@@ -1097,7 +1095,7 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /api/customer/list:
+  /api/customers:
     get:
       tags: [Customer]
       operationId: listCustomers
@@ -1270,24 +1268,6 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /api/customers:
-    get:
-      tags: [Customer]
-      operationId: listCustomersDeprecated
-      summary: 分页查询客户列表，历史接口
-      deprecated: true
-      parameters:
-        - $ref: "#/components/parameters/Current"
-      responses:
-        "200":
-          $ref: "#/components/responses/CustomerPageOk"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
   /api/exportExcel:
     get:
       tags: [Customer]
@@ -1324,7 +1304,7 @@ paths:
       tags: [Activity]
       operationId: listActivities
       summary: 分页查询市场活动
-      description: 正式活动列表入口，分页参数使用 page/size；时间查询参数优先使用 ISO-8601 带时区格式，兼容 yyyy-MM-dd HH:mm:ss。
+      description: 活动列表入口，分页参数使用 page/size；时间查询参数优先使用 ISO-8601 带时区格式。
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Size"
@@ -1346,61 +1326,13 @@ paths:
             type: string
         - name: startTime
           in: query
-          description: 活动开始时间下限；推荐 ISO-8601 带时区，兼容 yyyy-MM-dd HH:mm:ss。
+          description: 活动开始时间下限；推荐 ISO-8601 带时区。
           schema:
             type: string
             format: date-time
         - name: endTime
           in: query
-          description: 活动结束时间上限；推荐 ISO-8601 带时区，兼容 yyyy-MM-dd HH:mm:ss。
-          schema:
-            type: string
-            format: date-time
-      responses:
-        "200":
-          $ref: "#/components/responses/ActivityPageOk"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /api/activitys:
-    get:
-      tags: [Activity]
-      operationId: listActivitiesLegacy
-      summary: 分页查询市场活动（历史路径）
-      deprecated: true
-      description: 历史拼写兼容入口，兼容窗口至 2026-12-31；新客户端必须使用 GET /api/activities。
-      parameters:
-        - $ref: "#/components/parameters/Current"
-        - $ref: "#/components/parameters/PageSize"
-        - name: ownerId
-          in: query
-          schema:
-            type: integer
-        - name: name
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            $ref: "#/components/schemas/ActivityStatus"
-        - name: channel
-          in: query
-          schema:
-            type: string
-        - name: startTime
-          in: query
-          description: 历史接口兼容 yyyy-MM-dd HH:mm:ss，同时接受 ISO-8601 带时区格式。
-          schema:
-            type: string
-            format: date-time
-        - name: endTime
-          in: query
-          description: 历史接口兼容 yyyy-MM-dd HH:mm:ss，同时接受 ISO-8601 带时区格式。
+          description: 活动结束时间上限；推荐 ISO-8601 带时区。
           schema:
             type: string
             format: date-time
@@ -1691,7 +1623,8 @@ paths:
       operationId: listActivityRemarks
       summary: 分页查询活动备注
       parameters:
-        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
         - name: activityId
           in: query
           required: true
@@ -4076,65 +4009,12 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/ServerError"
-    delete:
-      tags: [Transaction]
-      operationId: deleteTransaction
-      summary: 删除交易
-      deprecated: true
-      description: 交易历史不再允许物理删除；该入口返回 409，请使用取消或关闭命令。
-      parameters:
-        - $ref: "#/components/parameters/Id"
-      responses:
-        "200":
-          $ref: "#/components/responses/StringOk"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/Unprocessable"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
   /api/transactions:
     post:
       tags: [Transaction]
       operationId: createTransaction
       summary: 创建交易
       description: 正式交易创建入口；创建待报价交易并保存商品价格快照，报价创建不扣减、不占用商品库存。
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateTranRequest"
-      responses:
-        "200":
-          $ref: "#/components/responses/TransactionIdOk"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /api/tran/create:
-    post:
-      tags: [Transaction]
-      operationId: createTransactionLegacy
-      summary: 创建交易（历史路径）
-      deprecated: true
-      description: 历史交易创建入口，兼容窗口至 2026-12-31；新客户端必须使用 POST /api/transactions。
       requestBody:
         required: true
         content:
@@ -4517,31 +4397,6 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /api/tran/batch-delete:
-    post:
-      tags: [Transaction]
-      operationId: batchDeleteTransactions
-      summary: 批量删除交易
-      deprecated: true
-      description: 交易历史不再允许批量物理删除；该入口返回 409，请逐笔取消或关闭交易。
-      requestBody:
-        $ref: "#/components/requestBodies/BatchIds"
-      responses:
-        "200":
-          $ref: "#/components/responses/StringOk"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/Unprocessable"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
   /api/tran/{id}/cancel:
     put:
       tags: [Transaction]
@@ -4704,31 +4559,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /api/tran/payment/{id}/refund:
-    post:
-      tags: [Transaction]
-      operationId: refundTransactionPayment
-      summary: 旧退款接口
-      deprecated: true
-      description: 兼容旧客户端，服务端会拒绝直接退款；新流程使用退款申请、审批和执行接口。
-      parameters:
-        - $ref: "#/components/parameters/Id"
-      responses:
-        "200":
-          $ref: "#/components/responses/TransactionPaymentObject"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/Unprocessable"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -4921,25 +4751,6 @@ components:
       required: true
       schema:
         type: integer
-    Current:
-      name: current
-      in: query
-      required: false
-      schema:
-        type: integer
-        default: 1
-        minimum: 1
-      description: 历史分页页码。
-    PageSize:
-      name: pageSize
-      in: query
-      required: false
-      schema:
-        type: integer
-        default: 10
-        minimum: 1
-        maximum: 100
-      description: 历史分页大小。
     Page:
       name: page
       in: query

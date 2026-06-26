@@ -12,7 +12,7 @@
 - 资源详情使用路径 ID，例如 `GET /api/customers/{id}`。
 - 状态迁移、审批、退款、刷新缓存等命令使用明确子资源，例如 `PUT /api/transactions/{id}/approve`。
 - 新接口禁止使用实现细节、中文、动词堆叠或大小写混用路径。
-- 历史接口如果已经被前端调用，必须先在 `openapi.yaml` 标记并保持兼容，再通过 Plan 和 Task 迁移。
+- 旧接口不得继续保留兼容路径；确认替代契约后必须同步删除 Controller、前端调用、OpenAPI、测试和联调文档。
 
 ## HTTP 方法
 
@@ -35,7 +35,7 @@
 
 - JSON 接口默认使用 `Content-Type: application/json`。
 - 文件上传使用 `multipart/form-data`，字段名、大小限制、文件类型和部分失败语义必须写入 `openapi.yaml`。
-- 表单编码接口只允许作为历史兼容存在；新增接口必须使用 Request DTO。
+- 业务写接口必须使用用途明确的 Request DTO；表单编码仅限登录、文件上传等已明确的基础设施入口。
 - 客户端不得提交可信操作人、数据权限范围、汇总金额、服务端状态和审计字段。
 - 金额使用十进制字符串或 `number`，后端按 `BigDecimal` 接收，禁止使用浮点近似语义。
 - 枚举字段必须在 `openapi.yaml` 写清允许值；不能让前端依赖中文文案判断业务。
@@ -44,8 +44,8 @@
 
 ## 查询与分页
 
-- 新增列表接口统一使用 `page` 和 `size`。
-- 历史接口仍可能使用 `current` 和 `pageSize`，必须在 `openapi.yaml` 中按真实契约记录。
+- 列表接口统一使用 `page` 和 `size`。
+- 旧分页参数 `current` 和 `pageSize` 不再作为业务接口契约保留；业务列表请求只能使用 `page`/`size`。
 - 页码从 `1` 开始。
 - 默认页大小为 `10`，当前统一上限为 `100`；超过后端限制时返回 `400`。
 - 筛选条件使用查询参数；复杂查询应使用结构化 Query DTO，但字段仍必须可在契约中说明。
@@ -139,13 +139,13 @@
 - 同一接口的请求时间和响应时间格式必须一致。
 - 前端不得在页面内临时猜测时间格式，必须通过模块 API 或统一工具转换。
 
-## 兼容规则
+## 破坏性变更规则
 
 - 删除字段、重命名字段、改变类型、改变枚举含义、改变默认分页参数都属于破坏性变更。
 - 破坏性变更必须同时更新 `openapi.yaml`、前端模块 API、TypeScript 类型、测试和联调说明。
-- 历史接口迁移必须保留兼容窗口；窗口内旧接口标记 `deprecated: true`。
-- `/api/activitys` 的正式替代路径为 `GET /api/activities`，`/api/tran/create` 的正式替代路径为 `POST /api/transactions`。
-- 新旧接口同时存在时，后端规则必须一致，禁止旧接口绕过权限、状态机或数据校验。
+- 旧接口迁移完成后必须删除旧路径，不使用 `deprecated` 兼容窗口承载业务流量。
+- 当前正式替代路径包括：`GET /api/activities` 替代旧 `/api/activitys`，`POST /api/transactions` 替代旧 `/api/tran/create`，`GET /api/customers` 替代旧 `/api/customer/list`。
+- 删除旧接口时必须补充契约测试，证明旧路径不再由 Controller 暴露，防止旧路径绕过权限、状态机或数据校验。
 
 ## 更新要求
 

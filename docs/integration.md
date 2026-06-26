@@ -16,7 +16,7 @@
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getUserList | GET | /api/users | params: {current: number} | R\<PageInfo\<TUser\>\> | UserController.userPage | 分页查询用户列表，默认每页10条 |
+| getUserList | GET | /api/users | params: {page, size, ...query} | R\<PageInfo\<TUser\>\> | UserController.userPage | 分页查询用户列表，默认每页10条 |
 | getUserDetail | GET | /api/user/{id} | 路径参数: id | R\<TUser\> | UserController.userDetail | 根据ID获取用户详情 |
 | createUser | POST | /api/user | data: CreateUserRequest (JSON) | R\<UserDetailResponse\> | UserController.createUser | 新增用户，需要 Bearer Token |
 | updateUser | PUT | /api/user | data: UpdateUserRequest (JSON) | R\<UserDetailResponse\> | UserController.updateUser | 编辑用户，需要 Bearer Token |
@@ -31,7 +31,7 @@
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getCurrentClues | GET | /api/clues | params: {current: number} | R\<PageInfo\<TClue\>\> | ClueController.cluePage | 分页查询线索列表 |
+| getCurrentClues | GET | /api/clues | params: {page, size} | R\<PageInfo\<TClue\>\> | ClueController.cluePage | 分页查询线索列表 |
 | addClue | POST | /api/clue | data: ClueQuery对象 (FormData) | R | ClueController.addClue | 新增线索；手机号按常见分隔符归一化后查重并落库 |
 | updateClue | PUT | /api/clue | data: ClueQuery对象 (FormData) | R | ClueController.editClue | 编辑线索 |
 | delClueById | DELETE | /api/clue/{id} | 路径参数: id | R | ClueController.delClue | 删除单个线索 |
@@ -44,14 +44,14 @@
 | restoreClue | PUT | /api/clue/{id}/restore | 路径参数: id, data: {reason} (JSON) | R | ClueController.restoreClue | 恢复线索；原因必填并校验重复活跃线索 |
 | importExcelAPI | POST | /api/importExcel | data: MultipartFile (FormData) | R\<ImportResult\> | ClueController.importExcel | Excel导入线索；逐行归一化手机号并返回重复摘要，存在失败行时 HTTP 422 但合法行可部分成功 |
 | addClueRemark | POST | /api/clue/remark | data: {clueId, noteContent, noteWay} (JSON) | R | ClueRemarkController.addActivityRemark | 添加线索备注 |
-| getClueRemarkList | GET | /api/clue/remark | params: {current, clueId} | R\<PageInfo\<TClueRemark\>\> | ClueRemarkController.clueRemarkPage | 分页查询线索备注 |
+| getClueRemarkList | GET | /api/clue/remark | params: {page, size, clueId} | R\<PageInfo\<TClueRemark\>\> | ClueRemarkController.clueRemarkPage | 分页查询线索备注 |
 | convertClueToCustomer | POST | /api/clue/customer | data: {clueId, product, description, nextContactTime} (JSON) | R | CustomerController.convertCustomer | 线索转换为客户 |
 
 ### 1.3 客户管理模块 (customer.js)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getCustomerList | GET | /api/customer/list | params: {page, size, ...query} | R\<PageInfo\<TCustomer\>\> | CustomerController.list | 分页查询客户列表 |
+| getCustomerList | GET | /api/customers | params: {page, size, ...query} | R\<PageInfo\<TCustomer\>\> | CustomerController.list | 分页查询客户列表 |
 | getCustomerOptions | GET | /api/customer/options | 无 | R\<List\<CustomerOption\>\> | CustomerController.options | 获取客户选项(下拉框用) |
 | fetchCustomerDetail | GET | /api/customer/{id} | 路径参数: id | R\<CustomerDetailResponse\> | CustomerController.detail | 获取客户主档详情，敏感字段由后端按权限脱敏 |
 | transferCustomerOwner | PUT | /api/customer/{id}/owner | data: {newOwnerId, reason} | R | CustomerController.transferOwner | 转移客户负责人并写入归属历史 |
@@ -62,7 +62,7 @@
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getActivityList | GET | /api/activities | params: {page, size, ...activityQuery} | R\<PageInfo\<TActivity\>\> | ActivityController.activityPage | 分页查询活动列表；历史 `/api/activitys` 仅保留 deprecated 兼容 |
+| getActivityList | GET | /api/activities | params: {page, size, ...activityQuery} | R\<PageInfo\<TActivity\>\> | ActivityController.activityPage | 分页查询活动列表 |
 | getActivityById | GET | /api/activity/{id} | 路径参数: id | R\<TActivity\> | ActivityController.loadActivity | 获取活动详情 |
 | fetchActivityRoi | GET | /api/activity/{id}/roi | 路径参数: id | R\<ActivityRoiResponse\> | ActivityController.activityRoi | 查询活动 ROI |
 | createActivity | POST | /api/activity | data: CreateActivityRequest (JSON) | R | ActivityController.addActivity | 新增草稿活动，负责人和状态由后端生成 |
@@ -183,7 +183,7 @@
 | getTranList | GET | /api/tran/list | params: {page, size, ...query} | R\<PageInfo\<TTran\>\> | TranController.list | 分页查询交易列表 |
 | getTranDetail | GET | /api/tran/{id} | 路径参数: id | R\<TTran\> | TranController.detail | 获取交易详情 |
 | getTranProducts | GET | /api/tran/products/{id} | 路径参数: id | R\<List\<TTranProduct\>\> | TranController.getTransactionProducts | 获取交易产品历史快照列表；商品主档修改后名称、编码、配置和指导价不随之变化 |
-| createTran | POST | /api/transactions | data: CreateTranRequest对象 (JSON) | R\<Integer\> | TranController.create | 创建交易；历史 `/api/tran/create` 仅保留 deprecated 兼容 |
+| createTran | POST | /api/transactions | data: CreateTranRequest对象 (JSON) | R\<Integer\> | TranController.create | 创建交易 |
 | updateTran | PUT | /api/tran/update | data: TranCreateRequest对象 (JSON) | R\<Boolean\> | TranController.update | 更新交易 |
 | fetchSettlementPreview | POST | /api/tran/{id}/settlement-preview | 路径参数: id, data: {promotionId?} | R\<SettlementPreviewResponse\> | TranController.settlementPreview | 服务端结算预览 |
 | settleTran | PUT | /api/tran/{id}/settle | 路径参数: id, data: {promotionId?, expectedVersion, pricingFingerprint} | R\<SettlementPreviewResponse\> | TranController.settle | CAS 确认结算 |
@@ -203,8 +203,6 @@
 | executeRefundRequest | POST | /api/tran/refund-requests/{id}/execute | 路径参数: id, data: ExecuteRefundRequest (JSON) | R\<TRefundRequest\> | TranController.executeRefundRequest | 记录退款执行成功或失败；成功新增负数退款流水；不直接取消交易或释放库存 |
 | cancelTran | PUT | /api/tran/{id}/cancel | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.cancel | 取消交易；存在收款、发票、退款中、已出库或已签收事实时返回冲突；未出库订单占用会写 RELEASE 流水并恢复车辆/商品可售库存，保留历史事实并写入原因 |
 | closeTran | PUT | /api/tran/{id}/close | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.close | 关闭交易；保留历史事实并写入原因 |
-| deleteTran | DELETE | /api/tran/{id} | 路径参数: id | R\<String\> | TranController.delete | 已废弃；交易历史不允许物理删除，返回状态冲突 |
-| batchDeleteTran | POST | /api/tran/batch-delete | data: {ids: List\<Integer\>} (JSON) | R\<String\> | TranController.batchDelete | 已废弃；批量物理删除返回状态冲突 |
 | getTranStatus | GET | /api/tran/status/{id} | 路径参数: id | - | **后端未实现** | 前端调用但后端无对应接口 |
 
 ### 1.11 交付管理模块 (delivery-api.ts)
@@ -281,7 +279,6 @@
 | 问题类型 | 前端路径 | 后端路径 | 问题描述 | 严重程度 |
 |---------|---------|---------|---------|---------|
 | **路径不匹配** | /api/tran/status/{id} | 无对应接口 | 前端调用获取交易状态接口，后端未实现 | **高** |
-| 历史路径兼容 | /api/activitys | /api/activitys | 已标记 deprecated，新页面使用 /api/activities | 低 |
 
 ### 2.2 HTTP方法匹配问题
 
@@ -650,33 +647,33 @@ Token 统一通过 `Authorization: Bearer <token>` 请求头传递，包括文�
 
 | 前端函数 | 参数名 | 传递方式 | 示例 |
 |---------|-------|---------|------|
-| getUserList | current | Query参数 | /api/users?current=1 |
-| getCurrentClues | current | Query参数 | /api/clues?current=1 |
+| getUserList | page, size | Query参数 | /api/users?page=1&size=10 |
+| getCurrentClues | page, size | Query参数 | /api/clues?page=1&size=10 |
 | getActivityList | page, size | Query参数 | /api/activities?page=1&size=10 |
-| getCustomerList | page, size | Query参数 | /api/customer/list?page=1&size=10 |
+| getCustomerList | page, size | Query参数 | /api/customers?page=1&size=10 |
 | getProductList | page, size | Query参数 | /api/products?page=1&size=10 |
 | getTranList | page, size | Query参数 | /api/tran/list?page=1&size=10 |
 | getDictTypeList | page, size | Query参数 | /api/dict/types?page=1&size=10 |
-| getClueRemarkList | current | Query参数 | /api/clue/remark?current=1&clueId=1 |
+| getClueRemarkList | page, size | Query参数 | /api/clue/remark?page=1&size=10&clueId=1 |
 
 ### 5.2 后端分页参数接收
 
 | 后端Controller | 参数名 | 接收方式 | 默认值 | 分页实现 |
 |---------------|-------|---------|-------|---------|
-| UserController.userPage | current | @RequestParam | 1 | PageHelper |
-| ClueController.cluePage | current | @RequestParam | 1 | PageHelper |
-| ActivityController.activityPage | current | @RequestParam | 1 | PageHelper |
+| UserController.userPage | page, size | @RequestParam | 1, 10 | PageHelper |
+| ClueController.cluePage | page, size | @RequestParam | 1, 10 | PageHelper |
+| ActivityController.activityPage | page, size | @RequestParam | 1, 10 | PageHelper |
 | CustomerController.list | page, size | @RequestParam | 1, 10 | PageHelper |
 | ProductController.getProductList | page, size | @RequestParam | 1, 10 | PageHelper |
 | TranController.list | page, size | @RequestParam | 1, 10 | PageHelper |
 | DicController.getDicTypes | page, size | DicQuery对象 | 1, 10 | PageHelper |
-| ClueRemarkController.clueRemarkPage | current | @RequestParam | 1 | PageHelper |
+| ClueRemarkController.clueRemarkPage | page, size | @RequestParam | 1, 10 | PageHelper |
 
 ### 5.3 分页参数不一致问题
 
 | 模块 | 前端参数 | 后端参数 | 问题描述 | 严重程度 |
 |-----|---------|---------|---------|---------|
-| 用户/线索/活动 | current | current | 一致 | - |
+| 用户/线索/活动 | page, size | page, size | 一致 | - |
 | 客户/产品/交易 | page, size | page, size | 一致 | - |
 | 字典 | page, size | page, size (通过DicQuery) | 一致 | - |
 

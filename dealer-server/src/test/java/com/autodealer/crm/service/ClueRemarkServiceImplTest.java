@@ -93,7 +93,7 @@ class ClueRemarkServiceImplTest {
         );
         when(tClueRemarkMapper.selectClueRemarkByPage(any(ClueRemarkQuery.class))).thenReturn(remarks);
 
-        PageInfo<TClueRemark> result = clueRemarkService.getClueRemarkByPage(1, query);
+        PageInfo<TClueRemark> result = clueRemarkService.getClueRemarkByPage(1, 10, query);
 
         assertNotNull(result);
         assertEquals(2, result.getList().size());
@@ -107,7 +107,7 @@ class ClueRemarkServiceImplTest {
 
         when(tClueRemarkMapper.selectClueRemarkByPage(any(ClueRemarkQuery.class))).thenReturn(Collections.emptyList());
 
-        PageInfo<TClueRemark> result = clueRemarkService.getClueRemarkByPage(1, query);
+        PageInfo<TClueRemark> result = clueRemarkService.getClueRemarkByPage(1, 10, query);
 
         assertNotNull(result);
         assertTrue(result.getList().isEmpty());
@@ -125,7 +125,7 @@ class ClueRemarkServiceImplTest {
         );
         when(tClueRemarkMapper.selectClueRemarkByPage(any(ClueRemarkQuery.class))).thenReturn(remarks);
 
-        PageInfo<TClueRemark> result = clueRemarkService.getClueRemarkByPage(2, query);
+        PageInfo<TClueRemark> result = clueRemarkService.getClueRemarkByPage(2, 10, query);
 
         assertNotNull(result);
         assertEquals(3, result.getList().size());

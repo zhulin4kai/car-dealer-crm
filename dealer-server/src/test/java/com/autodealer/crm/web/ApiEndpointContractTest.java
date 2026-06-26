@@ -1,6 +1,7 @@
 package com.autodealer.crm.web;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,22 +13,34 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ApiEndpointContractTest {
 
     @Test
-    void activityList_shouldExposeCurrentEndpointAndDeprecateLegacyEndpoint() {
+    void activityList_shouldExposeOnlyCurrentEndpoint() {
         assertTrue(mappedPaths(ActivityController.class, GetMapping.class).contains("/api/activities"));
-        assertTrue(mappedPaths(ActivityController.class, GetMapping.class).contains("/api/activitys"));
-        assertTrue(methodMappedTo(ActivityController.class, GetMapping.class, "/api/activitys").isAnnotationPresent(Deprecated.class));
+        assertFalse(mappedPaths(ActivityController.class, GetMapping.class).contains("/api/activitys"));
     }
 
     @Test
-    void transactionCreate_shouldExposeCurrentEndpointAndDeprecateLegacyEndpoint() {
+    void customerList_shouldExposeOnlyCurrentEndpoint() {
+        assertTrue(mappedPaths(CustomerController.class, GetMapping.class).contains("/api/customers"));
+        assertFalse(mappedPaths(CustomerController.class, GetMapping.class).contains("/api/customer/list"));
+    }
+
+    @Test
+    void transactionCreate_shouldExposeOnlyCurrentEndpoint() {
         assertTrue(mappedPaths(TranController.class, PostMapping.class).contains("/api/transactions"));
-        assertTrue(mappedPaths(TranController.class, PostMapping.class).contains("/api/tran/create"));
-        assertTrue(methodMappedTo(TranController.class, PostMapping.class, "/api/tran/create").isAnnotationPresent(Deprecated.class));
+        assertFalse(mappedPaths(TranController.class, PostMapping.class).contains("/api/tran/create"));
+    }
+
+    @Test
+    void transactionLegacyMutationEndpoints_shouldNotBeExposed() {
+        assertFalse(mappedPaths(TranController.class, DeleteMapping.class).contains("/api/tran/{id}"));
+        assertFalse(mappedPaths(TranController.class, PostMapping.class).contains("/api/tran/batch-delete"));
+        assertFalse(mappedPaths(TranController.class, PostMapping.class).contains("/api/tran/payment/{id}/refund"));
     }
 
     private Set<String> mappedPaths(Class<?> controllerClass, Class<? extends Annotation> mappingAnnotation) {
@@ -78,6 +91,10 @@ class ApiEndpointContractTest {
         }
         if (annotation instanceof PostMapping postMapping) {
             String[] paths = postMapping.value().length > 0 ? postMapping.value() : postMapping.path();
+            return paths.length == 0 ? Set.of("") : Set.of(paths);
+        }
+        if (annotation instanceof DeleteMapping deleteMapping) {
+            String[] paths = deleteMapping.value().length > 0 ? deleteMapping.value() : deleteMapping.path();
             return paths.length == 0 ? Set.of("") : Set.of(paths);
         }
         return Set.of("");

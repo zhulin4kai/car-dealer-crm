@@ -23,7 +23,8 @@ class PermissionSecurityIntegrationTest extends BackendIntegrationTestBase {
         String token = createTokenForRole(801, "finance_test", "finance_specialist");
 
         assertAuthorized(post("/api/tran/payment").contentType(MediaType.APPLICATION_JSON).content("{}"), token);
-        assertAuthorized(post("/api/tran/payment/99999/refund"), token);
+        assertAuthorized(post("/api/tran/payment/99999/refund-requests")
+                .contentType(MediaType.APPLICATION_JSON).content("{}"), token);
         assertAuthorized(post("/api/tran/invoice").contentType(MediaType.APPLICATION_JSON).content("{}"), token);
         assertForbidden(put("/api/tran/update").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"id\":1}"), token);
@@ -48,7 +49,9 @@ class PermissionSecurityIntegrationTest extends BackendIntegrationTestBase {
         assertForbidden(put("/api/tran/approve/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"approved\":true,\"comment\":\"测试\"}"), token);
-        assertForbidden(post("/api/tran/payment/1/refund"), token);
+        assertForbidden(post("/api/tran/payment/1/refund-requests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"amount\":\"100.00\",\"refundType\":\"CUSTOMER_REFUND\",\"reason\":\"测试\"}"), token);
         assertForbidden(put("/api/user/2/roles")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"userId\":2,\"roleIds\":[1]}"), token);

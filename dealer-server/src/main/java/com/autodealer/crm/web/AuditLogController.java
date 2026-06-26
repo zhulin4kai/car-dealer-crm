@@ -46,10 +46,8 @@ public class AuditLogController {
     @PreAuthorize("hasAuthority('" + PermissionCodes.AUDIT_LOGIN_LIST + "')")
     public R<PageInfo<TLoginLog>> listLoginLogs(@RequestParam(value = "page", required = false) Integer page,
                                                 @RequestParam(value = "size", required = false) Integer size,
-                                                @RequestParam(value = "current", required = false) Integer current,
-                                                @RequestParam(value = "pageSize", required = false) Integer pageSize,
                                                 AuditLoginLogQuery query) {
-        applyPagination(query, page, size, current, pageSize);
+        applyPagination(query, page, size);
         return R.OK(auditLogService.listLoginLogs(query));
     }
 
@@ -81,10 +79,8 @@ public class AuditLogController {
     @PreAuthorize("hasAuthority('" + PermissionCodes.AUDIT_OPERATION_LIST + "')")
     public R<PageInfo<TOperationLog>> listOperationLogs(@RequestParam(value = "page", required = false) Integer page,
                                                         @RequestParam(value = "size", required = false) Integer size,
-                                                        @RequestParam(value = "current", required = false) Integer current,
-                                                        @RequestParam(value = "pageSize", required = false) Integer pageSize,
                                                         AuditOperationLogQuery query) {
-        applyPagination(query, page, size, current, pageSize);
+        applyPagination(query, page, size);
         return R.OK(auditLogService.listOperationLogs(query));
     }
 
@@ -114,11 +110,9 @@ public class AuditLogController {
 
     private void applyPagination(com.autodealer.crm.query.BaseQuery query,
                                  Integer page,
-                                 Integer size,
-                                 Integer current,
-                                 Integer pageSize) {
-        Integer resolvedPage = page != null ? page : current;
-        Integer resolvedSize = size != null ? size : pageSize;
+                                 Integer size) {
+        Integer resolvedPage = page;
+        Integer resolvedSize = size;
         if (resolvedPage != null) {
             query.setCurrent(resolvedPage);
         }

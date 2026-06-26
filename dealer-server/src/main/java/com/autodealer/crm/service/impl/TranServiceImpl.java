@@ -783,12 +783,6 @@ public class TranServiceImpl implements TranService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteTransaction(Integer id) {
-        throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易历史不允许物理删除，请使用取消或关闭命令");
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     public boolean cancelTransaction(Integer id, String reason) {
         return transitionTransactionTerminal(id, TranStage.CANCELLED, requireNonBlank(reason, "取消原因不能为空"),
                 AuditActionEnum.TRAN_CANCEL);
@@ -799,12 +793,6 @@ public class TranServiceImpl implements TranService {
     public boolean closeTransaction(Integer id, String reason) {
         return transitionTransactionTerminal(id, TranStage.CLOSED, requireNonBlank(reason, "关闭原因不能为空"),
                 AuditActionEnum.TRAN_CLOSE);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean batchDeleteTransactions(List<Integer> ids) {
-        throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易历史不允许批量物理删除，请逐笔取消或关闭交易");
     }
 
     private boolean transitionTransactionTerminal(Integer id, TranStage targetStage,
@@ -997,18 +985,6 @@ public class TranServiceImpl implements TranService {
     }
 
     @Override
-    @Deprecated
-    public boolean createInvoice(TTranInvoice invoice) {
-        return createTranInvoice(invoice);
-    }
-
-    @Override
-    @Deprecated
-    public boolean updateInvoiceStatus(Integer id, String status) {
-        return updateTranInvoiceStatus(id, status, null);
-    }
-
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public TPayment recordPayment(TPayment payment) {
         if (payment == null || payment.getTranId() == null) {
@@ -1158,12 +1134,6 @@ public class TranServiceImpl implements TranService {
 
         clearTransactionCache(payment.getTranId());
         return payment;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public TPayment refundPayment(Integer paymentId) {
-        throw new BusinessException(CodeEnum.OPERATION_FAILED, "退款必须先提交申请，并在审批通过后执行");
     }
 
     @Override

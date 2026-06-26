@@ -137,33 +137,6 @@ class CustomerServiceImplTest {
         assertTrue(pageInfo.getList().isEmpty());
     }
 
-    // ==================== getCustomerByPage ====================
-
-    @Test
-    void getCustomerByPage_shouldReturnPageInfo() {
-        TCustomer customer = new TCustomer();
-        customer.setId(1);
-        List<TCustomer> list = Collections.singletonList(customer);
-
-        when(tCustomerMapper.selectByQuery(any(CustomerListQuery.class))).thenReturn(list);
-
-        var pageInfo = customerService.getCustomerByPage(1);
-
-        assertNotNull(pageInfo);
-        assertEquals(1, pageInfo.getList().size());
-        verify(tCustomerMapper).selectByQuery(any(CustomerListQuery.class));
-    }
-
-    @Test
-    void getCustomerByPage_emptyResult_shouldReturnEmptyPageInfo() {
-        when(tCustomerMapper.selectByQuery(any(CustomerListQuery.class))).thenReturn(Collections.emptyList());
-
-        var pageInfo = customerService.getCustomerByPage(1);
-
-        assertNotNull(pageInfo);
-        assertTrue(pageInfo.getList().isEmpty());
-    }
-
     // ==================== getCustomerById ====================
 
     @Test

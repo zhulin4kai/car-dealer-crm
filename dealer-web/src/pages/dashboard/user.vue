@@ -539,7 +539,7 @@ function isAccountEnabled(user: User): boolean {
 
 async function getData(current: number) {
   try {
-    const resp = await fetchUserPage({ current })
+    const resp = await fetchUserPage({ page: current, size: pageSize.value })
     userList.value = resp.list
     pageSize.value = resp.pageSize ?? 10
     total.value = resp.total

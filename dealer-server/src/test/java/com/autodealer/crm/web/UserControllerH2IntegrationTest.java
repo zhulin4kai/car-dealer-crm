@@ -135,7 +135,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     @DisplayName("admin can POST /api/user with a JSON body: real H2 INSERT, then GET shows the new row")
     void adminCreateUser_withJsonBody_persistsToH2() throws Exception {
         String loginAct = "test_user_" + System.nanoTime();
-        // JSON body is what the frontend sends via doPost. With @RequestBody
+        // JSON body is what the frontend sends via the user module API. With @RequestBody
         // on addUser, the JSON reaches UserQuery, passwordEncoder succeeds,
         // and the row is inserted into H2. The next GET /api/user/{id} and
         // the list endpoint both see the new row, proving the round-trip

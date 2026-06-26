@@ -8,5 +8,5 @@ public interface ClueRemarkService {
 
     int saveClueRemark(ClueRemarkQuery clueRemarkQuery);
 
-    PageInfo<TClueRemark> getClueRemarkByPage(Integer current, ClueRemarkQuery clueRemarkQuery);
+    PageInfo<TClueRemark> getClueRemarkByPage(Integer current, Integer pageSize, ClueRemarkQuery clueRemarkQuery);
 }

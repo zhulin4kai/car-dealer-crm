@@ -17,7 +17,7 @@ export function batchDeleteCluesByIds(ids: EntityId[]): Promise<unknown> {
 }
 
 export function fetchCurrentClues(current: number): Promise<PageResult<Clue>> {
-  return httpClient.get<PageResult<Clue>>('/api/clues', { params: { current } })
+  return httpClient.get<PageResult<Clue>>('/api/clues', { params: { page: current, size: 10 } })
 }
 
 export function importExcelAPI(file: FormData): Promise<ImportResult> {
@@ -87,7 +87,8 @@ export function addClueRemark(
 export function fetchClueRemarkPage(current: number, clueId: EntityId): Promise<PageResult<ClueRemark>> {
   return httpClient.get<PageResult<ClueRemark>>('/api/clue/remark', {
     params: {
-      current,
+      page: current,
+      size: 10,
       clueId,
     },
   })

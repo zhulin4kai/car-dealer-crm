@@ -68,26 +68,11 @@ public interface TranService {
 
 
     /**
-     * 创建发票
-     * @param invoice 发票信息
-     * @return 是否创建成功
-     */
-    boolean createInvoice(TTranInvoice invoice);
-
-    /**
      * 获取交易的发票列表
      * @param tranId 交易ID
      * @return 发票列表
      */
     List<TTranInvoice> getTransactionInvoices(Integer tranId);
-
-    /**
-     * 更新发票状态
-     * @param id 发票ID
-     * @param status 新状态
-     * @return 是否更新成功
-     */
-    boolean updateInvoiceStatus(Integer id, String status);
 
     /**
      * 获取交易的跟踪记录
@@ -160,23 +145,9 @@ public interface TranService {
      */
     TTranInvoice reissueInvoice(Integer invoiceId, TTranInvoice invoice, String reason);
 
-    /**
-     * 删除交易
-     * @param id 交易ID
-     * @return 是否删除成功
-     */
-    boolean deleteTransaction(Integer id);
-
     boolean cancelTransaction(Integer id, String reason);
 
     boolean closeTransaction(Integer id, String reason);
-
-    /**
-     * 批量删除交易
-     * @param ids 交易ID列表
-     * @return 是否删除成功
-     */
-    boolean batchDeleteTransactions(List<Integer> ids);
 
     /**
      * 重新提交交易（审批拒绝后）
@@ -200,11 +171,6 @@ public interface TranService {
     TPayment recordPayment(TPayment payment);
 
     TPayment confirmPayment(Integer paymentId, Boolean approved, String comment);
-
-    /**
-     * 退款（旧接口保留兼容，业务应使用退款申请/审批/执行流程）
-     */
-    TPayment refundPayment(Integer paymentId);
 
     TRefundRequest createRefundRequest(Integer paymentId, TRefundRequest request);
 

@@ -113,7 +113,7 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
             }
         }
         assertTrue(violations.isEmpty(),
-                "These controllers import the deprecated Result.java wrapper instead of R.java: "
+                "These controllers import the retired Result.java wrapper instead of R.java: "
                         + String.join(", ", violations));
     }
 
@@ -370,8 +370,6 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
     private static String detectLogoutMethodInContent(String content) {
         if (content.contains("httpClient.post('/api/logout'") || content.contains("httpClient.post(\"/api/logout\"")) return "POST";
         if (content.contains("httpClient.get('/api/logout'") || content.contains("httpClient.get(\"/api/logout\"")) return "GET";
-        if (content.contains("doPost(\"/api/logout\"") || content.contains("doPost('/api/logout'")) return "POST";
-        if (content.contains("doGet(\"/api/logout\"") || content.contains("doGet('/api/logout'")) return "GET";
         if (content.contains("axios.post(\"/api/logout\"") || content.contains("axios.post('/api/logout'")) return "POST";
         if (content.contains("axios.get(\"/api/logout\"") || content.contains("axios.get('/api/logout'")) return "GET";
         return "";

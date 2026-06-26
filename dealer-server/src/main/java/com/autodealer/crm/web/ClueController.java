@@ -40,12 +40,9 @@ public class ClueController {
     @PreAuthorize(value = "hasAuthority('" + PermissionCodes.CLUE_LIST + "')")
     @GetMapping(value = "/api/clues")
     public R cluePage(
-            @RequestParam(value = "current", required = false) Integer current,
-            @RequestParam(value = "pageSize", required = false) Integer pageSize) {
-        if (current == null) {
-            current = 1;
-        }
-        PageInfo<TClue> pageInfo = clueService.getClueByPage(current, pageSize);
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
+        PageInfo<TClue> pageInfo = clueService.getClueByPage(page == null ? 1 : page, size);
         return R.OK(pageInfo);
     }
 

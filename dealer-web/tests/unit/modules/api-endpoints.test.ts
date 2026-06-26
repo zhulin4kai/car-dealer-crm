@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchLoginLogPage, fetchOperationLogPage } from '@/modules/audit/api/audit-api'
 import { fetchActivityPage } from '@/modules/activity/api/activity-api'
 import { batchDeleteCluesByIds } from '@/modules/clue/api/clue-api'
-import { fetchCustomerOptions } from '@/modules/customer/api/customer-api'
+import { fetchCustomerOptions, fetchCustomerPage } from '@/modules/customer/api/customer-api'
 import { clearCache } from '@/modules/dict/api/dict-api'
 import { fetchProductPage } from '@/modules/product/api/product-api'
 import { createTran, fetchSettlementPreview, fetchTranPage, settleTran } from '@/modules/tran/api/tran-api'
@@ -35,6 +35,7 @@ describe('module api endpoints', () => {
     await fetchLoginLogPage({ page: 1, size: 10 })
     await fetchOperationLogPage({ page: 1, size: 10 })
     await batchDeleteCluesByIds([1, 2])
+    await fetchCustomerPage({ page: 1, size: 10 })
     await fetchCustomerOptions()
     await clearCache()
     await fetchProductPage({ page: 1, size: 10 })
@@ -47,12 +48,26 @@ describe('module api endpoints', () => {
       '/api/audit/login-logs',
       '/api/audit/operation-logs',
       '/api/clue/batch',
+      '/api/customers',
       '/api/customer/options',
       '/api/dict/clear',
       '/api/products',
       '/api/tran/list',
       '/api/users',
     ])
+    expect(calls.map(config => config.params)).toEqual([
+      { page: 1, size: 10 },
+      { page: 1, size: 10 },
+      { page: 1, size: 10 },
+      undefined,
+      { page: 1, size: 10 },
+      undefined,
+      { forceRefresh: true },
+      { page: 1, size: 10 },
+      { page: 1, size: 10 },
+      { page: 1, size: 10 },
+    ])
+    expect(JSON.stringify(calls.map(config => config.params))).not.toMatch(/"current"|"pageSize"/)
   })
 
   it('sends the server preview token when settling a transaction', async () => {
@@ -100,7 +115,10 @@ describe('module api endpoints', () => {
   it('does not introduce legacy endpoint calls in business source files', () => {
     const legacyEndpointPatterns = [
       /['"`]\/api\/activitys['"`]/,
+      /['"`]\/api\/customer\/list['"`]/,
       /['"`]\/api\/tran\/create['"`]/,
+      /['"`]\/api\/tran\/batch-delete['"`]/,
+      /['"`]\/api\/tran\/payment\/[^'"`]+\/refund['"`]/,
     ]
     const offenders = collectSourceFiles(srcDir).filter((file) => {
       const content = fs.readFileSync(file, 'utf8')

@@ -846,14 +846,6 @@ class TranServiceImplTest {
     }
 
     @Test
-    void deleteTransaction_shouldRejectPhysicalDelete() {
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> tranService.deleteTransaction(1));
-        assertEquals(CodeEnum.TRAN_STATE_CONFLICT, exception.getCodeEnum());
-        verify(tranMapper, never()).deleteByPrimaryKey(anyInt());
-    }
-
-    @Test
     void cancelTransaction_shouldWriteHistoryAndKeepFacts() {
         TTran existing = newTran(1, TranStage.QUOTATION);
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
@@ -1005,21 +997,6 @@ class TranServiceImplTest {
 
         verify(productMapper, never()).updateStock(anyLong(), anyInt());
         verify(tranProductMapper).deleteByTranId(1);
-    }
-
-    @Test
-    void batchDeleteTransactions_shouldFailEntireBatchForNonQuotation() {
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> tranService.batchDeleteTransactions(Arrays.asList(1, 2)));
-        assertEquals(CodeEnum.TRAN_STATE_CONFLICT, exception.getCodeEnum());
-        verify(tranMapper, never()).deleteByPrimaryKey(anyInt());
-    }
-
-    @Test
-    void batchDeleteTransactions_exceedMax_shouldThrow() {
-        List<Integer> ids = new ArrayList<>();
-        for (int i = 0; i < Constants.MAX_BATCH_SIZE + 1; i++) ids.add(i);
-        assertThrows(RuntimeException.class, () -> tranService.batchDeleteTransactions(ids));
     }
 
     @Test
@@ -1277,15 +1254,6 @@ class TranServiceImplTest {
         verify(tranHistoryMapper).insert(argThat(history ->
                 history.getTranId().equals(1) && "DELIVERY".equals(history.getStage())));
         verify(transactionCompletionService).tryComplete(1, 7);
-    }
-
-    @Test
-    void refundPayment_directCall_shouldRejectWorkflowBypass() {
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> tranService.refundPayment(10));
-
-        assertEquals(CodeEnum.OPERATION_FAILED, exception.getCodeEnum());
-        verify(paymentMapper, never()).insertSelective(any());
     }
 
     @Test

@@ -207,7 +207,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **流程**: 验证 token 是否有效，返回 OK
 
 #### 用户列表分页查询
-- **接口**: `GET /api/users?current=1`
+- **接口**: `GET /api/users?page=1&size=10`
 - **权限**: `@PreAuthorize("hasAuthority('user:list')")`
 - **流程**: `UserController.userPage()` → `UserServiceImpl.getUserByPage()` → `TUserMapper.selectUserByPage()`
 - **事务**: 无
@@ -294,7 +294,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 ### 4.2 接口方法及业务流程
 
 #### 线索列表分页查询
-- **接口**: `GET /api/clues?current=1`
+- **接口**: `GET /api/clues?page=1&size=10`
 - **权限**: `@PreAuthorize("hasAuthority('clue:list')")`
 - **流程**: `ClueController.cluePage()` → `ClueServiceImpl.getClueByPage()` → `TClueMapper.selectClueByPage()`
 - **SQL**: 多表 LEFT JOIN 关联查询用户、活动、字典值、产品
@@ -397,7 +397,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 
 #### 线索备注
 - **新增**: `POST /api/clue/remark` → `ClueRemarkServiceImpl.saveClueRemark()` → `TClueRemarkMapper.insertSelective()`
-- **分页查询**: `GET /api/clue/remark?current=1&clueId=` → `ClueRemarkServiceImpl.getClueRemarkByPage()` → `TClueRemarkMapper.selectClueRemarkByPage()`
+- **分页查询**: `GET /api/clue/remark?page=1&size=10&clueId=` → `ClueRemarkServiceImpl.getClueRemarkByPage()` → `TClueRemarkMapper.selectClueRemarkByPage()`
 - **事务**: 新增方法有 `@Transactional(rollbackFor = Exception.class)`
 
 ### 4.3 涉及数据库表
@@ -429,7 +429,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 ### 5.2 接口方法及业务流程
 
 #### 客户列表（带查询条件）
-- **接口**: `GET /api/customer/list?page=1&size=10`
+- **接口**: `GET /api/customers?page=1&size=10`
 - **流程**: `CustomerController.list()` → `CustomerServiceImpl.getCustomerList()` → `TCustomerMapper.selectByQuery()`
 - **支持查询条件**: 客户名称、产品ID。
 - **数据来源**: 客户姓名、联系方式、来源、负责人和状态均来自 `t_customer` 主档字段；不再通过线索联表读取客户事实。
@@ -467,10 +467,6 @@ dealer-server/src/main/java/com/autodealer/crm/
 #### 客户删除
 - **接口**: `DELETE /api/customer/{id}`
 - **规则**: 存在线索、跟进、报价、交易等业务关系时返回 `RESOURCE_IN_USE`，不物理删除。
-
-#### 客户分页查询（旧版）
-- **接口**: `GET /api/customers?current=1`
-- **流程**: `CustomerController.cluePage()` → `CustomerServiceImpl.getCustomerByPage()` → `TCustomerMapper.selectCustomerPage()`
 
 #### 导出 Excel
 - **接口**: `GET /api/exportExcel?ids=1,2,3`
@@ -521,7 +517,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 - **流程**: `TranController.detail()` → `TranServiceImpl.getTransactionById()` → `TTranMapper.selectByPrimaryKey()`
 
 #### 创建交易
-- **接口**: `POST /api/transactions`（历史 `POST /api/tran/create` 仅保留 deprecated 兼容）
+- **接口**: `POST /api/transactions`
 - **流程**: `TranController.create()` → `TranServiceImpl.createTransaction()`
   1. 生成交易编号（TN + 年月日 + 6位随机数）
   2. 服务端校验客户数据范围和商品可售状态，并按数据库商品价格计算报价金额
@@ -651,11 +647,6 @@ dealer-server/src/main/java/com/autodealer/crm/
   7. 不删除商品快照、备注、审批、收款、退款、发票、交付或库存流水事实。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
-#### 废弃删除入口
-- **接口**: `DELETE /api/tran/{id}`、`POST /api/tran/batch-delete`
-- **流程**: → `TranServiceImpl.deleteTransaction()/batchDeleteTransactions()`
-- **行为**: 交易历史不再允许物理删除；旧删除和批量删除入口保留兼容路径，但统一返回状态冲突，前端不得再作为正常业务入口使用。
-
 ### 6.4 Redis 缓存
 
 | 缓存 Key | 用途 | 过期时间 |
@@ -769,7 +760,7 @@ ACCEPTED → CONVERTED_TO_ORDER
 ### 8.2 接口方法及业务流程
 
 #### 活动列表分页查询
-- **接口**: `GET /api/activities?page=1&size=10`（历史 `GET /api/activitys?current=1&pageSize=10` 仅保留 deprecated 兼容）
+- **接口**: `GET /api/activities?page=1&size=10`
 - **流程**: `ActivityController.activityPage()` → `ActivityServiceImpl.getActivityByPage()` → `TActivityMapper.selectActivityByPage()`
 - **支持查询条件**: 所属人、名称、状态、渠道、时间范围、预算、创建时间
 - **数据范围**: `@DataScope(tableAlias = "ta", tableField = "owner_id")` 注入负责人范围过滤，SQL 自身保持稳定排序。
@@ -813,7 +804,7 @@ ACCEPTED → CONVERTED_TO_ORDER
 
 #### 活动备注
 - **新增**: `POST /api/activity/remark` → `ActivityRemarkServiceImpl.saveActivityRemark()` → `TActivityRemarkMapper.insertSelective()`
-- **分页查询**: `GET /api/activity/remark?current=1&activityId=` → `TActivityRemarkMapper.selectActivityRemarkByPage()`
+- **分页查询**: `GET /api/activity/remark?page=1&size=10&activityId=` → `TActivityRemarkMapper.selectActivityRemarkByPage()`
 - **详情**: `GET /api/activity/remark/{id}` → `TActivityRemarkMapper.selectByPrimaryKey()`
 - **编辑**: `PUT /api/activity/remark` → `TActivityRemarkMapper.updateByPrimaryKeySelective()`
 - **删除**: `DELETE /api/activity/remark/{id}` → 逻辑删除（设置 deleted=1）

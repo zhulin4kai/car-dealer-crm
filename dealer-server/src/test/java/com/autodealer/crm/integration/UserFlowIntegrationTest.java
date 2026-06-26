@@ -180,7 +180,7 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
                 """.formatted(newLoginAct);
 
         try {
-            // The frontend sends JSON via doPost. The controller's
+            // The frontend sends JSON via the user module API. The controller's
             // addUser now has @RequestBody so the JSON reaches UserQuery,
             // passwordEncoder succeeds, and the row is inserted.
             mockMvc.perform(post("/api/user")

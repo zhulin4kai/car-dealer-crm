@@ -53,20 +53,6 @@ public class TranController {
     @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_CREATE + "')")
     @PostMapping("/api/transactions")
     public R<Integer> create(@Valid @RequestBody CreateTranRequest request) {
-        return createTransaction(request);
-    }
-
-    /**
-     * 历史交易创建入口，保留兼容窗口；新客户端使用 POST /api/transactions。
-     */
-    @Deprecated
-    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_CREATE + "')")
-    @PostMapping("/api/tran/create")
-    public R<Integer> legacyCreate(@Valid @RequestBody CreateTranRequest request) {
-        return createTransaction(request);
-    }
-
-    private R<Integer> createTransaction(CreateTranRequest request) {
         TTran tran = new TTran();
         tran.setCustomerId(request.getCustomerId());
         tran.setDescription(request.getDescription());
@@ -268,20 +254,6 @@ public class TranController {
     }
 
     /**
-     * 删除交易
-     */
-    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_DELETE + "')")
-    @DeleteMapping("/api/tran/{id}")
-    public R<String> delete(@PathVariable Integer id) {
-        boolean result = tranService.deleteTransaction(id);
-        if (result) {
-            return R.OK("删除成功");
-        } else {
-            return R.FAIL("删除失败");
-        }
-    }
-
-    /**
      * 取消交易
      */
     @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_CANCEL + "')")
@@ -301,20 +273,6 @@ public class TranController {
             @PathVariable Integer id,
             @Valid @RequestBody TransactionLifecycleRequest request) {
         return R.OK(tranService.closeTransaction(id, request.getReason()));
-    }
-
-    /**
-     * 批量删除交易
-     */
-    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_DELETE + "')")
-    @PostMapping("/api/tran/batch-delete")
-    public R<String> batchDelete(@Valid @RequestBody BatchDeleteTranRequest request) {
-        boolean result = tranService.batchDeleteTransactions(request.getIds());
-        if (result) {
-            return R.OK("批量删除成功");
-        } else {
-            return R.FAIL("批量删除失败");
-        }
     }
 
     /**
@@ -410,12 +368,4 @@ public class TranController {
                 request.getSuccess(), request.getFailureReason()));
     }
 
-    /**
-     * 旧退款接口保留兼容，不再直接执行退款。
-     */
-    @PreAuthorize("hasAuthority('" + PermissionCodes.TRAN_REFUND + "')")
-    @PostMapping("/api/tran/payment/{id}/refund")
-    public R<TPayment> refund(@PathVariable Integer id) {
-        return R.OK(tranService.refundPayment(id));
-    }
 }

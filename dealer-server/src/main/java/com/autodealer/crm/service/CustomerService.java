@@ -23,9 +23,6 @@ public interface CustomerService {
 
     void convertCustomer(ConvertCustomerRequest request);
 
-    @Deprecated
-    PageInfo<CustomerListResponse> getCustomerByPage(Integer current);
-
     List<CustomerExcel> getCustomerByExcel(List<String> idList);
 
     boolean deleteCustomer(Integer id);

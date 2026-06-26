@@ -48,9 +48,18 @@ public class ActivityRemarkServiceImpl implements ActivityRemarkService {
     }
 
     @Override
-    public PageInfo<TActivityRemark> getActivityRemarkByPage(Integer current, ActivityRemarkQuery activityRemarkQuery) {
+    public PageInfo<TActivityRemark> getActivityRemarkByPage(Integer current, Integer pageSize, ActivityRemarkQuery activityRemarkQuery) {
+        if (current == null || current < 1) {
+            current = 1;
+        }
+        if (pageSize == null || pageSize < 1) {
+            pageSize = Constants.PAGE_SIZE;
+        }
+        if (pageSize > 100) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "分页大小不能超过100");
+        }
         // 1.设置PageHelper
-        PageHelper.startPage(current, Constants.PAGE_SIZE);
+        PageHelper.startPage(current, pageSize);
         // 2.查询
         List<TActivityRemark> list = tActivityRemarkMapper.selectActivityRemarkByPage(activityRemarkQuery);
         // 3.封装分页数据到PageInfo

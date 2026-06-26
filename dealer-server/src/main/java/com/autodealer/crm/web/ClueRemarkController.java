@@ -32,16 +32,15 @@ public class ClueRemarkController {
 
     @GetMapping(value = "/api/clue/remark")
     @PreAuthorize("hasAuthority('" + PermissionCodes.CLUE_VIEW + "')")
-    public R clueRemarkPage(@RequestParam(value = "current", required = false) Integer current,
+    public R clueRemarkPage(@RequestParam(value = "page", required = false) Integer page,
+                            @RequestParam(value = "size", required = false) Integer size,
                             @RequestParam(value = "clueId") Integer clueId) {
 
         ClueRemarkQuery clueRemarkQuery = new ClueRemarkQuery();
         clueRemarkQuery.setClueId(clueId);
 
-        if (current == null) {
-            current = 1;
-        }
-        PageInfo<TClueRemark> pageInfo = clueRemarkService.getClueRemarkByPage(current, clueRemarkQuery);
+        PageInfo<TClueRemark> pageInfo = clueRemarkService.getClueRemarkByPage(
+                page == null ? 1 : page, size, clueRemarkQuery);
         return R.OK(pageInfo);
     }
 }

@@ -93,20 +93,12 @@ export function reissueInvoice(invoiceId: EntityId, data: ReissueInvoiceRequest)
   return httpClient.post<TranInvoice>(`/api/tran/invoice/${invoiceId}/reissue`, data)
 }
 
-export function deleteTran(id: EntityId): Promise<unknown> {
-  return httpClient.delete(`/api/tran/${id}`)
-}
-
 export function cancelTran(id: EntityId, data: TransactionLifecycleRequest): Promise<boolean> {
   return httpClient.put<boolean>(`/api/tran/${id}/cancel`, data)
 }
 
 export function closeTran(id: EntityId, data: TransactionLifecycleRequest): Promise<boolean> {
   return httpClient.put<boolean>(`/api/tran/${id}/close`, data)
-}
-
-export function batchDeleteTran(ids: EntityId[]): Promise<unknown> {
-  return httpClient.post('/api/tran/batch-delete', { ids })
 }
 
 export function resubmitTran(id: EntityId): Promise<unknown> {

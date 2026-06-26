@@ -2,7 +2,7 @@ import axios from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/shared/api/api-error'
-import { doDelete, doGet, doPost, doPut, httpClient } from '@/shared/api/http-client'
+import { httpClient } from '@/shared/api/http-client'
 import { API_ERROR_CODE, isSessionInvalidCode } from '@/shared/api/error-codes'
 import {
   registerSessionInvalidHandler,
@@ -40,7 +40,7 @@ describe('http client', () => {
       data: { code: 200, msg: 'OK', data: { ok: true } },
     })
 
-    await expect(doGet('/api/test', { id: 1 })).resolves.toEqual({ ok: true })
+    await expect(httpClient.get('/api/test', { params: { id: 1 } })).resolves.toEqual({ ok: true })
     expect(mockedAxios.request).toHaveBeenCalledWith({
       method: 'get',
       url: '/api/test',
@@ -49,9 +49,9 @@ describe('http client', () => {
   })
 
   it('supports all HTTP methods', async () => {
-    await doPost('/api/post', { name: 'x' })
-    await doPut('/api/put', { id: 1 })
-    await doDelete('/api/delete', { id: 1 })
+    await httpClient.post('/api/post', { name: 'x' })
+    await httpClient.put('/api/put', { id: 1 })
+    await httpClient.delete('/api/delete', { id: 1 })
 
     expect(mockedAxios.request.mock.calls.map(([config]) => config.method)).toEqual([
       'post',
@@ -94,7 +94,7 @@ describe('http client', () => {
       data: { code: API_ERROR_CODE.TOKEN_EXPIRED, msg: 'token已过期', data: null },
     })
 
-    const calls = Array.from({ length: 5 }, () => doGet('/api/test'))
+    const calls = Array.from({ length: 5 }, () => httpClient.get('/api/test'))
     const results = await Promise.allSettled(calls)
 
     expect(handler).toHaveBeenCalledTimes(1)
@@ -118,7 +118,7 @@ describe('http client', () => {
     })
 
     try {
-      await doGet('/api/test')
+      await httpClient.get('/api/test')
       expect.fail('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(ApiError)
@@ -136,7 +136,7 @@ describe('http client', () => {
       data: { code: 520, msg: '没有访问权限', data: null },
     })
 
-    await expect(doGet('/api/test')).rejects.toThrow('没有访问权限')
+    await expect(httpClient.get('/api/test')).rejects.toThrow('没有访问权限')
     await Promise.resolve()
     expect(handler).not.toHaveBeenCalled()
   })
@@ -147,7 +147,7 @@ describe('http client', () => {
 
     mockedAxios.request.mockRejectedValueOnce(new Error('Network Error'))
 
-    await expect(doGet('/api/test')).rejects.toThrow('Network Error')
+    await expect(httpClient.get('/api/test')).rejects.toThrow('Network Error')
     await Promise.resolve()
     expect(handler).not.toHaveBeenCalled()
   })

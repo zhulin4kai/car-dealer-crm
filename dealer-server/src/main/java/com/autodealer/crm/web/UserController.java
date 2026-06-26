@@ -45,10 +45,11 @@ public class UserController {
 
     @PreAuthorize(value = "hasAuthority('" + PermissionCodes.USER_LIST + "')")
     @GetMapping(value = "/api/users")
-    public R<PageInfo<UserDetailResponse>> userPage(UserListQuery query) {
-        if (query.getCurrent() == null) {
-            query.setCurrent(1);
-        }
+    public R<PageInfo<UserDetailResponse>> userPage(@RequestParam(value = "page", required = false) Integer page,
+                                                     @RequestParam(value = "size", required = false) Integer size,
+                                                     UserListQuery query) {
+        query.setCurrent(page == null ? 1 : page);
+        query.setPageSize(size == null ? 10 : size);
         PageInfo<UserDetailResponse> pageInfo = userService.getUserByPage(query);
         return R.OK(pageInfo);
     }

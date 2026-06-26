@@ -143,7 +143,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageInfo<UserDetailResponse> getUserByPage(UserListQuery query) {
-        PageHelper.startPage(query.getCurrent(), PaginationConstants.DEFAULT_PAGE_SIZE);
+        int page = query.getCurrent() == null || query.getCurrent() < 1 ? 1 : query.getCurrent();
+        int pageSize = query.getPageSize() == null || query.getPageSize() < 1
+                ? PaginationConstants.DEFAULT_PAGE_SIZE : query.getPageSize();
+        if (pageSize > 100) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "分页大小不能超过100");
+        }
+        PageHelper.startPage(page, pageSize);
         List<TUser> list = tUserMapper.selectUserByPage(query);
         PageInfo<TUser> rawInfo = new PageInfo<>(list);
         List<UserDetailResponse> responseList = list.stream()

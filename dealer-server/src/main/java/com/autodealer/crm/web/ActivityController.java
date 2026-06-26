@@ -35,34 +35,11 @@ public class ActivityController {
     @PreAuthorize("hasAuthority('" + PermissionCodes.ACTIVITY_LIST + "')")
     public R<PageInfo<TActivity>> activityPage(@RequestParam(value = "page", required = false) Integer page,
                                                @RequestParam(value = "size", required = false) Integer size,
-                                               @RequestParam(value = "current", required = false) Integer current,
-                                               @RequestParam(value = "pageSize", required = false) Integer pageSize,
                                                ActivityQuery activityQuery) {
-        return activityPageInternal(page, size, current, pageSize, activityQuery);
-    }
-
-    @Deprecated
-    @GetMapping(value = "/api/activitys")
-    @PreAuthorize("hasAuthority('" + PermissionCodes.ACTIVITY_LIST + "')")
-    public R<PageInfo<TActivity>> legacyActivityPage(@RequestParam(value = "page", required = false) Integer page,
-                                                     @RequestParam(value = "size", required = false) Integer size,
-                                                     @RequestParam(value = "current", required = false) Integer current,
-                                                     @RequestParam(value = "pageSize", required = false) Integer pageSize,
-                                                     ActivityQuery activityQuery) {
-        return activityPageInternal(page, size, current, pageSize, activityQuery);
-    }
-
-    private R<PageInfo<TActivity>> activityPageInternal(Integer page,
-                                                        Integer size,
-                                                        Integer current,
-                                                        Integer pageSize,
-                                                        ActivityQuery activityQuery) {
-        Integer resolvedPage = page != null ? page : current;
-        Integer resolvedPageSize = size != null ? size : pageSize;
-        if (resolvedPageSize != null) {
-            activityQuery.setPageSize(resolvedPageSize);
+        if (size != null) {
+            activityQuery.setPageSize(size);
         }
-        return R.OK(activityService.getActivityByPage(resolvedPage, activityQuery));
+        return R.OK(activityService.getActivityByPage(page, activityQuery));
     }
 
     @PostMapping(value = "/api/activity")

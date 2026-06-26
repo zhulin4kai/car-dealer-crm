@@ -94,7 +94,7 @@ class ActivityRemarkServiceImplTest {
         );
         when(tActivityRemarkMapper.selectActivityRemarkByPage(any(ActivityRemarkQuery.class))).thenReturn(remarks);
 
-        PageInfo<TActivityRemark> result = activityRemarkService.getActivityRemarkByPage(1, query);
+        PageInfo<TActivityRemark> result = activityRemarkService.getActivityRemarkByPage(1, 10, query);
 
         assertNotNull(result);
         assertEquals(2, result.getList().size());
@@ -108,7 +108,7 @@ class ActivityRemarkServiceImplTest {
 
         when(tActivityRemarkMapper.selectActivityRemarkByPage(any(ActivityRemarkQuery.class))).thenReturn(Collections.emptyList());
 
-        PageInfo<TActivityRemark> result = activityRemarkService.getActivityRemarkByPage(1, query);
+        PageInfo<TActivityRemark> result = activityRemarkService.getActivityRemarkByPage(1, 10, query);
 
         assertNotNull(result);
         assertTrue(result.getList().isEmpty());

@@ -77,7 +77,7 @@ export function createActivityRemark(activityId: EntityId, noteContent: string):
 
 export function fetchActivityRemarkPage(current: number, activityId: EntityId): Promise<PageResult<ActivityRemark>> {
   return httpClient.get<PageResult<ActivityRemark>>('/api/activity/remark', {
-    params: { current, activityId },
+    params: { page: current, size: 10, activityId },
   })
 }
 

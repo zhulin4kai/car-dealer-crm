@@ -81,8 +81,8 @@ export interface HandoverUserResponsibilitiesResponse {
 }
 
 export interface UserListQuery {
-  current?: number
-  pageSize?: number
+  page?: number
+  size?: number
   loginAct?: string
   name?: string
   phone?: string

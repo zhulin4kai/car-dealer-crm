@@ -42,7 +42,7 @@ public class CustomerController {
         this.customerService = cs; this.currentUserProvider = cup; this.auditRecorder = ar;
     }
 
-    @GetMapping("/api/customer/list")
+    @GetMapping("/api/customers")
     @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_LIST + "')")
     public R<PageInfo<CustomerListResponse>> list(CustomerListQuery query,
             @RequestParam(defaultValue = "1") Integer page, @RequestParam(defaultValue = "10") Integer size) {
@@ -88,14 +88,6 @@ public class CustomerController {
     @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_TRANSFER + "')")
     public R<Void> convertCustomer(@Valid @RequestBody ConvertCustomerRequest request) {
         customerService.convertCustomer(request); return R.OK();
-    }
-
-    @Deprecated
-    @GetMapping("/api/customers")
-    @PreAuthorize("hasAuthority('" + PermissionCodes.CUSTOMER_LIST + "')")
-    public R<PageInfo<CustomerListResponse>> cluePage(@RequestParam(value = "current", required = false) Integer current) {
-        if (current == null) current = 1;
-        return R.OK(customerService.getCustomerByPage(current));
     }
 
     @GetMapping("/api/exportExcel")

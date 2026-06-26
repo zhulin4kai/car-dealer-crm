@@ -81,13 +81,6 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public PageInfo<CustomerListResponse> getCustomerByPage(Integer current) {
-        PageHelper.startPage(current, PaginationConstants.DEFAULT_PAGE_SIZE);
-        List<TCustomer> list = tCustomerMapper.selectByQuery(new CustomerListQuery());
-        return toPageInfo(list);
-    }
-
-    @Override
     public List<CustomerExcel> getCustomerByExcel(List<String> idList) {
         Integer dataScopeUserId = currentUserProvider.getDataScopeUserId();
         int count = tCustomerMapper.countCustomerByExcel(idList, dataScopeUserId);

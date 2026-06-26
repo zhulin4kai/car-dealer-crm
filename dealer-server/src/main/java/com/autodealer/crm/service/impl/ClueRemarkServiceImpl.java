@@ -51,9 +51,18 @@ public class ClueRemarkServiceImpl implements ClueRemarkService {
     }
 
     @Override
-    public PageInfo<TClueRemark> getClueRemarkByPage(Integer current, ClueRemarkQuery clueRemarkQuery) {
+    public PageInfo<TClueRemark> getClueRemarkByPage(Integer current, Integer pageSize, ClueRemarkQuery clueRemarkQuery) {
+        if (current == null || current < 1) {
+            current = 1;
+        }
+        if (pageSize == null || pageSize < 1) {
+            pageSize = Constants.PAGE_SIZE;
+        }
+        if (pageSize > 100) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "分页大小不能超过100");
+        }
         // 1.设置PageHelper
-        PageHelper.startPage(current, Constants.PAGE_SIZE);
+        PageHelper.startPage(current, pageSize);
         // 2.查询
         List<TClueRemark> list = tClueRemarkMapper.selectClueRemarkByPage(clueRemarkQuery);
         // 3.封装分页数据到PageInfo

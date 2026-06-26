@@ -561,7 +561,7 @@ function toggleSelection(id: EntityId | undefined, checked: boolean) {
 }
 
 function buildQuery(current: number) {
-  const params: Record<string, unknown> = { current }
+  const params: Record<string, unknown> = { page: current, size: pageSize.value }
   const start = fromLocalDateTimeInput(searchStartTime.value)
   const end = fromLocalDateTimeInput(searchEndTime.value)
   if (activityQuery.ownerId) params.ownerId = activityQuery.ownerId

@@ -12,7 +12,7 @@ import type {
 } from '@/modules/customer/model/customer.types'
 
 export function fetchCustomerPage(params: CustomerQuery): Promise<PageResult<Customer>> {
-  return httpClient.get<PageResult<Customer>>('/api/customer/list', { params })
+  return httpClient.get<PageResult<Customer>>('/api/customers', { params })
 }
 
 export function fetchCustomerDetail(id: EntityId, signal?: AbortSignal): Promise<CustomerDetail> {

@@ -35,16 +35,15 @@ public class ActivityRemarkController {
 
     @GetMapping(value = "/api/activity/remark")
     @PreAuthorize("hasAuthority('" + PermissionCodes.ACTIVITY_VIEW + "')")
-    public R activityRemarkPage(@RequestParam(value = "current", required = false) Integer current,
+    public R activityRemarkPage(@RequestParam(value = "page", required = false) Integer page,
+                                @RequestParam(value = "size", required = false) Integer size,
                                 @RequestParam(value = "activityId") Integer activityId) {
 
         ActivityRemarkQuery activityRemarkQuery = new ActivityRemarkQuery();
         activityRemarkQuery.setActivityId(activityId);
 
-        if (current == null) {
-            current = 1;
-        }
-        PageInfo<TActivityRemark> pageInfo = activityRemarkService.getActivityRemarkByPage(current, activityRemarkQuery);
+        PageInfo<TActivityRemark> pageInfo = activityRemarkService.getActivityRemarkByPage(
+                page == null ? 1 : page, size, activityRemarkQuery);
         return R.OK(pageInfo);
     }
 

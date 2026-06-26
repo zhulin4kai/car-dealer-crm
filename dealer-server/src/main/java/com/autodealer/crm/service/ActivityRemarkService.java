@@ -8,7 +8,7 @@ public interface ActivityRemarkService {
 
     int saveActivityRemark(ActivityRemarkQuery activityRemarkQuery);
 
-    PageInfo<TActivityRemark> getActivityRemarkByPage(Integer current, ActivityRemarkQuery activityRemarkQuery);
+    PageInfo<TActivityRemark> getActivityRemarkByPage(Integer current, Integer pageSize, ActivityRemarkQuery activityRemarkQuery);
 
     TActivityRemark getActivityRemarkById(Integer id);
 
