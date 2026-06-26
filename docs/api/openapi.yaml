@@ -2453,7 +2453,7 @@ paths:
       tags: [Delivery]
       operationId: signDelivery
       summary: 客户交付签收并联动库存出库
-      description: 所有准备项必须 COMPLETED；签收只写交付事实和 OUTBOUND 库存流水，不直接把交易置为 COMPLETED。
+      description: 所有准备项必须 COMPLETED；签收只写交付事实和 OUTBOUND 库存流水，并触发交易完成聚合，不由交付单独把交易置为 COMPLETED。
       parameters:
         - $ref: "#/components/parameters/LongId"
       requestBody:
@@ -2898,7 +2898,7 @@ paths:
       tags: [Transaction]
       operationId: updateTransactionInvoiceStatus
       summary: 更新交易发票状态
-      description: 仅更新发票处理状态；ISSUED、FAILED、VOIDED 不得推进或回退交易履约阶段。FAILED、VOIDED 必须提交原因。
+      description: 仅更新发票处理状态；ISSUED 后触发交易完成聚合，但不得由发票单独推进或回退交易履约阶段。FAILED、VOIDED 必须提交原因。
       parameters:
         - name: invoiceId
           in: path
@@ -3153,7 +3153,7 @@ paths:
               $ref: "#/components/schemas/CreatePaymentRequest"
       responses:
         "200":
-          $ref: "#/components/responses/RefundRequestObject"
+          $ref: "#/components/responses/TransactionPaymentObject"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3174,7 +3174,7 @@ paths:
       tags: [Transaction]
       operationId: confirmTransactionPayment
       summary: 确认或退回交易收款
-      description: 仅 PENDING 收款可确认或退回；确认到账后计入有效收款，若累计有效收款达到交易应收，交易从当前 APPROVED 或兼容 PAYMENT 阶段进入 DELIVERY，不直接完成交易。
+      description: 仅 PENDING 收款可确认或退回；确认到账后计入有效收款，若累计有效收款达到交易应收，交易从当前 APPROVED 或兼容 PAYMENT 阶段进入 DELIVERY，并触发交易完成聚合；收款不得单独完成交易。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -3185,7 +3185,7 @@ paths:
               $ref: "#/components/schemas/ConfirmPaymentRequest"
       responses:
         "200":
-          $ref: "#/components/responses/RefundRequestObject"
+          $ref: "#/components/responses/TransactionPaymentObject"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":

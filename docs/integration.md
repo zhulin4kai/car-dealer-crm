@@ -126,11 +126,11 @@
 | getTranApprove | GET | /api/tran/approve/info/{tranId} | 路径参数: tranId | R\<TTranApprove\> | TranController.getApproveInfo | 获取审批信息 |
 | createInvoice | POST | /api/tran/invoice | data: CreateTranInvoiceRequest (JSON) | R\<Boolean\> | TranController.createInvoice | 创建待开具发票；支持部分开票和多票 |
 | getTranInvoiceList | GET | /api/tran/invoice/{tranId} | 路径参数: tranId | R\<List\<TTranInvoice\>\> | TranController.getInvoiceList | 获取交易发票列表；无敏感权限时后端脱敏 |
-| updateInvoiceStatus | PUT | /api/tran/invoice/{invoiceId}/status | 路径参数: invoiceId, data: {status, reason?} (JSON) | R\<Boolean\> | TranController.updateInvoiceStatus | 标记已开具、失败或作废；失败/作废必须有原因 |
+| updateInvoiceStatus | PUT | /api/tran/invoice/{invoiceId}/status | 路径参数: invoiceId, data: {status, reason?} (JSON) | R\<Boolean\> | TranController.updateInvoiceStatus | 标记已开具、失败或作废；失败/作废必须有原因；ISSUED 后触发交易完成聚合 |
 | redReverseInvoice | POST | /api/tran/invoice/{invoiceId}/red-reversal | 路径参数: invoiceId, data: {amount, reason} (JSON) | R\<TTranInvoice\> | TranController.redReverseInvoice | 创建负数红字发票并保留原票 |
 | reissueInvoice | POST | /api/tran/invoice/{invoiceId}/reissue | 路径参数: invoiceId, data: ReissueInvoiceRequest (JSON) | R\<TTranInvoice\> | TranController.reissueInvoice | 基于作废或红冲事实重开发票 |
 | recordPayment | POST | /api/tran/payment | data: CreatePaymentRequest (JSON) | R\<TPayment\> | TranController.recordPayment | 登记待确认收款；金额由服务端按剩余应收计算 |
-| confirmPayment | PUT | /api/tran/payment/{id}/confirm | 路径参数: id, data: ConfirmPaymentRequest (JSON) | R\<TPayment\> | TranController.confirmPayment | 财务确认或退回待确认收款 |
+| confirmPayment | PUT | /api/tran/payment/{id}/confirm | 路径参数: id, data: ConfirmPaymentRequest (JSON) | R\<TPayment\> | TranController.confirmPayment | 财务确认或退回待确认收款；确认到账后只触发交易完成聚合，不由收款单独完成交易 |
 | fetchTranPayments | GET | /api/tran/payment/{tranId} | 路径参数: tranId | R\<List\<TPayment\>\> | TranController.getPayments | 查询交易收款和退款流水 |
 | fetchTranRefundRequests | GET | /api/tran/refund-requests/{tranId} | 路径参数: tranId | R\<List\<TRefundRequest\>\> | TranController.getRefundRequests | 查询交易退款申请 |
 | createRefundRequest | POST | /api/tran/payment/{id}/refund-requests | 路径参数: 原收款 id, data: CreateRefundRequest (JSON) | R\<TRefundRequest\> | TranController.createRefundRequest | 创建待审批退款申请 |
@@ -152,7 +152,7 @@
 | fetchDeliveryCheckItems | GET | /api/deliveries/{id}/check-items | 路径参数: id | R\<List\<TDeliveryCheckItem\>\> | DeliveryController.checkItems | 查询交付准备清单 |
 | fetchDeliveriesByTranId | GET | /api/deliveries/tran/{tranId} | 路径参数: tranId | R\<List\<TDelivery\>\> | DeliveryController.listByTranId | 查询交易下交付记录 |
 | updateDeliveryCheckItem | PUT | /api/deliveries/check-items/{itemId} | 路径参数: itemId, data: {status, remark?} | R\<TDeliveryCheckItem\> | DeliveryController.updateCheckItem | 更新准备项状态，状态使用稳定编码 PENDING/COMPLETED/BLOCKED |
-| signDelivery | POST | /api/deliveries/{id}/sign | 路径参数: id, data: SignDeliveryRequest (JSON) | R\<TDelivery\> | DeliveryController.sign | 客户签收并联动库存出库；不直接完成交易 |
+| signDelivery | POST | /api/deliveries/{id}/sign | 路径参数: id, data: SignDeliveryRequest (JSON) | R\<TDelivery\> | DeliveryController.sign | 客户签收并联动库存出库；签收后触发交易完成聚合，不由交付单独完成交易 |
 | markDeliveryException | POST | /api/deliveries/{id}/exception | 路径参数: id, data: {exceptionType, reason} | R\<TDelivery\> | DeliveryController.markException | 登记交付异常并保留历史 |
 | cancelDelivery | POST | /api/deliveries/{id}/cancel | 路径参数: id, data: {reason} | R\<TDelivery\> | DeliveryController.cancel | 取消交付并保留历史 |
 

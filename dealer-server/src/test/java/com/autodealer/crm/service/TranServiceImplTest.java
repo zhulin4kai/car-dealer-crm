@@ -63,6 +63,8 @@ class TranServiceImplTest {
     private OperationAuditRecorder auditRecorder;
     @Mock
     private ProductPromotionService promotionService;
+    @Mock
+    private TransactionCompletionService transactionCompletionService;
 
     @BeforeEach
     void setUp() {
@@ -1055,6 +1057,7 @@ class TranServiceImplTest {
         verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.COMPLETED), any(), anyInt());
         verify(tranHistoryMapper).insert(argThat(history ->
                 history.getTranId().equals(1) && "DELIVERY".equals(history.getStage())));
+        verify(transactionCompletionService).tryComplete(1, 7);
     }
 
     @Test
@@ -1082,6 +1085,7 @@ class TranServiceImplTest {
         verify(tranMapper, never()).updateStageAtomic(eq(1), eq(TranStage.COMPLETED), any(), anyInt());
         verify(tranHistoryMapper).insert(argThat(history ->
                 history.getTranId().equals(1) && "DELIVERY".equals(history.getStage())));
+        verify(transactionCompletionService).tryComplete(1, 7);
     }
 
     @Test

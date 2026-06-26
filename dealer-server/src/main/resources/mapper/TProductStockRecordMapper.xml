@@ -61,6 +61,16 @@
         ORDER BY create_time DESC, id DESC
         LIMIT 1
     </select>
+
+    <select id="selectOutboundByDelivery" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_product_stock_record
+        WHERE source_type = 'DELIVERY'
+          AND source_id = #{deliveryId}
+          AND type = 'OUTBOUND'
+        ORDER BY create_time DESC, id DESC
+        LIMIT 1
+    </select>
     
     <insert id="insert" parameterType="com.autodealer.crm.model.TProductStockRecord" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_product_stock_record (

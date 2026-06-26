@@ -471,9 +471,9 @@ dealer-server/src/main/java/com/autodealer/crm/
 | 层级 | 文件路径 |
 |------|----------|
 | Controller | `web/TranController.java` |
-| Service | `service/TranService.java` → `service/impl/TranServiceImpl.java` |
-| Mapper | `mapper/TTranMapper.java`, `mapper/TTranProductMapper.java`, `mapper/TTranInvoiceMapper.java`, `mapper/TTranApproveMapper.java`, `mapper/TTranRemarkMapper.java`, `mapper/ProductMapper.java` |
-| XML | `resources/mapper/TTranMapper.xml`, `resources/mapper/TTranProductMapper.xml`, `resources/mapper/TTranInvoiceMapper.xml`, `resources/mapper/TTranApproveMapper.xml`, `resources/mapper/TTranRemarkMapper.xml` |
+| Service | `service/TranService.java` → `service/impl/TranServiceImpl.java`, `service/TransactionCompletionService.java` → `service/impl/TransactionCompletionServiceImpl.java` |
+| Mapper | `mapper/TTranMapper.java`, `mapper/TTranProductMapper.java`, `mapper/TTranInvoiceMapper.java`, `mapper/TTranApproveMapper.java`, `mapper/TTranRemarkMapper.java`, `mapper/TPaymentMapper.java`, `mapper/TRefundRequestMapper.java`, `mapper/TDeliveryMapper.java`, `mapper/TProductStockRecordMapper.java`, `mapper/ProductMapper.java` |
+| XML | `resources/mapper/TTranMapper.xml`, `resources/mapper/TTranProductMapper.xml`, `resources/mapper/TTranInvoiceMapper.xml`, `resources/mapper/TTranApproveMapper.xml`, `resources/mapper/TTranRemarkMapper.xml`, `resources/mapper/TPaymentMapper.xml`, `resources/mapper/TRefundRequestMapper.xml`, `resources/mapper/TDeliveryMapper.xml`, `resources/mapper/TProductStockRecordMapper.xml` |
 | Model | `model/TTran.java`, `model/TTranProduct.java`, `model/TTranInvoice.java`, `model/TTranApprove.java`, `model/TTranRemark.java`, `model/TranCreateRequest.java` |
 | Query | `query/TranQuery.java`, `query/TranProductQuery.java` |
 
@@ -548,9 +548,9 @@ dealer-server/src/main/java/com/autodealer/crm/
 #### 更新发票状态
 - **接口**: `PUT /api/tran/invoice/{invoiceId}/status`
 - **流程**: → `TranServiceImpl.updateTranInvoiceStatus()`
-  - 发票状态变为 `ISSUED` 时，只更新发票为已开具。
+  - 发票状态变为 `ISSUED` 时，先更新发票为已开具，再触发 `TransactionCompletionService.tryComplete()` 尝试完成交易。
   - 发票状态变为 `FAILED` 或 `VOIDED` 时，必须记录原因，只更新发票事实。
-  - 发票状态不得覆盖收款状态、交付状态或交易履约阶段。
+  - 发票状态不得单独覆盖收款状态、交付状态或交易履约阶段；交易完成必须由完成聚合条件统一判定。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 
 #### 红冲和重开
@@ -577,8 +577,21 @@ dealer-server/src/main/java/com/autodealer/crm/
   - 仅 `PENDING` 收款可以确认或退回。
   - 确认成功后状态变为 `COMPLETED` 并记录确认时间。
   - 确认退回后状态变为 `FAILED` 并保留退回原因。
-  - 已确认收款达到应收金额时，交易从当前已审批或兼容待收款阶段进入待交付，不直接完成交易。
+  - 已确认收款达到应收金额时，交易从当前已审批或兼容待收款阶段进入待交付，并触发 `TransactionCompletionService.tryComplete()`。
+  - 收款确认不得单独完成交易；缺少票据、交付、出库或存在退款中事项时，聚合器保持当前交易阶段。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
+
+#### 交易完成条件聚合
+- **入口**: `TransactionCompletionService.tryComplete(tranId, operatorId)`
+- **触发点**: 财务确认收款、发票标记 `ISSUED`、交付签收完成并写入出库流水后触发。
+- **完成条件**:
+  - 当前交易处于 `DELIVERY`，已取消、已关闭、已丢失或已完成交易不会被重复推进。
+  - `COMPLETED` 收款净额达到交易应收金额，负数退款流水会抵减已收金额。
+  - `ISSUED` 发票净额达到交易金额；当前模型尚无“无需开票且财务确认”字段，因此不能跳过票据条件。
+  - 至少存在一条 `COMPLETED` 交付记录，并且存在以该交付记录为来源的 `OUTBOUND` 库存流水。
+  - 不存在 `PENDING_APPROVAL`、`PENDING_EXECUTION` 或 `EXECUTING` 退款申请。
+- **完成动作**: 使用 `TTranMapper.updateStageAtomic()` 以 `DELIVERY -> COMPLETED` 做 CAS 更新，写入 `t_tran_history`，记录 `TRAN_COMPLETE` 审计，并清理交易相关 Redis 缓存。
+- **未满足条件**: 返回未完成结果，不抛错、不回滚已经合法完成的子事实。
 
 #### 退款申请、审批与执行
 - **接口**: `POST /api/tran/payment/{id}/refund-requests`、`PUT /api/tran/refund-requests/{id}/approve`、`POST /api/tran/refund-requests/{id}/execute`
@@ -989,7 +1002,7 @@ deleteDicType(id):
   - 所有准备项必须为 `COMPLETED`。
   - 车辆仍需为当前交易的 `ORDER_RESERVED`，并存在未释放的订单占用流水。
   - 签收在同一事务内把车辆更新为 `OUTBOUND`，写入 `OUTBOUND` 库存流水并关联原占用流水。
-  - 签收只写交付事实和库存出库事实，不直接把交易阶段改为 `COMPLETED`。
+  - 签收只写交付事实和库存出库事实，不直接把交易阶段改为 `COMPLETED`；签收完成后触发 `TransactionCompletionService.tryComplete()` 进行完整条件聚合。
   - 重复签收已完成交付时返回当前记录，不重复写出库流水。
 - **事务**: `@Transactional(rollbackFor = Exception.class)`
 

@@ -29,6 +29,7 @@ import com.autodealer.crm.dto.SettlementPreviewResponse;
 import com.autodealer.crm.dto.SettleRequest;
 import com.autodealer.crm.service.ProductPromotionService;
 import com.autodealer.crm.util.JSONUtils;
+import com.autodealer.crm.service.TransactionCompletionService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -86,6 +87,9 @@ public class TranServiceImpl implements TranService {
 
     @Resource
     private ProductPromotionService promotionService;
+
+    @Resource
+    private TransactionCompletionService transactionCompletionService;
 
     @Override
     public PageInfo<TTran> getTransactionList(TranQuery query, Integer pageNum, Integer pageSize) {
@@ -715,6 +719,9 @@ public class TranServiceImpl implements TranService {
         }
 
         auditRecorder.record(AuditActionEnum.INVOICE_STATUS, String.valueOf(invoiceId));
+        if ("ISSUED".equals(status)) {
+            transactionCompletionService.tryComplete(currentInvoice.getTranId(), updateBy);
+        }
         clearTransactionCache(currentInvoice.getTranId());
         return true;
     }
@@ -1119,6 +1126,7 @@ public class TranServiceImpl implements TranService {
                 writeHistory(payment.getTranId(), TranStage.DELIVERY,
                         tran.getMoney(), tran.getExpectedDate(), userId);
             }
+            transactionCompletionService.tryComplete(payment.getTranId(), userId);
             auditRecorder.record(AuditActionEnum.PAYMENT_CONFIRM, String.valueOf(paymentId));
         } else {
             auditRecorder.record(AuditActionEnum.PAYMENT_REJECT, String.valueOf(paymentId));

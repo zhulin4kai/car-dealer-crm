@@ -26,6 +26,7 @@ import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.query.DeliveryQuery;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.DeliveryService;
+import com.autodealer.crm.service.TransactionCompletionService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.springframework.dao.DuplicateKeyException;
@@ -55,6 +56,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final TProductStockRecordMapper stockRecordMapper;
     private final CurrentUserProvider currentUserProvider;
     private final OperationAuditRecorder auditRecorder;
+    private final TransactionCompletionService transactionCompletionService;
 
     public DeliveryServiceImpl(TDeliveryMapper deliveryMapper,
                                TDeliveryCheckItemMapper checkItemMapper,
@@ -62,7 +64,8 @@ public class DeliveryServiceImpl implements DeliveryService {
                                TProductVehicleMapper vehicleMapper,
                                TProductStockRecordMapper stockRecordMapper,
                                CurrentUserProvider currentUserProvider,
-                               OperationAuditRecorder auditRecorder) {
+                               OperationAuditRecorder auditRecorder,
+                               TransactionCompletionService transactionCompletionService) {
         this.deliveryMapper = deliveryMapper;
         this.checkItemMapper = checkItemMapper;
         this.tranMapper = tranMapper;
@@ -70,6 +73,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         this.stockRecordMapper = stockRecordMapper;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
+        this.transactionCompletionService = transactionCompletionService;
     }
 
     @Override
@@ -237,6 +241,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         auditRecorder.record(AuditActionEnum.PRODUCT_STOCK_OUT, String.valueOf(vehicle.getId()));
         auditRecorder.record(AuditActionEnum.DELIVERY_SIGN, String.valueOf(id));
         auditRecorder.record(AuditActionEnum.DELIVERY_COMPLETE, String.valueOf(id));
+        transactionCompletionService.tryComplete(transaction.getId(), operatorId);
         return deliveryMapper.selectById(id);
     }
 

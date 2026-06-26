@@ -34,6 +34,7 @@ public enum AuditActionEnum {
     TRAN_DELETE("TRAN_DELETE", "删除交易", "交易管理"),
     TRAN_CANCEL("TRAN_CANCEL", "取消交易", "交易履约"),
     TRAN_CLOSE("TRAN_CLOSE", "关闭交易", "交易履约"),
+    TRAN_COMPLETE("TRAN_COMPLETE", "交易完成", "交易履约"),
     TRAN_RESUBMIT("TRAN_RESUBMIT", "交易重提", "交易管理"),
 
     QUOTE_CREATE("QUOTE_CREATE", "创建报价", "报价订单"),

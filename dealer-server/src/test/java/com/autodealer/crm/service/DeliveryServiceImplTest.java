@@ -54,6 +54,7 @@ class DeliveryServiceImplTest {
     @Mock private TProductStockRecordMapper stockRecordMapper;
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private OperationAuditRecorder auditRecorder;
+    @Mock private TransactionCompletionService transactionCompletionService;
     @InjectMocks private DeliveryServiceImpl deliveryService;
 
     @BeforeEach
@@ -139,6 +140,7 @@ class DeliveryServiceImplTest {
         verify(tranMapper, never()).updateStageAtomic(any(), any(), any(), any());
         verify(auditRecorder).record(AuditActionEnum.PRODUCT_STOCK_OUT, "100");
         verify(auditRecorder).record(AuditActionEnum.DELIVERY_COMPLETE, "10");
+        verify(transactionCompletionService).tryComplete(1, 7);
     }
 
     @Test
