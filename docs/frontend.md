@@ -155,6 +155,7 @@ token 存储策略：
 `/dashboard/product/stock` 使用 `modules/product/api/product-api.ts` 中的库存 API 查询商品库存汇总、库存流水和车辆实例。页面展示库存车辆实例状态时必须使用稳定编码映射中文文案，不能直接显示 `ORDER_RESERVED`、`RELEASE` 等后端枚举值；车辆入库、占用、释放命令统一走模块 API，不在页面临时拼装请求结构。
 
 `/dashboard/tran` 使用 `modules/tran/api/tran-api.ts` 查询交易列表并触发交易终态命令。交易列表不再提供物理删除或批量删除入口；待报价、审批拒绝等未进入履约事实的交易可关闭，已审批、待收款和待交付交易可取消，操作必须填写原因并走 `cancelTran` 或 `closeTran` 模块 API。页面只按 `tran.cancel`、`tran.close` 权限做体验控制，后端仍负责最终授权、状态冲突和历史事实保留。
+审批拒绝后的重新提交只把交易回到待报价，旧审批记录保留；前端确认文案不得暗示会清除审批历史。
 
 `/dashboard/tran/invoice/:id` 使用 `modules/tran/api/tran-api.ts` 中的发票 API 查询、创建、作废、红冲和重开发票。页面允许同一交易按可开票余额进行部分开票和多张发票；作废、红冲和重开都必须填写原因；发票状态使用稳定编码映射中文文案，不能直接显示 `VOIDED`、`RED_REVERSED` 等后端枚举值。税号、银行账号、地址和电话等敏感字段以服务端返回值为准，前端不得自行拼接未授权原文。
 

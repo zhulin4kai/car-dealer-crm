@@ -3063,7 +3063,7 @@ paths:
       tags: [Transaction]
       operationId: cancelTransaction
       summary: 取消交易
-      description: 取消交易必须提交原因；存在收款、待确认收款、退款处理中或未处理发票事实时返回 409，不删除历史记录。
+      description: 取消交易必须提交原因；存在收款、待确认收款、退款处理中、未处理发票、已出库或已签收事实时返回 409，不删除历史记录。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:

@@ -55,6 +55,10 @@ class TranServiceImplTest {
     @Mock
     private TRefundRequestMapper refundRequestMapper;
     @Mock
+    private TDeliveryMapper deliveryMapper;
+    @Mock
+    private TProductStockRecordMapper stockRecordMapper;
+    @Mock
     private TTranHistoryMapper tranHistoryMapper;
     @Mock
     private CurrentUserProvider currentUserProvider;
@@ -782,6 +786,23 @@ class TranServiceImplTest {
         when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
         when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(existing);
         when(tranInvoiceMapper.selectByTranId(1)).thenReturn(List.of(invoice));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> tranService.cancelTransaction(1, "客户取消"));
+
+        assertEquals(CodeEnum.TRAN_STATE_CONFLICT, exception.getCodeEnum());
+        verify(tranMapper, never()).updateStageAtomic(anyInt(), any(), any(), anyInt());
+    }
+
+    @Test
+    void cancelTransaction_withCompletedDelivery_shouldReject() {
+        TTran existing = newTran(1, TranStage.DELIVERY);
+        TDelivery delivery = new TDelivery();
+        delivery.setId(100L);
+        delivery.setStatus("COMPLETED");
+        when(tranMapper.selectByPrimaryKey(1)).thenReturn(existing);
+        when(tranMapper.selectByPrimaryKeyForUpdate(1)).thenReturn(existing);
+        when(deliveryMapper.selectByTranId(1)).thenReturn(List.of(delivery));
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> tranService.cancelTransaction(1, "客户取消"));

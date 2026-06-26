@@ -701,7 +701,7 @@ async function submitLifecycleAction(): Promise<void> {
 const handleResubmit = async (row: Record<string, unknown>) => {
   try {
     await messageConfirm(
-      '确定要重新提交该交易吗？将清除旧审批记录，如不改动请先进入详情编辑。',
+      '确定要重新提交该交易吗？旧审批记录会保留，新审批将重新生成。',
     )
   } catch {
     messageTip('取消重新提交', 'warning')

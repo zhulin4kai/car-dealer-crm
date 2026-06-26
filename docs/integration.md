@@ -136,7 +136,7 @@
 | createRefundRequest | POST | /api/tran/payment/{id}/refund-requests | 路径参数: 原收款 id, data: CreateRefundRequest (JSON) | R\<TRefundRequest\> | TranController.createRefundRequest | 创建待审批退款申请 |
 | approveRefundRequest | PUT | /api/tran/refund-requests/{id}/approve | 路径参数: id, data: ApproveRefundRequest (JSON) | R\<TRefundRequest\> | TranController.approveRefundRequest | 审批通过进入待执行，驳回保留原因 |
 | executeRefundRequest | POST | /api/tran/refund-requests/{id}/execute | 路径参数: id, data: ExecuteRefundRequest (JSON) | R\<TRefundRequest\> | TranController.executeRefundRequest | 记录退款执行成功或失败；成功新增负数退款流水 |
-| cancelTran | PUT | /api/tran/{id}/cancel | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.cancel | 取消交易；保留历史事实并写入原因 |
+| cancelTran | PUT | /api/tran/{id}/cancel | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.cancel | 取消交易；存在收款、发票、退款中、已出库或已签收事实时返回冲突，保留历史事实并写入原因 |
 | closeTran | PUT | /api/tran/{id}/close | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.close | 关闭交易；保留历史事实并写入原因 |
 | deleteTran | DELETE | /api/tran/{id} | 路径参数: id | R\<String\> | TranController.delete | 已废弃；交易历史不允许物理删除，返回状态冲突 |
 | batchDeleteTran | POST | /api/tran/batch-delete | data: {ids: List\<Integer\>} (JSON) | R\<String\> | TranController.batchDelete | 已废弃；批量物理删除返回状态冲突 |

@@ -80,6 +80,12 @@ public class TranServiceImpl implements TranService {
     private TRefundRequestMapper refundRequestMapper;
 
     @Resource
+    private TDeliveryMapper deliveryMapper;
+
+    @Resource
+    private TProductStockRecordMapper stockRecordMapper;
+
+    @Resource
     private TTranHistoryMapper tranHistoryMapper;
 
     @Resource
@@ -893,6 +899,14 @@ public class TranServiceImpl implements TranService {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易存在未处理完成的发票事实");
         }
 
+        List<TDelivery> deliveries = normalizeDeliveries(deliveryMapper.selectByTranId(transaction.getId()));
+        boolean hasDeliveredVehicle = deliveries.stream()
+                .anyMatch(delivery -> "COMPLETED".equals(delivery.getStatus())
+                        || stockRecordMapper.selectOutboundByDelivery(delivery.getId()) != null);
+        if (hasDeliveredVehicle) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "交易已出库或已签收，请走售后纠错流程");
+        }
+
         if (targetStage == TranStage.CLOSED && transaction.getStage() == TranStage.DELIVERY) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "待交付交易不能直接关闭，请按取消或交付异常流程处理");
         }
@@ -1372,6 +1386,10 @@ public class TranServiceImpl implements TranService {
 
     private List<TRefundRequest> normalizeRefundRequests(List<TRefundRequest> requests) {
         return requests == null ? List.of() : requests;
+    }
+
+    private List<TDelivery> normalizeDeliveries(List<TDelivery> deliveries) {
+        return deliveries == null ? List.of() : deliveries;
     }
 
     private boolean requiresExternalTransactionRef(String paymentMethod) {
