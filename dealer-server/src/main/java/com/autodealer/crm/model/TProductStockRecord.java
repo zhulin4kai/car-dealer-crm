@@ -7,8 +7,15 @@ import java.time.LocalDateTime;
 public class TProductStockRecord {
     private Long id;
     private Long productId;
+    private Long vehicleId;
     private Integer quantity;
-    private String type; // 入库/出库
+    private String type; // INBOUND/RESERVE/RELEASE/OUTBOUND
+    private String sourceType;
+    private Long sourceId;
+    private String beforeStatus;
+    private String afterStatus;
+    private Long relatedRecordId;
     private String remark;
     private LocalDateTime createTime;
-} 
+    private Integer createBy;
+}

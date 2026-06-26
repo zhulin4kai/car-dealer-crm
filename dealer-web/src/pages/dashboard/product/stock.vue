@@ -282,16 +282,105 @@
 
     <!-- 详情对话框 -->
     <Dialog v-model:open="detailDialogVisible">
-      <DialogContent class="sm:max-w-[640px]">
+      <DialogContent class="sm:max-w-[960px]">
         <DialogHeader>
-          <DialogTitle>库存变动记录</DialogTitle>
+          <DialogTitle>库存车辆与变动记录</DialogTitle>
         </DialogHeader>
-        <Table>
+        <div class="max-h-[62vh] space-y-5 overflow-y-auto pr-1">
+          <div>
+            <div class="mb-2 flex flex-wrap items-end justify-between gap-3">
+              <div class="text-sm font-semibold text-[var(--crm-text-secondary)]">车辆实例</div>
+              <form class="flex flex-wrap items-end gap-2" @submit.prevent="reloadDetail">
+                <div class="crm-field">
+                  <Label class="crm-field-label">VIN</Label>
+                  <Input
+                    v-model="vehicleFilterForm.vin"
+                    class="w-[190px]"
+                    placeholder="筛选VIN"
+                    @keyup.enter="reloadDetail"
+                  />
+                </div>
+                <div class="crm-field">
+                  <Label class="crm-field-label">状态</Label>
+                  <Select v-model="vehicleFilterForm.status">
+                    <SelectTrigger class="w-[170px]">
+                      <SelectValue placeholder="全部状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="option in vehicleStatusOptions"
+                        :key="option.value"
+                        :value="option.value"
+                      >
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" size="sm" :disabled="detailLoading">
+                  <Search class="h-4 w-4" />
+                  筛选
+                </Button>
+              </form>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead class="w-[110px]">车辆ID</TableHead>
+                  <TableHead>VIN</TableHead>
+                  <TableHead class="w-[110px]">颜色</TableHead>
+                  <TableHead class="w-[120px]">库位</TableHead>
+                  <TableHead class="w-[130px]">状态</TableHead>
+                  <TableHead class="w-[130px]">占用来源</TableHead>
+                  <TableHead class="w-[150px]">预计释放</TableHead>
+                  <TableHead class="w-[90px]">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-if="productVehicles.length === 0">
+                  <TableCell colspan="8" class="py-6 text-center text-[var(--crm-text-tertiary)]">
+                    暂无车辆实例
+                  </TableCell>
+                </TableRow>
+                <TableRow v-for="vehicle in productVehicles" :key="vehicle.id">
+                  <TableCell>{{ vehicle.id }}</TableCell>
+                  <TableCell class="font-mono text-xs">{{ vehicle.vin }}</TableCell>
+                  <TableCell>{{ vehicle.color || '--' }}</TableCell>
+                  <TableCell>{{ vehicle.location || '--' }}</TableCell>
+                  <TableCell>
+                    <StatusBadge
+                      :label="formatVehicleStatus(vehicle.status)"
+                      :tone="getVehicleStatusTone(vehicle.status)"
+                    />
+                  </TableCell>
+                  <TableCell>{{ formatSourceType(vehicle.sourceType, vehicle.sourceId) }}</TableCell>
+                  <TableCell>{{ formatDateTime(vehicle.holdUntil) || '--' }}</TableCell>
+                  <TableCell>
+                    <RowActionButton
+                      v-if="canReleaseVehicle(vehicle)"
+                      v-has-permission="PERMISSIONS.product.stock.adjust"
+                      label="释放占用"
+                      @click="handleOpenRelease(vehicle)"
+                    >
+                      <RotateCcw class="h-4 w-4" />
+                    </RowActionButton>
+                    <span v-else class="text-[var(--crm-text-tertiary)]">--</span>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+          <div>
+            <div class="mb-2 text-sm font-semibold text-[var(--crm-text-secondary)]">库存流水</div>
+            <Table>
           <TableHeader>
             <TableRow>
               <TableHead class="w-[80px]">记录ID</TableHead>
+              <TableHead class="w-[90px]">车辆ID</TableHead>
               <TableHead class="w-[100px]">变动数量</TableHead>
               <TableHead class="w-[100px]">类型</TableHead>
+              <TableHead class="w-[120px]">来源</TableHead>
+              <TableHead class="w-[150px]">状态变化</TableHead>
               <TableHead>备注</TableHead>
               <TableHead class="w-[180px]">时间</TableHead>
             </TableRow>
@@ -299,6 +388,7 @@
           <TableBody>
             <TableRow v-for="record in stockRecords" :key="record.id">
               <TableCell>{{ record.id }}</TableCell>
+              <TableCell>{{ record.vehicleId ?? '--' }}</TableCell>
               <TableCell>{{ record.quantity }}</TableCell>
               <TableCell>
                 <StatusBadge
@@ -306,13 +396,54 @@
                   :tone="getStockRecordTone(record.type)"
                 />
               </TableCell>
+              <TableCell>{{ formatSourceType(record.sourceType, record.sourceId) }}</TableCell>
+              <TableCell>
+                {{ formatVehicleStatus(record.beforeStatus) }} → {{ formatVehicleStatus(record.afterStatus) }}
+              </TableCell>
               <TableCell>{{ record.remark }}</TableCell>
               <TableCell>{{ formatDateTime(record.createTime) }}</TableCell>
             </TableRow>
           </TableBody>
         </Table>
+          </div>
+        </div>
         <DialogFooter>
           <Button variant="outline" @click="detailDialogVisible = false">关闭</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="releaseDialogVisible">
+      <DialogContent class="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>释放车辆占用</DialogTitle>
+        </DialogHeader>
+        <div v-if="releaseTarget" class="space-y-3 py-2">
+          <div class="grid grid-cols-[96px_1fr] gap-2 text-sm">
+            <span class="text-[var(--crm-text-tertiary)]">VIN</span>
+            <span class="font-mono">{{ releaseTarget.vehicle.vin }}</span>
+            <span class="text-[var(--crm-text-tertiary)]">当前状态</span>
+            <span>{{ formatVehicleStatus(releaseTarget.vehicle.status) }}</span>
+            <span class="text-[var(--crm-text-tertiary)]">占用来源</span>
+            <span>
+              {{
+                formatSourceType(releaseTarget.reserveRecord.sourceType, releaseTarget.reserveRecord.sourceId)
+              }}
+            </span>
+            <span class="text-[var(--crm-text-tertiary)]">原流水</span>
+            <span>#{{ releaseTarget.reserveRecord.id }}</span>
+          </div>
+          <Separator />
+          <div class="space-y-2">
+            <Label>释放原因</Label>
+            <Textarea v-model="releaseForm.reason" :rows="3" placeholder="请输入释放原因" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" :disabled="releaseLoading" @click="releaseDialogVisible = false">
+            取消
+          </Button>
+          <Button :disabled="releaseLoading" @click="handleReleaseSubmit">确认释放</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -329,8 +460,18 @@ import {
   restockProduct,
   getStockRecords,
   getCategoryList,
+  fetchProductVehicles,
+  releaseProductVehicle,
 } from '@/modules/product/api/product-api'
-import type { StockAlert, StockRecord, RestockRequest } from '@/modules/product/model/product.types'
+import type {
+  StockAlert,
+  StockRecord,
+  RestockRequest,
+  ProductVehicle,
+  ProductVehicleStatus,
+  ProductVehicleQuery,
+  ReleaseProductVehicleRequest,
+} from '@/modules/product/model/product.types'
 import { useLatestRequest } from '@/shared/composables/use-latest-request'
 import type { PageResult } from '@/shared/api/api-types'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
@@ -378,7 +519,18 @@ interface CategoryOption {
   label: string
 }
 
+interface VehicleStatusOption {
+  value: ProductVehicleStatus | typeof ALL_VEHICLE_STATUS
+  label: string
+}
+
+interface ReleaseTarget {
+  vehicle: ProductVehicle
+  reserveRecord: StockRecord
+}
+
 const ALL_CATEGORY_ID = '__ALL_CATEGORIES__'
+const ALL_VEHICLE_STATUS = '__ALL_VEHICLE_STATUS__'
 const stockAlertList = ref<StockAlert[]>([])
 const {
   sortBy,
@@ -413,7 +565,36 @@ const filterForm = ref({
 })
 const categoryOptions = ref<CategoryOption[]>([])
 const detailDialogVisible = ref(false)
+const detailLoading = ref(false)
+const detailProduct = ref<StockAlert | null>(null)
 const stockRecords = ref<StockRecord[]>([])
+const productVehicles = ref<ProductVehicle[]>([])
+const vehicleFilterForm = ref<{
+  vin: string
+  status: ProductVehicleStatus | typeof ALL_VEHICLE_STATUS
+}>({
+  vin: '',
+  status: ALL_VEHICLE_STATUS,
+})
+const releaseDialogVisible = ref(false)
+const releaseLoading = ref(false)
+const releaseTarget = ref<ReleaseTarget | null>(null)
+const releaseForm = ref<ReleaseProductVehicleRequest>({
+  reserveRecordId: 0,
+  reason: '',
+})
+const vehicleStatusOptions: VehicleStatusOption[] = [
+  { value: ALL_VEHICLE_STATUS, label: '全部状态' },
+  { value: 'AVAILABLE', label: '在库可售' },
+  { value: 'ORDER_RESERVED', label: '订单占用' },
+  { value: 'TEST_DRIVE_RESERVED', label: '试驾占用' },
+  { value: 'SALES_LOCKED', label: '销售锁定' },
+  { value: 'PENDING_DELIVERY', label: '待交付' },
+  { value: 'OUTBOUND', label: '已出库' },
+  { value: 'DELIVERED', label: '已交付' },
+  { value: 'INVENTORY_EXCEPTION', label: '盘点异常' },
+  { value: 'UNAVAILABLE', label: '不可售' },
+]
 
 const {
   run: runStockAlerts,
@@ -472,10 +653,13 @@ function formatDateTime(dateTimeStr?: string) {
 
 function formatStockRecordType(type?: string): string {
   const map: Record<string, string> = {
+    INBOUND: '入库',
     IN: '入库',
     in: '入库',
     RESTOCK: '补货',
     restock: '补货',
+    RESERVE: '占用',
+    RELEASE: '释放',
     OUT: '出库',
     out: '出库',
     ADJUST: '调整',
@@ -489,9 +673,77 @@ function getStockRecordTone(
 ): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
   const label = formatStockRecordType(type)
   if (label === '入库' || label === '补货') return 'success'
+  if (label === '释放') return 'info'
+  if (label === '占用') return 'purple'
   if (label === '出库') return 'warning'
   if (label === '调整') return 'info'
   return 'muted'
+}
+
+function formatVehicleStatus(status?: string): string {
+  const map: Record<string, string> = {
+    PENDING_INBOUND: '待入库',
+    AVAILABLE: '在库可售',
+    TEST_DRIVE_RESERVED: '试驾占用',
+    SALES_LOCKED: '销售锁定',
+    ORDER_RESERVED: '订单占用',
+    PENDING_DELIVERY: '待交付',
+    OUTBOUND: '已出库',
+    DELIVERED: '已交付',
+    INVENTORY_EXCEPTION: '盘点异常',
+    UNAVAILABLE: '不可售',
+  }
+  return map[status ?? ''] ?? status ?? '--'
+}
+
+function getVehicleStatusTone(
+  status?: ProductVehicleStatus | string,
+): 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple' {
+  if (status === 'AVAILABLE') return 'success'
+  if (status === 'TEST_DRIVE_RESERVED' || status === 'SALES_LOCKED' || status === 'ORDER_RESERVED') {
+    return 'purple'
+  }
+  if (status === 'INVENTORY_EXCEPTION' || status === 'UNAVAILABLE') return 'danger'
+  if (status === 'OUTBOUND' || status === 'DELIVERED') return 'muted'
+  return 'info'
+}
+
+function formatSourceType(sourceType?: string, sourceId?: string | number): string {
+  if (!sourceType) return '--'
+  const map: Record<string, string> = {
+    ORDER: '订单',
+    TEST_DRIVE: '试驾',
+    SALES_LOCK: '销售锁定',
+    INBOUND: '入库',
+  }
+  const label = map[sourceType] ?? sourceType
+  return sourceId ? `${label} #${sourceId}` : label
+}
+
+function isSameEntity(left?: string | number, right?: string | number): boolean {
+  return left !== undefined && right !== undefined && String(left) === String(right)
+}
+
+function isVehicleOccupied(status?: ProductVehicleStatus | string): boolean {
+  return status === 'ORDER_RESERVED' || status === 'TEST_DRIVE_RESERVED' || status === 'SALES_LOCKED'
+}
+
+function findActiveReserveRecord(vehicle: ProductVehicle): StockRecord | undefined {
+  const releasedRecordIds = new Set(
+    stockRecords.value
+      .filter((record) => record.type === 'RELEASE' && record.relatedRecordId !== undefined)
+      .map((record) => String(record.relatedRecordId)),
+  )
+  return stockRecords.value.find(
+    (record) =>
+      record.type === 'RESERVE' &&
+      isSameEntity(record.vehicleId, vehicle.id) &&
+      !releasedRecordIds.has(String(record.id)),
+  )
+}
+
+function canReleaseVehicle(vehicle: ProductVehicle): boolean {
+  return isVehicleOccupied(vehicle.status) && Boolean(findActiveReserveRecord(vehicle))
 }
 
 function handleSearch() {
@@ -549,13 +801,94 @@ async function handleRestockSubmit() {
   }
 }
 
-async function handleDetail(row: StockAlert) {
+function buildVehicleQuery(row: StockAlert): ProductVehicleQuery {
+  const query: ProductVehicleQuery = {
+    productId: row.id,
+    page: 1,
+    size: 100,
+  }
+  if (vehicleFilterForm.value.vin.trim()) {
+    query.vin = vehicleFilterForm.value.vin.trim()
+  }
+  if (vehicleFilterForm.value.status !== ALL_VEHICLE_STATUS) {
+    query.status = vehicleFilterForm.value.status
+  }
+  return query
+}
+
+async function loadInventoryDetail(row: StockAlert) {
+  detailLoading.value = true
   try {
-    const res = await getStockRecords(row.id, { page: 1, size: 100 })
-    stockRecords.value = res.list ?? []
-    detailDialogVisible.value = true
+    const [recordsRes, vehiclesRes] = await Promise.all([
+      getStockRecords(row.id, { page: 1, size: 100 }),
+      fetchProductVehicles(buildVehicleQuery(row)),
+    ])
+    stockRecords.value = recordsRes.list ?? []
+    productVehicles.value = vehiclesRes.list ?? []
   } catch {
-    messageTip('加载库存变动记录失败', 'error')
+    messageTip('加载库存详情失败', 'error')
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+async function handleDetail(row: StockAlert) {
+  detailProduct.value = row
+  vehicleFilterForm.value = {
+    vin: '',
+    status: ALL_VEHICLE_STATUS,
+  }
+  await loadInventoryDetail(row)
+  detailDialogVisible.value = true
+}
+
+function reloadDetail() {
+  if (!detailProduct.value || detailLoading.value) return
+  void loadInventoryDetail(detailProduct.value)
+}
+
+function handleOpenRelease(vehicle: ProductVehicle) {
+  const reserveRecord = findActiveReserveRecord(vehicle)
+  if (!reserveRecord) {
+    messageTip('未找到可释放的原占用流水', 'warning')
+    return
+  }
+  releaseTarget.value = {
+    vehicle,
+    reserveRecord,
+  }
+  releaseForm.value = {
+    reserveRecordId: reserveRecord.id,
+    reason: '',
+  }
+  releaseDialogVisible.value = true
+}
+
+async function handleReleaseSubmit() {
+  if (!releaseTarget.value) return
+  if (!releaseForm.value.reason.trim()) {
+    messageTip('请输入释放原因', 'warning')
+    return
+  }
+  if (releaseLoading.value) return
+
+  releaseLoading.value = true
+  try {
+    await releaseProductVehicle(releaseTarget.value.vehicle.id, {
+      reserveRecordId: releaseForm.value.reserveRecordId,
+      reason: releaseForm.value.reason.trim(),
+    })
+    messageTip('释放成功', 'success')
+    releaseDialogVisible.value = false
+    releaseTarget.value = null
+    if (detailProduct.value) {
+      await loadInventoryDetail(detailProduct.value)
+    }
+    await loadStockAlerts()
+  } catch {
+    messageTip('释放失败', 'error')
+  } finally {
+    releaseLoading.value = false
   }
 }
 

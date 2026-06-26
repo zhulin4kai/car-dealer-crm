@@ -15,6 +15,11 @@ import type {
   StockAlert,
   StockAlertQuery,
   StockRecord,
+  ProductVehicle,
+  ProductVehicleQuery,
+  CreateProductVehicleRequest,
+  ReserveProductVehicleRequest,
+  ReleaseProductVehicleRequest,
 } from '@/modules/product/model/product.types'
 
 export function fetchProductPage(params: ProductQuery): Promise<PageResult<Product>> {
@@ -47,6 +52,28 @@ export function restockProduct(data: RestockRequest): Promise<unknown> {
 
 export function fetchStockRecords(id: EntityId, params: ProductQuery): Promise<PageResult<StockRecord>> {
   return httpClient.get<PageResult<StockRecord>>(`/api/productstock/records/${id}`, { params })
+}
+
+export function fetchProductVehicles(params: ProductVehicleQuery): Promise<PageResult<ProductVehicle>> {
+  return httpClient.get<PageResult<ProductVehicle>>('/api/productstock/vehicles', { params })
+}
+
+export function inboundProductVehicle(data: CreateProductVehicleRequest): Promise<ProductVehicle> {
+  return httpClient.post<ProductVehicle>('/api/productstock/vehicles', data)
+}
+
+export function reserveProductVehicle(
+  vehicleId: EntityId,
+  data: ReserveProductVehicleRequest,
+): Promise<ProductVehicle> {
+  return httpClient.post<ProductVehicle>(`/api/productstock/vehicles/${vehicleId}/reserve`, data)
+}
+
+export function releaseProductVehicle(
+  vehicleId: EntityId,
+  data: ReleaseProductVehicleRequest,
+): Promise<ProductVehicle> {
+  return httpClient.post<ProductVehicle>(`/api/productstock/vehicles/${vehicleId}/release`, data)
 }
 
 export function fetchPromotionPage(params: ProductQuery): Promise<PageResult<ProductPromotion>> {

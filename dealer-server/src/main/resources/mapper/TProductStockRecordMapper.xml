@@ -5,14 +5,22 @@
     <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TProductStockRecord">
         <id column="id" property="id" />
         <result column="product_id" property="productId" />
+        <result column="vehicle_id" property="vehicleId" />
         <result column="quantity" property="quantity" />
         <result column="type" property="type" />
+        <result column="source_type" property="sourceType" />
+        <result column="source_id" property="sourceId" />
+        <result column="before_status" property="beforeStatus" />
+        <result column="after_status" property="afterStatus" />
+        <result column="related_record_id" property="relatedRecordId" />
         <result column="remark" property="remark" />
         <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
     </resultMap>
     
     <sql id="Base_Column_List">
-        id, product_id, quantity, type, remark, create_time
+        id, product_id, vehicle_id, quantity, type, source_type, source_id,
+        before_status, after_status, related_record_id, remark, create_time, create_by
     </sql>
     
     <select id="selectByProductId" resultMap="BaseResultMap">
@@ -27,12 +35,29 @@
         FROM t_product_stock_record
         WHERE product_id = #{productId}
     </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_product_stock_record
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectReleaseByRelatedRecordId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_product_stock_record
+        WHERE related_record_id = #{relatedRecordId}
+          AND type = 'RELEASE'
+        ORDER BY create_time DESC, id DESC
+        LIMIT 1
+    </select>
     
     <insert id="insert" parameterType="com.autodealer.crm.model.TProductStockRecord" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_product_stock_record (
-            product_id, quantity, type, remark, create_time
+            product_id, vehicle_id, quantity, type, source_type, source_id,
+            before_status, after_status, related_record_id, remark, create_time, create_by
         ) VALUES (
-            #{productId}, #{quantity}, #{type}, #{remark}, #{createTime}
+            #{productId}, #{vehicleId}, #{quantity}, #{type}, #{sourceType}, #{sourceId},
+            #{beforeStatus}, #{afterStatus}, #{relatedRecordId}, #{remark}, #{createTime}, #{createBy}
         )
     </insert>
-</mapper> 
+</mapper>

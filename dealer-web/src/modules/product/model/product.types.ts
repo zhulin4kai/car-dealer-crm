@@ -105,10 +105,75 @@ export interface StockAlert {
 export interface StockRecord {
   id: EntityId
   productId: EntityId
+  vehicleId?: EntityId
   quantity: number
   type: string
+  sourceType?: string
+  sourceId?: EntityId
+  beforeStatus?: string
+  afterStatus?: string
+  relatedRecordId?: EntityId
   remark?: string
   createTime?: string
+  createBy?: EntityId
+}
+
+export interface ProductVehicle {
+  id: EntityId
+  productId: EntityId
+  productSku?: string
+  productName?: string
+  vin: string
+  color: string
+  configuration?: string
+  location: string
+  status: ProductVehicleStatus
+  holdType?: string
+  sourceType?: string
+  sourceId?: EntityId
+  holdUntil?: string
+  createTime?: string
+  updateTime?: string
+}
+
+export type ProductVehicleStatus =
+  | 'PENDING_INBOUND'
+  | 'AVAILABLE'
+  | 'TEST_DRIVE_RESERVED'
+  | 'SALES_LOCKED'
+  | 'ORDER_RESERVED'
+  | 'PENDING_DELIVERY'
+  | 'OUTBOUND'
+  | 'DELIVERED'
+  | 'INVENTORY_EXCEPTION'
+  | 'UNAVAILABLE'
+
+export interface ProductVehicleQuery extends Partial<PageQuery> {
+  productId?: EntityId
+  status?: ProductVehicleStatus
+  vin?: string
+}
+
+export interface CreateProductVehicleRequest {
+  productId: EntityId
+  vin: string
+  color: string
+  configuration?: string
+  location: string
+  remark: string
+}
+
+export interface ReserveProductVehicleRequest {
+  holdType: string
+  sourceType: string
+  sourceId: EntityId
+  holdUntil?: string
+  remark: string
+}
+
+export interface ReleaseProductVehicleRequest {
+  reserveRecordId: EntityId
+  reason: string
 }
 
 export interface StockAlertQuery extends PageQuery {

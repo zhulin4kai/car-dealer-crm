@@ -147,6 +147,17 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'quote',
+        name: 'quote',
+        component: () => import('@/pages/dashboard/quote.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '报价订单',
+          activeMenu: '/dashboard/quote',
+          permission: PERMISSIONS.quote.list,
+        },
+      },
+      {
         path: 'tran',
         name: 'tran',
         component: () => import('@/pages/dashboard/tran/index.vue'),

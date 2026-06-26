@@ -12,6 +12,10 @@ public interface TProductStockRecordMapper {
                                               @Param("limit") Integer limit);
     
     Integer selectCountByProductId(@Param("productId") Long productId);
+
+    TProductStockRecord selectById(@Param("id") Long id);
+
+    TProductStockRecord selectReleaseByRelatedRecordId(@Param("relatedRecordId") Long relatedRecordId);
     
     int insert(TProductStockRecord record);
-} 
+}

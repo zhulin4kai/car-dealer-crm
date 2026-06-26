@@ -8,6 +8,7 @@ import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TProductPromotionMapper;
 import com.autodealer.crm.mapper.TProductStockRecordMapper;
+import com.autodealer.crm.mapper.TProductVehicleMapper;
 import com.autodealer.crm.mapper.TTranProductMapper;
 import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TProductStockRecord;
@@ -38,6 +39,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private TProductStockRecordMapper stockRecordMapper;
+
+    @Autowired
+    private TProductVehicleMapper productVehicleMapper;
 
     @Autowired
     private TTranProductMapper tranProductMapper;
@@ -132,11 +136,10 @@ public class ProductServiceImpl implements ProductService {
             throw new BusinessException(CodeEnum.NOT_FOUND, "产品不存在，入库失败");
         }
 
-        // 记录库存变动
         TProductStockRecord record = new TProductStockRecord();
         record.setProductId(productId);
         record.setQuantity(quantity);
-        record.setType("入库");
+        record.setType("INBOUND");
         record.setRemark(remark);
         record.setCreateTime(LocalDateTime.now());
         if (stockRecordMapper.insert(record) != 1) {
@@ -182,6 +185,7 @@ public class ProductServiceImpl implements ProductService {
     private boolean hasProductReferences(Long productId) {
         return tranProductMapper.countByProductId(productId) > 0
                 || safeCount(stockRecordMapper.selectCountByProductId(productId)) > 0
+                || productVehicleMapper.countByProductId(productId) > 0
                 || promotionMapper.countByProductId(productId) > 0
                 || customerMapper.countByProductId(productId) > 0
                 || clueMapper.countByIntentionProductId(productId) > 0;

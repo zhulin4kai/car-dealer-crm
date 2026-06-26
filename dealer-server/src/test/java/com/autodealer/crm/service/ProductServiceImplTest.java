@@ -6,6 +6,7 @@ import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TProductMapper;
 import com.autodealer.crm.mapper.TProductPromotionMapper;
 import com.autodealer.crm.mapper.TProductStockRecordMapper;
+import com.autodealer.crm.mapper.TProductVehicleMapper;
 import com.autodealer.crm.mapper.TTranProductMapper;
 import com.autodealer.crm.mapper.TCustomerMapper;
 import com.autodealer.crm.mapper.TClueMapper;
@@ -40,6 +41,9 @@ class ProductServiceImplTest {
 
     @Mock
     private TProductStockRecordMapper stockRecordMapper;
+
+    @Mock
+    private TProductVehicleMapper productVehicleMapper;
 
     @Mock
     private TTranProductMapper tranProductMapper;
@@ -316,7 +320,7 @@ class ProductServiceImplTest {
         verify(stockRecordMapper).insert(argThat(record ->
                 record.getProductId().equals(1L)
                         && record.getQuantity().equals(50)
-                        && "入库".equals(record.getType())
+                        && "INBOUND".equals(record.getType())
                         && "Restocking order".equals(record.getRemark())
                         && record.getCreateTime() != null
         ));
