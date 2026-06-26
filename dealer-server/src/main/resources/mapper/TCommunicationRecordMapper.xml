@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TCommunicationRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TCommunicationRecord">
+        <id column="id" property="id" />
+        <result column="follow_task_id" property="followTaskId" />
+        <result column="parent_record_id" property="parentRecordId" />
+        <result column="related_object_type" property="relatedObjectType" />
+        <result column="related_object_id" property="relatedObjectId" />
+        <result column="related_object_name" property="relatedObjectName" />
+        <result column="owner_id" property="ownerId" />
+        <result column="owner_name" property="ownerName" />
+        <result column="communication_method" property="communicationMethod" />
+        <result column="communication_time" property="communicationTime" />
+        <result column="summary" property="summary" />
+        <result column="customer_feedback" property="customerFeedback" />
+        <result column="next_action" property="nextAction" />
+        <result column="next_follow_time" property="nextFollowTime" />
+        <result column="status" property="status" />
+        <result column="correction_reason" property="correctionReason" />
+        <result column="void_reason" property="voidReason" />
+        <result column="version" property="version" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="update_by" property="updateBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        cr.id, cr.follow_task_id, cr.parent_record_id, cr.related_object_type, cr.related_object_id,
+        case cr.related_object_type
+            when 'CLUE' then (select full_name from t_clue where id = cr.related_object_id)
+            when 'CUSTOMER' then (select customer_name from t_customer where id = cr.related_object_id)
+            when 'OPPORTUNITY' then (select opportunity_no from t_opportunity where id = cr.related_object_id)
+            when 'TEST_DRIVE' then (select test_drive_no from t_test_drive where id = cr.related_object_id)
+            when 'ORDER' then (select tran_no from t_tran where id = cr.related_object_id)
+            else null
+        end as related_object_name,
+        cr.owner_id, u.name AS owner_name, cr.communication_method, cr.communication_time,
+        cr.summary, cr.customer_feedback, cr.next_action, cr.next_follow_time, cr.status,
+        cr.correction_reason, cr.void_reason, cr.version,
+        cr.create_time, cr.create_by, cr.update_time, cr.update_by
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_communication_record cr
+        LEFT JOIN t_user u ON cr.owner_id = u.id
+        WHERE cr.id = #{id}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_communication_record cr
+        LEFT JOIN t_user u ON cr.owner_id = u.id
+        WHERE cr.id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="selectByQuery" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_communication_record cr
+        LEFT JOIN t_user u ON cr.owner_id = u.id
+        WHERE 1 = 1
+        <if test="query.dataScopeUserId != null">
+            AND cr.owner_id = #{query.dataScopeUserId}
+        </if>
+        <if test="query.ownerId != null">
+            AND cr.owner_id = #{query.ownerId}
+        </if>
+        <if test="query.followTaskId != null">
+            AND cr.follow_task_id = #{query.followTaskId}
+        </if>
+        <if test="query.relatedObjectType != null and query.relatedObjectType != ''">
+            AND cr.related_object_type = #{query.relatedObjectType}
+        </if>
+        <if test="query.relatedObjectId != null">
+            AND cr.related_object_id = #{query.relatedObjectId}
+        </if>
+        <if test="query.status != null and query.status != ''">
+            AND cr.status = #{query.status}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (cr.summary LIKE CONCAT('%', #{query.keyword}, '%')
+                OR cr.customer_feedback LIKE CONCAT('%', #{query.keyword}, '%')
+                OR cr.next_action LIKE CONCAT('%', #{query.keyword}, '%'))
+        </if>
+        ORDER BY cr.communication_time DESC, cr.id DESC
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TCommunicationRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_communication_record (
+            follow_task_id, parent_record_id, related_object_type, related_object_id, owner_id,
+            communication_method, communication_time, summary, customer_feedback, next_action,
+            next_follow_time, status, version, create_time, create_by, update_time, update_by
+        ) VALUES (
+            #{followTaskId}, #{parentRecordId}, #{relatedObjectType}, #{relatedObjectId}, #{ownerId},
+            #{communicationMethod}, #{communicationTime}, #{summary}, #{customerFeedback}, #{nextAction},
+            #{nextFollowTime}, #{status}, #{version}, #{createTime}, #{createBy}, #{updateTime}, #{updateBy}
+        )
+    </insert>
+
+    <update id="markCorrected">
+        UPDATE t_communication_record
+        SET status = 'CORRECTED',
+            correction_reason = #{correctionReason},
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="voidIfActive">
+        UPDATE t_communication_record
+        SET status = 'VOIDED',
+            void_reason = #{voidReason},
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+</mapper>

@@ -14,6 +14,7 @@ import {
   FolderOpen,
   Gauge,
   Home,
+  KeyRound,
   LayoutDashboard,
   ListTree,
   Magnet,
@@ -23,6 +24,7 @@ import {
   Settings,
   ShoppingBag,
   Tag,
+  ShieldCheck,
   Truck,
   UserCog,
   UserSearch,
@@ -91,6 +93,8 @@ const iconMap: Record<string, Component> = {
   Shop: markRaw(ShoppingBag),
   Warehouse: markRaw(Warehouse),
   Tag: markRaw(Tag),
+  KeyRound: markRaw(KeyRound),
+  ShieldCheck: markRaw(ShieldCheck),
 }
 
 const defaultIcon = markRaw(LayoutDashboard)

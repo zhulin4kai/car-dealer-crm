@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TFollowTaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TFollowTask">
+        <id column="id" property="id" />
+        <result column="title" property="title" />
+        <result column="task_type" property="taskType" />
+        <result column="related_object_type" property="relatedObjectType" />
+        <result column="related_object_id" property="relatedObjectId" />
+        <result column="related_object_name" property="relatedObjectName" />
+        <result column="owner_id" property="ownerId" />
+        <result column="owner_name" property="ownerName" />
+        <result column="priority" property="priority" />
+        <result column="due_time" property="dueTime" />
+        <result column="remind_time" property="remindTime" />
+        <result column="status" property="status" />
+        <result column="result" property="result" />
+        <result column="postpone_reason" property="postponeReason" />
+        <result column="original_due_time" property="originalDueTime" />
+        <result column="postpone_count" property="postponeCount" />
+        <result column="cancel_reason" property="cancelReason" />
+        <result column="communication_record_id" property="communicationRecordId" />
+        <result column="completed_time" property="completedTime" />
+        <result column="completed_by" property="completedBy" />
+        <result column="version" property="version" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="update_by" property="updateBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        ft.id, ft.title, ft.task_type, ft.related_object_type, ft.related_object_id,
+        case ft.related_object_type
+            when 'CLUE' then (select full_name from t_clue where id = ft.related_object_id)
+            when 'CUSTOMER' then (select customer_name from t_customer where id = ft.related_object_id)
+            when 'OPPORTUNITY' then (select opportunity_no from t_opportunity where id = ft.related_object_id)
+            when 'TEST_DRIVE' then (select test_drive_no from t_test_drive where id = ft.related_object_id)
+            when 'ORDER' then (select tran_no from t_tran where id = ft.related_object_id)
+            else null
+        end as related_object_name,
+        ft.owner_id, u.name AS owner_name, ft.priority, ft.due_time, ft.remind_time,
+        ft.status, ft.result, ft.postpone_reason, ft.original_due_time, ft.postpone_count,
+        ft.cancel_reason, ft.communication_record_id, ft.completed_time, ft.completed_by,
+        ft.version, ft.create_time, ft.create_by, ft.update_time, ft.update_by
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_follow_task ft
+        LEFT JOIN t_user u ON ft.owner_id = u.id
+        WHERE ft.id = #{id}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_follow_task ft
+        LEFT JOIN t_user u ON ft.owner_id = u.id
+        WHERE ft.id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="selectByQuery" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_follow_task ft
+        LEFT JOIN t_user u ON ft.owner_id = u.id
+        WHERE 1 = 1
+        <if test="query.dataScopeUserId != null">
+            AND ft.owner_id = #{query.dataScopeUserId}
+        </if>
+        <if test="query.ownerId != null">
+            AND ft.owner_id = #{query.ownerId}
+        </if>
+        <if test="query.status != null and query.status != ''">
+            AND ft.status = #{query.status}
+        </if>
+        <if test="query.taskType != null and query.taskType != ''">
+            AND ft.task_type = #{query.taskType}
+        </if>
+        <if test="query.relatedObjectType != null and query.relatedObjectType != ''">
+            AND ft.related_object_type = #{query.relatedObjectType}
+        </if>
+        <if test="query.relatedObjectId != null">
+            AND ft.related_object_id = #{query.relatedObjectId}
+        </if>
+        <if test="query.overdueOnly != null and query.overdueOnly">
+            AND ft.status = 'OVERDUE'
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (ft.title LIKE CONCAT('%', #{query.keyword}, '%')
+                OR ft.result LIKE CONCAT('%', #{query.keyword}, '%'))
+        </if>
+        ORDER BY ft.due_time ASC, ft.id ASC
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TFollowTask" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_follow_task (
+            title, task_type, related_object_type, related_object_id, owner_id,
+            priority, due_time, remind_time, status, postpone_count, version,
+            create_time, create_by, update_time, update_by
+        ) VALUES (
+            #{title}, #{taskType}, #{relatedObjectType}, #{relatedObjectId}, #{ownerId},
+            #{priority}, #{dueTime}, #{remindTime}, #{status}, #{postponeCount}, #{version},
+            #{createTime}, #{createBy}, #{updateTime}, #{updateBy}
+        )
+    </insert>
+
+    <update id="markOverdue">
+        UPDATE t_follow_task
+        SET status = 'OVERDUE',
+            update_time = #{now}
+        WHERE due_time &lt; #{now}
+          AND status IN ('PENDING', 'IN_PROGRESS', 'POSTPONED')
+        <if test="dataScopeUserId != null">
+          AND owner_id = #{dataScopeUserId}
+        </if>
+    </update>
+
+    <update id="updateStatusIfCurrent">
+        UPDATE t_follow_task
+        SET status = #{targetStatus},
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="postponeIfCurrent">
+        UPDATE t_follow_task
+        SET status = 'POSTPONED',
+            due_time = #{newDueTime},
+            remind_time = #{remindTime},
+            postpone_reason = #{postponeReason},
+            original_due_time = #{originalDueTime},
+            postpone_count = postpone_count + 1,
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="cancelIfCurrent">
+        UPDATE t_follow_task
+        SET status = 'CANCELLED',
+            cancel_reason = #{cancelReason},
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="completeIfCurrent">
+        UPDATE t_follow_task
+        SET status = 'COMPLETED',
+            result = #{result},
+            communication_record_id = #{communicationRecordId},
+            completed_time = #{completedTime},
+            completed_by = #{completedBy},
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+</mapper>

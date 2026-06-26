@@ -188,17 +188,19 @@ type NavigationSectionDefinition = Omit<NavigationSection, 'items'> & {
 
 const PRODUCT_MENU_CODE = 'menu:product'
 const DICT_MENU_CODE = 'menu:dict'
+const AUDIT_MENU_CODE = 'menu:audit'
 const BUSINESS_MENU_CODES = new Set([
   'menu:dashboard',
   'menu:activity',
   'menu:clue',
   'menu:customer',
   'menu:opportunity',
+  'menu:test-drive',
   'menu:quote',
   'menu:delivery',
   'menu:tran',
 ])
-const SYSTEM_MENU_CODES = new Set(['menu:user', DICT_MENU_CODE])
+const SYSTEM_MENU_CODES = new Set(['menu:user', DICT_MENU_CODE, AUDIT_MENU_CODE])
 const MENU_ITEM_OVERRIDES: Record<string, Partial<Pick<NavigationMenuItem, 'name' | 'icon'>>> = {
   'menu:dashboard': { name: '工作台', icon: 'Menu' },
 }
@@ -226,7 +228,10 @@ const NAVIGATION_SECTION_DEFINITIONS: NavigationSectionDefinition[] = [
   {
     key: 'system',
     label: '系统',
-    matches: (item) => SYSTEM_MENU_CODES.has(item.code) || item.code.startsWith('page:dict'),
+    matches: (item) =>
+      SYSTEM_MENU_CODES.has(item.code) ||
+      item.code.startsWith('page:dict') ||
+      item.code.startsWith('page:audit'),
   },
 ]
 const NAVIGATION_ITEM_ORDER: Record<string, number> = {
@@ -245,6 +250,8 @@ const NAVIGATION_ITEM_ORDER: Record<string, number> = {
   'page:product:stock': 4,
   'menu:user': 1,
   [DICT_MENU_CODE]: 2,
+  'page:audit:login': 3,
+  'page:audit:operation': 4,
 }
 
 const routablePathSet = computed(() => new Set(router.getRoutes().map((item) => item.path)))

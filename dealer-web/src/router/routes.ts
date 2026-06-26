@@ -158,6 +158,28 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'test-drive',
+        name: 'test-drive',
+        component: () => import('@/pages/dashboard/test-drive.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '试驾管理',
+          activeMenu: '/dashboard/test-drive',
+          permission: PERMISSIONS.testDrive.list,
+        },
+      },
+      {
+        path: 'follow',
+        name: 'follow',
+        component: () => import('@/pages/dashboard/follow.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '跟进任务',
+          activeMenu: '/dashboard/follow',
+          permission: PERMISSIONS.followTask.list,
+        },
+      },
+      {
         path: 'quote',
         name: 'quote',
         component: () => import('@/pages/dashboard/quote.vue'),
@@ -243,6 +265,28 @@ export const routes: RouteRecordRaw[] = [
           title: '字典管理',
           activeMenu: '/dashboard/dict/type',
           permission: PERMISSIONS.dict.value.list,
+        },
+      },
+      {
+        path: 'audit/login',
+        name: 'audit-login',
+        component: () => import('@/pages/dashboard/audit/login.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '登录记录',
+          activeMenu: '/dashboard/audit/login',
+          permission: PERMISSIONS.audit.login.list,
+        },
+      },
+      {
+        path: 'audit/operation',
+        name: 'audit-operation',
+        component: () => import('@/pages/dashboard/audit/operation.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '操作记录',
+          activeMenu: '/dashboard/audit/operation',
+          permission: PERMISSIONS.audit.operation.list,
         },
       },
     ],
