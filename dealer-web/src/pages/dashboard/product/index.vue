@@ -51,8 +51,8 @@
       </div>
 
       <div class="flex flex-col gap-4 border-b border-[var(--crm-border-light)] px-5 py-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="relative w-full max-w-[360px]">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="relative w-full sm:w-[360px]">
             <Search
               class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--crm-text-tertiary)]"
             />
@@ -63,11 +63,11 @@
               @keyup.enter="applyFilters"
             />
           </div>
-          <Button variant="outline" class="gap-2" @click="applyFilters">
+          <Button variant="outline" class="h-10 gap-2" @click="applyFilters">
             <Search class="h-4 w-4" />
             搜索
           </Button>
-          <Button variant="outline" class="gap-2" @click="resetFilters">
+          <Button variant="outline" class="h-10 gap-2" @click="resetFilters">
             <RotateCcw class="h-4 w-4" />
             重置
           </Button>
