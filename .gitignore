@@ -4,6 +4,19 @@ node_modules/
 build/
 build/
 dist/
+.env
+.env.*
+!.env.example
+!.env.template
+dealer-ai/.env
+dealer-ai/.env.*
+!dealer-ai/.env.example
+!dealer-ai/.env.template
+dealer-ai/.venv/
+dealer-ai/.ruff_cache/
+dealer-ai/.pytest_cache/
+__pycache__/
+*.pyc
 .cursorignore
 # Logs
 logs
@@ -74,5 +87,6 @@ build/
 coverage/
 
 ### qoder ###
+.qoder
 .qoderignore
 .codegraph/
