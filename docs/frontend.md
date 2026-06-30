@@ -1,6 +1,6 @@
 # 前端架构说明
 
-项目：`dealer-web`  
+项目：`dealer-web`
 技术栈：Vue 3 + Vite + TypeScript + Pinia + Vue Router + Element Plus + Axios + ECharts
 
 ## 架构总览
@@ -147,6 +147,7 @@ token 存储策略：
 - `/dashboard/dict/value`
 - `/dashboard/audit/login`
 - `/dashboard/audit/operation`
+- `/dashboard/ai`
 
 `DashboardLayout.vue` 只负责主框架布局、菜单、用户入口和退出登录。
 
@@ -183,6 +184,34 @@ token 存储策略：
 
 `/dashboard/delivery` 使用 `modules/delivery/api/delivery-api.ts` 查询、创建和处理交付记录。页面展示 `PENDING_PREPARE`、`PREPARING`、`COMPLETED`、`EXCEPTION`、`CANCELLED` 等稳定编码的中文文案；准备项只提交 `PENDING`、`COMPLETED`、`BLOCKED`；签收、异常、取消都必须处理 loading、重复提交和失败提示。签收只触发交付和库存出库接口，不在前端假设交易已经完成。
 
+`/dashboard/ai` 是独立 AI 助手页面。AI 前端模块归属 `modules/ai`，通过 Spring Boot AI 接口创建和恢复 AI Conversation，在 Conversation 中创建 AI Run、查询 Run 追踪并订阅 Spring Boot SSE；前端不直接调用独立 AI 服务，不保存模型密钥或供应商原始响应。
+
+AI 前端展示状态固定为 `closed`、`sidebar`、`page`。`closed` 只表示右侧栏隐藏，不清空当前 Run、消息或上下文；`sidebar` 表示在当前 dashboard 页面右侧打开 AI 对话栏并压缩主内容；`page` 表示进入独立 AI 页面并隐藏右下角悬浮按钮。
+
+`DashboardLayout.vue` 负责 AI 顶部入口、右下角悬浮入口和右侧栏容器。顶部入口是浅色胶囊形“AI 助手”按钮，右下角入口是 48px 圆形图标按钮；两个入口都打开同一个 `AiSidePanel.vue`。独立 AI 页面不展示右下角悬浮按钮，其他登录后的 dashboard 页面在有 AI 权限时展示悬浮按钮。独立 AI 页面上的模型配置入口只能是右上角紧凑设置按钮，不能占用整条导航栏。右侧栏必须作为布局列压缩主内容，不做 Dialog、普通弹窗或遮罩覆盖。
+
+AI 前端模块按当前代码结构约束落地：`modules/ai/api/ai-api.ts` 是 Spring Boot AI API 入口，`modules/ai/model/ai.types.ts` 是 AI 类型入口。`AiSidePanel.vue` 和独立 AI 页面复用同一套 `AiAssistantPanel.vue`，不得并行保留两个职责重复的对话面板、API 文件或类型文件。侧栏 header 包含 AI 图标、标题、副标题、展开按钮和关闭按钮；关闭只隐藏面板，展开进入 `/dashboard/ai` 并携带当前 `conversationNo` 或可恢复上下文。消息区独立滚动，输入区固定在底部，空状态展示 AI 标识、欢迎语和推荐问题卡片。
+
+AI Conversation 是多轮对话容器，AI Run 是 Conversation 中的一次执行。独立 AI 页面必须展示会话列表、新建会话、重命名和归档入口；右侧栏保持轻量，只提供当前会话、新对话和切换入口。前端发送问题时携带 `conversationNo`，未携带时由后端按当前用户和业务对象上下文解析默认会话。刷新和切换会话后必须以 Conversation detail 的 `turns` 恢复每一轮用户问题、AI 回答、业务结果卡片、Proposal、Workflow 和处理过程，不能只恢复单个 Run trace 或最新 Run。
+
+AI Provider 配置页使用项目通用数据页风格，列表使用表格，新增、编辑和轮换 API Key 使用 Dialog。表单字段必须有可见 Label，不得只依赖 placeholder。前端内置千问、DeepSeek、MiniMax 和自定义 Provider 预设；已知 Provider 默认自动填充协议格式、Base URL、模型名和推荐参数，管理员只需要选择厂商、区域或模型并填写 API Key。Base URL、模型名、timeout、max output tokens 和 temperature 属于高级配置。高级配置数值范围必须与后端 DTO 校验一致，并在提交前显示字段错误；后端返回的 Provider 配置错误必须在页面中提示给用户。
+
+AI Provider 配置页必须提供返回 AI 工作台的明确按钮。配置列表中启用状态和测试状态使用状态徽标与颜色区分；测试、启用、停用作为行内主操作，编辑和轮换 API Key 放入更多菜单或同等低频操作区，禁止五个按钮无区分地挤在同一行。本地、开发、测试和 smoke 环境缺少 `AI_PROVIDER_KEY_ENCRYPTION_SECRET` 时，后端会自动生成并复用 `~/.car-dealer-crm/ai-provider-key.secret`；生产环境仍必须显式配置加密主密钥。
+
+前端上下文只传对象类型、对象标识、入口和脱敏摘要，不传 userId、角色、权限、数据范围或审计操作者。上下文推荐问题根据 `CUSTOMER`、`CLUE`、`OPPORTUNITY`、`TRANSACTION`、`PRODUCT`、`INVENTORY`、`FOLLOW_TASK` 等对象类型变化；没有上下文时展示四个通用问题。推荐问题只作为快捷输入，后端仍校验对象权限和数据范围。
+
+工具结果必须使用结构化 UI 展示，包括消息气泡、表格结果、指标卡、对象引用卡、状态徽标、错误块、加载状态和空状态。工具结果卡片必须来自实时 SSE payload 或 Run trace 中持久化的 `displayPayload`，切换会话和刷新后不得消失。前端不展示内部工具 JSON，不渲染模型返回的 HTML；对象引用卡只展示脱敏摘要和跳转入口，跳转后的普通业务页面仍按自身 API 和权限规则加载。
+
+AI 对话主视图必须业务结果优先。普通用户默认看到回答摘要、业务结果卡片、当前建议动作和业务风险提示；工具调用、Workflow 步骤、运行追踪和恢复信息只能放入“查看处理过程”折叠区，默认关闭。CRM 对象必须按对象类型渲染专用中文字段，禁止直接显示接口字段 key。交易结果至少映射为交易编号、客户、金额、状态、创建时间和建议动作；金额使用人民币格式，时间使用业务用户可读格式，状态使用中文业务文案。对话主视图不得展示 `workflowNo`、`stepType`、`tranNo`、`stageLabel`、工具 code、Provider runtime config 或原始 JSON。工作流按钮和动作入口必须来自当前问题和当前结果，不得在每次回答中固定展示无关能力菜单。
+
+AI 回答 Markdown 必须通过专用安全组件渲染。该组件必须禁用模型 HTML，并在插入页面前清理标签和属性；除该组件外，AI 模块不得使用 `v-html`。
+
+AI 面板展示消息、工具调用状态、工具结果、错误、Run 恢复、Proposal 卡片、Proposal 确认/拒绝、过期、状态恢复和执行结果。前端确认请求只能提交 `proposalId` 和确认/拒绝动作，不提交业务参数。
+
+工作流展示由 `AiWorkflowPanel.vue` 承载，嵌入 `AiAssistantPanel.vue`，与消息、工具结果和 Proposal 共用同一个对话面板。前端从 Spring Boot SSE 更新 `workflow_*` 事件，也从 Run trace 恢复 `workflows` 和步骤列表。暂停、恢复、取消只调用 `ai-api.ts` 中的 Spring Boot 工作流接口；前端不得提供手动完成工作流入口，不得改写业务事实或提交工作流步骤业务参数。
+
+主动提醒展示由 `AiProactivePanel.vue` 承载，提供订阅跟进提醒、订阅库存预警、暂停、恢复、取消、生成当前用户到期提醒、提醒列表和详情摘要展示。主动提醒生成、频率限制、静默时间、数量上限、重复合并、权限和数据范围校验都由 Spring Boot 执行；前端只展示结构化摘要和对象引用，不直接调用 `dealer-ai`。
+
 ## 业务模块
 
 每个业务模块按以下方式组织：
@@ -198,6 +227,7 @@ modules/<module>/
 已建立模块：
 
 - `activity`
+- `ai`
 - `clue`
 - `customer`
 - `delivery`

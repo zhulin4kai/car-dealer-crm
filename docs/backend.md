@@ -57,6 +57,19 @@ dealer-server/src/main/java/com/autodealer/crm/
 
 ---
 
+## AI 业务助手模块
+
+AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation、Run、Message、Provider 配置、ToolRegistry、Proposal、Workflow、主动提醒、追踪和审计。
+
+- Conversation 是多轮对话容器，绑定用户，可选绑定业务对象。
+- Run 是 Conversation 中的一次执行，负责模型调用、工具调用、SSE 和状态流转。
+- Message 同时归属于 Conversation 和 Run，用于会话恢复和 Run trace。
+- Spring Boot 调用 `dealer-ai` 时下发 `conversationNo`、脱敏 `conversationSummary`、最近 8 条用户可见 `messageHistory`、工具 Schema 和 Provider runtime config。
+- Provider runtime config 只用于服务间请求，不进入 Conversation、Message、SSE、trace 或日志。
+- 归档 Conversation 只隐藏用户侧列表，不删除底层 Run、Message、ToolCall、Proposal、Workflow、Approval 或 ExecutionEvent。
+
+---
+
 ## 2. 认证授权模块
 
 ### 2.1 模块概述
@@ -1211,7 +1224,7 @@ deleteDicType(id):
 
 - 登录记录写入 `t_login_log`，由 `LoginAuditRecorder` 在登录成功和登录失败链路统一落库。
 - 操作记录写入 `t_operation_log`，业务模块通过 `OperationAuditRecorder` 记录，调用方事务回滚时关键业务审计一同回滚。
-- 普通 Token 过期、权限不足和退出登录不作为第一阶段登录记录写入；这些边界以业务 Spec 为准。
+- 普通 Token 过期、权限不足和退出登录不作为登录记录写入；这些边界以业务 Spec 为准。
 
 ### 16.2 文件路径
 
@@ -1669,7 +1682,72 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `TOperationLogMapper.xml` | `selectById` | SELECT | 查询操作记录详情 |
 | `TOperationLogMapper.xml` | `selectForExport` | SELECT | 按过滤条件导出操作记录 |
 
-## 22. 数据库表汇总
+## 22. AI 业务助手
+
+AI 业务助手已落地为 Spring Boot + 独立 `dealer-ai` 的旁路增强架构。普通业务页面和普通业务 API 的主链路不依赖 AI，AI 只能通过 Spring Boot 受控入口查询、生成低风险 Proposal、展示受控工作流和生成主动提醒。
+
+### 22.1 Spring Boot 模块
+
+| 类型 | 落点 | 说明 |
+|------|------|------|
+| Controller | `web/AiRunController.java` | 创建 AI Run、查询 Run、查询可恢复追踪、输出 Spring Boot SSE |
+| Controller | `web/AiInternalToolController.java` | `dealer-ai` 内部调用 ToolRegistry，使用 `X-Dealer-AI-Tool-Token` |
+| Controller | `web/AiProposalController.java` | 确认或拒绝低风险 Proposal |
+| Controller | `web/AiWorkflowController.java` | 创建、查询、暂停、恢复、取消、完成和失败处理受控工作流 |
+| Controller | `web/AiProactiveController.java` | 创建、查询、暂停、恢复、取消主动提醒订阅，并查询或生成当前用户提醒事件 |
+| Controller | `web/AiProviderConfigController.java` | 管理员创建、编辑、测试、启用、停用和轮换模型 Provider 配置 |
+| Registry | `ai/ToolRegistry.java` | Spring Boot 最终工具白名单、权限、风险等级和审计边界 |
+| Trace Service | `ai/service/AiTraceService.java` | 写入 AI Run、Message、ToolCall、Proposal、Approval 和 ExecutionEvent |
+| Provider Service | `ai/service/AiProviderConfigService.java` | 加密保存 API Key、生成运行时 Provider 配置、执行连接测试和启用互斥 |
+| Proposal Service | `ai/service/AiProposalService.java` | 保存规范化参数、参数哈希、影响说明和过期时间，并在确认时执行已保存参数 |
+| Workflow Service | `ai/service/AiWorkflowService.java` | 持久化工作流、步骤状态和工作流控制事件 |
+| Proactive Service | `ai/service/AiProactiveService.java` | 按当前用户权限和订阅规则生成主动提醒事件 |
+| Tool Executors | `ai/tool/executor/*` | 第一批只读工具和两个低风险 Proposal 工具 |
+
+业务枚举、状态、类型和值以 Spring Boot Java enum、后端 DTO 校验和 OpenAPI 契约为准。`dealer-ai` 只能生成后端已支持的值，不能在 Python 编排、Prompt 或 Pydantic 默认值中临时创造 CRM 业务值。
+
+模型 Provider 配置真源在 Spring Boot。API Key 使用 AES-GCM 加密入库，响应只返回掩码；`providerRuntimeConfig` 只在 Spring Boot 到 `dealer-ai` 的服务间请求中出现，不进入前端、SSE、trace 或日志。`prod` 等非本地环境必须显式配置 `AI_PROVIDER_KEY_ENCRYPTION_SECRET`；`local`、`dev`、`test`、`smoke` 环境未配置时，后端自动生成并复用 `~/.car-dealer-crm/ai-provider-key.secret`，删除该文件后旧 Provider API Key 密文需要重新录入。
+
+### 22.2 已实现工具
+
+- `list_my_followups`
+- `search_customers`
+- `get_customer_profile`
+- `resolve_vehicle_product`
+- `get_inventory_alerts`
+- `get_transaction_detail`
+- `list_pending_transaction_approvals`
+- `create_communication_record_proposal`
+- `create_follow_task_proposal`
+
+`get_inventory_alerts` 复用 `ProductService.getStockAlerts`，不落到 `StatisticService`。
+
+### 22.3 AI 追踪表
+
+AI 追踪独立于业务操作审计。`dealer-ai` 不直接写数据库，所有 AI 追踪写入由 Spring Boot 控制。
+
+| 表名 | 说明 |
+|------|------|
+| `t_ai_run` | AI Run 元数据和状态 |
+| `t_ai_message` | 用户、助手、系统和工具消息摘要 |
+| `t_ai_tool_call` | 工具调用输入摘要、输出摘要、权限、风险和结果 |
+| `t_ai_action_proposal` | 低风险 Proposal、规范化参数、参数哈希、影响说明和过期时间 |
+| `t_ai_approval` | 用户确认、拒绝或过期记录；确认语义使用 `CONFIRMED` |
+| `t_ai_workflow` | 受控工作流元数据、状态、当前步骤、上下文对象和过期时间 |
+| `t_ai_workflow_step` | 工作流步骤状态、工具、Proposal 引用、输入输出摘要和错误码 |
+| `t_ai_execution_event` | Proposal 执行事件、工作流控制事件和结果摘要 |
+| `t_ai_proactive_subscription` | 当前用户主动提醒订阅、频率、静默时间、数量上限和重复合并窗口 |
+| `t_ai_proactive_event` | 主动提醒事件、摘要、对象引用、严重程度、生成结果和失败码 |
+
+Run trace 查询必须恢复 messages、toolCalls、proposals、approvals、workflows 和 executionEvents。ToolCall 成功和失败都写入脱敏摘要；成功工具调用还必须保存脱敏展示 payload，用于前端刷新、切换会话和展开独立页面后恢复业务卡片。Proposal 的确认、拒绝、过期、权限变化、哈希不一致、业务执行成功和业务执行失败都必须可追踪。业务写操作仍以现有操作审计证明业务事实变更，AI 追踪不能替代操作审计。
+
+### 22.4 受控工作流与主动提醒
+
+受控工作流只允许编排 Spring Boot 下发的只读工具和低风险 Proposal。工作流状态覆盖 `CREATED`、`RUNNING`、`PAUSED`、`WAITING_USER_CONFIRMATION`、`COMPLETED`、`FAILED`、`CANCELLED` 和 `EXPIRED`；步骤状态覆盖 `PENDING`、`RUNNING`、`WAITING_USER_CONFIRMATION`、`COMPLETED`、`FAILED`、`CANCELLED` 和 `EXPIRED`。暂停、恢复、取消和失败处理都由 Spring Boot 校验 run owner、当前状态、权限和数据范围；完成状态只能由后端运行结果或 LangGraph 事件推动。
+
+主动提醒生成在 Spring Boot 内完成，不修改 `dealer-ai`。生成前恢复订阅 owner 的权限和数据范围，重新校验用户启用状态、订阅状态、频率、数量上限、静默时间和重复合并窗口。库存预警复用 `ProductService.getStockAlerts`；能力不足时只能新增只读查询或 AI 主动提醒适配器，不改变普通业务接口、统计口径、事务语义或权限语义。
+
+## 23. 数据库表汇总
 
 | 表名 | 说明 | 主要字段 |
 |------|------|---------|
@@ -1704,6 +1782,16 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | `t_dic_value` | 字典值表 | id, type_code, type_value, order, remark |
 | `t_login_log` | 登录审计日志表 | id, login_act, user_id, result, reason_code, ip, browser, os, request_id, create_time |
 | `t_operation_log` | 操作审计日志表 | id, user_id, action_code, module_name, object_type, resource_id, result, detail, ip, request_id, create_time |
+| `t_ai_run` | AI Run 表 | id, run_no, user_id, entry_point, status, prompt_summary, expires_time |
+| `t_ai_message` | AI 消息表 | id, run_id, role, sequence_no, content_summary |
+| `t_ai_tool_call` | AI 工具调用表 | id, run_id, tool_name, permission_code, risk_level, output_summary, display_payload_json, result_status |
+| `t_ai_action_proposal` | AI 动作提议表 | id, run_id, proposal_type, status, risk_level, normalized_params, params_hash |
+| `t_ai_approval` | AI 确认表 | id, run_id, proposal_id, decision, result_status |
+| `t_ai_workflow` | AI 受控工作流表 | id, run_id, workflow_no, workflow_type, status, current_step_no |
+| `t_ai_workflow_step` | AI 工作流步骤表 | id, workflow_id, step_no, step_type, status, proposal_id |
+| `t_ai_execution_event` | AI 执行事件表 | id, run_id, proposal_id, event_type, result_status |
+| `t_ai_proactive_subscription` | AI 主动提醒订阅表 | id, subscription_no, user_id, subscription_type, status, frequency |
+| `t_ai_proactive_event` | AI 主动提醒事件表 | id, event_no, subscription_id, event_type, status, summary |
 
 ---
 

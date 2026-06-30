@@ -1,208 +1,104 @@
-# 插入式 Agent AI 能力总览
+# AI 业务助手文档总览
 
-## 当前系统现状
+## 定位
 
-Car Dealer CRM 是前后端分离的汽车经销商客户关系管理系统，当前主干能力覆盖从线索进入到交易完成的业务闭环。
+AI 业务助手是汽车经销商 CRM 的整体业务辅助能力，用于在不替代普通业务流程的前提下，提供业务查询、上下文摘要、工具调用、低风险提议、受控工作流、主动提醒、周期性摘要和前端 AI 工作台。
 
-已从仓库确认的技术结构：
+AI 不是业务真源，不是普通业务页面的替代入口，也不直接执行交易、资金、票据、库存、交付、客户合并、删除等高风险业务事实。所有业务写入、权限、数据范围、事务、状态机和审计仍由 Spring Boot 业务系统控制。
 
-- 后端位于 `dealer-server/`，使用 Spring Boot 3.2、Spring Security、JWT、Redis、MyBatis、PageHelper、MariaDB/MySQL。
-- 后端 Java 包 `com.autodealer.crm` 已按 `web`、`service`、`service.impl`、`mapper`、`model`、`dto`、`query`、`result`、`config`、`aspect`、`audit`、`manager` 分层。
-- 前端位于 `dealer-web/`，使用 Vue 3、TypeScript、Vite、Pinia、Vue Router、Axios、shadcn-vue/reka-ui、Tailwind CSS。
-- 前端已按 `src/pages`、`src/modules`、`src/shared`、`src/stores`、`src/router`、`src/components/ui` 分层，模块 API 通过 `src/shared/api/http-client.ts` 统一调用后端。
-- API 统一使用 `/api` 前缀、`Authorization: Bearer <token>`、`R` 响应 envelope 和 PageHelper `PageInfo` 分页结构。
+## 文档链路
 
-已从代码和文档确认的业务模块：
+业务规格：
 
-- 销售获客与客户经营：市场活动、线索、客户、商机、跟进任务、沟通记录、试驾。
-- 车辆与库存：车辆商品、商品分类、促销政策、库存预警、库存车辆实例、库存流水。
-- 成交履约：报价、交易、审批、结算、收款、退款、发票、交付。
-- 管理治理：用户、角色、权限、数据字典、登录记录、操作审计、经营统计。
+- docs/spec/AI业务助手/00-业务范围与边界.md
 
-已从代码和数据库脚本确认的安全与治理能力：
+落地计划：
 
-- Spring Security 负责认证入口和受保护请求拦截，`TokenVerifyFilter` 校验 JWT、Redis 会话和账号状态。
-- `PermissionCodes` 定义稳定权限编码，Controller 使用 `@PreAuthorize` 执行后端功能授权。
-- 前端使用 `router` 的 `meta.permission` 和 `v-has-permission` 控制菜单、页面和按钮展示，但不作为安全边界。
-- `CurrentUserProvider` 统一提供当前用户、当前用户 ID、管理员判断和数据范围上下文。
-- `DataScopeAspect` 与 Mapper 查询参数共同执行数据范围过滤，普通用户按负责人等数据范围受限。
-- `OperationAuditRecorder` 写入 `t_operation_log`，`AuditActionEnum` 定义用户、线索、客户、交易、支付、退款、发票、库存、交付、审计导出等审计动作。
-- 数据库脚本包含 `t_clue`、`t_customer`、`t_opportunity`、`t_follow_task`、`t_communication_record`、`t_test_drive`、`t_quote`、`t_tran`、`t_tran_approve`、`t_tran_invoice`、`t_payment`、`t_refund_request`、`t_product`、`t_product_vehicle`、`t_product_stock_record`、`t_delivery`、`t_operation_log`、`t_login_log`、`t_permission`、`t_role`、`t_user` 等核心表。
+- docs/plan/AI业务助手/00-AI助手整体架构与边界方案.md
+- docs/plan/AI业务助手/01-模型供应商配置与密钥治理方案.md
+- docs/plan/AI业务助手/02-LangGraph编排与运行时方案.md
+- docs/plan/AI业务助手/03-ToolRegistry与业务工具治理方案.md
+- docs/plan/AI业务助手/04-Proposal工作流与人工确认方案.md
+- docs/plan/AI业务助手/05-运行追踪审计与数据保留方案.md
+- docs/plan/AI业务助手/06-主动提醒与周期性摘要方案.md
+- docs/plan/AI业务助手/07-前端AI工作台与管理入口方案.md
+- docs/plan/AI业务助手/08-现有AI实现审查与收敛方案.md
+- docs/plan/AI业务助手/09-AI会话上下文管理方案.md
 
-当前仓库未确认到以下 AI 相关实现：
+执行任务：
 
-- 未发现 `dealer-ai/` 独立 Agent 服务目录。
-- 未发现 `/api/ai/*` 或 `/api/ai-tools/*` 后端接口。
-- 未发现 `docs/api/openapi.yaml` 中已有 AI 接口契约。
-- 未发现 AI Run、AI Message、AI Tool Call、AI Proposal、AI Approval 等专用持久化结构。
+- docs/task/AI业务助手/00-任务总览与文件所有权.md
+- docs/task/AI业务助手/01-现有AI实现审查任务.md
+- docs/task/AI业务助手/02-AI模型供应商配置管理任务.md
+- docs/task/AI业务助手/03-dealer-ai LangGraph编排任务.md
+- docs/task/AI业务助手/04-SpringBoot AI运行控制任务.md
+- docs/task/AI业务助手/05-ToolRegistry与业务工具任务.md
+- docs/task/AI业务助手/06-Proposal工作流确认任务.md
+- docs/task/AI业务助手/07-主动提醒摘要任务.md
+- docs/task/AI业务助手/08-前端AI工作台与配置管理任务.md
+- docs/task/AI业务助手/09-端到端验收与文档同步任务.md
+- docs/task/AI业务助手/10-AI会话管理落地任务.md
 
-## AI 能力定位
+## 整体架构决策
 
-Agent AI 是插入式、旁路式、受控式增强能力。
+- 前端只调用 Spring Boot 的 `/api/ai/**`，不得直连 `dealer-ai`。
+- Spring Boot 是 AI 业务控制面，负责登录用户、权限、数据范围、Provider 配置、ToolRegistry、Proposal、Workflow、主动提醒、追踪和审计。
+- `dealer-ai` 是 AI 编排面，负责 LangGraph 图编排、模型供应商适配、工具选择和内部事件输出。
+- LangGraph 是默认编排内核；目标架构不保留 `simple/langgraph` 双路线。
+- Provider 配置由管理员在系统内维护，`dealer-ai` 不以本地 env 作为正式模型来源。
+- Spring Boot 调用 `dealer-ai` 时必须下发本次 Run 的 `providerRuntimeConfig`。
+- Spring Boot 是 Conversation、Run、Message 和 Run trace 的唯一真源；Conversation 是多轮业务对话容器，Run 是 Conversation 中的一次执行。
+- `providerRuntimeConfig` 只在服务间请求中存在，不进入前端响应、SSE、Run trace、日志、Prompt 或模型上下文。
+- Provider 协议格式固定支持 `OPENAI_COMPATIBLE` 和 `ANTHROPIC`。
+- DeepSeek 是 OpenAI-compatible 的一个配置实例，不是系统唯一模型供应商。
+- API Key 加密入库，响应只返回 `hasApiKey` 和 `maskedApiKey`，永远不返回明文。
+- 管理员可以创建、测试、启用、停用和轮换 Provider 配置；同一时间只有一个启用配置。
 
-普通客户管理、商品管理、交易管理、活动管理、系统管理、审计管理等现有页面和业务接口继续保持原链路：
+## 核心能力
 
-```text
-Vue 普通页面 -> 普通业务 API -> Spring Controller -> Service -> Mapper -> DB
-```
+- AI 工作台：顶部入口、右下角悬浮入口、右侧栏、独立 AI 页面和上下文推荐问题。
+- 多轮会话：同一业务对象默认复用一个活跃 Conversation，无业务对象时使用通用 Conversation；用户可新建、重命名和归档会话。
+- 业务对话：围绕客户、线索、商机、跟进、试驾、报价、交易、收款、退款、发票、库存、交付和经营分析回答问题。
+- 业务工具：通过 Spring Boot ToolRegistry 调用白名单工具，工具参数和结果必须结构化、限量、脱敏。
+- 低风险 Proposal：只允许生成需要用户确认的沟通记录和跟进任务等低风险提议，确认前不产生业务写入。
+- 受控工作流：通过 LangGraph 编排多步骤计划、工具调用、等待确认、失败处理、恢复和最终结果。
+- 主动提醒：支持跟进提醒、异常交易提醒、库存预警、每日摘要和周期性销售分析。
+- 运行追踪：记录 Conversation、Run、Message、ToolCall、Proposal、Approval、Workflow、主动事件和执行结果。
+- 审计治理：AI 写操作必须进入现有操作审计，AI 追踪不得替代业务审计。
 
-AI 只通过新增 AI 入口进入旁路链路：
+## 安全红线
 
-```text
-Vue AI 入口 -> /api/ai/* -> dealer-ai -> /api/ai-tools/* -> Spring Service -> DB
-```
+- `dealer-ai` 不连接数据库、Redis 会话或 Mapper。
+- `dealer-ai` 不接收浏览器请求，不保存用户 Bearer Token，不保存 API Key。
+- 禁止任意 SQL、通用 HTTP 工具、文件写入和 Shell 工具。
+- Provider 地址只能来自管理员保存的配置，不能来自用户输入、模型输出或工具参数。
+- 工具参数不得包含 `userId`、角色、权限、数据范围、审计操作者等可信上下文字段。
+- Spring Boot 内部 Tool API 必须根据 Run owner 恢复业务用户上下文。
+- 模型上下文只能由 Spring Boot 下发脱敏会话摘要、最近用户可见消息和当前业务对象引用；禁止把权限、数据范围、API Key、Provider runtime config 或原始 JSON 放入模型上下文。
+- 禁止以服务账号、管理员账号或 `dealer-ai` token 自身权限执行业务工具。
+- 模型输出不能作为可信业务参数直接落库。
+- 模型供应商原始响应、Token、Cookie、Authorization Header、API Key、内部堆栈和数据库错误不得进入前端响应、SSE、trace 或日志。
 
-Agent 只负责理解用户意图、选择工具、编排步骤和生成可解释结果。Spring Boot 仍是权限、数据范围、事务、业务状态机、审计和数据库访问的最终边界。
+## 业务值来源优先级
 
-## 两阶段目标
+1. 后端 enum、DTO、Service 校验、数据库约束是可执行真源。
+2. OpenAPI 必须与后端可执行真源一致；不一致时视为契约错误。
+3. 前端类型必须从 OpenAPI 或后端稳定枚举同步。
+4. `dealer-ai` 只能使用“后端已接受 + OpenAPI 已声明”的交集值。
+5. 如果后端、OpenAPI、前端、`dealer-ai` 之间不一致，禁止在 `dealer-ai` 侧临时补字符串，必须先修后端契约和文档。
 
-### 第一阶段：AI Copilot / Tool Calling
+## 真实模型测试约束
 
-第一阶段只提供只读查询和低风险辅助：
+- 真实模型调用只能在 mock、单元、集成、前端和契约验证基本通过后执行。
+- 真实调用必须限次数、限 token、限超时、禁止循环和并发重试。
+- 跑出一个有效结果就停止。
+- 真实 API Key 只能出现在本地未跟踪 env 文件或运行环境中，不得进入 Git、文档、日志、trace、测试快照或前端代码。
 
-- 通过 AI 入口发起对话。
-- Agent 选择白名单只读工具。
-- Spring Boot 校验当前用户、权限码和数据范围。
-- 工具返回专用结构化 DTO。
-- 前端展示结构化结果、引用对象和后续可点击操作。
-- 不直接执行高风险写操作。
+## 当前实现基线
 
-首批能力应优先贴合当前真实业务对象：今日跟进、客户搜索、客户摘要、车辆商品解析、库存预警、交易详情、待审批交易等。
-
-### 第二阶段：可控 Agent
-
-第二阶段支持计划、确认、执行、校验和审计：
-
-- Agent 可以生成多步骤执行计划。
-- 写操作先生成 Action Proposal。
-- Proposal 由 Spring Boot 保存规范化参数、参数哈希、风险等级和过期时间。
-- 前端展示确认卡片。
-- 用户确认后，Spring Boot 执行已保存参数。
-- 执行结果写入 AI 事件和现有操作审计。
-- Agent 不重新生成确认后的执行参数。
-
-## 总体链路
-
-### 普通业务链路
-
-```text
-dealer-web 普通页面
-  -> modules/<domain>/api
-  -> shared/api/http-client.ts
-  -> /api/<business>
-  -> Spring Controller
-  -> Service / Manager
-  -> Mapper / Mapper XML
-  -> DB
-```
-
-保持不变的现有链路示例：
-
-- `/dashboard/customer` 继续调用 `modules/customer/api/customer-api.ts` 和 `/api/customers`、`/api/customer/{id}`。
-- `/dashboard/follow` 继续调用 `modules/follow/api/follow-api.ts` 和 `/api/follow-tasks`、`/api/communication-records`。
-- `/dashboard/product/stock` 继续调用 `modules/product/api/product-api.ts` 和 `/api/products/stockalerts`、`/api/productstock/*`。
-- `/dashboard/tran` 和交易详情继续调用 `modules/tran/api/tran-api.ts` 和 `/api/tran/*`、`/api/transactions`。
-
-### AI 聊天链路
-
-```text
-dealer-web AI 入口
-  -> modules/ai/api/ai-api.ts
-  -> /api/ai/chat
-  -> Spring AI Chat Controller
-  -> AI Run / Message 持久化
-  -> dealer-ai
-  -> 模型调用与工具选择
-```
-
-聊天链路只接收用户输入、对话上下文和可展示结果。前端不直接连接 Python Agent 服务。
-
-### Agent 工具调用链路
-
-```text
-dealer-ai
-  -> /api/ai-tools/{toolName}
-  -> Spring AI Tool Controller
-  -> Tool Registry
-  -> 权限 / 委托令牌 / 数据范围 / 参数校验
-  -> 现有 Service / Manager
-  -> Mapper / DB
-  -> 专用 Tool DTO
-```
-
-Agent 不直接连接数据库，不直接调用 Mapper，不自行解释 JWT，不自行拼接普通页面接口作为主设计。
-
-### AI 写操作确认链路
-
-```text
-用户提出写操作意图
-  -> Agent 生成候选动作
-  -> Spring Boot 规范化参数并保存 Action Proposal
-  -> 前端展示确认卡片
-  -> 用户确认或拒绝
-  -> Spring Boot 按已保存参数执行业务 Service
-  -> 写入 AI 执行事件和操作审计
-  -> 前端展示执行结果
-```
-
-确认后不得让模型重新生成参数再执行。高风险业务动作不能由 Agent 绕过确认直接调用。
-
-## 边界说明
-
-### 前端边界
-
-- 普通页面继续使用现有 `modules/<domain>/api`。
-- AI 页面或组件新增 `modules/ai`，只调用 `/api/ai/*`。
-- 前端展示权限仍可使用 `v-has-permission` 和路由 `meta.permission`，但后端继续做最终鉴权。
-- 前端展示 Tool 结果时按结构化 JSON 渲染，不直接渲染模型拼接的 HTML。
-
-### Spring Boot 边界
-
-- 保留现有 Controller、Service、Mapper 和业务状态机。
-- 新增 AI Chat API 给前端使用。
-- 新增 AI Tool API 给 Agent 服务使用。
-- Spring Boot 负责最终鉴权、数据范围、参数校验、事务、业务状态校验、DTO 脱敏、审计和错误响应。
-- Spring Boot 不把所有普通业务请求转发到 AI 层。
-
-### Python / Agent 服务边界
-
-- Agent 服务负责模型调用、工具选择、对话状态、任务计划和编排。
-- Agent 服务只能调用 Spring Boot 暴露的 `/api/ai-tools/*`。
-- Agent 服务不保存业务真源数据，不直接访问数据库，不持有数据库账号。
-- Agent 服务不能信任模型输出中的用户 ID、租户 ID、权限范围或数据范围。
-
-### AI Tool API 边界
-
-- AI Tool API 是受控工具入口，不等同于普通页面 API。
-- 每个工具必须有明确权限码、风险等级、输入输出 Schema、超时、最大返回量和审计动作。
-- 工具内部调用现有 Service 或新增薄适配 Service，不绕过业务规则。
-- 工具返回专用 DTO，不直接返回数据库实体。
-
-### Service / DB 边界
-
-- Service 继续承载业务规则、状态迁移、事务和并发控制。
-- Mapper 继续只负责持久化读写。
-- DB 是业务事实来源，Agent 和模型都不是业务真源。
-- 写操作成功必须以 Service 事务提交和审计结果为准。
-
-## 不做什么
-
-- 不让 Agent 直连数据库。
-- 不让 Agent 直接调用 Mapper。
-- 不让 Agent 绕过 Spring Security、RBAC、DataScope、Audit、事务和业务状态机。
-- 不把普通业务接口全部迁移到 AI 层。
-- 不把 AI 中间层设计成普通业务请求的必经网关。
-- 不开放任意 SQL。
-- 不开放任意 HTTP。
-- 不开放文件系统访问。
-- 不开放 Shell 执行。
-- 不把数据库实体原样返回给模型。
-- 不让模型接触 JWT、Redis 会话值、数据库账号、外部 API Key 或其他密钥。
-- 不直接执行删除客户、删除交易、批量删除、审批交易、确认收款、执行退款、开票、结算等高风险动作。
-- 不让模型在用户确认后重新生成执行参数。
-
-## 文档分层
-
-- 架构和安全约束：`docs/spec/插入式AgentAI/00-架构边界与安全规格.md`。
-- 分阶段落地方案：`docs/plan/插入式AgentAI/01-插入式AgentAI落地方案.md`。
-- 可执行任务拆分：`docs/task/插入式AgentAI/00-任务拆分总览.md`。
+- `dealer-ai/app/api/routes/runs.py` 固定创建 `LangGraphAgentOrchestrator`，不保留 simple/langgraph 双运行路线。
+- `dealer-ai/app/core/config.py` 只保留服务运行参数和 Tool API 配置，正式 Provider 配置由 Spring Boot 下发 `providerRuntimeConfig`。
+- OpenAI-compatible 和 Anthropic Provider Adapter 从 Run 级 `providerRuntimeConfig` 读取模型配置。
+- `DealerAiRunRequest` 和 `ChatRunRequest` 已包含 Provider runtime config 服务间契约。
+- Spring Boot AI 模块已提供 Provider 配置表、加密服务、管理 API、权限码和前端配置入口。
+- 前端 AI 模块必须以 Conversation turns 恢复多轮消息、业务卡片、Proposal、Workflow 和处理过程；工具卡片来自实时 SSE payload 或持久化 `displayPayload`，不能依赖页面临时内存。

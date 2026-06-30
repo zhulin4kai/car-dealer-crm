@@ -10,6 +10,16 @@
 
 ---
 
+## AI 业务助手联调约定
+
+- 前端通过 `/api/ai/conversations` 创建、查询、重命名和归档 AI Conversation。Conversation 详情响应中的 `turns` 是会话恢复主契约，前端必须用它恢复每轮消息、业务卡片、Proposal、Workflow 和处理过程。
+- 前端发送问题时调用 `/api/ai/runs`，优先携带当前 `conversationNo`；未携带时后端按当前用户和业务对象上下文解析默认会话。
+- 前端订阅 `/api/ai/runs/{runNo}/events` 获取本次 Run SSE；刷新恢复整个会话时调用 `/api/ai/conversations/{conversationNo}`。
+- Spring Boot 调用 `dealer-ai` 时携带 `conversationNo`、脱敏会话摘要和最近 8 条用户可见消息；`dealer-ai` 不保存会话。
+- 会话归档后默认列表不显示，但 Run trace 和审计链仍可按权限查询。
+
+---
+
 ## 1. 接口对接情况
 
 ### 1.1 用户管理模块 (user.js)
@@ -849,6 +859,58 @@ apiFunction(params).then(response => {
 ## 7. 数据库初始化契约
 
 `CarDealerCRM.sql` 是生产空库初始化入口。系统配置与系统监控能力已下线，初始化脚本不再包含 `t_system_info`。
+
+## 8. AI 业务助手联调契约
+
+| 前端 API | 方法 | 路径 | 参数 | 返回 | 后端入口 | 说明 |
+|----------|------|------|------|------|----------|------|
+| createAiRun | POST | /api/ai/runs | data: CreateAiRunRequest | R\<AiRunResponse\> | AiRunController.create | 创建 AI Run，写入用户消息摘要 |
+| fetchAiRun | GET | /api/ai/runs/{runNo} | 路径参数: runNo | R\<AiRunResponse\> | AiRunController.detail | 刷新或断线后恢复 Run 状态 |
+| fetchAiRunTrace | GET | /api/ai/runs/{runNo}/trace | 路径参数: runNo | R\<AiRunTraceResponse\> | AiRunController.trace | 恢复 Run、消息、工具调用、Proposal、工作流和执行事件 |
+| streamAiRunEvents | GET | /api/ai/runs/{runNo}/events | 路径参数: runNo | text/event-stream | AiRunController.events | 前端只订阅 Spring Boot SSE |
+| confirmAiProposal | POST | /api/ai/proposals/{proposalId}/confirm | 路径参数: proposalId | R\<AiProposalConfirmResponse\> | AiProposalController.confirm | 只执行后端保存参数 |
+| rejectAiProposal | POST | /api/ai/proposals/{proposalId}/reject | 路径参数: proposalId | R\<AiProposalConfirmResponse\> | AiProposalController.reject | 拒绝待确认 Proposal |
+| executeInternalAiTool | POST | /internal/ai/tools/{toolName}/execute | header: X-Dealer-AI-Tool-Token, data: ExecuteAiToolRequest | R\<AiToolExecutionResponse\> | AiInternalToolController.execute | 仅供 dealer-ai 内部调用 |
+| createAiWorkflow | POST | /api/ai/workflows | data: CreateAiWorkflowRequest | R\<AiWorkflowResponse\> | AiWorkflowController.create | 启动受控多步骤工作流 |
+| listAiWorkflows | GET | /api/ai/workflows | query: runNo | R\<List\<AiWorkflowResponse\>\> | AiWorkflowController.list | 查询 Run 下工作流 |
+| fetchAiWorkflow | GET | /api/ai/workflows/{workflowNo} | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.detail | 查询工作流步骤和状态 |
+| pauseAiWorkflow | POST | /api/ai/workflows/{workflowNo}/pause | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.pause | 暂停未终态工作流 |
+| resumeAiWorkflow | POST | /api/ai/workflows/{workflowNo}/resume | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.resume | 恢复已暂停工作流 |
+| cancelAiWorkflow | POST | /api/ai/workflows/{workflowNo}/cancel | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.cancel | 取消未终态工作流 |
+| completeAiWorkflow | POST | /api/ai/workflows/{workflowNo}/complete | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.complete | 标记工作流完成 |
+| failAiWorkflow | POST | /api/ai/workflows/{workflowNo}/fail | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.fail | 标记工作流失败并记录原因 |
+| createAiProactiveSubscription | POST | /api/ai/proactive/subscriptions | data: CreateAiProactiveSubscriptionRequest | R\<AiProactiveSubscriptionResponse\> | AiProactiveController.createSubscription | 创建当前用户主动提醒订阅 |
+| listAiProactiveSubscriptions | GET | /api/ai/proactive/subscriptions | 无 | R\<List\<AiProactiveSubscriptionResponse\>\> | AiProactiveController.listSubscriptions | 查询当前用户订阅 |
+| pauseAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/pause | 路径参数: subscriptionNo | R\<AiProactiveSubscriptionResponse\> | AiProactiveController.pauseSubscription | 暂停订阅 |
+| resumeAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/resume | 路径参数: subscriptionNo | R\<AiProactiveSubscriptionResponse\> | AiProactiveController.resumeSubscription | 恢复订阅 |
+| cancelAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/cancel | 路径参数: subscriptionNo | R\<AiProactiveSubscriptionResponse\> | AiProactiveController.cancelSubscription | 取消订阅 |
+| listAiProactiveEvents | GET | /api/ai/proactive/events | query: page, size | R\<List\<AiProactiveEventResponse\>\> | AiProactiveController.listEvents | 查询当前用户提醒事件 |
+| fetchAiProactiveEvent | GET | /api/ai/proactive/events/{eventNo} | 路径参数: eventNo | R\<AiProactiveEventResponse\> | AiProactiveController.eventDetail | 查询提醒事件详情 |
+| generateAiProactiveEvents | POST | /api/ai/proactive/events/generate | 无 | R\<List\<AiProactiveEventResponse\>\> | AiProactiveController.generateEvents | 为当前用户生成到期提醒 |
+| listAiProviderConfigs | GET | /api/ai/provider-configs | 无 | R\<List\<AiProviderConfigResponse\>\> | AiProviderConfigController.list | 查询脱敏模型配置列表 |
+| createAiProviderConfig | POST | /api/ai/provider-configs | data: CreateAiProviderConfigRequest | R\<AiProviderConfigResponse\> | AiProviderConfigController.create | 新增 Provider 配置并加密保存 API Key |
+| updateAiProviderConfig | PUT | /api/ai/provider-configs/{configNo} | 路径参数: configNo, data: UpdateAiProviderConfigRequest | R\<AiProviderConfigResponse\> | AiProviderConfigController.update | 编辑非密钥字段 |
+| rotateAiProviderKey | POST | /api/ai/provider-configs/{configNo}/rotate-key | 路径参数: configNo, data: RotateAiProviderKeyRequest | R\<AiProviderConfigResponse\> | AiProviderConfigController.rotateKey | 独立轮换 API Key |
+| testAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/test | 路径参数: configNo | R\<AiProviderConfigTestResponse\> | AiProviderConfigController.test | 限 token、限超时测试连接 |
+| activateAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/activate | 路径参数: configNo | R\<AiProviderConfigResponse\> | AiProviderConfigController.activate | 启用当前配置并停用其他配置 |
+| disableAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/disable | 路径参数: configNo | R\<AiProviderConfigResponse\> | AiProviderConfigController.disable | 停用当前配置 |
+
+AI SSE 已实现事件：`run_started`、`message_delta`、`message_completed`、`tool_call_started`、`tool_call_completed`、`proposal_created`、`workflow_started`、`workflow_step_started`、`workflow_step_completed`、`workflow_waiting_user_confirmation`、`workflow_paused`、`workflow_resumed`、`workflow_cancelled`、`workflow_expired`、`workflow_failed`、`workflow_completed`、`error`、`run_completed`。
+
+`dealer-web` 不调用独立 AI 服务；`dealer-ai` 不连接业务数据库、Redis 会话或 Mapper。`dealer-ai` 只通过内部 Tool API 请求 Spring Boot，最终权限、数据范围、参数校验、Proposal 保存和业务写入均由 Spring Boot 控制。
+
+ToolCall 成功结果必须通过 Spring Boot 保存脱敏 `displayPayload`，Run trace 和 Conversation turns 都必须返回该字段，保证刷新和切换会话后业务卡片不丢失。
+
+`dealer-ai` 生成的工具参数和 Proposal 参数必须使用 Spring Boot Java enum、后端 DTO 校验和 OpenAPI enum 已支持的值。ToolCall 成功和失败都由 Spring Boot 写入 trace，`fetchAiRunTrace` 刷新恢复时必须能返回 toolCalls、proposals、approvals、workflows 和 executionEvents，前端不得只依赖当前 SSE 连接展示结果。主动提醒生成在 Spring Boot 内完成，复用现有只读业务口径，不调用 `dealer-ai`。
+
+Provider API Key 明文只允许出现在新增和轮换请求体中。Spring Boot 加密保存并只向前端返回 `maskedApiKey`；`providerRuntimeConfig` 禁止进入前端响应、SSE、trace 或日志。`prod` 等非本地环境必须显式配置 `AI_PROVIDER_KEY_ENCRYPTION_SECRET`；本地、开发、测试和 smoke 环境未配置时自动使用 `~/.car-dealer-crm/ai-provider-key.secret`。
+
+服务间认证变量关系：
+
+- `DEALER_AI_INTERNAL_TOKEN`：Spring Boot 调用 `dealer-ai` 的 token，`dealer-ai` 用同名变量校验。
+- `DEALER_AI_TOOL_TOKEN`：Spring Boot 内部 Tool API 校验 `X-Dealer-AI-Tool-Token` 的 token。
+- `DEALER_AI_SPRING_TOOL_TOKEN`：`dealer-ai` 调用 Spring Boot 内部 Tool API 时发送的 token，必须与 `DEALER_AI_TOOL_TOKEN` 一致。
+- 本地 `local/dev/test/smoke` 环境默认使用 `dev-internal-token`，非本地环境必须显式配置上述 token，不允许使用默认值启动。
 
 ---
 

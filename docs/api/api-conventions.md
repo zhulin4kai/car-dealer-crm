@@ -126,6 +126,36 @@
 - 错误响应不得暴露 SQL、堆栈、内部类名、Redis Key、Token、密码或权限实现细节。
 - 数据字典删除、停用或改码冲突必须返回稳定业务 `code`：被业务引用或内置保护使用 `RESOURCE_IN_USE`/422；`typeCode`、`valueCode` 是稳定编码，更新接口不得把它们作为改码入口。
 
+## AI 业务助手接口约定
+
+- 浏览器只调用 Spring Boot 的 `/api/ai/**` 接口，不直接调用独立 AI 服务。
+- AI Conversation 是多轮业务对话容器，AI Run 是一次执行；前端不得把单次 Run trace 当成会话恢复。
+- AI Conversation 查询、新建、重命名和归档统一使用 `/api/ai/conversations/**`。
+- 前端发送问题时应携带 `conversationNo`；未携带时 Spring Boot 按当前用户和业务对象上下文解析或创建默认 Conversation。
+- AI Run 创建、查询和 Proposal 确认接口继续使用 `R` envelope。
+- AI Run 刷新恢复通过 `GET /api/ai/runs/{runNo}/trace` 查询，返回单次 Run 元数据、消息摘要、工具调用摘要、Proposal、Approval、执行事件和受控工作流。
+- AI Conversation 刷新恢复通过 `GET /api/ai/conversations/{conversationNo}` 查询，返回会话、消息、最近 Run、兼容 Run trace 和按轮次组织的 `turns`。
+- `turns` 是 Conversation 恢复主契约，每个 turn 必须包含对应 Run、用户消息、AI 回答、工具结果、Proposal、Workflow、Approval 和 ExecutionEvent。
+- AI ToolCall trace 必须返回脱敏展示字段 `displayPayload`，用于前端切换会话和刷新后恢复业务卡片；只返回 `outputSummary` 不满足恢复契约。
+- AI SSE 只通过 `GET /api/ai/runs/{runNo}/events` 输出 `text/event-stream`，事件 data 为 `AiSseEventResponse` JSON，不返回模型供应商原始响应、Token、Cookie、Authorization Header、内部堆栈或数据库错误细节。
+- AI SSE 必须是真流式，Spring Boot 逐帧接收 `dealer-ai` 内部 SSE 并立即转发给浏览器；不得先等待完整模型响应再一次性返回。
+- 前端停止生成必须先中断当前 SSE fetch，再调用 `POST /api/ai/runs/{runNo}/cancel`。用户主动停止后的 Run 状态为 `CANCELLED`，已生成 assistant 文本保留为部分结果，不按系统错误提示。
+- 当前已实现 SSE 事件类型为 `run_started`、`message_delta`、`message_completed`、`tool_call_started`、`tool_call_completed`、`proposal_created`、`workflow_started`、`workflow_step_started`、`workflow_step_completed`、`workflow_waiting_user_confirmation`、`workflow_paused`、`workflow_resumed`、`workflow_cancelled`、`workflow_expired`、`workflow_failed`、`workflow_completed`、`error`、`run_completed` 和 `run_cancelled`。
+- Provider runtime config 只允许存在于 Spring Boot 调用 `dealer-ai` 的服务间请求中，不得进入前端响应、SSE payload、trace、日志、OpenAPI 前端 schema 或测试快照。
+- Provider API Key 由 Spring Boot 使用 AES-GCM 加密入库，响应只返回 `hasApiKey` 和 `maskedApiKey`；前端不得保存、展示或日志输出明文 API Key。
+- Spring Boot 内部 Tool API 使用 `/internal/ai/tools/{toolName}/execute`，只允许 `dealer-ai` 使用 `X-Dealer-AI-Tool-Token` 调用；该接口不得暴露给浏览器作为普通业务 API。
+- Tool API 请求体只允许 `runNo` 和 `arguments`；`arguments` 不得包含 `userId`、角色、权限、数据范围、组织范围、审计操作者等可信上下文字段。
+- ToolRegistry 的 Java DTO 和 Bean Validation 是最终输入校验，`dealer-ai` 的 Pydantic 校验只作为模型侧边界。
+- AI 工具参数和 Proposal 参数中的 CRM 业务枚举、状态、类型和值必须来自 Spring Boot Java enum、后端 DTO 校验和 OpenAPI enum，`dealer-ai` 不得提交临时发明的业务值。
+- ToolCall 成功和失败都必须写入可恢复 trace；Run trace 返回的 toolCalls 只能包含脱敏输入摘要、脱敏输出摘要、对象引用、结果、耗时和错误码。
+- Spring Boot 调用 `dealer-ai` 的服务间请求可以包含 `conversationNo`、`conversationSummary` 和最多最近 8 条用户可见 `messageHistory`；这些字段必须先脱敏和限量。
+- 低风险 Proposal 确认只允许提交 Proposal ID，不允许前端提交新的业务参数覆盖后端已保存参数。
+- AI Proposal 确认决定使用 `CONFIRMED`、`REJECTED`、`EXPIRED`，禁止复用交易审批的 `APPROVED` 语义。
+- Proposal 状态、Approval decision、数据库约束、Java enum、OpenAPI enum 和前端类型必须一致；确认、拒绝、过期、权限变化、哈希不一致和业务执行失败都必须可追踪。
+- 受控工作流接口只允许编排 Spring Boot 下发的只读工具和低风险 Proposal；暂停、恢复、取消和失败都必须由 Spring Boot 校验 run owner、权限、数据范围和当前状态。前端不得公开“完成工作流”入口。
+- 主动提醒接口只对当前用户订阅生效；生成提醒前必须重新校验用户启用状态、权限、数据范围、频率、数量上限、静默时间和重复合并规则。
+- 已实现 AI 稳定错误码包括 `AI_RUN_NOT_FOUND`、`AI_RUN_FINISHED`、`AI_SSE_FAILED`、`AI_PROVIDER_FAILED`、`AI_TOOL_NOT_FOUND`、`AI_TOOL_FORBIDDEN`、`AI_TOOL_ARGUMENT_INVALID`、`AI_PROPOSAL_EXPIRED`、`AI_PROPOSAL_HASH_MISMATCH`、`AI_WORKFLOW_NOT_FOUND`、`AI_WORKFLOW_STATE_CONFLICT`、`AI_PROACTIVE_SUBSCRIPTION_NOT_FOUND`、`AI_PROACTIVE_EVENT_NOT_FOUND`、`AI_PROACTIVE_STATE_CONFLICT`、`AI_PROACTIVE_FORBIDDEN`、`AI_PROVIDER_CONFIG_NOT_FOUND`、`AI_PROVIDER_CONFIG_DISABLED`、`AI_PROVIDER_CONFIG_REQUIRED`、`AI_PROVIDER_CONFIG_TEST_FAILED`、`AI_PROVIDER_KEY_ENCRYPTION_FAILED`、`AI_PROVIDER_KEY_DECRYPTION_FAILED`、`AI_RUN_CANCELLED`、`AI_RUN_CANCEL_CONFLICT`、`AI_DEALER_AI_UNAVAILABLE` 和 `AI_PROVIDER_UNSUPPORTED_FORMAT`。
+
 ## 时间格式
 
 - 新增或重构接口的目标时间格式为 ISO-8601 带时区字符串，例如 `2026-06-24T10:30:00+08:00`。

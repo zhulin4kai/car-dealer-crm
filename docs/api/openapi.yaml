@@ -45,8 +45,1015 @@ tags:
     description: 登录记录和操作审计
   - name: Statistic
     description: 经营统计
+  - name: AI
+    description: AI 业务助手、Run、SSE、ToolRegistry 和低风险 Proposal
 
 paths:
+  /api/ai/conversations:
+    get:
+      tags: [AI]
+      operationId: listAiConversations
+      summary: 查询当前用户 AI 会话列表
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: 查询成功，data 为 AI Conversation 数组。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AiConversationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [AI]
+      operationId: createAiConversation
+      summary: 创建 AI Conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiConversationRequest"
+      responses:
+        "200":
+          description: 创建成功，data 为 AI Conversation。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiConversationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/conversations/{conversationNo}:
+    get:
+      tags: [AI]
+      operationId: getAiConversation
+      summary: 查询 AI Conversation 详情
+      parameters:
+        - name: conversationNo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功，data 为会话、消息、最近 Run 和可恢复状态。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiConversationDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/conversations/{conversationNo}/title:
+    patch:
+      tags: [AI]
+      operationId: renameAiConversation
+      summary: 重命名 AI Conversation
+      parameters:
+        - name: conversationNo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenameAiConversationRequest"
+      responses:
+        "200":
+          description: 重命名成功，data 为 AI Conversation。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiConversationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/conversations/{conversationNo}/archive:
+    post:
+      tags: [AI]
+      operationId: archiveAiConversation
+      summary: 归档 AI Conversation
+      parameters:
+        - name: conversationNo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 归档成功，data 为 AI Conversation。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiConversationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/runs:
+    post:
+      tags: [AI]
+      operationId: createAiRun
+      summary: 创建 AI Run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiRunRequest"
+      responses:
+        "200":
+          description: 创建成功，data 为 AI Run。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiRunResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/runs/{runNo}:
+    get:
+      tags: [AI]
+      operationId: getAiRun
+      summary: 查询 AI Run 状态
+      parameters:
+        - name: runNo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功，data 为 AI Run。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiRunResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/runs/{runNo}/trace:
+    get:
+      tags: [AI]
+      operationId: getAiRunTrace
+      summary: 查询 AI Run 可恢复追踪
+      parameters:
+        - name: runNo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功，data 为 AI Run、消息、工具调用、Proposal、Approval 和执行事件。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiRunTraceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/runs/{runNo}/events:
+    get:
+      tags: [AI]
+      operationId: streamAiRunEvents
+      summary: 订阅 AI Run SSE 事件
+      parameters:
+        - name: runNo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: SSE 事件流。事件 data 为 AiSseEventResponse JSON。
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/runs/{runNo}/cancel:
+    post:
+      tags: [AI]
+      operationId: cancelAiRun
+      summary: 停止 AI Run 生成
+      parameters:
+        - name: runNo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelAiRunRequest"
+      responses:
+        "200":
+          description: 停止成功或幂等返回当前 Run 状态。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiRunResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/provider-configs:
+    get:
+      tags: [AI]
+      operationId: listAiProviderConfigs
+      summary: 查询 AI 模型配置列表
+      responses:
+        "200":
+          description: 查询成功，data 为脱敏配置列表。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AiProviderConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [AI]
+      operationId: createAiProviderConfig
+      summary: 创建 AI 模型配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiProviderConfigRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProviderConfigOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/provider-configs/{configNo}:
+    put:
+      tags: [AI]
+      operationId: updateAiProviderConfig
+      summary: 更新 AI 模型配置基础字段
+      parameters:
+        - $ref: "#/components/parameters/AiProviderConfigNo"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAiProviderConfigRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProviderConfigOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/provider-configs/{configNo}/rotate-key:
+    post:
+      tags: [AI]
+      operationId: rotateAiProviderKey
+      summary: 轮换 AI 模型配置 API Key
+      parameters:
+        - $ref: "#/components/parameters/AiProviderConfigNo"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RotateAiProviderKeyRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProviderConfigOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/provider-configs/{configNo}/test:
+    post:
+      tags: [AI]
+      operationId: testAiProviderConfig
+      summary: 测试 AI 模型配置连接
+      parameters:
+        - $ref: "#/components/parameters/AiProviderConfigNo"
+      responses:
+        "200":
+          description: 测试完成，data 为脱敏测试结果。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiProviderConfigTestResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/provider-configs/{configNo}/activate:
+    post:
+      tags: [AI]
+      operationId: activateAiProviderConfig
+      summary: 启用 AI 模型配置
+      parameters:
+        - $ref: "#/components/parameters/AiProviderConfigNo"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProviderConfigOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/provider-configs/{configNo}/disable:
+    post:
+      tags: [AI]
+      operationId: disableAiProviderConfig
+      summary: 停用 AI 模型配置
+      parameters:
+        - $ref: "#/components/parameters/AiProviderConfigNo"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProviderConfigOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proposals/{proposalId}/confirm:
+    post:
+      tags: [AI]
+      operationId: confirmAiProposal
+      summary: 确认低风险 AI Proposal
+      parameters:
+        - name: proposalId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: 确认成功，data 为执行结果。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiProposalConfirmResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proposals/{proposalId}/reject:
+    post:
+      tags: [AI]
+      operationId: rejectAiProposal
+      summary: 拒绝低风险 AI Proposal
+      parameters:
+        - name: proposalId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: 拒绝成功，data 为 Proposal 状态。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiProposalConfirmResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /internal/ai/tools/{toolName}/execute:
+    post:
+      tags: [AI]
+      operationId: executeInternalAiTool
+      summary: dealer-ai 调用 Spring Boot ToolRegistry
+      security: []
+      parameters:
+        - name: toolName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Dealer-AI-Tool-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteAiToolRequest"
+      responses:
+        "200":
+          description: 执行成功，data 为工具结构化结果。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiToolExecutionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/workflows:
+    post:
+      tags: [AI]
+      operationId: createAiWorkflow
+      summary: 创建受控 AI 工作流
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiWorkflowRequest"
+      responses:
+        "200":
+          description: 创建成功，data 为工作流和步骤。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiWorkflowResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    get:
+      tags: [AI]
+      operationId: listAiWorkflows
+      summary: 查询 AI Run 下的受控工作流
+      parameters:
+        - name: runNo
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功，data 为工作流列表。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AiWorkflowResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/workflows/{workflowNo}:
+    get:
+      tags: [AI]
+      operationId: getAiWorkflow
+      summary: 查询受控 AI 工作流详情
+      parameters:
+        - name: workflowNo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功，data 为工作流和步骤。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiWorkflowResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/workflows/{workflowNo}/pause:
+    post:
+      tags: [AI]
+      operationId: pauseAiWorkflow
+      summary: 暂停受控 AI 工作流
+      parameters:
+        - $ref: "#/components/parameters/AiWorkflowNo"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiWorkflowActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiWorkflowOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/workflows/{workflowNo}/resume:
+    post:
+      tags: [AI]
+      operationId: resumeAiWorkflow
+      summary: 恢复受控 AI 工作流
+      parameters:
+        - $ref: "#/components/parameters/AiWorkflowNo"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiWorkflowOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/workflows/{workflowNo}/cancel:
+    post:
+      tags: [AI]
+      operationId: cancelAiWorkflow
+      summary: 取消受控 AI 工作流
+      parameters:
+        - $ref: "#/components/parameters/AiWorkflowNo"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiWorkflowActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiWorkflowOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/workflows/{workflowNo}/fail:
+    post:
+      tags: [AI]
+      operationId: failAiWorkflow
+      summary: 标记受控 AI 工作流失败
+      parameters:
+        - $ref: "#/components/parameters/AiWorkflowNo"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiWorkflowActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiWorkflowOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proactive/subscriptions:
+    post:
+      tags: [AI]
+      operationId: createAiProactiveSubscription
+      summary: 创建 AI 主动提醒订阅
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiProactiveSubscriptionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProactiveSubscriptionOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    get:
+      tags: [AI]
+      operationId: listAiProactiveSubscriptions
+      summary: 查询当前用户 AI 主动提醒订阅
+      responses:
+        "200":
+          description: 查询成功，data 为订阅列表。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AiProactiveSubscriptionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proactive/subscriptions/{subscriptionNo}:
+    get:
+      tags: [AI]
+      operationId: getAiProactiveSubscription
+      summary: 查询 AI 主动提醒订阅详情
+      parameters:
+        - $ref: "#/components/parameters/AiSubscriptionNo"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProactiveSubscriptionOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proactive/subscriptions/{subscriptionNo}/pause:
+    post:
+      tags: [AI]
+      operationId: pauseAiProactiveSubscription
+      summary: 暂停 AI 主动提醒订阅
+      parameters:
+        - $ref: "#/components/parameters/AiSubscriptionNo"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProactiveSubscriptionOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proactive/subscriptions/{subscriptionNo}/resume:
+    post:
+      tags: [AI]
+      operationId: resumeAiProactiveSubscription
+      summary: 恢复 AI 主动提醒订阅
+      parameters:
+        - $ref: "#/components/parameters/AiSubscriptionNo"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProactiveSubscriptionOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proactive/subscriptions/{subscriptionNo}/cancel:
+    post:
+      tags: [AI]
+      operationId: cancelAiProactiveSubscription
+      summary: 取消 AI 主动提醒订阅
+      parameters:
+        - $ref: "#/components/parameters/AiSubscriptionNo"
+      responses:
+        "200":
+          $ref: "#/components/responses/AiProactiveSubscriptionOk"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proactive/events:
+    get:
+      tags: [AI]
+      operationId: listAiProactiveEvents
+      summary: 查询 AI 主动提醒事件
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          description: 查询成功，data 为提醒事件列表。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AiProactiveEventResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proactive/events/{eventNo}:
+    get:
+      tags: [AI]
+      operationId: getAiProactiveEvent
+      summary: 查询 AI 主动提醒事件详情
+      parameters:
+        - name: eventNo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 查询成功，data 为提醒事件。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiProactiveEventResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/ai/proactive/events/generate:
+    post:
+      tags: [AI]
+      operationId: generateAiProactiveEvents
+      summary: 为当前用户生成到期 AI 主动提醒事件
+      responses:
+        "200":
+          description: 生成完成，data 为本次生成的事件列表。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AiProactiveEventResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/login:
     post:
       tags: [Auth]
@@ -4770,6 +5777,27 @@ components:
         minimum: 1
         maximum: 100
       description: 分页大小。
+    AiWorkflowNo:
+      name: workflowNo
+      in: path
+      required: true
+      schema:
+        type: string
+      description: AI 工作流编号。
+    AiProviderConfigNo:
+      name: configNo
+      in: path
+      required: true
+      schema:
+        type: string
+      description: AI 模型配置编号。
+    AiSubscriptionNo:
+      name: subscriptionNo
+      in: path
+      required: true
+      schema:
+        type: string
+      description: AI 主动提醒订阅编号。
 
   requestBodies:
     IntegerArray:
@@ -4828,6 +5856,39 @@ components:
                   data:
                     type: object
                     additionalProperties: true
+    AiWorkflowOk:
+      description: 操作成功，data 为 AI 工作流和步骤。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AiWorkflowResponse"
+    AiProviderConfigOk:
+      description: 操作成功，data 为 AI 模型配置脱敏信息。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AiProviderConfigResponse"
+    AiProactiveSubscriptionOk:
+      description: 操作成功，data 为 AI 主动提醒订阅。
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/R"
+              - type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/AiProactiveSubscriptionResponse"
     SummaryDataOk:
       description: 查询成功，data 为经营摘要指标。
       content:
@@ -5869,6 +6930,777 @@ components:
           items:
             type: object
             additionalProperties: true
+    AiEntryPoint:
+      type: string
+      enum: [PAGE, SIDE_PANEL]
+    AiRunStatus:
+      type: string
+      enum: [CREATED, RUNNING, WAITING_FOR_APPROVAL, COMPLETED, FAILED, CANCELLED, EXPIRED]
+    AiConversationStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED]
+    AiProposalStatus:
+      type: string
+      enum: [PENDING_CONFIRMATION, CONFIRMED, REJECTED, EXPIRED, EXECUTED, FAILED]
+    AiRiskLevel:
+      type: string
+      enum: [READONLY, LOW, MEDIUM, HIGH]
+    AiWorkflowStatus:
+      type: string
+      enum: [CREATED, RUNNING, PAUSED, WAITING_USER_CONFIRMATION, COMPLETED, FAILED, CANCELLED, EXPIRED]
+    AiWorkflowStepStatus:
+      type: string
+      enum: [PENDING, RUNNING, WAITING_USER_CONFIRMATION, COMPLETED, FAILED, CANCELLED, EXPIRED]
+    AiWorkflowType:
+      type: string
+      enum: [CUSTOMER_FOLLOW_UP, TRANSACTION_GAP_REVIEW, INVENTORY_RISK_REVIEW]
+    AiProviderFormat:
+      type: string
+      enum: [OPENAI_COMPATIBLE, ANTHROPIC]
+    AiProviderTestStatus:
+      type: string
+      enum: [UNTESTED, SUCCESS, FAILED]
+    AiProactiveSubscriptionType:
+      type: string
+      enum: [FOLLOW_UP_REMINDER, TRANSACTION_EXCEPTION, INVENTORY_ALERT, DAILY_SUMMARY, PERIODIC_SALES_ANALYSIS]
+    AiProactiveFrequency:
+      type: string
+      enum: [REALTIME_LIMITED, DAILY, WEEKLY, MONTHLY]
+    AiProactiveSubscriptionStatus:
+      type: string
+      enum: [ACTIVE, PAUSED, CANCELLED]
+    AiProactiveEventStatus:
+      type: string
+      enum: [CREATED, GENERATING, READY, NO_DATA, FAILED, SKIPPED]
+    CreateAiRunRequest:
+      type: object
+      required: [prompt, entryPoint]
+      properties:
+        conversationNo:
+          type: string
+          maxLength: 64
+          description: 目标 Conversation；未传时由后端按当前用户和业务对象上下文解析或创建默认会话。
+        prompt:
+          type: string
+          maxLength: 4000
+        entryPoint:
+          $ref: "#/components/schemas/AiEntryPoint"
+        contextObjectType:
+          type: string
+          maxLength: 64
+        contextObjectId:
+          type: string
+          maxLength: 64
+    CreateAiConversationRequest:
+      type: object
+      required: [entryPoint]
+      properties:
+        title:
+          type: string
+          maxLength: 128
+        entryPoint:
+          $ref: "#/components/schemas/AiEntryPoint"
+        contextObjectType:
+          type: string
+          maxLength: 64
+        contextObjectId:
+          type: string
+          maxLength: 64
+    RenameAiConversationRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 128
+    CancelAiRunRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 255
+    CreateAiProviderConfigRequest:
+      type: object
+      required: [providerName, providerFormat, baseUrl, modelName, modelDisplayName, apiKey]
+      properties:
+        providerName:
+          type: string
+          maxLength: 64
+        providerFormat:
+          $ref: "#/components/schemas/AiProviderFormat"
+        baseUrl:
+          type: string
+          maxLength: 255
+          example: https://api.deepseek.com
+        modelName:
+          type: string
+          maxLength: 128
+        modelDisplayName:
+          type: string
+          maxLength: 128
+        apiKey:
+          type: string
+          maxLength: 500
+          writeOnly: true
+          description: 仅请求中提交，响应、SSE、trace 和日志禁止返回明文。
+        timeoutSeconds:
+          type: integer
+          minimum: 1
+          maximum: 60
+          default: 15
+        maxOutputTokens:
+          type: integer
+          minimum: 1
+          maximum: 4096
+          default: 512
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 0.7
+    UpdateAiProviderConfigRequest:
+      type: object
+      required: [providerName, providerFormat, baseUrl, modelName, modelDisplayName]
+      properties:
+        providerName:
+          type: string
+          maxLength: 64
+        providerFormat:
+          $ref: "#/components/schemas/AiProviderFormat"
+        baseUrl:
+          type: string
+          maxLength: 255
+        modelName:
+          type: string
+          maxLength: 128
+        modelDisplayName:
+          type: string
+          maxLength: 128
+        timeoutSeconds:
+          type: integer
+          minimum: 1
+          maximum: 60
+        maxOutputTokens:
+          type: integer
+          minimum: 1
+          maximum: 4096
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+    RotateAiProviderKeyRequest:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+          maxLength: 500
+          writeOnly: true
+          description: 仅用于轮换密钥，响应永不返回明文。
+    AiProviderConfigResponse:
+      type: object
+      properties:
+        configNo:
+          type: string
+        providerName:
+          type: string
+        providerFormat:
+          $ref: "#/components/schemas/AiProviderFormat"
+        baseUrl:
+          type: string
+        modelName:
+          type: string
+        modelDisplayName:
+          type: string
+        hasApiKey:
+          type: boolean
+        maskedApiKey:
+          type: string
+          description: API Key 掩码，不是明文。
+        enabled:
+          type: boolean
+        testStatus:
+          $ref: "#/components/schemas/AiProviderTestStatus"
+        lastTestTime:
+          type: string
+          format: date-time
+        lastTestErrorCode:
+          type: string
+        lastTestMessage:
+          type: string
+        timeoutSeconds:
+          type: integer
+        maxOutputTokens:
+          type: integer
+        temperature:
+          type: number
+        createTime:
+          type: string
+          format: date-time
+        editTime:
+          type: string
+          format: date-time
+    AiProviderConfigTestResponse:
+      type: object
+      properties:
+        configNo:
+          type: string
+        testStatus:
+          $ref: "#/components/schemas/AiProviderTestStatus"
+        message:
+          type: string
+        errorCode:
+          type: string
+    AiConversationResponse:
+      type: object
+      properties:
+        conversationNo:
+          type: string
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/AiConversationStatus"
+        entryPoint:
+          $ref: "#/components/schemas/AiEntryPoint"
+        contextObjectType:
+          type: string
+        contextObjectId:
+          type: string
+        summaryText:
+          type: string
+        lastRunNo:
+          type: string
+        lastMessageTime:
+          type: string
+          format: date-time
+        createTime:
+          type: string
+          format: date-time
+        editTime:
+          type: string
+          format: date-time
+    AiConversationDetailResponse:
+      type: object
+      properties:
+        conversation:
+          $ref: "#/components/schemas/AiConversationResponse"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceMessage"
+        turns:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiConversationTurn"
+        latestRun:
+          $ref: "#/components/schemas/AiRunResponse"
+        latestRunTrace:
+          $ref: "#/components/schemas/AiRunTraceResponse"
+    AiConversationTurn:
+      type: object
+      properties:
+        run:
+          $ref: "#/components/schemas/AiRunResponse"
+        turnNo:
+          type: integer
+        status:
+          $ref: "#/components/schemas/AiRunStatus"
+        userMessage:
+          $ref: "#/components/schemas/AiTraceMessage"
+        assistantMessage:
+          $ref: "#/components/schemas/AiTraceMessage"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceMessage"
+        toolResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceToolCall"
+        proposals:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceProposal"
+        approvals:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceApproval"
+        executionEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceExecutionEvent"
+        workflows:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiWorkflowResponse"
+    AiRunResponse:
+      type: object
+      properties:
+        runNo:
+          type: string
+        conversationNo:
+          type: string
+        turnNo:
+          type: integer
+        status:
+          $ref: "#/components/schemas/AiRunStatus"
+        entryPoint:
+          $ref: "#/components/schemas/AiEntryPoint"
+        contextObjectType:
+          type: string
+        contextObjectId:
+          type: string
+        promptSummary:
+          type: string
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        startedTime:
+          type: string
+          format: date-time
+        completedTime:
+          type: string
+          format: date-time
+        expiresTime:
+          type: string
+          format: date-time
+    AiRunTraceResponse:
+      type: object
+      properties:
+        run:
+          $ref: "#/components/schemas/AiRunResponse"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceMessage"
+        toolCalls:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceToolCall"
+        proposals:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceProposal"
+        approvals:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceApproval"
+        executionEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiTraceExecutionEvent"
+        workflows:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiWorkflowResponse"
+    AiTraceMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        role:
+          type: string
+          enum: [USER, ASSISTANT, SYSTEM]
+        sequenceNo:
+          type: integer
+        visibleToUser:
+          type: boolean
+        contentSummary:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+    AiTraceToolCall:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        toolName:
+          type: string
+        permissionCode:
+          type: string
+        riskLevel:
+          $ref: "#/components/schemas/AiRiskLevel"
+        inputSummary:
+          type: string
+        outputSummary:
+          type: string
+        objectRefs:
+          type: string
+        displayPayload:
+          description: 脱敏后的前端展示 payload，只用于恢复业务卡片。
+          nullable: true
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: string
+            - type: number
+            - type: boolean
+        resultStatus:
+          type: string
+        errorCode:
+          type: string
+        durationMs:
+          type: integer
+        startedTime:
+          type: string
+          format: date-time
+        completedTime:
+          type: string
+          format: date-time
+    AiTraceProposal:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        proposalType:
+          type: string
+          enum: [create_communication_record_proposal, create_follow_task_proposal]
+        status:
+          $ref: "#/components/schemas/AiProposalStatus"
+        riskLevel:
+          $ref: "#/components/schemas/AiRiskLevel"
+        permissionCode:
+          type: string
+        relatedObjectType:
+          type: string
+        relatedObjectId:
+          type: string
+        paramsSummary:
+          type: string
+        impactSummary:
+          type: string
+        expiresTime:
+          type: string
+          format: date-time
+        confirmedTime:
+          type: string
+          format: date-time
+        executedTime:
+          type: string
+          format: date-time
+        resultSummary:
+          type: string
+        errorCode:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+    AiTraceApproval:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        proposalId:
+          type: integer
+          format: int64
+        decision:
+          type: string
+          enum: [CONFIRMED, REJECTED, EXPIRED]
+        permissionSummary:
+          type: string
+        reason:
+          type: string
+        resultStatus:
+          type: string
+        approvedTime:
+          type: string
+          format: date-time
+    AiTraceExecutionEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        proposalId:
+          type: integer
+          format: int64
+        eventType:
+          type: string
+        resultStatus:
+          type: string
+        objectType:
+          type: string
+        objectId:
+          type: string
+        summary:
+          type: string
+        errorCode:
+          type: string
+        occurredTime:
+          type: string
+          format: date-time
+    AiSseEventResponse:
+      type: object
+      properties:
+        eventId:
+          type: string
+        runNo:
+          type: string
+        sequence:
+          type: integer
+        type:
+          type: string
+          enum:
+            - run_started
+            - message_delta
+            - message_completed
+            - tool_call_started
+            - tool_call_completed
+            - proposal_created
+            - workflow_started
+            - workflow_step_started
+            - workflow_step_completed
+            - workflow_waiting_user_confirmation
+            - workflow_paused
+            - workflow_resumed
+            - workflow_cancelled
+            - workflow_expired
+            - workflow_failed
+            - workflow_completed
+            - error
+            - run_completed
+            - run_cancelled
+        occurredAt:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          additionalProperties: true
+    ExecuteAiToolRequest:
+      type: object
+      required: [runNo, arguments]
+      properties:
+        runNo:
+          type: string
+        arguments:
+          type: object
+          additionalProperties: true
+          description: 工具业务参数，不得包含 userId、角色、权限、数据范围或审计操作者。
+    AiToolExecutionResponse:
+      type: object
+      properties:
+        toolName:
+          type: string
+        resultStatus:
+          type: string
+        data:
+          nullable: true
+        outputSummary:
+          type: string
+        objectRefs:
+          type: string
+    AiProposalConfirmResponse:
+      type: object
+      properties:
+        proposalId:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/AiProposalStatus"
+        resultSummary:
+          type: string
+        objectType:
+          type: string
+        objectId:
+          type: string
+    CreateAiWorkflowRequest:
+      type: object
+      required: [runNo, workflowType]
+      properties:
+        runNo:
+          type: string
+          maxLength: 64
+        workflowType:
+          $ref: "#/components/schemas/AiWorkflowType"
+        contextObjectType:
+          type: string
+          maxLength: 64
+        contextObjectId:
+          type: string
+          maxLength: 64
+    AiWorkflowActionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+    AiWorkflowResponse:
+      type: object
+      properties:
+        workflowNo:
+          type: string
+        runNo:
+          type: string
+        workflowType:
+          $ref: "#/components/schemas/AiWorkflowType"
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/AiWorkflowStatus"
+        currentStepNo:
+          type: integer
+        contextObjectType:
+          type: string
+        contextObjectId:
+          type: string
+        pauseReason:
+          type: string
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+        startedTime:
+          type: string
+          format: date-time
+        pausedTime:
+          type: string
+          format: date-time
+        resumedTime:
+          type: string
+          format: date-time
+        completedTime:
+          type: string
+          format: date-time
+        expiresTime:
+          type: string
+          format: date-time
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiWorkflowStepResponse"
+    AiWorkflowStepResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        stepNo:
+          type: integer
+        stepType:
+          type: string
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/AiWorkflowStepStatus"
+        toolName:
+          type: string
+        proposalId:
+          type: integer
+          format: int64
+        inputSummary:
+          type: string
+        outputSummary:
+          type: string
+        errorCode:
+          type: string
+        startedTime:
+          type: string
+          format: date-time
+        completedTime:
+          type: string
+          format: date-time
+    CreateAiProactiveSubscriptionRequest:
+      type: object
+      required: [subscriptionType, frequency]
+      properties:
+        subscriptionType:
+          $ref: "#/components/schemas/AiProactiveSubscriptionType"
+        frequency:
+          $ref: "#/components/schemas/AiProactiveFrequency"
+        quietStartTime:
+          type: string
+          pattern: "^$|^([01]\\d|2[0-3]):[0-5]\\d$"
+        quietEndTime:
+          type: string
+          pattern: "^$|^([01]\\d|2[0-3]):[0-5]\\d$"
+        dailyLimit:
+          type: integer
+          minimum: 1
+          maximum: 20
+        maxResults:
+          type: integer
+          minimum: 1
+          maximum: 20
+        duplicateWindowMinutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+        configSummary:
+          type: string
+          maxLength: 1000
+    AiProactiveSubscriptionResponse:
+      type: object
+      properties:
+        subscriptionNo:
+          type: string
+        subscriptionType:
+          $ref: "#/components/schemas/AiProactiveSubscriptionType"
+        status:
+          $ref: "#/components/schemas/AiProactiveSubscriptionStatus"
+        frequency:
+          $ref: "#/components/schemas/AiProactiveFrequency"
+        quietStartTime:
+          type: string
+        quietEndTime:
+          type: string
+        dailyLimit:
+          type: integer
+        maxResults:
+          type: integer
+        duplicateWindowMinutes:
+          type: integer
+        configSummary:
+          type: string
+        lastTriggeredTime:
+          type: string
+          format: date-time
+        nextTriggerTime:
+          type: string
+          format: date-time
+    AiProactiveEventResponse:
+      type: object
+      properties:
+        eventNo:
+          type: string
+        subscriptionNo:
+          type: string
+        eventType:
+          $ref: "#/components/schemas/AiProactiveSubscriptionType"
+        status:
+          $ref: "#/components/schemas/AiProactiveEventStatus"
+        title:
+          type: string
+        summary:
+          type: string
+        detailSummary:
+          type: string
+        objectType:
+          type: string
+        objectId:
+          type: string
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        generatedTime:
+          type: string
+          format: date-time
+        deliveredTime:
+          type: string
+          format: date-time
+        errorCode:
+          type: string
     AuditResult:
       type: string
       enum:
