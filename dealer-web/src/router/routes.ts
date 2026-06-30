@@ -26,6 +26,28 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'ai',
+        name: 'ai-assistant',
+        component: () => import('@/pages/dashboard/ai.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'AI 业务助手',
+          activeMenu: '/dashboard/ai',
+          permission: PERMISSIONS.ai.assistantUse,
+        },
+      },
+      {
+        path: 'ai/provider-configs',
+        name: 'ai-provider-configs',
+        component: () => import('@/pages/dashboard/ai/provider-configs.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'AI 模型配置',
+          activeMenu: '/dashboard/ai',
+          permission: PERMISSIONS.ai.providerConfigView,
+        },
+      },
+      {
         path: 'user',
         name: 'user',
         component: () => import('@/pages/dashboard/user.vue'),

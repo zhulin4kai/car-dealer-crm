@@ -169,4 +169,17 @@ export const PERMISSIONS = {
   statistic: {
     view: 'statistic:view',
   },
+  ai: {
+    assistantUse: 'ai:assistant:use',
+    runView: 'ai:run:view',
+    toolExecute: 'ai:tool:execute',
+    proposalConfirm: 'ai:proposal:confirm',
+    workflowView: 'ai:workflow:view',
+    workflowManage: 'ai:workflow:manage',
+    proactiveView: 'ai:proactive:view',
+    proactiveUse: 'ai:proactive:use',
+    providerConfigView: 'ai:provider-config:view',
+    providerConfigManage: 'ai:provider-config:manage',
+    providerConfigRotateKey: 'ai:provider-config:rotate-key',
+  },
 } as const

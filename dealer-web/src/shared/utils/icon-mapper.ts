@@ -28,6 +28,7 @@ import {
   Tag,
   Target,
   ShieldCheck,
+  Sparkles,
   Truck,
   UserCog,
   UserSearch,
@@ -105,6 +106,7 @@ const iconMap: Record<string, Component> = {
   Tag: markRaw(Tag),
   KeyRound: markRaw(KeyRound),
   ShieldCheck: markRaw(ShieldCheck),
+  Sparkles: markRaw(Sparkles),
 }
 
 const defaultIcon = markRaw(LayoutDashboard)

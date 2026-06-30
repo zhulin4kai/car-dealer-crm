@@ -59,6 +59,7 @@ vi.mock('axios', () => {
       get: vi.fn(() => Promise.resolve({ data: { code: 200, msg: 'OK', data: {} } })),
       post: vi.fn(() => Promise.resolve({ data: { code: 200, msg: 'OK', data: {} } })),
       put: vi.fn(() => Promise.resolve({ data: { code: 200, msg: 'OK', data: {} } })),
+      patch: vi.fn(() => Promise.resolve({ data: { code: 200, msg: 'OK', data: {} } })),
       delete: vi.fn(() => Promise.resolve({ data: { code: 200, msg: 'OK', data: {} } })),
       interceptors: {
         request: { use: vi.fn() },

@@ -137,6 +137,9 @@ export const httpClient = {
   put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     return request<T>({ ...config, method: 'put', url, data })
   },
+  patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return request<T>({ ...config, method: 'patch', url, data })
+  },
   delete<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     return request<T>({ ...config, method: 'delete', url, data })
   },

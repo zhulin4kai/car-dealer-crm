@@ -6,11 +6,13 @@ describe('router routes', () => {
   it('keeps the public URL contract', () => {
     const dashboardRoute = routes.find((route) => route.path === '/dashboard')
     expect(dashboardRoute).toBeDefined()
-    expect(dashboardRoute?.children).toHaveLength(25)
+    expect(dashboardRoute?.children).toHaveLength(27)
 
     const childPaths = dashboardRoute?.children?.map((route) => route.path) ?? []
     expect(childPaths).toEqual([
       '',
+      'ai',
+      'ai/provider-configs',
       'user',
       'activity',
       'activity/:id',
