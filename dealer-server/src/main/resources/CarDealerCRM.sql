@@ -907,6 +907,30 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '沟通记录-更正', 'communication-record:correct', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '沟通记录-作废', 'communication-record:void', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+VALUES ('AI 业务助手', 'menu:ai', '/dashboard/ai', 'menu', NULL, 7, 'Sparkles', 1);
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 助手-使用', 'ai:assistant:use', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI Run-查看', 'ai:run:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 工具-执行', 'ai:tool:execute', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 提议-确认', 'ai:proposal:confirm', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 工作流-查看', 'ai:workflow:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 工作流-管理', 'ai:workflow:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 主动提醒-查看', 'ai:proactive:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 主动提醒-使用', 'ai:proactive:use', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 模型配置-查看', 'ai:provider-config:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 模型配置-管理', 'ai:provider-config:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 模型配置-轮换密钥', 'ai:provider-config:rotate-key', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
 
 -- ----------------------------
 -- Table structure for t_role
@@ -989,6 +1013,18 @@ WHERE r.role IN ('sales_consultant', 'sales_manager', 'marketing_specialist')
                  'follow-task:complete', 'communication-record:list',
                  'communication-record:create', 'communication-record:correct',
                  'communication-record:void');
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role IN ('sales_consultant', 'sales_manager', 'marketing_specialist', 'finance_specialist', 'inventory_specialist')
+  AND p.code IN ('menu:ai', 'ai:assistant:use', 'ai:run:view', 'ai:tool:execute',
+                 'ai:workflow:view', 'ai:workflow:manage',
+                 'ai:proactive:view', 'ai:proactive:use');
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role IN ('sales_consultant', 'sales_manager', 'marketing_specialist')
+  AND p.code IN ('ai:proposal:confirm');
 
 -- ----------------------------
 -- Table structure for t_tran
@@ -2263,6 +2299,395 @@ VALUES
  '同意按取消订单流程退款。', 6, '2026-06-16 14:16:00', '2026-06-16 14:18:00',
  'WXRF2026061614160921', '定金原路退回。', NULL,
  '2026-06-16 14:10:00', 3, '2026-06-16 14:18:00', 6);
+
+-- ----------------------------
+-- Table structure for t_ai_run
+-- ----------------------------
+DROP TABLE IF EXISTS `t_ai_proactive_event`;
+DROP TABLE IF EXISTS `t_ai_workflow_step`;
+DROP TABLE IF EXISTS `t_ai_execution_event`;
+DROP TABLE IF EXISTS `t_ai_approval`;
+DROP TABLE IF EXISTS `t_ai_action_proposal`;
+DROP TABLE IF EXISTS `t_ai_tool_call`;
+DROP TABLE IF EXISTS `t_ai_message`;
+DROP TABLE IF EXISTS `t_ai_proactive_subscription`;
+DROP TABLE IF EXISTS `t_ai_workflow`;
+DROP TABLE IF EXISTS `t_ai_provider_config`;
+DROP TABLE IF EXISTS `t_ai_run`;
+DROP TABLE IF EXISTS `t_ai_conversation`;
+CREATE TABLE `t_ai_conversation`
+(
+    `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI 会话 ID',
+    `conversation_no`     VARCHAR(64)  NOT NULL COMMENT 'AI 会话业务编号',
+    `user_id`             INT          NOT NULL COMMENT '会话 owner 用户 ID',
+    `title`               VARCHAR(128) NOT NULL COMMENT '会话标题',
+    `status`              VARCHAR(32)  NOT NULL COMMENT '会话状态',
+    `entry_point`         VARCHAR(32)  NOT NULL COMMENT '入口: PAGE/SIDE_PANEL',
+    `context_object_type` VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象类型',
+    `context_object_id`   VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象 ID',
+    `summary_text`        VARCHAR(2000) NULL DEFAULT NULL COMMENT '脱敏会话摘要',
+    `last_run_no`         VARCHAR(64)  NULL DEFAULT NULL COMMENT '最近 AI Run 编号',
+    `last_message_time`   DATETIME     NULL DEFAULT NULL COMMENT '最近消息时间',
+    `create_time`         DATETIME     NOT NULL COMMENT '创建时间',
+    `create_by`           INT          NOT NULL COMMENT '创建人',
+    `edit_time`           DATETIME     NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`             INT          NULL DEFAULT NULL COMMENT '编辑人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_conversation_no` (`conversation_no` ASC) USING BTREE,
+    INDEX `idx_ai_conversation_user_time` (`user_id` ASC, `last_message_time` DESC, `create_time` DESC, `id` DESC) USING BTREE,
+    INDEX `idx_ai_conversation_context` (`user_id` ASC, `context_object_type` ASC, `context_object_id` ASC, `status` ASC) USING BTREE,
+    CONSTRAINT `fk_ai_conversation_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_conversation_status` CHECK (`status` IN ('ACTIVE', 'ARCHIVED')),
+    CONSTRAINT `chk_ai_conversation_entry_point` CHECK (`entry_point` IN ('PAGE', 'SIDE_PANEL'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 多轮会话表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_run`
+(
+    `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI Run ID',
+    `run_no`              VARCHAR(64)  NOT NULL COMMENT 'AI Run业务编号',
+    `conversation_id`     BIGINT       NOT NULL COMMENT 'AI 会话 ID',
+    `parent_run_id`       BIGINT       NULL DEFAULT NULL COMMENT '上一轮 Run ID',
+    `turn_no`             INT          NOT NULL COMMENT '会话内轮次',
+    `user_id`             INT          NOT NULL COMMENT '发起用户ID',
+    `user_name`           VARCHAR(64)  NULL DEFAULT NULL COMMENT '发起用户名称摘要',
+    `entry_point`         VARCHAR(32)  NOT NULL COMMENT '入口: PAGE/SIDE_PANEL',
+    `context_object_type` VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象类型',
+    `context_object_id`   VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象ID',
+    `prompt_summary`      VARCHAR(500) NOT NULL COMMENT '用户问题摘要',
+    `status`              VARCHAR(32)  NOT NULL COMMENT 'Run状态',
+    `error_code`          VARCHAR(64)  NULL DEFAULT NULL COMMENT '失败错误码',
+    `error_message`       VARCHAR(255) NULL DEFAULT NULL COMMENT '失败摘要',
+    `started_time`        DATETIME     NULL DEFAULT NULL COMMENT '开始时间',
+    `completed_time`      DATETIME     NULL DEFAULT NULL COMMENT '完成时间',
+    `expires_time`        DATETIME     NULL DEFAULT NULL COMMENT '过期时间',
+    `create_time`         DATETIME     NOT NULL COMMENT '创建时间',
+    `create_by`           INT          NOT NULL COMMENT '创建人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_run_no` (`run_no` ASC) USING BTREE,
+    UNIQUE INDEX `uk_ai_run_conversation_turn` (`conversation_id` ASC, `turn_no` ASC) USING BTREE,
+    INDEX `idx_ai_run_user_time` (`user_id` ASC, `create_time` DESC, `id` DESC) USING BTREE,
+    INDEX `idx_ai_run_status` (`status` ASC, `create_time` DESC) USING BTREE,
+    INDEX `idx_ai_run_context` (`context_object_type` ASC, `context_object_id` ASC) USING BTREE,
+    INDEX `idx_ai_run_conversation_turn` (`conversation_id` ASC, `turn_no` DESC, `id` DESC) USING BTREE,
+    INDEX `idx_ai_run_parent` (`parent_run_id` ASC) USING BTREE,
+    CONSTRAINT `fk_ai_run_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `t_ai_conversation` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_run_parent` FOREIGN KEY (`parent_run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_run_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_run_status` CHECK (`status` IN ('CREATED', 'RUNNING', 'WAITING_FOR_APPROVAL', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED')),
+    CONSTRAINT `chk_ai_run_entry_point` CHECK (`entry_point` IN ('PAGE', 'SIDE_PANEL'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI运行追踪表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_provider_config`
+(
+    `id`                       BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI 模型配置 ID',
+    `config_no`                VARCHAR(64)   NOT NULL COMMENT 'AI 模型配置业务编号',
+    `provider_name`            VARCHAR(64)   NOT NULL COMMENT 'Provider 名称',
+    `provider_format`          VARCHAR(32)   NOT NULL COMMENT 'Provider 协议格式',
+    `base_url`                 VARCHAR(255)  NOT NULL COMMENT 'Provider Base URL',
+    `model_name`               VARCHAR(128)  NOT NULL COMMENT '模型名称',
+    `model_display_name`       VARCHAR(128)  NOT NULL COMMENT '模型展示名称',
+    `encrypted_api_key`        VARCHAR(1000) NOT NULL COMMENT '加密后的 API Key',
+    `api_key_nonce`            VARCHAR(128)  NOT NULL COMMENT 'API Key 加密 nonce',
+    `masked_api_key`           VARCHAR(64)   NOT NULL COMMENT 'API Key 掩码',
+    `enabled`                  TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '是否启用',
+    `test_status`              VARCHAR(32)   NOT NULL COMMENT '测试状态',
+    `last_test_time`           DATETIME      NULL DEFAULT NULL COMMENT '最近测试时间',
+    `last_test_error_code`     VARCHAR(64)   NULL DEFAULT NULL COMMENT '最近测试错误码',
+    `last_test_message`        VARCHAR(255)  NULL DEFAULT NULL COMMENT '最近测试摘要',
+    `timeout_seconds`          INT           NOT NULL COMMENT '超时秒数',
+    `max_output_tokens`        INT           NOT NULL COMMENT '最大输出 token',
+    `temperature`              DECIMAL(4, 2) NOT NULL COMMENT '采样温度',
+    `create_time`              DATETIME      NOT NULL COMMENT '创建时间',
+    `create_by`                INT           NOT NULL COMMENT '创建人',
+    `edit_time`                DATETIME      NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`                  INT           NULL DEFAULT NULL COMMENT '编辑人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_provider_config_no` (`config_no` ASC) USING BTREE,
+    INDEX `idx_ai_provider_enabled` (`enabled` ASC, `edit_time` DESC, `id` DESC) USING BTREE,
+    CONSTRAINT `chk_ai_provider_format` CHECK (`provider_format` IN ('OPENAI_COMPATIBLE', 'ANTHROPIC')),
+    CONSTRAINT `chk_ai_provider_test_status` CHECK (`test_status` IN ('UNTESTED', 'SUCCESS', 'FAILED'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 模型供应商配置表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_message`
+(
+    `id`              BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI消息ID',
+    `conversation_id` BIGINT        NOT NULL COMMENT 'AI 会话 ID',
+    `run_id`          BIGINT        NOT NULL COMMENT 'AI Run ID',
+    `role`            VARCHAR(32)   NOT NULL COMMENT '消息角色',
+    `sequence_no`     INT           NOT NULL COMMENT 'Run内序号',
+    `visible_to_user` TINYINT(1)    NOT NULL DEFAULT 1 COMMENT '是否进入会话上下文和用户可见历史',
+    `content_summary` VARCHAR(2000) NOT NULL COMMENT '消息安全摘要',
+    `create_time`     DATETIME      NOT NULL COMMENT '创建时间',
+    `create_by`       INT           NOT NULL COMMENT '创建人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_message_run_seq` (`run_id` ASC, `sequence_no` ASC) USING BTREE,
+    INDEX `idx_ai_message_conversation_time` (`conversation_id` ASC, `visible_to_user` ASC, `create_time` ASC, `id` ASC) USING BTREE,
+    CONSTRAINT `fk_ai_message_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `t_ai_conversation` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_message_run` FOREIGN KEY (`run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_message_role` CHECK (`role` IN ('USER', 'ASSISTANT', 'SYSTEM', 'TOOL'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI消息追踪表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_workflow`
+(
+    `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI 工作流 ID',
+    `workflow_no`         VARCHAR(64)  NOT NULL COMMENT 'AI 工作流业务编号',
+    `run_id`              BIGINT       NOT NULL COMMENT 'AI Run ID',
+    `user_id`             INT          NOT NULL COMMENT '工作流 owner 用户 ID',
+    `workflow_type`       VARCHAR(64)  NOT NULL COMMENT '工作流类型',
+    `title`               VARCHAR(128) NOT NULL COMMENT '工作流标题',
+    `status`              VARCHAR(32)  NOT NULL COMMENT '工作流状态',
+    `current_step_no`     INT          NULL DEFAULT NULL COMMENT '当前步骤号',
+    `context_object_type` VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象类型',
+    `context_object_id`   VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象 ID',
+    `pause_reason`        VARCHAR(500) NULL DEFAULT NULL COMMENT '暂停原因',
+    `error_code`          VARCHAR(64)  NULL DEFAULT NULL COMMENT '错误码',
+    `error_message`       VARCHAR(255) NULL DEFAULT NULL COMMENT '错误摘要',
+    `started_time`        DATETIME     NULL DEFAULT NULL COMMENT '开始时间',
+    `paused_time`         DATETIME     NULL DEFAULT NULL COMMENT '暂停时间',
+    `resumed_time`        DATETIME     NULL DEFAULT NULL COMMENT '恢复时间',
+    `completed_time`      DATETIME     NULL DEFAULT NULL COMMENT '完成时间',
+    `expires_time`        DATETIME     NULL DEFAULT NULL COMMENT '过期时间',
+    `create_time`         DATETIME     NOT NULL COMMENT '创建时间',
+    `create_by`           INT          NOT NULL COMMENT '创建人',
+    `edit_time`           DATETIME     NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`             INT          NULL DEFAULT NULL COMMENT '编辑人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_workflow_no` (`workflow_no` ASC) USING BTREE,
+    INDEX `idx_ai_workflow_run` (`run_id` ASC, `create_time` ASC, `id` ASC) USING BTREE,
+    INDEX `idx_ai_workflow_user_status` (`user_id` ASC, `status` ASC, `create_time` DESC) USING BTREE,
+    CONSTRAINT `fk_ai_workflow_run` FOREIGN KEY (`run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_workflow_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_workflow_type` CHECK (`workflow_type` IN ('CUSTOMER_FOLLOW_UP', 'TRANSACTION_GAP_REVIEW', 'INVENTORY_RISK_REVIEW')),
+    CONSTRAINT `chk_ai_workflow_status` CHECK (`status` IN ('CREATED', 'RUNNING', 'PAUSED', 'WAITING_USER_CONFIRMATION', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 受控工作流表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_tool_call`
+(
+    `id`              BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI 工具调用 ID',
+    `run_id`          BIGINT        NOT NULL COMMENT 'AI Run ID',
+    `tool_name`       VARCHAR(128)  NOT NULL COMMENT '工具名',
+    `permission_code` VARCHAR(128)  NOT NULL COMMENT '权限码',
+    `risk_level`      VARCHAR(32)   NOT NULL COMMENT '风险等级',
+    `input_summary`   VARCHAR(1000) NOT NULL COMMENT '输入安全摘要',
+    `output_summary`  VARCHAR(1000) NULL DEFAULT NULL COMMENT '输出安全摘要',
+    `object_refs`     VARCHAR(1000) NULL DEFAULT NULL COMMENT '对象引用摘要',
+    `display_payload_json` TEXT NULL DEFAULT NULL COMMENT '前端展示用脱敏结构化结果',
+    `result_status`   VARCHAR(32)   NOT NULL COMMENT '结果状态',
+    `error_code`      VARCHAR(64)   NULL DEFAULT NULL COMMENT '错误码',
+    `duration_ms`     INT           NULL DEFAULT NULL COMMENT '耗时毫秒',
+    `started_time`    DATETIME      NOT NULL COMMENT '开始时间',
+    `completed_time`  DATETIME      NULL DEFAULT NULL COMMENT '完成时间',
+    `create_by`       INT           NOT NULL COMMENT '创建人',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_ai_tool_run` (`run_id` ASC, `started_time` ASC, `id` ASC) USING BTREE,
+    INDEX `idx_ai_tool_name` (`tool_name` ASC, `started_time` DESC) USING BTREE,
+    CONSTRAINT `fk_ai_tool_run` FOREIGN KEY (`run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_tool_risk` CHECK (`risk_level` IN ('READONLY', 'LOW', 'MEDIUM', 'HIGH')),
+    CONSTRAINT `chk_ai_tool_result` CHECK (`result_status` IN ('STARTED', 'SUCCESS', 'FAILED'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 工具调用追踪表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_action_proposal`
+(
+    `id`                  BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI动作提议ID',
+    `run_id`              BIGINT        NOT NULL COMMENT 'AI Run ID',
+    `proposal_type`       VARCHAR(128)  NOT NULL COMMENT '提议类型',
+    `status`              VARCHAR(32)   NOT NULL COMMENT '提议状态',
+    `risk_level`          VARCHAR(32)   NOT NULL COMMENT '风险等级',
+    `permission_code`     VARCHAR(128)  NOT NULL COMMENT '执行所需权限码',
+    `related_object_type` VARCHAR(64)   NOT NULL COMMENT '关联对象类型',
+    `related_object_id`   VARCHAR(64)   NOT NULL COMMENT '关联对象ID',
+    `normalized_params`   TEXT          NOT NULL COMMENT '后端规范化参数',
+    `params_hash`         VARCHAR(128)  NOT NULL COMMENT '规范化参数哈希',
+    `params_summary`      VARCHAR(1000) NOT NULL COMMENT '参数展示摘要',
+    `impact_summary`      VARCHAR(1000) NOT NULL COMMENT '影响说明',
+    `expires_time`        DATETIME      NOT NULL COMMENT '过期时间',
+    `confirmed_time`      DATETIME      NULL DEFAULT NULL COMMENT '确认时间',
+    `executed_time`       DATETIME      NULL DEFAULT NULL COMMENT '执行时间',
+    `result_summary`      VARCHAR(1000) NULL DEFAULT NULL COMMENT '执行结果摘要',
+    `error_code`          VARCHAR(64)   NULL DEFAULT NULL COMMENT '错误码',
+    `create_time`         DATETIME      NOT NULL COMMENT '创建时间',
+    `create_by`           INT           NOT NULL COMMENT '创建人',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_ai_proposal_run` (`run_id` ASC, `create_time` ASC, `id` ASC) USING BTREE,
+    INDEX `idx_ai_proposal_status` (`status` ASC, `expires_time` ASC) USING BTREE,
+    CONSTRAINT `fk_ai_proposal_run` FOREIGN KEY (`run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_proposal_type` CHECK (`proposal_type` IN ('create_communication_record_proposal', 'create_follow_task_proposal')),
+    CONSTRAINT `chk_ai_proposal_status` CHECK (`status` IN ('PENDING_CONFIRMATION', 'CONFIRMED', 'REJECTED', 'EXPIRED', 'EXECUTED', 'FAILED')),
+    CONSTRAINT `chk_ai_proposal_risk` CHECK (`risk_level` IN ('LOW'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI低风险动作提议表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_workflow_step`
+(
+    `id`             BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI 工作流步骤 ID',
+    `workflow_id`    BIGINT        NOT NULL COMMENT 'AI 工作流 ID',
+    `step_no`        INT           NOT NULL COMMENT '步骤号',
+    `step_type`      VARCHAR(64)   NOT NULL COMMENT '步骤类型',
+    `title`          VARCHAR(128)  NOT NULL COMMENT '步骤标题',
+    `status`         VARCHAR(32)   NOT NULL COMMENT '步骤状态',
+    `tool_name`      VARCHAR(128)  NULL DEFAULT NULL COMMENT '关联工具名',
+    `proposal_id`    BIGINT        NULL DEFAULT NULL COMMENT '关联 AI 提议 ID',
+    `input_summary`  VARCHAR(1000) NULL DEFAULT NULL COMMENT '输入摘要',
+    `output_summary` VARCHAR(1000) NULL DEFAULT NULL COMMENT '输出摘要',
+    `error_code`     VARCHAR(64)   NULL DEFAULT NULL COMMENT '错误码',
+    `started_time`   DATETIME      NULL DEFAULT NULL COMMENT '开始时间',
+    `completed_time` DATETIME      NULL DEFAULT NULL COMMENT '完成时间',
+    `create_time`    DATETIME      NOT NULL COMMENT '创建时间',
+    `create_by`      INT           NOT NULL COMMENT '创建人',
+    `edit_time`      DATETIME      NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`        INT           NULL DEFAULT NULL COMMENT '编辑人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_workflow_step_no` (`workflow_id` ASC, `step_no` ASC) USING BTREE,
+    CONSTRAINT `fk_ai_workflow_step_workflow` FOREIGN KEY (`workflow_id`) REFERENCES `t_ai_workflow` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_workflow_step_proposal` FOREIGN KEY (`proposal_id`) REFERENCES `t_ai_action_proposal` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_workflow_step_status` CHECK (`status` IN ('PENDING', 'RUNNING', 'WAITING_USER_CONFIRMATION', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 工作流步骤表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_approval`
+(
+    `id`                 BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI 提议确认 ID',
+    `run_id`             BIGINT       NOT NULL COMMENT 'AI Run ID',
+    `proposal_id`        BIGINT       NOT NULL COMMENT 'AI动作提议ID',
+    `decision`           VARCHAR(32)  NOT NULL COMMENT '确认决定',
+    `permission_summary` VARCHAR(500) NOT NULL COMMENT '确认时权限摘要',
+    `reason`             VARCHAR(500) NULL DEFAULT NULL COMMENT '拒绝或失败原因',
+    `result_status`      VARCHAR(32)  NOT NULL COMMENT '处理结果',
+    `approved_time`      DATETIME     NOT NULL COMMENT '确认时间',
+    `approved_by`        INT          NOT NULL COMMENT '确认人',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_ai_approval_run` (`run_id` ASC, `approved_time` DESC) USING BTREE,
+    CONSTRAINT `fk_ai_approval_run` FOREIGN KEY (`run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_approval_proposal` FOREIGN KEY (`proposal_id`) REFERENCES `t_ai_action_proposal` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_approval_user` FOREIGN KEY (`approved_by`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_approval_decision` CHECK (`decision` IN ('CONFIRMED', 'REJECTED', 'EXPIRED')),
+    CONSTRAINT `chk_ai_approval_result` CHECK (`result_status` IN ('SUCCESS', 'FAILED', 'IGNORED'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 提议确认表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_execution_event`
+(
+    `id`                  BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI执行事件ID',
+    `run_id`              BIGINT        NOT NULL COMMENT 'AI Run ID',
+    `proposal_id`         BIGINT        NULL DEFAULT NULL COMMENT 'AI动作提议ID',
+    `event_type`          VARCHAR(64)   NOT NULL COMMENT '事件类型',
+    `result_status`       VARCHAR(32)   NOT NULL COMMENT '结果状态',
+    `object_type`         VARCHAR(64)   NULL DEFAULT NULL COMMENT '业务对象类型',
+    `object_id`           VARCHAR(64)   NULL DEFAULT NULL COMMENT '业务对象ID',
+    `summary`             VARCHAR(1000) NOT NULL COMMENT '事件安全摘要',
+    `error_code`          VARCHAR(64)   NULL DEFAULT NULL COMMENT '错误码',
+    `occurred_time`       DATETIME      NOT NULL COMMENT '发生时间',
+    `create_by`           INT           NOT NULL COMMENT '创建人',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_ai_execution_run` (`run_id` ASC, `occurred_time` ASC, `id` ASC) USING BTREE,
+    INDEX `idx_ai_execution_object` (`object_type` ASC, `object_id` ASC) USING BTREE,
+    CONSTRAINT `fk_ai_execution_run` FOREIGN KEY (`run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_execution_proposal` FOREIGN KEY (`proposal_id`) REFERENCES `t_ai_action_proposal` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_execution_result` CHECK (`result_status` IN ('SUCCESS', 'FAILED', 'SKIPPED'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI执行事件表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_proactive_subscription`
+(
+    `id`                       BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI 主动提醒订阅 ID',
+    `subscription_no`          VARCHAR(64)   NOT NULL COMMENT '订阅业务编号',
+    `user_id`                  INT           NOT NULL COMMENT '订阅 owner 用户 ID',
+    `subscription_type`        VARCHAR(64)   NOT NULL COMMENT '订阅类型',
+    `status`                   VARCHAR(32)   NOT NULL COMMENT '订阅状态',
+    `frequency`                VARCHAR(32)   NOT NULL COMMENT '频率',
+    `quiet_start_time`         VARCHAR(5)    NULL DEFAULT NULL COMMENT '静默开始 HH:mm',
+    `quiet_end_time`           VARCHAR(5)    NULL DEFAULT NULL COMMENT '静默结束 HH:mm',
+    `daily_limit`              INT           NOT NULL DEFAULT 5 COMMENT '每日提醒上限',
+    `max_results`              INT           NOT NULL DEFAULT 10 COMMENT '单次结果上限',
+    `duplicate_window_minutes` INT           NOT NULL DEFAULT 60 COMMENT '重复合并窗口分钟',
+    `config_summary`           VARCHAR(1000) NULL DEFAULT NULL COMMENT '配置摘要',
+    `last_triggered_time`      DATETIME      NULL DEFAULT NULL COMMENT '上次触发时间',
+    `next_trigger_time`        DATETIME      NULL DEFAULT NULL COMMENT '下次触发时间',
+    `create_time`              DATETIME      NOT NULL COMMENT '创建时间',
+    `create_by`                INT           NOT NULL COMMENT '创建人',
+    `edit_time`                DATETIME      NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`                  INT           NULL DEFAULT NULL COMMENT '编辑人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_proactive_subscription_no` (`subscription_no` ASC) USING BTREE,
+    INDEX `idx_ai_proactive_subscription_user` (`user_id` ASC, `status` ASC, `next_trigger_time` ASC) USING BTREE,
+    CONSTRAINT `fk_ai_proactive_subscription_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_proactive_subscription_type` CHECK (`subscription_type` IN ('FOLLOW_UP_REMINDER', 'TRANSACTION_EXCEPTION', 'INVENTORY_ALERT', 'DAILY_SUMMARY', 'PERIODIC_SALES_ANALYSIS')),
+    CONSTRAINT `chk_ai_proactive_subscription_status` CHECK (`status` IN ('ACTIVE', 'PAUSED', 'CANCELLED')),
+    CONSTRAINT `chk_ai_proactive_frequency` CHECK (`frequency` IN ('REALTIME_LIMITED', 'DAILY', 'WEEKLY', 'MONTHLY'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 主动提醒订阅表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_proactive_event`
+(
+    `id`              BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI 主动提醒事件 ID',
+    `event_no`        VARCHAR(64)   NOT NULL COMMENT '提醒事件业务编号',
+    `subscription_id` BIGINT        NOT NULL COMMENT 'AI 主动提醒订阅 ID',
+    `user_id`         INT           NOT NULL COMMENT '事件 owner 用户 ID',
+    `event_type`      VARCHAR(64)   NOT NULL COMMENT '事件类型',
+    `status`          VARCHAR(32)   NOT NULL COMMENT '事件状态',
+    `title`           VARCHAR(128)  NOT NULL COMMENT '标题',
+    `summary`         VARCHAR(1000) NOT NULL COMMENT '安全摘要',
+    `detail_summary`  VARCHAR(2000) NULL DEFAULT NULL COMMENT '详情安全摘要',
+    `object_type`     VARCHAR(64)   NULL DEFAULT NULL COMMENT '关联对象类型',
+    `object_id`       VARCHAR(64)   NULL DEFAULT NULL COMMENT '关联对象 ID',
+    `severity`        VARCHAR(32)   NOT NULL COMMENT '严重程度',
+    `generated_time`  DATETIME      NOT NULL COMMENT '生成时间',
+    `delivered_time`  DATETIME      NULL DEFAULT NULL COMMENT '送达时间',
+    `error_code`      VARCHAR(64)   NULL DEFAULT NULL COMMENT '错误码',
+    `create_time`     DATETIME      NOT NULL COMMENT '创建时间',
+    `create_by`       INT           NOT NULL COMMENT '创建人',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_proactive_event_no` (`event_no` ASC) USING BTREE,
+    INDEX `idx_ai_proactive_event_user` (`user_id` ASC, `generated_time` DESC, `id` DESC) USING BTREE,
+    INDEX `idx_ai_proactive_event_subscription` (`subscription_id` ASC, `generated_time` DESC, `id` DESC) USING BTREE,
+    INDEX `idx_ai_proactive_event_object` (`object_type` ASC, `object_id` ASC, `generated_time` DESC) USING BTREE,
+    CONSTRAINT `fk_ai_proactive_event_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `t_ai_proactive_subscription` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_ai_proactive_event_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_proactive_event_status` CHECK (`status` IN ('CREATED', 'GENERATING', 'READY', 'NO_DATA', 'FAILED', 'SKIPPED'))
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 主动提醒事件表'
+  ROW_FORMAT = DYNAMIC;
 
 ALTER TABLE `t_customer`
     ADD CONSTRAINT `fk_customer_clue` FOREIGN KEY (`clue_id`) REFERENCES `t_clue` (`id`) ON DELETE RESTRICT;

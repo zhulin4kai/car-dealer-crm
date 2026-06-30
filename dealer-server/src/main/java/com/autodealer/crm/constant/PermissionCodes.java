@@ -147,4 +147,16 @@ public final class PermissionCodes {
     public static final String USER_PASSWORD = "user:password";
 
     public static final String STATISTIC_VIEW = "statistic:view";
+
+    public static final String AI_USE = "ai:assistant:use";
+    public static final String AI_RUN_VIEW = "ai:run:view";
+    public static final String AI_TOOL_EXECUTE = "ai:tool:execute";
+    public static final String AI_PROPOSAL_CONFIRM = "ai:proposal:confirm";
+    public static final String AI_WORKFLOW_VIEW = "ai:workflow:view";
+    public static final String AI_WORKFLOW_MANAGE = "ai:workflow:manage";
+    public static final String AI_PROACTIVE_VIEW = "ai:proactive:view";
+    public static final String AI_PROACTIVE_USE = "ai:proactive:use";
+    public static final String AI_PROVIDER_CONFIG_VIEW = "ai:provider-config:view";
+    public static final String AI_PROVIDER_CONFIG_MANAGE = "ai:provider-config:manage";
+    public static final String AI_PROVIDER_CONFIG_ROTATE_KEY = "ai:provider-config:rotate-key";
 }

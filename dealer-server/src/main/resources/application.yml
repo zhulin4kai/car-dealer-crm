@@ -48,3 +48,13 @@ mybatis:
     map-underscore-to-camel-case: true
     # 在控制台打印 sql 语句（仅 dev profile 生效，生产环境请禁用）
     # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+ai:
+  provider:
+    key-encryption-secret: ${AI_PROVIDER_KEY_ENCRYPTION_SECRET:}
+    local-key-file: ${AI_PROVIDER_KEY_ENCRYPTION_SECRET_FILE:${user.home}/.car-dealer-crm/ai-provider-key.secret}
+  dealer-ai:
+    environment: ${DEALER_AI_ENV:${APP_ENV:local}}
+    base-url: ${DEALER_AI_BASE_URL:http://localhost:8091}
+    internal-token: ${DEALER_AI_INTERNAL_TOKEN:dev-internal-token}
+    tool-token: ${DEALER_AI_TOOL_TOKEN:${DEALER_AI_INTERNAL_TOKEN:dev-internal-token}}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.ai.mapper.TAiApprovalMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.ai.model.TAiApproval">
+        <id column="id" property="id" />
+        <result column="run_id" property="runId" />
+        <result column="proposal_id" property="proposalId" />
+        <result column="decision" property="decision" />
+        <result column="permission_summary" property="permissionSummary" />
+        <result column="reason" property="reason" />
+        <result column="result_status" property="resultStatus" />
+        <result column="approved_time" property="approvedTime" />
+        <result column="approved_by" property="approvedBy" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.autodealer.crm.ai.model.TAiApproval" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_ai_approval
+        (run_id, proposal_id, decision, permission_summary, reason, result_status, approved_time, approved_by)
+        VALUES
+        (#{runId}, #{proposalId}, #{decision}, #{permissionSummary}, #{reason}, #{resultStatus}, #{approvedTime}, #{approvedBy})
+    </insert>
+
+    <select id="selectByRunId" resultMap="BaseResultMap">
+        SELECT id, run_id, proposal_id, decision, permission_summary, reason, result_status, approved_time, approved_by
+        FROM t_ai_approval
+        WHERE run_id = #{runId}
+        ORDER BY approved_time ASC, id ASC
+    </select>
+</mapper>

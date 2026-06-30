@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.ai.mapper.TAiProactiveSubscriptionMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.ai.model.TAiProactiveSubscription">
+        <id column="id" property="id" />
+        <result column="subscription_no" property="subscriptionNo" />
+        <result column="user_id" property="userId" />
+        <result column="subscription_type" property="subscriptionType" />
+        <result column="status" property="status" />
+        <result column="frequency" property="frequency" />
+        <result column="quiet_start_time" property="quietStartTime" />
+        <result column="quiet_end_time" property="quietEndTime" />
+        <result column="daily_limit" property="dailyLimit" />
+        <result column="max_results" property="maxResults" />
+        <result column="duplicate_window_minutes" property="duplicateWindowMinutes" />
+        <result column="config_summary" property="configSummary" />
+        <result column="last_triggered_time" property="lastTriggeredTime" />
+        <result column="next_trigger_time" property="nextTriggerTime" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="edit_time" property="editTime" />
+        <result column="edit_by" property="editBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, subscription_no, user_id, subscription_type, status, frequency,
+        quiet_start_time, quiet_end_time, daily_limit, max_results, duplicate_window_minutes,
+        config_summary, last_triggered_time, next_trigger_time, create_time, create_by,
+        edit_time, edit_by
+    </sql>
+
+    <insert id="insert" parameterType="com.autodealer.crm.ai.model.TAiProactiveSubscription" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_ai_proactive_subscription
+        (subscription_no, user_id, subscription_type, status, frequency,
+         quiet_start_time, quiet_end_time, daily_limit, max_results, duplicate_window_minutes,
+         config_summary, last_triggered_time, next_trigger_time, create_time, create_by,
+         edit_time, edit_by)
+        VALUES
+        (#{subscriptionNo}, #{userId}, #{subscriptionType}, #{status}, #{frequency},
+         #{quietStartTime}, #{quietEndTime}, #{dailyLimit}, #{maxResults}, #{duplicateWindowMinutes},
+         #{configSummary}, #{lastTriggeredTime}, #{nextTriggerTime}, #{createTime}, #{createBy},
+         #{editTime}, #{editBy})
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_proactive_subscription
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectOwnedBySubscriptionNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_proactive_subscription
+        WHERE subscription_no = #{subscriptionNo}
+          AND user_id = #{userId}
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_proactive_subscription
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <select id="selectActiveDueByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_proactive_subscription
+        WHERE user_id = #{userId}
+          AND status = 'ACTIVE'
+          AND (next_trigger_time IS NULL OR next_trigger_time &lt;= #{now})
+        ORDER BY next_trigger_time ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="updateStatusIfCurrent">
+        UPDATE t_ai_proactive_subscription
+        SET status = #{status},
+            edit_time = CURRENT_TIMESTAMP,
+            edit_by = #{editBy}
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="updateTriggerTime">
+        UPDATE t_ai_proactive_subscription
+        SET last_triggered_time = #{lastTriggeredTime},
+            next_trigger_time = #{nextTriggerTime},
+            edit_time = CURRENT_TIMESTAMP,
+            edit_by = #{editBy}
+        WHERE id = #{id}
+    </update>
+</mapper>

@@ -319,6 +319,30 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT '沟通记录-更正', 'communication-record:correct', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '沟通记录-作废', 'communication-record:void', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:follow:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+VALUES ('AI 业务助手', 'menu:ai', '/dashboard/ai', 'menu', NULL, 7, 'Sparkles', 1);
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 助手-使用', 'ai:assistant:use', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI Run-查看', 'ai:run:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 工具-执行', 'ai:tool:execute', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 提议-确认', 'ai:proposal:confirm', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 工作流-查看', 'ai:workflow:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 工作流-管理', 'ai:workflow:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 主动提醒-查看', 'ai:proactive:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 主动提醒-使用', 'ai:proactive:use', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 模型配置-查看', 'ai:provider-config:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 模型配置-管理', 'ai:provider-config:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 模型配置-轮换密钥', 'ai:provider-config:rotate-key', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
 
 -- ==================== Role Permissions ====================
 -- 管理员显式拥有当前全部已启用权限；后续新增权限时必须同步补充管理员映射。
@@ -354,6 +378,18 @@ WHERE r.role IN ('sales_consultant', 'sales_manager', 'marketing_specialist')
                  'follow-task:complete', 'communication-record:list',
                  'communication-record:create', 'communication-record:correct',
                  'communication-record:void');
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role IN ('sales_consultant', 'sales_manager', 'marketing_specialist', 'finance_specialist', 'inventory_specialist')
+  AND p.code IN ('menu:ai', 'ai:assistant:use', 'ai:run:view', 'ai:tool:execute',
+                 'ai:workflow:view', 'ai:workflow:manage',
+                 'ai:proactive:view', 'ai:proactive:use');
+
+INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
+WHERE r.role IN ('sales_consultant', 'sales_manager', 'marketing_specialist')
+  AND p.code IN ('ai:proposal:confirm');
 
 -- ==================== Dictionary Types ====================
 MERGE INTO t_dic_type (id, type_code, type_name, remark) KEY(id) VALUES (1, 'sex', '性别', NULL);

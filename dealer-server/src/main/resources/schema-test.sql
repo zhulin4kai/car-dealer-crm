@@ -1039,3 +1039,339 @@ CREATE TABLE IF NOT EXISTS t_tran_remark
     PRIMARY KEY (id),
     CONSTRAINT fk_tran_remark_tran FOREIGN KEY (tran_id) REFERENCES t_tran(id) ON DELETE RESTRICT
 );
+
+CREATE TABLE IF NOT EXISTS t_ai_conversation
+(
+    id                  BIGINT NOT NULL AUTO_INCREMENT,
+    conversation_no     VARCHAR(64) NOT NULL,
+    user_id             INTEGER NOT NULL,
+    title               VARCHAR(128) NOT NULL,
+    status              VARCHAR(32) NOT NULL,
+    entry_point         VARCHAR(32) NOT NULL,
+    context_object_type VARCHAR(64),
+    context_object_id   VARCHAR(64),
+    summary_text        VARCHAR(2000),
+    last_run_no         VARCHAR(64),
+    last_message_time   TIMESTAMP,
+    create_time         TIMESTAMP NOT NULL,
+    create_by           INTEGER NOT NULL,
+    edit_time           TIMESTAMP,
+    edit_by             INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_conversation_no UNIQUE (conversation_no),
+    CONSTRAINT fk_ai_conversation_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_conversation_status CHECK (status IN ('ACTIVE', 'ARCHIVED')),
+    CONSTRAINT chk_ai_conversation_entry_point CHECK (entry_point IN ('PAGE', 'SIDE_PANEL'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_conversation_user_time ON t_ai_conversation(user_id, last_message_time, create_time, id);
+CREATE INDEX IF NOT EXISTS idx_ai_conversation_context ON t_ai_conversation(user_id, context_object_type, context_object_id, status);
+
+CREATE TABLE IF NOT EXISTS t_ai_run
+(
+    id                  BIGINT NOT NULL AUTO_INCREMENT,
+    run_no              VARCHAR(64) NOT NULL,
+    conversation_id     BIGINT NOT NULL,
+    parent_run_id       BIGINT,
+    turn_no             INTEGER NOT NULL,
+    user_id             INTEGER NOT NULL,
+    user_name           VARCHAR(64),
+    entry_point         VARCHAR(32) NOT NULL,
+    context_object_type VARCHAR(64),
+    context_object_id   VARCHAR(64),
+    prompt_summary      VARCHAR(500) NOT NULL,
+    status              VARCHAR(32) NOT NULL,
+    error_code          VARCHAR(64),
+    error_message       VARCHAR(255),
+    started_time        TIMESTAMP,
+    completed_time      TIMESTAMP,
+    expires_time        TIMESTAMP,
+    create_time         TIMESTAMP NOT NULL,
+    create_by           INTEGER NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_run_no UNIQUE (run_no),
+    CONSTRAINT uk_ai_run_conversation_turn UNIQUE (conversation_id, turn_no),
+    CONSTRAINT fk_ai_run_conversation FOREIGN KEY (conversation_id) REFERENCES t_ai_conversation(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_run_parent FOREIGN KEY (parent_run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_run_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_run_status CHECK (status IN ('CREATED', 'RUNNING', 'WAITING_FOR_APPROVAL', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED')),
+    CONSTRAINT chk_ai_run_entry_point CHECK (entry_point IN ('PAGE', 'SIDE_PANEL'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_run_user_time ON t_ai_run(user_id, create_time, id);
+CREATE INDEX IF NOT EXISTS idx_ai_run_status ON t_ai_run(status, create_time);
+CREATE INDEX IF NOT EXISTS idx_ai_run_context ON t_ai_run(context_object_type, context_object_id);
+CREATE INDEX IF NOT EXISTS idx_ai_run_conversation_turn ON t_ai_run(conversation_id, turn_no, id);
+
+CREATE TABLE IF NOT EXISTS t_ai_provider_config
+(
+    id                       BIGINT NOT NULL AUTO_INCREMENT,
+    config_no                VARCHAR(64) NOT NULL,
+    provider_name            VARCHAR(64) NOT NULL,
+    provider_format          VARCHAR(32) NOT NULL,
+    base_url                 VARCHAR(255) NOT NULL,
+    model_name               VARCHAR(128) NOT NULL,
+    model_display_name       VARCHAR(128) NOT NULL,
+    encrypted_api_key        VARCHAR(1000) NOT NULL,
+    api_key_nonce            VARCHAR(128) NOT NULL,
+    masked_api_key           VARCHAR(64) NOT NULL,
+    enabled                  BOOLEAN NOT NULL DEFAULT FALSE,
+    test_status              VARCHAR(32) NOT NULL,
+    last_test_time           TIMESTAMP,
+    last_test_error_code     VARCHAR(64),
+    last_test_message        VARCHAR(255),
+    timeout_seconds          INTEGER NOT NULL,
+    max_output_tokens        INTEGER NOT NULL,
+    temperature              DECIMAL(4,2) NOT NULL,
+    create_time              TIMESTAMP NOT NULL,
+    create_by                INTEGER NOT NULL,
+    edit_time                TIMESTAMP,
+    edit_by                  INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_provider_config_no UNIQUE (config_no),
+    CONSTRAINT chk_ai_provider_format CHECK (provider_format IN ('OPENAI_COMPATIBLE', 'ANTHROPIC')),
+    CONSTRAINT chk_ai_provider_test_status CHECK (test_status IN ('UNTESTED', 'SUCCESS', 'FAILED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_provider_enabled ON t_ai_provider_config(enabled, edit_time, id);
+
+CREATE TABLE IF NOT EXISTS t_ai_workflow
+(
+    id                  BIGINT NOT NULL AUTO_INCREMENT,
+    workflow_no         VARCHAR(64) NOT NULL,
+    run_id              BIGINT NOT NULL,
+    user_id             INTEGER NOT NULL,
+    workflow_type       VARCHAR(64) NOT NULL,
+    title               VARCHAR(128) NOT NULL,
+    status              VARCHAR(32) NOT NULL,
+    current_step_no     INTEGER,
+    context_object_type VARCHAR(64),
+    context_object_id   VARCHAR(64),
+    pause_reason        VARCHAR(500),
+    error_code          VARCHAR(64),
+    error_message       VARCHAR(255),
+    started_time        TIMESTAMP,
+    paused_time         TIMESTAMP,
+    resumed_time        TIMESTAMP,
+    completed_time      TIMESTAMP,
+    expires_time        TIMESTAMP,
+    create_time         TIMESTAMP NOT NULL,
+    create_by           INTEGER NOT NULL,
+    edit_time           TIMESTAMP,
+    edit_by             INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_workflow_no UNIQUE (workflow_no),
+    CONSTRAINT fk_ai_workflow_run FOREIGN KEY (run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_workflow_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_workflow_type CHECK (workflow_type IN ('CUSTOMER_FOLLOW_UP', 'TRANSACTION_GAP_REVIEW', 'INVENTORY_RISK_REVIEW')),
+    CONSTRAINT chk_ai_workflow_status CHECK (status IN ('CREATED', 'RUNNING', 'PAUSED', 'WAITING_USER_CONFIRMATION', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_workflow_run ON t_ai_workflow(run_id, create_time, id);
+CREATE INDEX IF NOT EXISTS idx_ai_workflow_user_status ON t_ai_workflow(user_id, status, create_time);
+
+CREATE TABLE IF NOT EXISTS t_ai_message
+(
+    id              BIGINT NOT NULL AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    run_id          BIGINT NOT NULL,
+    role            VARCHAR(32) NOT NULL,
+    sequence_no     INTEGER NOT NULL,
+    visible_to_user BOOLEAN NOT NULL DEFAULT TRUE,
+    content_summary VARCHAR(2000) NOT NULL,
+    create_time     TIMESTAMP NOT NULL,
+    create_by       INTEGER NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_message_run_seq UNIQUE (run_id, sequence_no),
+    CONSTRAINT fk_ai_message_conversation FOREIGN KEY (conversation_id) REFERENCES t_ai_conversation(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_message_run FOREIGN KEY (run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_message_role CHECK (role IN ('USER', 'ASSISTANT', 'SYSTEM', 'TOOL'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_message_conversation_time ON t_ai_message(conversation_id, visible_to_user, create_time, id);
+
+CREATE TABLE IF NOT EXISTS t_ai_tool_call
+(
+    id              BIGINT NOT NULL AUTO_INCREMENT,
+    run_id          BIGINT NOT NULL,
+    tool_name       VARCHAR(128) NOT NULL,
+    permission_code VARCHAR(128) NOT NULL,
+    risk_level      VARCHAR(32) NOT NULL,
+    input_summary   VARCHAR(1000) NOT NULL,
+    output_summary  VARCHAR(1000),
+    object_refs     VARCHAR(1000),
+    display_payload_json TEXT,
+    result_status   VARCHAR(32) NOT NULL,
+    error_code      VARCHAR(64),
+    duration_ms     INTEGER,
+    started_time    TIMESTAMP NOT NULL,
+    completed_time  TIMESTAMP,
+    create_by       INTEGER NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_ai_tool_run FOREIGN KEY (run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_tool_risk CHECK (risk_level IN ('READONLY', 'LOW', 'MEDIUM', 'HIGH')),
+    CONSTRAINT chk_ai_tool_result CHECK (result_status IN ('STARTED', 'SUCCESS', 'FAILED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_tool_run ON t_ai_tool_call(run_id, started_time, id);
+CREATE INDEX IF NOT EXISTS idx_ai_tool_name ON t_ai_tool_call(tool_name, started_time);
+
+CREATE TABLE IF NOT EXISTS t_ai_action_proposal
+(
+    id                  BIGINT NOT NULL AUTO_INCREMENT,
+    run_id              BIGINT NOT NULL,
+    proposal_type       VARCHAR(128) NOT NULL,
+    status              VARCHAR(32) NOT NULL,
+    risk_level          VARCHAR(32) NOT NULL,
+    permission_code     VARCHAR(128) NOT NULL,
+    related_object_type VARCHAR(64) NOT NULL,
+    related_object_id   VARCHAR(64) NOT NULL,
+    normalized_params   TEXT NOT NULL,
+    params_hash         VARCHAR(128) NOT NULL,
+    params_summary      VARCHAR(1000) NOT NULL,
+    impact_summary      VARCHAR(1000) NOT NULL,
+    expires_time        TIMESTAMP NOT NULL,
+    confirmed_time      TIMESTAMP,
+    executed_time       TIMESTAMP,
+    result_summary      VARCHAR(1000),
+    error_code          VARCHAR(64),
+    create_time         TIMESTAMP NOT NULL,
+    create_by           INTEGER NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_ai_proposal_run FOREIGN KEY (run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_proposal_type CHECK (proposal_type IN ('create_communication_record_proposal', 'create_follow_task_proposal')),
+    CONSTRAINT chk_ai_proposal_status CHECK (status IN ('PENDING_CONFIRMATION', 'CONFIRMED', 'REJECTED', 'EXPIRED', 'EXECUTED', 'FAILED')),
+    CONSTRAINT chk_ai_proposal_risk CHECK (risk_level IN ('LOW'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_proposal_run ON t_ai_action_proposal(run_id, create_time, id);
+CREATE INDEX IF NOT EXISTS idx_ai_proposal_status ON t_ai_action_proposal(status, expires_time);
+
+CREATE TABLE IF NOT EXISTS t_ai_workflow_step
+(
+    id             BIGINT NOT NULL AUTO_INCREMENT,
+    workflow_id    BIGINT NOT NULL,
+    step_no        INTEGER NOT NULL,
+    step_type      VARCHAR(64) NOT NULL,
+    title          VARCHAR(128) NOT NULL,
+    status         VARCHAR(32) NOT NULL,
+    tool_name      VARCHAR(128),
+    proposal_id    BIGINT,
+    input_summary  VARCHAR(1000),
+    output_summary VARCHAR(1000),
+    error_code     VARCHAR(64),
+    started_time   TIMESTAMP,
+    completed_time TIMESTAMP,
+    create_time    TIMESTAMP NOT NULL,
+    create_by      INTEGER NOT NULL,
+    edit_time      TIMESTAMP,
+    edit_by        INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_workflow_step_no UNIQUE (workflow_id, step_no),
+    CONSTRAINT fk_ai_workflow_step_workflow FOREIGN KEY (workflow_id) REFERENCES t_ai_workflow(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_workflow_step_proposal FOREIGN KEY (proposal_id) REFERENCES t_ai_action_proposal(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_workflow_step_status CHECK (status IN ('PENDING', 'RUNNING', 'WAITING_USER_CONFIRMATION', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED'))
+);
+
+CREATE TABLE IF NOT EXISTS t_ai_approval
+(
+    id                 BIGINT NOT NULL AUTO_INCREMENT,
+    run_id             BIGINT NOT NULL,
+    proposal_id        BIGINT NOT NULL,
+    decision           VARCHAR(32) NOT NULL,
+    permission_summary VARCHAR(500) NOT NULL,
+    reason             VARCHAR(500),
+    result_status      VARCHAR(32) NOT NULL,
+    approved_time      TIMESTAMP NOT NULL,
+    approved_by        INTEGER NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_ai_approval_run FOREIGN KEY (run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_approval_proposal FOREIGN KEY (proposal_id) REFERENCES t_ai_action_proposal(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_approval_user FOREIGN KEY (approved_by) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_approval_decision CHECK (decision IN ('CONFIRMED', 'REJECTED', 'EXPIRED')),
+    CONSTRAINT chk_ai_approval_result CHECK (result_status IN ('SUCCESS', 'FAILED', 'IGNORED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_approval_run ON t_ai_approval(run_id, approved_time);
+
+CREATE TABLE IF NOT EXISTS t_ai_execution_event
+(
+    id            BIGINT NOT NULL AUTO_INCREMENT,
+    run_id        BIGINT NOT NULL,
+    proposal_id   BIGINT,
+    event_type    VARCHAR(64) NOT NULL,
+    result_status VARCHAR(32) NOT NULL,
+    object_type   VARCHAR(64),
+    object_id     VARCHAR(64),
+    summary       VARCHAR(1000) NOT NULL,
+    error_code    VARCHAR(64),
+    occurred_time TIMESTAMP NOT NULL,
+    create_by     INTEGER NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_ai_execution_run FOREIGN KEY (run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_execution_proposal FOREIGN KEY (proposal_id) REFERENCES t_ai_action_proposal(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_execution_result CHECK (result_status IN ('SUCCESS', 'FAILED', 'SKIPPED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_execution_run ON t_ai_execution_event(run_id, occurred_time, id);
+CREATE INDEX IF NOT EXISTS idx_ai_execution_object ON t_ai_execution_event(object_type, object_id);
+
+CREATE TABLE IF NOT EXISTS t_ai_proactive_subscription
+(
+    id                       BIGINT NOT NULL AUTO_INCREMENT,
+    subscription_no          VARCHAR(64) NOT NULL,
+    user_id                  INTEGER NOT NULL,
+    subscription_type        VARCHAR(64) NOT NULL,
+    status                   VARCHAR(32) NOT NULL,
+    frequency                VARCHAR(32) NOT NULL,
+    quiet_start_time         VARCHAR(5),
+    quiet_end_time           VARCHAR(5),
+    daily_limit              INTEGER NOT NULL DEFAULT 5,
+    max_results              INTEGER NOT NULL DEFAULT 10,
+    duplicate_window_minutes INTEGER NOT NULL DEFAULT 60,
+    config_summary           VARCHAR(1000),
+    last_triggered_time      TIMESTAMP,
+    next_trigger_time        TIMESTAMP,
+    create_time              TIMESTAMP NOT NULL,
+    create_by                INTEGER NOT NULL,
+    edit_time                TIMESTAMP,
+    edit_by                  INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_proactive_subscription_no UNIQUE (subscription_no),
+    CONSTRAINT fk_ai_proactive_subscription_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_proactive_subscription_type CHECK (subscription_type IN ('FOLLOW_UP_REMINDER', 'TRANSACTION_EXCEPTION', 'INVENTORY_ALERT', 'DAILY_SUMMARY', 'PERIODIC_SALES_ANALYSIS')),
+    CONSTRAINT chk_ai_proactive_subscription_status CHECK (status IN ('ACTIVE', 'PAUSED', 'CANCELLED')),
+    CONSTRAINT chk_ai_proactive_frequency CHECK (frequency IN ('REALTIME_LIMITED', 'DAILY', 'WEEKLY', 'MONTHLY'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_proactive_subscription_user ON t_ai_proactive_subscription(user_id, status, next_trigger_time);
+
+CREATE TABLE IF NOT EXISTS t_ai_proactive_event
+(
+    id              BIGINT NOT NULL AUTO_INCREMENT,
+    event_no        VARCHAR(64) NOT NULL,
+    subscription_id BIGINT NOT NULL,
+    user_id         INTEGER NOT NULL,
+    event_type      VARCHAR(64) NOT NULL,
+    status          VARCHAR(32) NOT NULL,
+    title           VARCHAR(128) NOT NULL,
+    summary         VARCHAR(1000) NOT NULL,
+    detail_summary  VARCHAR(2000),
+    object_type     VARCHAR(64),
+    object_id       VARCHAR(64),
+    severity        VARCHAR(32) NOT NULL,
+    generated_time  TIMESTAMP NOT NULL,
+    delivered_time  TIMESTAMP,
+    error_code      VARCHAR(64),
+    create_time     TIMESTAMP NOT NULL,
+    create_by       INTEGER NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_proactive_event_no UNIQUE (event_no),
+    CONSTRAINT fk_ai_proactive_event_subscription FOREIGN KEY (subscription_id) REFERENCES t_ai_proactive_subscription(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ai_proactive_event_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_proactive_event_status CHECK (status IN ('CREATED', 'GENERATING', 'READY', 'NO_DATA', 'FAILED', 'SKIPPED'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_proactive_event_user ON t_ai_proactive_event(user_id, generated_time, id);
+CREATE INDEX IF NOT EXISTS idx_ai_proactive_event_subscription ON t_ai_proactive_event(subscription_id, generated_time, id);
+CREATE INDEX IF NOT EXISTS idx_ai_proactive_event_object ON t_ai_proactive_event(object_type, object_id, generated_time);

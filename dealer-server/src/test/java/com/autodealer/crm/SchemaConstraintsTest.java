@@ -52,7 +52,9 @@ class SchemaConstraintsTest {
             "t_test_drive", "t_test_drive_vehicle_hold", "t_test_drive_status_history",
             "t_delivery", "t_delivery_check_item",
             "t_payment", "t_refund_request",
-            "t_user", "t_user_role", "t_clue_owner_history"
+            "t_user", "t_user_role", "t_clue_owner_history",
+            "t_ai_run", "t_ai_message", "t_ai_tool_call", "t_ai_action_proposal",
+            "t_ai_approval", "t_ai_execution_event"
         };
         for (String table : tables) {
             Integer count = jdbcTemplate.queryForObject(
@@ -63,6 +65,60 @@ class SchemaConstraintsTest {
 
     @Test
     @Order(2)
+    @DisplayName("AI Run 状态约束生效")
+    void testAiRunStatusConstraint() {
+        jdbcTemplate.update("""
+            INSERT INTO t_ai_conversation
+            (id, conversation_no, user_id, title, status, entry_point, create_time, create_by)
+            VALUES (9899, 'AIC-INVALID-001', 1, '约束测试会话', 'ACTIVE', 'PAGE', CURRENT_TIMESTAMP, 1)
+            """);
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_ai_run
+            (run_no, conversation_id, turn_no, user_id, user_name, entry_point, prompt_summary, status, create_time, create_by)
+            VALUES ('AIR-INVALID', 9899, 1, 1, '系统管理员', 'PAGE', '摘要', 'UNKNOWN', CURRENT_TIMESTAMP, 1)
+            """));
+    }
+
+    @Test
+    @Order(2)
+    @DisplayName("AI Proposal 确认决定约束使用 CONFIRMED 语义")
+    void testAiApprovalConfirmedDecisionConstraint() {
+        jdbcTemplate.update("""
+            INSERT INTO t_ai_conversation
+            (id, conversation_no, user_id, title, status, entry_point, create_time, create_by)
+            VALUES (9901, 'AIC-CONFIRMED-001', 1, '审批约束测试会话', 'ACTIVE', 'PAGE', CURRENT_TIMESTAMP, 1)
+            """);
+        jdbcTemplate.update("""
+            INSERT INTO t_ai_run
+            (id, run_no, conversation_id, turn_no, user_id, user_name, entry_point, prompt_summary, status, create_time, create_by)
+            VALUES (9901, 'AIR-CONFIRMED-001', 9901, 1, 1, '系统管理员', 'PAGE', '摘要', 'CREATED', CURRENT_TIMESTAMP, 1)
+            """);
+        jdbcTemplate.update("""
+            INSERT INTO t_ai_action_proposal
+            (id, run_id, proposal_type, status, risk_level, permission_code, related_object_type,
+             related_object_id, normalized_params, params_hash, params_summary, impact_summary,
+             expires_time, create_time, create_by)
+            VALUES
+            (9901, 9901, 'create_follow_task_proposal', 'PENDING_CONFIRMATION', 'LOW', 'follow-task:create',
+             'CUSTOMER', '1', '{}', 'hash', '创建跟进任务', '确认后将创建一条跟进任务。',
+             DATEADD('MINUTE', 30, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, 1)
+            """);
+
+        jdbcTemplate.update("""
+            INSERT INTO t_ai_approval
+            (run_id, proposal_id, decision, permission_summary, result_status, approved_time, approved_by)
+            VALUES (9901, 9901, 'CONFIRMED', 'follow-task:create', 'SUCCESS', CURRENT_TIMESTAMP, 1)
+            """);
+
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_ai_approval
+            (run_id, proposal_id, decision, permission_summary, result_status, approved_time, approved_by)
+            VALUES (9901, 9901, 'APPROVED', 'follow-task:create', 'SUCCESS', CURRENT_TIMESTAMP, 1)
+            """));
+    }
+
+    @Test
+    @Order(3)
     @DisplayName("t_tran_production 已从 Schema 移除")
     void testTranProductionRemoved() {
         assertThrows(Exception.class, () ->

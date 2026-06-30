@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.ai.mapper.TAiRunMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.ai.model.TAiRun">
+        <id column="id" property="id" />
+        <result column="run_no" property="runNo" />
+        <result column="conversation_id" property="conversationId" />
+        <result column="conversation_no" property="conversationNo" />
+        <result column="parent_run_id" property="parentRunId" />
+        <result column="turn_no" property="turnNo" />
+        <result column="user_id" property="userId" />
+        <result column="user_name" property="userName" />
+        <result column="entry_point" property="entryPoint" />
+        <result column="context_object_type" property="contextObjectType" />
+        <result column="context_object_id" property="contextObjectId" />
+        <result column="prompt_summary" property="promptSummary" />
+        <result column="status" property="status" />
+        <result column="error_code" property="errorCode" />
+        <result column="error_message" property="errorMessage" />
+        <result column="started_time" property="startedTime" />
+        <result column="completed_time" property="completedTime" />
+        <result column="expires_time" property="expiresTime" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        r.id, r.run_no, r.conversation_id, c.conversation_no,
+        r.parent_run_id, r.turn_no,
+        r.user_id, r.user_name, r.entry_point, r.context_object_type, r.context_object_id,
+        r.prompt_summary, r.status, r.error_code, r.error_message, r.started_time, r.completed_time,
+        r.expires_time, r.create_time, r.create_by
+    </sql>
+
+    <insert id="insert" parameterType="com.autodealer.crm.ai.model.TAiRun" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_ai_run
+        (run_no, conversation_id, parent_run_id, turn_no, user_id, user_name, entry_point, context_object_type, context_object_id,
+         prompt_summary, status, error_code, error_message, started_time, completed_time,
+         expires_time, create_time, create_by)
+        VALUES
+        (#{runNo}, #{conversationId}, #{parentRunId}, #{turnNo}, #{userId}, #{userName}, #{entryPoint}, #{contextObjectType}, #{contextObjectId},
+         #{promptSummary}, #{status}, #{errorCode}, #{errorMessage}, #{startedTime}, #{completedTime},
+         #{expiresTime}, #{createTime}, #{createBy})
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_run r
+        LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
+        WHERE r.id = #{id}
+    </select>
+
+    <select id="selectByRunNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_run r
+        LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
+        WHERE r.run_no = #{runNo}
+    </select>
+
+    <select id="selectOwnedByRunNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_run r
+        LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
+        WHERE r.run_no = #{runNo}
+          AND r.user_id = #{userId}
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_run r
+        LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
+        WHERE r.user_id = #{userId}
+        ORDER BY r.create_time DESC, r.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectLatestByConversationId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_run r
+        LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
+        WHERE r.conversation_id = #{conversationId}
+        ORDER BY r.turn_no DESC, r.create_time DESC, r.id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByConversationId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_run r
+        LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
+        WHERE r.conversation_id = #{conversationId}
+        ORDER BY r.turn_no ASC, r.create_time ASC, r.id ASC
+    </select>
+
+    <select id="selectMaxTurnNoByConversationId" resultType="java.lang.Integer">
+        SELECT COALESCE(MAX(turn_no), 0)
+        FROM t_ai_run
+        WHERE conversation_id = #{conversationId}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE t_ai_run
+        SET status = #{status},
+            error_code = #{errorCode},
+            error_message = #{errorMessage},
+            started_time = CASE
+                WHEN #{status} = 'RUNNING' AND started_time IS NULL THEN CURRENT_TIMESTAMP
+                ELSE started_time
+            END,
+            completed_time = CASE
+                WHEN #{status} IN ('COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED') THEN CURRENT_TIMESTAMP
+                ELSE completed_time
+            END
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatusIfNotTerminal">
+        UPDATE t_ai_run
+        SET status = #{status},
+            error_code = #{errorCode},
+            error_message = #{errorMessage},
+            started_time = CASE
+                WHEN #{status} = 'RUNNING' AND started_time IS NULL THEN CURRENT_TIMESTAMP
+                ELSE started_time
+            END,
+            completed_time = CASE
+                WHEN #{status} IN ('COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED') THEN CURRENT_TIMESTAMP
+                ELSE completed_time
+            END
+        WHERE id = #{id}
+          AND status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED')
+    </update>
+
+    <update id="cancelIfCancellable">
+        UPDATE t_ai_run
+        SET status = 'CANCELLED',
+            error_code = #{errorCode},
+            error_message = #{errorMessage},
+            completed_time = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+          AND status IN ('CREATED', 'RUNNING')
+    </update>
+</mapper>

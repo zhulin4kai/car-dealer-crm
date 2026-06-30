@@ -1,0 +1,73 @@
+package com.autodealer.crm.ai.service.impl;
+
+import com.autodealer.crm.ai.ToolExecutionContext;
+import com.autodealer.crm.ai.ToolExecutionResult;
+import com.autodealer.crm.ai.ToolRegistry;
+import com.autodealer.crm.ai.dto.AiToolExecutionResponse;
+import com.autodealer.crm.ai.dto.ExecuteAiToolRequest;
+import com.autodealer.crm.ai.mapper.TAiRunMapper;
+import com.autodealer.crm.ai.model.TAiRun;
+import com.autodealer.crm.ai.service.AiInternalToolService;
+import com.autodealer.crm.exception.BusinessException;
+import com.autodealer.crm.model.TUser;
+import com.autodealer.crm.result.CodeEnum;
+import com.autodealer.crm.service.UserService;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AiInternalToolServiceImpl implements AiInternalToolService {
+    private final TAiRunMapper runMapper;
+    private final UserService userService;
+    private final ToolRegistry toolRegistry;
+
+    public AiInternalToolServiceImpl(TAiRunMapper runMapper,
+                                     UserService userService,
+                                     ToolRegistry toolRegistry) {
+        this.runMapper = runMapper;
+        this.userService = userService;
+        this.toolRegistry = toolRegistry;
+    }
+
+    @Override
+    public AiToolExecutionResponse execute(String toolName, ExecuteAiToolRequest request) {
+        TAiRun run = runMapper.selectByRunNo(request.getRunNo());
+        if (run == null) {
+            throw new BusinessException(CodeEnum.AI_RUN_NOT_FOUND, "AI Run 不存在");
+        }
+        TUser runUser = userService.getLoginUserById(run.getUserId());
+        if (runUser == null || !runUser.isEnabled()) {
+            throw new BusinessException(CodeEnum.AI_TOOL_FORBIDDEN, "AI 工具无权限");
+        }
+
+        return executeAsRunUser(runUser, () -> {
+            ToolExecutionResult result = toolRegistry.execute(
+                    new ToolExecutionContext(run),
+                    toolName,
+                    request.getArguments());
+            AiToolExecutionResponse response = new AiToolExecutionResponse();
+            response.setToolName(toolName);
+            response.setResultStatus("SUCCESS");
+            response.setData(result.data());
+            response.setOutputSummary(result.outputSummary());
+            response.setObjectRefs(result.objectRefs());
+            return response;
+        });
+    }
+
+    private AiToolExecutionResponse executeAsRunUser(TUser user, java.util.function.Supplier<AiToolExecutionResponse> action) {
+        SecurityContext previousContext = SecurityContextHolder.getContext();
+        SecurityContext runContext = SecurityContextHolder.createEmptyContext();
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        runContext.setAuthentication(authentication);
+        try {
+            SecurityContextHolder.setContext(runContext);
+            return action.get();
+        } finally {
+            SecurityContextHolder.setContext(previousContext);
+        }
+    }
+}

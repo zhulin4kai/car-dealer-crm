@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.ai.mapper.TAiProactiveEventMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.ai.model.TAiProactiveEvent">
+        <id column="id" property="id" />
+        <result column="event_no" property="eventNo" />
+        <result column="subscription_id" property="subscriptionId" />
+        <result column="user_id" property="userId" />
+        <result column="event_type" property="eventType" />
+        <result column="status" property="status" />
+        <result column="title" property="title" />
+        <result column="summary" property="summary" />
+        <result column="detail_summary" property="detailSummary" />
+        <result column="object_type" property="objectType" />
+        <result column="object_id" property="objectId" />
+        <result column="severity" property="severity" />
+        <result column="generated_time" property="generatedTime" />
+        <result column="delivered_time" property="deliveredTime" />
+        <result column="error_code" property="errorCode" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, event_no, subscription_id, user_id, event_type, status, title, summary,
+        detail_summary, object_type, object_id, severity, generated_time, delivered_time,
+        error_code, create_time, create_by
+    </sql>
+
+    <insert id="insert" parameterType="com.autodealer.crm.ai.model.TAiProactiveEvent" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_ai_proactive_event
+        (event_no, subscription_id, user_id, event_type, status, title, summary,
+         detail_summary, object_type, object_id, severity, generated_time, delivered_time,
+         error_code, create_time, create_by)
+        VALUES
+        (#{eventNo}, #{subscriptionId}, #{userId}, #{eventType}, #{status}, #{title}, #{summary},
+         #{detailSummary}, #{objectType}, #{objectId}, #{severity}, #{generatedTime}, #{deliveredTime},
+         #{errorCode}, #{createTime}, #{createBy})
+    </insert>
+
+    <select id="selectOwnedByEventNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_proactive_event
+        WHERE event_no = #{eventNo}
+          AND user_id = #{userId}
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_proactive_event
+        WHERE user_id = #{userId}
+        ORDER BY generated_time DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectBySubscriptionId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_proactive_event
+        WHERE subscription_id = #{subscriptionId}
+        ORDER BY generated_time DESC, id DESC
+    </select>
+
+    <select id="countBySubscriptionAfter" resultType="int">
+        SELECT COUNT(1)
+        FROM t_ai_proactive_event
+        WHERE subscription_id = #{subscriptionId}
+          AND generated_time &gt;= #{since}
+          AND status IN ('READY', 'NO_DATA')
+    </select>
+
+    <select id="selectDuplicateAfter" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_proactive_event
+        WHERE subscription_id = #{subscriptionId}
+          AND object_type = #{objectType}
+          AND object_id = #{objectId}
+          AND generated_time &gt;= #{since}
+          AND status IN ('READY', 'NO_DATA')
+        ORDER BY generated_time DESC, id DESC
+        LIMIT 1
+    </select>
+</mapper>

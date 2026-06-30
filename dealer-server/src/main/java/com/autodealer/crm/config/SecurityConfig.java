@@ -8,6 +8,8 @@ import com.autodealer.crm.config.handler.MyLogoutSuccessHandler;
 import com.autodealer.crm.config.security.SecurityPaths;
 import com.autodealer.crm.constant.Constants;
 import jakarta.annotation.Resource;
+import jakarta.servlet.DispatcherType;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
@@ -15,7 +17,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.context.annotation.Bean;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 
@@ -51,8 +52,11 @@ public class SecurityConfig {
                 })
 
                 .authorizeHttpRequests((authorize) -> {
-                    authorize.requestMatchers(HttpMethod.POST, SecurityPaths.LOGIN).permitAll()
+                    authorize.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
+                            .requestMatchers(HttpMethod.POST, SecurityPaths.LOGIN).permitAll()
                             .requestMatchers(SecurityPaths.LOGIN_FREE).permitAll()
+                            .requestMatchers(SecurityPaths.ERROR).permitAll()
+                            .requestMatchers(SecurityPaths.INTERNAL_AI_TOOLS).permitAll()
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .anyRequest().authenticated(); // 其它任何请求都需要登录后才能访问
                 })

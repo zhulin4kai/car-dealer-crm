@@ -1,5 +1,6 @@
 package com.autodealer.crm.config.security;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.AntPathMatcher;
@@ -12,10 +13,14 @@ public class SecurityPaths {
     public static final String LOGIN = "/api/login";
     public static final String LOGIN_FREE = "/api/login/free";
     public static final String LOGOUT = "/api/logout";
+    public static final String ERROR = "/error";
+    public static final String INTERNAL_AI_TOOLS = "/internal/ai/tools/**";
 
     private static final Set<String> PUBLIC_PATHS = Set.of(
             LOGIN,
-            LOGIN_FREE
+            LOGIN_FREE,
+            ERROR,
+            INTERNAL_AI_TOOLS
     );
 
     private SecurityPaths() {
@@ -23,6 +28,12 @@ public class SecurityPaths {
     }
 
     public static boolean isPublicPath(HttpServletRequest request) {
+        if (DispatcherType.ASYNC.equals(request.getDispatcherType())) {
+            return true;
+        }
+        if (DispatcherType.ERROR.equals(request.getDispatcherType())) {
+            return true;
+        }
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
         }

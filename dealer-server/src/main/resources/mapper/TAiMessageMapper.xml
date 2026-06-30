@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.ai.mapper.TAiMessageMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.ai.model.TAiMessage">
+        <id column="id" property="id" />
+        <result column="conversation_id" property="conversationId" />
+        <result column="run_id" property="runId" />
+        <result column="role" property="role" />
+        <result column="sequence_no" property="sequenceNo" />
+        <result column="visible_to_user" property="visibleToUser" />
+        <result column="content_summary" property="contentSummary" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, conversation_id, run_id, role, sequence_no, visible_to_user,
+        content_summary, create_time, create_by
+    </sql>
+
+    <insert id="insert" parameterType="com.autodealer.crm.ai.model.TAiMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_ai_message (conversation_id, run_id, role, sequence_no, visible_to_user,
+                                  content_summary, create_time, create_by)
+        VALUES (#{conversationId}, #{runId}, #{role}, #{sequenceNo}, #{visibleToUser},
+                #{contentSummary}, #{createTime}, #{createBy})
+    </insert>
+
+    <select id="selectByRunId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_message
+        WHERE run_id = #{runId}
+        ORDER BY sequence_no ASC, id ASC
+    </select>
+
+    <select id="selectByConversationId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_message
+        WHERE conversation_id = #{conversationId}
+          AND visible_to_user = TRUE
+        ORDER BY create_time ASC, id ASC
+    </select>
+
+    <select id="selectRecentVisibleByConversationId" resultMap="BaseResultMap">
+        SELECT * FROM (
+            SELECT <include refid="Base_Column_List" />
+            FROM t_ai_message
+            WHERE conversation_id = #{conversationId}
+              AND visible_to_user = TRUE
+              AND (#{excludeRunId} IS NULL OR run_id != #{excludeRunId})
+            ORDER BY create_time DESC, id DESC
+            LIMIT #{limit}
+        ) recent_messages
+        ORDER BY create_time ASC, id ASC
+    </select>
+</mapper>
