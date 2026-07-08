@@ -21,6 +21,7 @@
 | **市场活动** | 活动创建、效果评估、线索关联，支持批量操作 |
 | **商品管理** | 商品分类、库存预警、促销管理、价格策略 |
 | **交易管理** | 订单创建、审批流程、结算开票、状态流转 |
+| **AI 业务助手** | 多轮会话、业务问答、工具调用、业务卡片、人工确认 Proposal、模型 Provider 配置 |
 | **统计报表** | 销售漏斗、来源分析、多维度数据统计 |
 | **系统管理** | 用户、角色、权限（RBAC）、数据字典、系统监控 |
 
@@ -46,6 +47,18 @@
 | H2 | - | 后端测试数据库 |
 | JaCoCo | 0.8.12 | 测试覆盖率报告 |
 
+**AI 编排服务**
+
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Python | 3.13.x | `dealer-ai` 运行环境 |
+| FastAPI | 0.138.x | 内部 AI 编排接口 |
+| Uvicorn | 0.49.x | ASGI 服务 |
+| Pydantic / pydantic-settings | 2.13.x / 2.14.x | 请求模型与配置 |
+| HTTPX | 0.28.x | 服务间 HTTP 调用 |
+| LangGraph | 1.2.x | AI 编排内核 |
+| uv | 0.11.x | Python 本地工具链 |
+
 **前端**
 
 | 技术 | 版本 | 说明 |
@@ -63,6 +76,7 @@
 | Axios | 1.9.x | HTTP 客户端 |
 | TanStack Vue Table | 8.21.x | 表格能力 |
 | vee-validate / Zod | 4.15.x / 3.25.x | 表单校验 |
+| markdown-it / DOMPurify | 14.x / 3.x | AI Markdown 安全渲染 |
 | Vitest | 4.1.x | 前端测试 |
 | ESLint / Prettier | 9.x / 3.8.x | 代码检查与格式化 |
 
@@ -70,6 +84,16 @@
 
 ```
 car-dealer-crm/
+├── dealer-ai/                  # 内部 AI 编排服务（FastAPI + LangGraph）
+│   ├── app/
+│   │   ├── api/                # 内部路由与健康检查
+│   │   ├── core/               # 配置、错误、日志、安全边界
+│   │   ├── orchestrator/       # LangGraph 编排
+│   │   ├── providers/          # OpenAI-compatible / Anthropic Provider 适配
+│   │   ├── schemas/            # 内部请求与事件模型
+│   │   └── tools/              # Spring Boot 内部 Tool API 客户端
+│   ├── tests/                  # Python 测试
+│   └── pyproject.toml
 ├── dealer-web/                 # 前端 Vue 3 SPA
 │   ├── src/
 │   │   ├── app/                # 应用入口、插件、全局指令
@@ -107,11 +131,25 @@ car-dealer-crm/
 └── README.md
 ```
 
+## 服务职责与启动入口
+
+| 服务 | 职责 | 默认入口 |
+|------|------|----------|
+| `dealer-web` | 浏览器端 CRM 和 AI 工作台，只调用 Spring Boot API，不直连 `dealer-ai` | `http://localhost:5173`（本地开发）/ `http://localhost:8080`（演示容器） |
+| `dealer-server` | 业务控制面，负责认证、权限、数据范围、事务、审计、Provider 配置、AI Conversation / Run / Tool / Proposal / Workflow 持久化 | `http://localhost:8089` |
+| `dealer-ai` | 内部 AI 编排面，只供 `dealer-server` 调用，负责 LangGraph 编排、模型 Provider 适配和 Spring Boot 内部 Tool API 调用 | `http://localhost:8091` |
+| MySQL / MariaDB | 业务关系型数据库 | `localhost:3306`（本地）/ `localhost:13306`（演示容器） |
+| Redis | JWT、缓存和会话辅助数据 | `localhost:6379`（本地）/ `localhost:16379`（演示容器） |
+
+AI 业务助手的正式模型配置由管理员在系统内维护。API Key 由 `dealer-server` 加密入库，`dealer-ai` 只在单次内部请求中接收运行时配置，不从前端或本地环境变量读取正式模型密钥。
+
 ## 快速开始
 
 ### 一键运行
 
 一键运行只要求脚本能够安装或检测到 Docker / Docker Desktop。Maven、JDK、Node.js、MySQL、Redis 都在容器中构建或运行，不要求用户电脑预装。
+
+当前一键演示脚本启动核心 CRM 服务：`dealer-web`、`dealer-server`、MySQL 和 Redis。完整 AI 助手能力需要额外启动 `dealer-ai`，并确保 `dealer-server` 的 `DEALER_AI_BASE_URL` 指向该服务。
 
 macOS / Linux / fish：
 
@@ -178,8 +216,31 @@ Docker 本体只会在启动脚本记录到“由脚本主动安装”时才出�
 
 - JDK 17+
 - Node.js 18+
+- Python 3.13+
+- uv
 - MariaDB / MySQL
 - Redis
+
+建议本地启动顺序：
+
+1. MySQL / Redis。
+2. `dealer-ai`。
+3. `dealer-server`。
+4. `dealer-web`。
+
+AI 编排服务启动：
+
+```bash
+cd dealer-ai
+
+uv sync
+
+export DEALER_AI_INTERNAL_TOKEN='dev-internal-token'
+export DEALER_AI_SPRING_TOOL_BASE_URL='http://localhost:8089/internal/ai'
+export DEALER_AI_SPRING_TOOL_TOKEN='dev-internal-token'
+
+uv run uvicorn app.main:app --reload --port 8091
+```
 
 后端启动：
 
@@ -191,6 +252,9 @@ mysql -u root -p < src/main/resources/CarDealerCRM.sql
 export DB_USERNAME='your-username'
 export DB_PASSWORD='your-local-password'
 export JWT_SECRET='replace-with-a-long-random-local-secret'
+export DEALER_AI_BASE_URL='http://localhost:8091'
+export DEALER_AI_INTERNAL_TOKEN='dev-internal-token'
+export DEALER_AI_TOOL_TOKEN='dev-internal-token'
 
 ./mvnw spring-boot:run
 ```
@@ -204,11 +268,17 @@ npm install
 npm run dev
 ```
 
+本地 AI 模型 Provider 不在 `dealer-ai` 的 `.env` 中配置。启动后进入系统的 AI 模型配置页面，由管理员创建、测试并启用 Provider 配置。
+
 ### 测试
 
 ```bash
 # 后端测试
 cd dealer-server && ./mvnw test
+
+# AI 编排服务测试
+cd dealer-ai && uv run ruff check .
+cd dealer-ai && uv run pytest
 
 # 前端测试
 cd dealer-web && npm test
