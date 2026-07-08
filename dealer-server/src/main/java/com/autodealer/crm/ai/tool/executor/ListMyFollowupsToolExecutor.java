@@ -52,7 +52,7 @@ public class ListMyFollowupsToolExecutor implements ToolExecutor {
         query.setStatus(request.getStatus());
         query.setOverdueOnly(request.getOverdueOnly());
         query.setKeyword(request.getKeyword());
-        PageInfo<TFollowTask> page = followTaskService.getFollowTaskPage(query);
+        PageInfo<TFollowTask> page = followTaskService.getFollowTaskPageReadOnly(query);
         var items = page.getList().stream()
                 .map(task -> new AiToolDtos.FollowupItem(
                         task.getId(), task.getTitle(), task.getTaskType(), task.getRelatedObjectType(),

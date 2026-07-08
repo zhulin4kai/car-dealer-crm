@@ -11,6 +11,8 @@ import com.github.pagehelper.PageInfo;
 public interface FollowTaskService {
     PageInfo<TFollowTask> getFollowTaskPage(FollowTaskQuery query);
 
+    PageInfo<TFollowTask> getFollowTaskPageReadOnly(FollowTaskQuery query);
+
     TFollowTask createFollowTask(CreateFollowTaskRequest request);
 
     TFollowTask getFollowTask(Long id);

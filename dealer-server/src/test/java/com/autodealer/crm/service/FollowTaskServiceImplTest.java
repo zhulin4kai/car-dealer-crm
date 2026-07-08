@@ -113,6 +113,19 @@ class FollowTaskServiceImplTest {
     }
 
     @Test
+    void listFollowTasksReadOnly_shouldNotMarkOverdueBeforeQuery() {
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(3);
+        when(followTaskMapper.selectByQuery(any())).thenReturn(List.of(task(1L, FollowTaskStatus.PENDING)));
+
+        followTaskService.getFollowTaskPageReadOnly(new FollowTaskQuery());
+
+        verify(followTaskMapper, never()).markOverdue(any(), any());
+        ArgumentCaptor<FollowTaskQuery> queryCaptor = ArgumentCaptor.forClass(FollowTaskQuery.class);
+        verify(followTaskMapper).selectByQuery(queryCaptor.capture());
+        assertEquals(3, queryCaptor.getValue().getDataScopeUserId());
+    }
+
+    @Test
     void completeFollowTask_shouldInsertCommunicationUpdateTaskAndRecentFact() {
         TFollowTask current = task(100L, FollowTaskStatus.IN_PROGRESS);
         when(followTaskMapper.selectByIdForUpdate(100L)).thenReturn(current);

@@ -54,6 +54,15 @@ public class FollowTaskServiceImpl implements FollowTaskService {
 
     @Override
     public PageInfo<TFollowTask> getFollowTaskPage(FollowTaskQuery query) {
+        return getFollowTaskPage(query, true);
+    }
+
+    @Override
+    public PageInfo<TFollowTask> getFollowTaskPageReadOnly(FollowTaskQuery query) {
+        return getFollowTaskPage(query, false);
+    }
+
+    private PageInfo<TFollowTask> getFollowTaskPage(FollowTaskQuery query, boolean markOverdueBeforeQuery) {
         FollowTaskQuery safeQuery = query == null ? new FollowTaskQuery() : query;
         validateQuery(safeQuery);
         int page = safeQuery.getPage() == null || safeQuery.getPage() < 1 ? 1 : safeQuery.getPage();
@@ -62,7 +71,9 @@ public class FollowTaskServiceImpl implements FollowTaskService {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "分页大小不能超过100");
         }
         safeQuery.setDataScopeUserId(currentUserProvider.getDataScopeUserId());
-        followTaskMapper.markOverdue(LocalDateTime.now(), safeQuery.getDataScopeUserId());
+        if (markOverdueBeforeQuery) {
+            followTaskMapper.markOverdue(LocalDateTime.now(), safeQuery.getDataScopeUserId());
+        }
         PageHelper.startPage(page, size);
         return new PageInfo<>(followTaskMapper.selectByQuery(safeQuery));
     }

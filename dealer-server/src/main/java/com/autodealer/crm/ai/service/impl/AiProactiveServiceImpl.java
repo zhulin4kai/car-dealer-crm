@@ -209,12 +209,12 @@ public class AiProactiveServiceImpl implements AiProactiveService {
         query.setPage(1);
         query.setSize(subscription.getMaxResults());
         query.setOverdueOnly(true);
-        PageInfo<TFollowTask> page = followTaskService.getFollowTaskPage(query);
+        PageInfo<TFollowTask> page = followTaskService.getFollowTaskPageReadOnly(query);
         int count = page.getList() == null ? 0 : page.getList().size();
         return event(subscription, now, count == 0 ? AiProactiveEventStatus.NO_DATA : AiProactiveEventStatus.READY,
                 "跟进任务提醒",
                 "当前可见逾期或待处理跟进 " + count + " 条",
-                "跟进提醒基于 FollowTaskService.getFollowTaskPage 生成。",
+                "跟进提醒基于 FollowTaskService.getFollowTaskPageReadOnly 生成。",
                 "FOLLOW_TASK",
                 subscription.getSubscriptionNo(),
                 count > 0 ? "MEDIUM" : "LOW",
