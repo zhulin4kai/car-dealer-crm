@@ -74,7 +74,7 @@
               <TableHead class="w-[130px]">当前版本</TableHead>
               <TableHead class="w-[180px]">创建时间</TableHead>
               <TableHead>备注</TableHead>
-              <TableHead class="w-[150px]">操作</TableHead>
+              <TableHead class="w-[190px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -103,6 +103,13 @@
                     @click="openDetail(quote)"
                   >
                     <Eye class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.ai.assistantUse"
+                    label="询问 AI"
+                    @click="openAiAssistant(quote.id)"
+                  >
+                    <Sparkles class="h-4 w-4" />
                   </RowActionButton>
                   <RowActionButton
                     v-has-permission="PERMISSIONS.quote.edit"
@@ -287,7 +294,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Eye, FilePlus2, GitBranch, Plus, RotateCcw, Search } from '@lucide/vue'
+import { Eye, FilePlus2, GitBranch, Plus, RotateCcw, Search, Sparkles } from '@lucide/vue'
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import {
   createQuote,
@@ -311,6 +318,7 @@ import { messageTip } from '@/shared/utils/feedback'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
+import { useAiAssistantStore } from '@/stores/ai-assistant.store'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -338,6 +346,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+
+const aiAssistantStore = useAiAssistantStore()
+
+function openAiAssistant(id: string | number): void {
+  aiAssistantStore.openPanel({ objectType: 'QUOTE', objectId: String(id) })
+}
 
 const ALL_STATUS = '__ALL_QUOTE_STATUS__'
 

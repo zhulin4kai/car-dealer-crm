@@ -18,6 +18,12 @@ public interface TAiRunMapper {
 
     TAiRun selectLatestByConversationId(@Param("conversationId") Long conversationId);
 
+    TAiRun selectLatestActiveBeforeTurn(@Param("conversationId") Long conversationId,
+                                       @Param("turnNo") Integer turnNo);
+
+    List<TAiRun> selectActiveFromTurn(@Param("conversationId") Long conversationId,
+                                     @Param("turnNo") Integer turnNo);
+
     List<TAiRun> selectByConversationId(@Param("conversationId") Long conversationId);
 
     Integer selectMaxTurnNoByConversationId(@Param("conversationId") Long conversationId);
@@ -36,7 +42,13 @@ public interface TAiRunMapper {
                                   @Param("errorCode") String errorCode,
                                   @Param("errorMessage") String errorMessage);
 
+    int startIfCreated(@Param("id") Long id);
+
     int cancelIfCancellable(@Param("id") Long id,
                             @Param("errorCode") String errorCode,
                             @Param("errorMessage") String errorMessage);
+
+    int invalidateFromTurn(@Param("conversationId") Long conversationId,
+                           @Param("turnNo") Integer turnNo,
+                           @Param("reason") String reason);
 }

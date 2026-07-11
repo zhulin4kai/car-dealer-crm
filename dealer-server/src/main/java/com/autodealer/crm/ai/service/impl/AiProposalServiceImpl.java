@@ -33,6 +33,9 @@ import com.autodealer.crm.service.impl.FollowRelatedObjectResolver;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -53,6 +56,7 @@ public class AiProposalServiceImpl implements AiProposalService {
     private final CurrentUserProvider currentUserProvider;
     private final AiSensitiveDataSanitizer sanitizer;
     private final ObjectMapper objectMapper;
+    private final AiProposalFailureRecorder failureRecorder;
 
     public AiProposalServiceImpl(TAiActionProposalMapper proposalMapper,
                                  AiTraceService traceService,
@@ -61,7 +65,8 @@ public class AiProposalServiceImpl implements AiProposalService {
                                  FollowRelatedObjectResolver relatedObjectResolver,
                                  CurrentUserProvider currentUserProvider,
                                  AiSensitiveDataSanitizer sanitizer,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 AiProposalFailureRecorder failureRecorder) {
         this.proposalMapper = proposalMapper;
         this.traceService = traceService;
         this.communicationRecordService = communicationRecordService;
@@ -70,6 +75,7 @@ public class AiProposalServiceImpl implements AiProposalService {
         this.currentUserProvider = currentUserProvider;
         this.sanitizer = sanitizer;
         this.objectMapper = objectMapper;
+        this.failureRecorder = failureRecorder;
     }
 
     @Override
@@ -124,6 +130,7 @@ public class AiProposalServiceImpl implements AiProposalService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public AiProposalConfirmResponse confirm(Long proposalId) {
         TAiActionProposal proposal = requireOwnedProposal(proposalId);
         if (AiProposalStatus.EXECUTED.name().equals(proposal.getStatus())) {
@@ -148,6 +155,7 @@ public class AiProposalServiceImpl implements AiProposalService {
             response.setStatus(AiProposalStatus.EXECUTED.name());
             return response;
         } catch (BusinessException ex) {
+            recordFailureAfterRollback(proposal, ex.getCodeEnum().name(), ex.getMessage());
             updateProposalStatusIfCurrent(proposal.getId(), AiProposalStatus.CONFIRMED,
                     AiProposalStatus.FAILED, ex.getCodeEnum().name(), ex.getMessage());
             traceService.recordExecutionEvent(new AiExecutionEventCommand(
@@ -158,7 +166,23 @@ public class AiProposalServiceImpl implements AiProposalService {
         }
     }
 
+    private void recordFailureAfterRollback(TAiActionProposal proposal, String errorCode, String errorMessage) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                    // 业务写入与 CONFIRMED 状态一起回滚后，再独立保存失败终态和审计事件。
+                    failureRecorder.recordAfterRollback(proposal, errorCode, errorMessage);
+                }
+            }
+        });
+    }
+
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public AiProposalConfirmResponse reject(Long proposalId) {
         TAiActionProposal proposal = requireOwnedProposal(proposalId);
         if (AiProposalStatus.REJECTED.name().equals(proposal.getStatus())) {
@@ -211,7 +235,7 @@ public class AiProposalServiceImpl implements AiProposalService {
             throw new BusinessException(CodeEnum.AI_RUN_NOT_FOUND, "AI 提议不存在");
         }
         Integer currentUserId = currentUserProvider.getCurrentUserId();
-        if (!currentUserProvider.isAdmin() && !currentUserId.equals(proposal.getCreateBy())) {
+        if (!currentUserId.equals(proposal.getCreateBy())) {
             throw new BusinessException(CodeEnum.ACCESS_DENIED, "无权访问 AI 提议");
         }
         return proposal;

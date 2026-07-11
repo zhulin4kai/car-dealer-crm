@@ -76,6 +76,34 @@ public final class AiToolDtos {
     }
 
     @Data
+    public static class GetOpportunityDetailRequest {
+        @NotNull(message = "商机 ID 不能为空")
+        private Long opportunityId;
+    }
+
+    @Data
+    public static class GetQuoteDetailRequest {
+        @NotNull(message = "报价 ID 不能为空")
+        private Long quoteId;
+    }
+
+    @Data
+    public static class GetTestDriveDetailRequest {
+        @NotNull(message = "试驾 ID 不能为空")
+        private Long testDriveId;
+    }
+
+    @Data
+    public static class GetDeliveryDetailRequest {
+        @NotNull(message = "交付 ID 不能为空")
+        private Long deliveryId;
+    }
+
+    @Data
+    public static class GetBusinessOverviewRequest {
+    }
+
+    @Data
     @EqualsAndHashCode(callSuper = true)
     public static class ListPendingTransactionApprovalsRequest extends PageRequest {
     }
@@ -181,6 +209,54 @@ public final class AiToolDtos {
     public record PendingTransactionApproval(Integer id, String tranNo, String customerName,
                                              BigDecimal money, String stageLabel,
                                              java.util.Date createTime) {
+    }
+
+    public record OpportunityDetail(String opportunityNo, String customerName,
+                                    String ownerName, String productName, String sourceType,
+                                    String stage, String requirement, BigDecimal expectedAmount,
+                                    java.time.LocalDate expectedCloseDate,
+                                    java.time.LocalDate nextActionTime, LocalDateTime lastFollowTime,
+                                    String lastFollowSummary, String lostReason,
+                                    String resultRemark) {
+    }
+
+    public record QuoteDetail(String quoteNo, String status, String remark, Integer versionNo,
+                              LocalDateTime validUntil, BigDecimal totalAmount,
+                              int totalItemCount, List<QuoteItem> items) {
+    }
+
+    public record QuoteItem(String productSku, String productName, String productSpecification,
+                            BigDecimal guidePrice, BigDecimal unitPrice, Integer quantity,
+                            BigDecimal lineAmount, String promotionName,
+                            BigDecimal promotionAmount) {
+    }
+
+    public record TestDriveDetail(String testDriveNo, String customerName,
+                                  String opportunityNo, String vehicleName, String ownerName,
+                                  LocalDateTime plannedStartTime, LocalDateTime plannedEndTime,
+                                  LocalDateTime actualArriveTime, LocalDateTime actualStartTime,
+                                  LocalDateTime actualEndTime, String status, String contactName,
+                                  String contactPhoneMasked, String result, String customerFeedback,
+                                  String nextAction, String cancelType, String cancelReason,
+                                  String remark) {
+    }
+
+    public record DeliveryDetail(String status, LocalDateTime plannedDeliveryTime,
+                                 LocalDateTime actualDeliveryTime,
+                                 String signerName, LocalDateTime signedAt, String signMethod,
+                                 String exceptionType, String exceptionReason) {
+    }
+
+    public record BusinessOverview(BusinessSummary summary, List<MetricItem> salesFunnel,
+                                   List<MetricItem> sourceDistribution) {
+    }
+
+    public record BusinessSummary(Integer effectiveActivityCount, Integer totalActivityCount,
+                                  Integer totalClueCount, Integer totalCustomerCount,
+                                  BigDecimal successTranAmount, BigDecimal totalTranAmount) {
+    }
+
+    public record MetricItem(String name, Integer value) {
     }
 
     public record ProposalCreated(Long proposalId, String proposalType, String riskLevel,

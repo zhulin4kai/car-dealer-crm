@@ -216,6 +216,98 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/ai/conversations/{conversationNo}/messages/{messageNo}:
+    patch:
+      tags: [AI]
+      operationId: editAiMessage
+      summary: 编辑用户消息并创建替代 Run
+      description: 原消息及其后续活动轮次退出当前上下文，但保留按 Run 查询的审计记录。
+      parameters:
+        - name: conversationNo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageNo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditAiMessageRequest"
+      responses:
+        "200":
+          description: 编辑成功，data 为需要重新订阅的替代 Run。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiRunResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/ai/conversations/{conversationNo}/messages/{messageNo}/withdraw:
+    post:
+      tags: [AI]
+      operationId: withdrawAiMessage
+      summary: 撤回用户消息并更新活动上下文
+      description: 撤回不会回滚已经执行的 Proposal、CRM 业务事实或操作审计。
+      parameters:
+        - name: conversationNo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageNo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WithdrawAiMessageRequest"
+      responses:
+        "200":
+          description: 撤回成功，data 为更新后的活动 Conversation。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiConversationDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/ai/runs:
     post:
       tags: [AI]
@@ -323,6 +415,14 @@ paths:
           required: true
           schema:
             type: string
+        - name: afterSequence
+          in: query
+          required: false
+          description: 只重放此序号之后的持久化事件；同一 Run 不会因重新订阅而再次启动。
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         "200":
           description: SSE 事件流。事件 data 为 AiSseEventResponse JSON。
@@ -375,6 +475,58 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
+
+  /api/ai/policy:
+    get:
+      tags: [AI]
+      operationId: getAiAssistantPolicy
+      summary: 查询全局 AI 运行策略
+      responses:
+        "200":
+          description: 查询成功，仅拥有 AI 策略查看权限的管理员可访问。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiAssistantPolicy"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [AI]
+      operationId: updateAiAssistantPolicy
+      summary: 更新全局 AI 运行策略
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAiAssistantPolicyRequest"
+      responses:
+        "200":
+          description: 更新成功，data 为递增版本后的策略。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/R"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AiAssistantPolicy"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/ai/provider-configs:
     get:
@@ -6939,6 +7091,15 @@ components:
     AiConversationStatus:
       type: string
       enum: [ACTIVE, ARCHIVED]
+    AiMessageStatus:
+      type: string
+      enum: [ACTIVE, SUPERSEDED, WITHDRAWN]
+    AiSafetyMode:
+      type: string
+      enum: [STRICT, STANDARD]
+    AiNetworkMode:
+      type: string
+      enum: [DISABLED, PROVIDER_ONLY]
     AiProposalStatus:
       type: string
       enum: [PENDING_CONFIRMATION, CONFIRMED, REJECTED, EXPIRED, EXECUTED, FAILED]
@@ -7014,12 +7175,74 @@ components:
           type: string
           minLength: 1
           maxLength: 128
+    EditAiMessageRequest:
+      type: object
+      required: [content, expectedVersion]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        expectedVersion:
+          type: integer
+          minimum: 1
+    WithdrawAiMessageRequest:
+      type: object
+      required: [expectedVersion]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 1
     CancelAiRunRequest:
       type: object
       properties:
         reason:
           type: string
           maxLength: 255
+    AiAssistantPolicy:
+      type: object
+      required: [enabledTools, allowedToolNames, proposalsEnabled, maxToolCallsPerRun, safetyMode, networkMode, contextMessageLimit, summaryMaxChars, maxRunSeconds, version]
+      properties:
+        enabledTools:
+          type: boolean
+        allowedToolNames:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            maxLength: 128
+          description: 只接受 Spring Boot ToolRegistry 中已注册的工具名。
+        proposalsEnabled:
+          type: boolean
+        maxToolCallsPerRun:
+          type: integer
+          minimum: 1
+          maximum: 50
+        safetyMode:
+          $ref: "#/components/schemas/AiSafetyMode"
+        networkMode:
+          $ref: "#/components/schemas/AiNetworkMode"
+        contextMessageLimit:
+          type: integer
+          minimum: 1
+          maximum: 8
+        summaryMaxChars:
+          type: integer
+          minimum: 500
+          maximum: 8000
+        maxRunSeconds:
+          type: integer
+          minimum: 10
+          maximum: 600
+        version:
+          type: integer
+          minimum: 1
+        editTime:
+          type: string
+          format: date-time
+    UpdateAiAssistantPolicyRequest:
+      allOf:
+        - $ref: "#/components/schemas/AiAssistantPolicy"
     CreateAiProviderConfigRequest:
       type: object
       required: [providerName, providerFormat, baseUrl, modelName, modelDisplayName, apiKey]
@@ -7031,8 +7254,10 @@ components:
           $ref: "#/components/schemas/AiProviderFormat"
         baseUrl:
           type: string
+          format: uri
           maxLength: 255
           example: https://api.deepseek.com
+          description: 仅允许 HTTPS 公网 Provider 地址，不允许 URL 凭据、查询参数、片段、本机、内网或保留地址。
         modelName:
           type: string
           maxLength: 128
@@ -7070,7 +7295,9 @@ components:
           $ref: "#/components/schemas/AiProviderFormat"
         baseUrl:
           type: string
+          format: uri
           maxLength: 255
+          description: 仅允许 HTTPS 公网 Provider 地址，不允许 URL 凭据、查询参数、片段、本机、内网或保留地址。
         modelName:
           type: string
           maxLength: 128
@@ -7269,6 +7496,10 @@ components:
         expiresTime:
           type: string
           format: date-time
+        contextActive:
+          type: boolean
+        invalidationReason:
+          type: string
     AiRunTraceResponse:
       type: object
       properties:
@@ -7304,16 +7535,34 @@ components:
         id:
           type: integer
           format: int64
+        messageNo:
+          type: string
         role:
           type: string
-          enum: [USER, ASSISTANT, SYSTEM]
+          enum: [USER, ASSISTANT, SYSTEM, TOOL]
         sequenceNo:
           type: integer
         visibleToUser:
           type: boolean
+        status:
+          $ref: "#/components/schemas/AiMessageStatus"
+        revisionNo:
+          type: integer
+        includedInContext:
+          type: boolean
+        version:
+          type: integer
         contentSummary:
           type: string
+          nullable: true
+          description: 用户展示用安全消息文本；撤回消息返回 null，模型历史另受上下文上限约束。
         createTime:
+          type: string
+          format: date-time
+        editTime:
+          type: string
+          format: date-time
+        withdrawnTime:
           type: string
           format: date-time
     AiTraceToolCall:

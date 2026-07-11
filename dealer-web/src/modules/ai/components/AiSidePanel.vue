@@ -10,6 +10,7 @@ import {
 import AiAssistantPanel from '@/modules/ai/components/AiAssistantPanel.vue'
 import type { AiConversation, AiPageContext } from '@/modules/ai/model/ai.types'
 import { messageTip } from '@/shared/utils/feedback'
+import { useAiAssistantStore } from '@/stores/ai-assistant.store'
 
 defineOptions({
   name: 'AiSidePanel',
@@ -29,9 +30,22 @@ const currentConversationNo = ref<string | undefined>()
 const currentRunNo = ref<string | undefined>()
 const conversations = ref<AiConversation[]>([])
 const loadingConversations = ref(false)
+const aiAssistantStore = useAiAssistantStore()
+const contextKey = computed(
+  () => `${props.context?.objectType ?? 'GENERAL'}:${props.context?.objectId ?? ''}`,
+)
+const visibleConversations = computed(() => {
+  const objectType = props.context?.objectType
+  const objectId = props.context?.objectId
+  if (!objectType || !objectId) return conversations.value
+  return conversations.value.filter(
+    (item) => item.contextObjectType === objectType && item.contextObjectId === objectId,
+  )
+})
 const currentConversationTitle = computed(
   () =>
-    conversations.value.find((item) => item.conversationNo === currentConversationNo.value)?.title ??
+    visibleConversations.value.find((item) => item.conversationNo === currentConversationNo.value)
+      ?.title ??
     '当前会话',
 )
 
@@ -78,6 +92,16 @@ watch(
   { immediate: true },
 )
 
+watch(
+  contextKey,
+  (nextKey, previousKey) => {
+    if (nextKey === previousKey) return
+    currentConversationNo.value = undefined
+    currentRunNo.value = undefined
+    if (props.open) void loadConversations().catch(() => undefined)
+  },
+)
+
 onMounted(() => {
   if (props.open) void loadConversations().catch(() => undefined)
 })
@@ -87,7 +111,7 @@ onMounted(() => {
   <aside
     v-if="open"
     data-testid="ai-side-panel"
-    class="ai-side-panel flex h-full w-[420px] shrink-0 flex-col border-l border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)]"
+    class="ai-side-panel flex h-full w-full max-w-[100vw] shrink-0 flex-col border-l border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] sm:w-[420px]"
   >
     <header class="border-b border-[var(--crm-border-light)] px-4 py-3">
       <div class="flex items-center justify-between">
@@ -122,7 +146,7 @@ onMounted(() => {
         >
           <option value="">{{ currentConversationTitle }}</option>
           <option
-            v-for="conversation in conversations"
+            v-for="conversation in visibleConversations"
             :key="conversation.conversationNo"
             :value="conversation.conversationNo"
           >
@@ -135,13 +159,15 @@ onMounted(() => {
       </div>
     </header>
     <AiAssistantPanel
+      :key="contextKey"
       class="min-h-0 flex-1"
-	      entry-point="SIDE_PANEL"
-	      :context="context"
-	      :initial-conversation-no="currentConversationNo"
-	      @conversation-change="handleConversationChange"
-	      @run-change="currentRunNo = $event"
-	    />
+      entry-point="SIDE_PANEL"
+      :context="context"
+      :initial-conversation-no="currentConversationNo"
+      @conversation-change="handleConversationChange"
+      @run-change="currentRunNo = $event"
+      @busy-change="aiAssistantStore.setRunActive"
+    />
   </aside>
 </template>
 
@@ -152,6 +178,17 @@ onMounted(() => {
 
 .ai-side-panel-icon {
   background: linear-gradient(135deg, #3370ff 0%, #6d5df6 100%);
+}
+
+@media (max-width: 639px) {
+  .ai-side-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    width: 100vw;
+    max-width: none;
+    border-left: 0;
+  }
 }
 
 @keyframes ai-side-panel-in {

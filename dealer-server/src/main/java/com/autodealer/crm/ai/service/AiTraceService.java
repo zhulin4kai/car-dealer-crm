@@ -28,6 +28,8 @@ public interface AiTraceService {
 
     TAiConversation getOwnedConversation(String conversationNo);
 
+    TAiConversation lockOwnedConversation(String conversationNo);
+
     TAiConversation getConversationById(Long conversationId);
 
     List<TAiConversation> listOwnedConversations(boolean includeArchived);
@@ -40,7 +42,19 @@ public interface AiTraceService {
 
     List<TAiMessage> listRecentVisibleMessages(Long conversationId, Long excludeRunId, int limit);
 
+    List<TAiMessage> listActiveContextMessages(Long conversationId);
+
+    TAiMessage getOwnedUserMessage(Long conversationId, String messageNo);
+
+    void supersedeMessage(TAiMessage message, int expectedVersion);
+
+    void withdrawMessage(TAiMessage message, int expectedVersion);
+
     TAiRun getLatestRunByConversationId(Long conversationId);
+
+    TAiRun getLatestActiveRunBeforeTurn(Long conversationId, int turnNo);
+
+    List<TAiRun> invalidateContextFromTurn(Long conversationId, int turnNo, String reason);
 
     List<TAiRun> listRunsByConversationId(Long conversationId);
 
@@ -63,6 +77,8 @@ public interface AiTraceService {
     void updateRunStatus(Long runId, AiRunStatus status, String errorCode, String errorMessage);
 
     boolean updateRunStatusIfNotTerminal(Long runId, AiRunStatus status, String errorCode, String errorMessage);
+
+    boolean startRunIfCreated(Long runId);
 
     boolean cancelRunIfCancellable(Long runId, String reason);
 

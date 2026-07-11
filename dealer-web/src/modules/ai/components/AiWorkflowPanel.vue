@@ -12,6 +12,7 @@ defineOptions({
 defineProps<{
   workflows: AiWorkflow[]
   loading?: boolean
+  canManage?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -35,7 +36,7 @@ function statusLabel(status: string): string {
     EXPIRED: '已过期',
     PENDING: '待执行',
   }
-  return labels[status] ?? status
+  return labels[status] ?? '未知状态'
 }
 
 function workflowKey(workflow: AiWorkflow): string {
@@ -130,7 +131,7 @@ function canCancel(workflow: AiWorkflow): boolean {
         </div>
       </div>
 
-      <div class="mt-3 flex flex-wrap justify-end gap-2">
+      <div v-if="canManage" class="mt-3 flex flex-wrap justify-end gap-2">
         <Button
           v-if="canPause(workflow)"
           variant="outline"

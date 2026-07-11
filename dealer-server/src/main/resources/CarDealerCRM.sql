@@ -931,6 +931,10 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT 'AI 模型配置-管理', 'ai:provider-config:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT 'AI 模型配置-轮换密钥', 'ai:provider-config:rotate-key', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 策略-查看', 'ai:policy:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 策略-管理', 'ai:policy:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
 
 -- ----------------------------
 -- Table structure for t_role
@@ -2310,9 +2314,11 @@ DROP TABLE IF EXISTS `t_ai_approval`;
 DROP TABLE IF EXISTS `t_ai_action_proposal`;
 DROP TABLE IF EXISTS `t_ai_tool_call`;
 DROP TABLE IF EXISTS `t_ai_message`;
+DROP TABLE IF EXISTS `t_ai_run_event`;
 DROP TABLE IF EXISTS `t_ai_proactive_subscription`;
 DROP TABLE IF EXISTS `t_ai_workflow`;
 DROP TABLE IF EXISTS `t_ai_provider_config`;
+DROP TABLE IF EXISTS `t_ai_assistant_policy`;
 DROP TABLE IF EXISTS `t_ai_run`;
 DROP TABLE IF EXISTS `t_ai_conversation`;
 CREATE TABLE `t_ai_conversation`
@@ -2325,7 +2331,7 @@ CREATE TABLE `t_ai_conversation`
     `entry_point`         VARCHAR(32)  NOT NULL COMMENT '入口: PAGE/SIDE_PANEL',
     `context_object_type` VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象类型',
     `context_object_id`   VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象 ID',
-    `summary_text`        VARCHAR(2000) NULL DEFAULT NULL COMMENT '脱敏会话摘要',
+    `summary_text`        VARCHAR(8000) NULL DEFAULT NULL COMMENT '脱敏会话摘要',
     `last_run_no`         VARCHAR(64)  NULL DEFAULT NULL COMMENT '最近 AI Run 编号',
     `last_message_time`   DATETIME     NULL DEFAULT NULL COMMENT '最近消息时间',
     `create_time`         DATETIME     NOT NULL COMMENT '创建时间',
@@ -2357,13 +2363,15 @@ CREATE TABLE `t_ai_run`
     `entry_point`         VARCHAR(32)  NOT NULL COMMENT '入口: PAGE/SIDE_PANEL',
     `context_object_type` VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象类型',
     `context_object_id`   VARCHAR(64)  NULL DEFAULT NULL COMMENT '上下文对象ID',
-    `prompt_summary`      VARCHAR(500) NOT NULL COMMENT '用户问题摘要',
+    `prompt_summary`      VARCHAR(4000) NOT NULL COMMENT '用户问题的安全展示文本',
     `status`              VARCHAR(32)  NOT NULL COMMENT 'Run状态',
     `error_code`          VARCHAR(64)  NULL DEFAULT NULL COMMENT '失败错误码',
     `error_message`       VARCHAR(255) NULL DEFAULT NULL COMMENT '失败摘要',
     `started_time`        DATETIME     NULL DEFAULT NULL COMMENT '开始时间',
     `completed_time`      DATETIME     NULL DEFAULT NULL COMMENT '完成时间',
     `expires_time`        DATETIME     NULL DEFAULT NULL COMMENT '过期时间',
+    `context_active`      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否属于当前有效上下文分支',
+    `invalidation_reason` VARCHAR(255) NULL DEFAULT NULL COMMENT '退出上下文原因',
     `create_time`         DATETIME     NOT NULL COMMENT '创建时间',
     `create_by`           INT          NOT NULL COMMENT '创建人',
     PRIMARY KEY (`id`) USING BTREE,
@@ -2384,6 +2392,60 @@ CREATE TABLE `t_ai_run`
   CHARACTER SET = utf8mb3
   COLLATE = utf8mb3_general_ci COMMENT = 'AI运行追踪表'
   ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_run_event`
+(
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI Run 事件 ID',
+    `run_id`        BIGINT       NOT NULL COMMENT 'AI Run ID',
+    `event_id`      VARCHAR(64)  NOT NULL COMMENT '外部稳定事件 ID',
+    `sequence_no`   INT          NOT NULL COMMENT 'Run 内事件序号',
+    `event_type`    VARCHAR(64)  NOT NULL COMMENT '事件类型',
+    `payload_json`  TEXT         NOT NULL COMMENT '脱敏事件载荷',
+    `occurred_time` DATETIME     NOT NULL COMMENT '事件发生时间',
+    `create_time`   DATETIME     NOT NULL COMMENT '落库时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_ai_run_event_sequence` (`run_id` ASC, `sequence_no` ASC) USING BTREE,
+    UNIQUE INDEX `uk_ai_run_event_id` (`run_id` ASC, `event_id` ASC) USING BTREE,
+    CONSTRAINT `fk_ai_run_event_run` FOREIGN KEY (`run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI Run 可重放事件表'
+  ROW_FORMAT = DYNAMIC;
+
+CREATE TABLE `t_ai_assistant_policy`
+(
+    `id`                     BIGINT       NOT NULL COMMENT '全局策略固定 ID',
+    `enabled_tools`          TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否允许工具调用',
+    `allowed_tool_names`     TEXT         NOT NULL COMMENT '允许工具名 JSON 数组',
+    `proposals_enabled`      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否允许低风险 Proposal',
+    `max_tool_calls_per_run` INT          NOT NULL COMMENT '单次 Run 最大工具调用数',
+    `safety_mode`            VARCHAR(32)  NOT NULL COMMENT '安全模式',
+    `network_mode`           VARCHAR(32)  NOT NULL COMMENT '联网模式',
+    `context_message_limit`  INT          NOT NULL COMMENT '上下文消息条数',
+    `summary_max_chars`      INT          NOT NULL COMMENT '会话摘要最大字符数',
+    `max_run_seconds`        INT          NOT NULL COMMENT '单次 Run 最长秒数',
+    `version`                INT          NOT NULL COMMENT '乐观锁版本',
+    `create_time`            DATETIME     NOT NULL COMMENT '创建时间',
+    `create_by`              INT          NOT NULL COMMENT '创建人',
+    `edit_time`              DATETIME     NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`                INT          NULL DEFAULT NULL COMMENT '编辑人',
+    PRIMARY KEY (`id`) USING BTREE,
+    CONSTRAINT `chk_ai_policy_singleton` CHECK (`id` = 1),
+    CONSTRAINT `chk_ai_policy_safety_mode` CHECK (`safety_mode` IN ('STRICT', 'STANDARD')),
+    CONSTRAINT `chk_ai_policy_network_mode` CHECK (`network_mode` IN ('DISABLED', 'PROVIDER_ONLY')),
+    CONSTRAINT `chk_ai_policy_context_limit` CHECK (`context_message_limit` BETWEEN 1 AND 8)
+) ENGINE = InnoDB
+  CHARACTER SET = utf8mb3
+  COLLATE = utf8mb3_general_ci COMMENT = 'AI 助手全局策略表'
+  ROW_FORMAT = DYNAMIC;
+
+INSERT INTO `t_ai_assistant_policy`
+(`id`, `enabled_tools`, `allowed_tool_names`, `proposals_enabled`, `max_tool_calls_per_run`,
+ `safety_mode`, `network_mode`, `context_message_limit`, `summary_max_chars`, `max_run_seconds`,
+ `version`, `create_time`, `create_by`, `edit_time`, `edit_by`)
+VALUES
+(1, 1, '["create_communication_record_proposal","create_follow_task_proposal","get_business_overview","get_customer_profile","get_delivery_detail","get_inventory_alerts","get_opportunity_detail","get_quote_detail","get_test_drive_detail","get_transaction_detail","list_my_followups","list_pending_transaction_approvals","resolve_vehicle_product","search_customers"]',
+ 1, 8, 'STRICT', 'PROVIDER_ONLY', 8, 2000, 120, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1);
 
 CREATE TABLE `t_ai_provider_config`
 (
@@ -2423,20 +2485,33 @@ CREATE TABLE `t_ai_provider_config`
 CREATE TABLE `t_ai_message`
 (
     `id`              BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI消息ID',
+    `message_no`      VARCHAR(64)   NOT NULL COMMENT 'AI 消息业务编号',
     `conversation_id` BIGINT        NOT NULL COMMENT 'AI 会话 ID',
     `run_id`          BIGINT        NOT NULL COMMENT 'AI Run ID',
     `role`            VARCHAR(32)   NOT NULL COMMENT '消息角色',
     `sequence_no`     INT           NOT NULL COMMENT 'Run内序号',
     `visible_to_user` TINYINT(1)    NOT NULL DEFAULT 1 COMMENT '是否进入会话上下文和用户可见历史',
-    `content_summary` VARCHAR(2000) NOT NULL COMMENT '消息安全摘要',
+    `status`          VARCHAR(32)   NOT NULL DEFAULT 'ACTIVE' COMMENT '消息修订状态',
+    `revision_no`     INT           NOT NULL DEFAULT 1 COMMENT '消息修订号',
+    `supersedes_message_id` BIGINT  NULL DEFAULT NULL COMMENT '被替代的上一版消息 ID',
+    `included_in_context` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否进入模型上下文',
+    `version`         INT           NOT NULL DEFAULT 1 COMMENT '乐观锁版本',
+    `content_summary` TEXT          NOT NULL COMMENT '消息安全展示文本',
     `create_time`     DATETIME      NOT NULL COMMENT '创建时间',
     `create_by`       INT           NOT NULL COMMENT '创建人',
+    `edit_time`       DATETIME      NULL DEFAULT NULL COMMENT '编辑时间',
+    `edit_by`         INT           NULL DEFAULT NULL COMMENT '编辑人',
+    `withdrawn_time`  DATETIME      NULL DEFAULT NULL COMMENT '撤回时间',
+    `withdrawn_by`    INT           NULL DEFAULT NULL COMMENT '撤回人',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_ai_message_run_seq` (`run_id` ASC, `sequence_no` ASC) USING BTREE,
+    UNIQUE INDEX `uk_ai_message_no` (`message_no` ASC) USING BTREE,
     INDEX `idx_ai_message_conversation_time` (`conversation_id` ASC, `visible_to_user` ASC, `create_time` ASC, `id` ASC) USING BTREE,
     CONSTRAINT `fk_ai_message_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `t_ai_conversation` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_ai_message_run` FOREIGN KEY (`run_id`) REFERENCES `t_ai_run` (`id`) ON DELETE RESTRICT,
-    CONSTRAINT `chk_ai_message_role` CHECK (`role` IN ('USER', 'ASSISTANT', 'SYSTEM', 'TOOL'))
+    CONSTRAINT `fk_ai_message_supersedes` FOREIGN KEY (`supersedes_message_id`) REFERENCES `t_ai_message` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_ai_message_role` CHECK (`role` IN ('USER', 'ASSISTANT', 'SYSTEM', 'TOOL')),
+    CONSTRAINT `chk_ai_message_status` CHECK (`status` IN ('ACTIVE', 'SUPERSEDED', 'WITHDRAWN'))
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
   CHARACTER SET = utf8mb3

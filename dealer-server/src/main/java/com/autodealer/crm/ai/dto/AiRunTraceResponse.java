@@ -54,12 +54,17 @@ public class AiRunTraceResponse {
         return response;
     }
 
-    public record MessageTrace(Long id, String role, Integer sequenceNo, Boolean visibleToUser,
-                               String contentSummary, LocalDateTime createTime) {
+    public record MessageTrace(Long id, String messageNo, String role, Integer sequenceNo,
+                               Boolean visibleToUser, String status, Integer revisionNo,
+                               Boolean includedInContext, Integer version,
+                               String contentSummary, LocalDateTime createTime,
+                               LocalDateTime editTime, LocalDateTime withdrawnTime) {
         public static MessageTrace from(TAiMessage message) {
-            return new MessageTrace(message.getId(), message.getRole(), message.getSequenceNo(),
-                    message.getVisibleToUser(),
-                    message.getContentSummary(), message.getCreateTime());
+            String content = "WITHDRAWN".equals(message.getStatus()) ? null : message.getContentSummary();
+            return new MessageTrace(message.getId(), message.getMessageNo(), message.getRole(),
+                    message.getSequenceNo(), message.getVisibleToUser(), message.getStatus(),
+                    message.getRevisionNo(), message.getIncludedInContext(), message.getVersion(),
+                    content, message.getCreateTime(), message.getEditTime(), message.getWithdrawnTime());
         }
     }
 

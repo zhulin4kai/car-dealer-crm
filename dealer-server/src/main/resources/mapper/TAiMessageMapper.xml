@@ -3,26 +3,41 @@
 <mapper namespace="com.autodealer.crm.ai.mapper.TAiMessageMapper">
     <resultMap id="BaseResultMap" type="com.autodealer.crm.ai.model.TAiMessage">
         <id column="id" property="id" />
+        <result column="message_no" property="messageNo" />
         <result column="conversation_id" property="conversationId" />
         <result column="run_id" property="runId" />
         <result column="role" property="role" />
         <result column="sequence_no" property="sequenceNo" />
         <result column="visible_to_user" property="visibleToUser" />
+        <result column="status" property="status" />
+        <result column="revision_no" property="revisionNo" />
+        <result column="supersedes_message_id" property="supersedesMessageId" />
+        <result column="included_in_context" property="includedInContext" />
+        <result column="version" property="version" />
         <result column="content_summary" property="contentSummary" />
         <result column="create_time" property="createTime" />
         <result column="create_by" property="createBy" />
+        <result column="edit_time" property="editTime" />
+        <result column="edit_by" property="editBy" />
+        <result column="withdrawn_time" property="withdrawnTime" />
+        <result column="withdrawn_by" property="withdrawnBy" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, conversation_id, run_id, role, sequence_no, visible_to_user,
-        content_summary, create_time, create_by
+        id, message_no, conversation_id, run_id, role, sequence_no, visible_to_user,
+        status, revision_no, supersedes_message_id, included_in_context, version,
+        content_summary, create_time, create_by, edit_time, edit_by, withdrawn_time, withdrawn_by
     </sql>
 
     <insert id="insert" parameterType="com.autodealer.crm.ai.model.TAiMessage" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO t_ai_message (conversation_id, run_id, role, sequence_no, visible_to_user,
-                                  content_summary, create_time, create_by)
-        VALUES (#{conversationId}, #{runId}, #{role}, #{sequenceNo}, #{visibleToUser},
-                #{contentSummary}, #{createTime}, #{createBy})
+        INSERT INTO t_ai_message (message_no, conversation_id, run_id, role, sequence_no, visible_to_user,
+                                  status, revision_no, supersedes_message_id, included_in_context, version,
+                                  content_summary, create_time, create_by, edit_time, edit_by,
+                                  withdrawn_time, withdrawn_by)
+        VALUES (#{messageNo}, #{conversationId}, #{runId}, #{role}, #{sequenceNo}, #{visibleToUser},
+                #{status}, #{revisionNo}, #{supersedesMessageId}, #{includedInContext}, #{version},
+                #{contentSummary}, #{createTime}, #{createBy}, #{editTime}, #{editBy},
+                #{withdrawnTime}, #{withdrawnBy})
     </insert>
 
     <select id="selectByRunId" resultMap="BaseResultMap">
@@ -42,14 +57,78 @@
 
     <select id="selectRecentVisibleByConversationId" resultMap="BaseResultMap">
         SELECT * FROM (
-            SELECT <include refid="Base_Column_List" />
-            FROM t_ai_message
-            WHERE conversation_id = #{conversationId}
-              AND visible_to_user = TRUE
-              AND (#{excludeRunId} IS NULL OR run_id != #{excludeRunId})
-            ORDER BY create_time DESC, id DESC
+            SELECT m.*
+            FROM t_ai_message m
+            JOIN t_ai_run r ON r.id = m.run_id
+            WHERE m.conversation_id = #{conversationId}
+              AND m.visible_to_user = TRUE
+              AND m.included_in_context = TRUE
+              AND m.status = 'ACTIVE'
+              AND r.context_active = TRUE
+              AND (#{excludeRunId} IS NULL OR m.run_id != #{excludeRunId})
+            ORDER BY m.create_time DESC, m.id DESC
             LIMIT #{limit}
         ) recent_messages
         ORDER BY create_time ASC, id ASC
     </select>
+
+    <select id="selectOwnedUserMessageByNo" resultMap="BaseResultMap">
+        SELECT m.*
+        FROM t_ai_message m
+        JOIN t_ai_conversation c ON c.id = m.conversation_id
+        WHERE m.conversation_id = #{conversationId}
+          AND m.message_no = #{messageNo}
+          AND m.role = 'USER'
+          AND m.status = 'ACTIVE'
+          AND c.user_id = #{userId}
+    </select>
+
+    <select id="selectActiveContextByConversationId" resultMap="BaseResultMap">
+        SELECT m.*
+        FROM t_ai_message m
+        JOIN t_ai_run r ON r.id = m.run_id
+        WHERE m.conversation_id = #{conversationId}
+          AND m.visible_to_user = TRUE
+          AND m.included_in_context = TRUE
+          AND m.status = 'ACTIVE'
+          AND r.context_active = TRUE
+        ORDER BY r.turn_no ASC, m.sequence_no ASC, m.id ASC
+    </select>
+
+    <update id="supersedeIfVersionMatches">
+        UPDATE t_ai_message
+        SET status = 'SUPERSEDED',
+            included_in_context = FALSE,
+            version = version + 1,
+            edit_time = CURRENT_TIMESTAMP,
+            edit_by = #{editBy}
+        WHERE id = #{id}
+          AND status = 'ACTIVE'
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="withdrawIfVersionMatches">
+        UPDATE t_ai_message
+        SET status = 'WITHDRAWN',
+            included_in_context = FALSE,
+            version = version + 1,
+            withdrawn_time = CURRENT_TIMESTAMP,
+            withdrawn_by = #{withdrawnBy}
+        WHERE id = #{id}
+          AND status = 'ACTIVE'
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="excludeContextFromTurn">
+        UPDATE t_ai_message
+        SET included_in_context = FALSE,
+            edit_time = CURRENT_TIMESTAMP,
+            edit_by = #{editBy}
+        WHERE conversation_id = #{conversationId}
+          AND run_id IN (
+              SELECT id FROM t_ai_run
+              WHERE conversation_id = #{conversationId}
+                AND turn_no &gt;= #{turnNo}
+          )
+    </update>
 </mapper>

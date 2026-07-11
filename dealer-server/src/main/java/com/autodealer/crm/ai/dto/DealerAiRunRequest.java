@@ -33,4 +33,7 @@ public class DealerAiRunRequest {
 
     @JsonProperty("provider_runtime_config")
     private ProviderRuntimeConfig providerRuntimeConfig;
+
+    @JsonProperty("assistant_policy")
+    private Map<String, Object> assistantPolicy;
 }

@@ -144,6 +144,36 @@ class ListPendingTransactionApprovalsArguments(PageArguments):
     pass
 
 
+class GetOpportunityDetailArguments(StrictToolArguments):
+    """查询单个商机详情的只读工具参数。"""
+
+    opportunityId: int = Field(gt=0)
+
+
+class GetQuoteDetailArguments(StrictToolArguments):
+    """查询单个报价详情的只读工具参数。"""
+
+    quoteId: int = Field(gt=0)
+
+
+class GetTestDriveDetailArguments(StrictToolArguments):
+    """查询单个试驾详情的只读工具参数。"""
+
+    testDriveId: int = Field(gt=0)
+
+
+class GetDeliveryDetailArguments(StrictToolArguments):
+    """查询单个交付详情的只读工具参数。"""
+
+    deliveryId: int = Field(gt=0)
+
+
+class GetBusinessOverviewArguments(StrictToolArguments):
+    """查询当前用户权限范围内经营概览的只读工具参数。"""
+
+    pass
+
+
 class CreateCommunicationRecordProposalArguments(StrictToolArguments):
     """创建沟通记录 Proposal 的模型侧参数边界。"""
 
@@ -185,6 +215,11 @@ TOOL_ARGUMENT_MODELS: dict[str, type[StrictToolArguments]] = {
     "get_inventory_alerts": GetInventoryAlertsArguments,
     "get_transaction_detail": GetTransactionDetailArguments,
     "list_pending_transaction_approvals": ListPendingTransactionApprovalsArguments,
+    "get_opportunity_detail": GetOpportunityDetailArguments,
+    "get_quote_detail": GetQuoteDetailArguments,
+    "get_test_drive_detail": GetTestDriveDetailArguments,
+    "get_delivery_detail": GetDeliveryDetailArguments,
+    "get_business_overview": GetBusinessOverviewArguments,
     "create_communication_record_proposal": CreateCommunicationRecordProposalArguments,
     "create_follow_task_proposal": CreateFollowTaskProposalArguments,
 }

@@ -74,7 +74,7 @@
               <TableHead class="w-[130px]">预计金额</TableHead>
               <TableHead class="w-[130px]">预计成交</TableHead>
               <TableHead class="w-[130px]">下次动作</TableHead>
-              <TableHead class="w-[220px]">操作</TableHead>
+              <TableHead class="w-[250px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -101,6 +101,13 @@
                 <div class="flex items-center gap-1">
                   <RowActionButton v-has-permission="PERMISSIONS.opportunity.view" label="详情" @click="openDetail(opportunity)">
                     <Eye class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.ai.assistantUse"
+                    label="询问 AI"
+                    @click="openAiAssistant(opportunity.id)"
+                  >
+                    <Sparkles class="h-4 w-4" />
                   </RowActionButton>
                   <RowActionButton
                     v-if="!isOpportunityTerminal(opportunity.stage)"
@@ -365,6 +372,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  Sparkles,
   Trophy,
 } from '@lucide/vue'
 import {
@@ -394,6 +402,7 @@ import {
 import { fetchCustomerOptions } from '@/modules/customer/api/customer-api'
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { messageTip } from '@/shared/utils/feedback'
+import { useAiAssistantStore } from '@/stores/ai-assistant.store'
 import type { SelectOption } from '@/shared/types/common'
 import type { EntityId } from '@/shared/types/id'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
@@ -424,7 +433,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
 import { Textarea } from '@/components/ui/textarea'
+
+const aiAssistantStore = useAiAssistantStore()
+
+function openAiAssistant(id: EntityId): void {
+  aiAssistantStore.openPanel({ objectType: 'OPPORTUNITY', objectId: String(id) })
+}
 
 type CustomerOption = SelectOption & {
   customerId?: EntityId

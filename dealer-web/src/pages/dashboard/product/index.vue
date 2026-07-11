@@ -187,7 +187,7 @@
                 @sort="toggleSort"
                 >状态</TableHead
               >
-              <TableHead class="w-[88px]">操作</TableHead>
+              <TableHead class="w-[120px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -274,6 +274,14 @@
                       @click="handleView(row)"
                     >
                       <Eye class="h-4 w-4" />
+                    </RowActionButton>
+                    <RowActionButton
+                      v-if="row.id"
+                      v-has-permission="PERMISSIONS.ai.assistantUse"
+                      label="询问 AI"
+                      @click="openAiAssistant(row.id)"
+                    >
+                      <Sparkles class="h-4 w-4" />
                     </RowActionButton>
                     <RowActionButton
                       v-has-permission="PERMISSIONS.product.edit"
@@ -497,6 +505,7 @@ import StatusBadge from '@/shared/ui/StatusBadge.vue'
 import { formatCurrency, formatNumber, toNumber } from '@/shared/utils/display-format'
 import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import { useClientSort } from '@/shared/utils/table-sort'
+import { useAiAssistantStore } from '@/stores/ai-assistant.store'
 import {
   Box,
   Car,
@@ -506,6 +515,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Sparkles,
   Shield,
   Tags,
   Trash2,
@@ -516,6 +526,12 @@ import {
 defineOptions({
   name: 'ProductListView',
 })
+
+const aiAssistantStore = useAiAssistantStore()
+
+function openAiAssistant(id: EntityId): void {
+  aiAssistantStore.openPanel({ objectType: 'PRODUCT', objectId: String(id) })
+}
 
 type ProductFormState = {
   sku: string

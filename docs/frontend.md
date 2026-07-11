@@ -190,13 +190,19 @@ AI 前端展示状态固定为 `closed`、`sidebar`、`page`。`closed` 只表�
 
 `DashboardLayout.vue` 负责 AI 顶部入口、右下角悬浮入口和右侧栏容器。顶部入口是浅色胶囊形“AI 助手”按钮，右下角入口是 48px 圆形图标按钮；两个入口都打开同一个 `AiSidePanel.vue`。独立 AI 页面不展示右下角悬浮按钮，其他登录后的 dashboard 页面在有 AI 权限时展示悬浮按钮。独立 AI 页面上的模型配置入口只能是右上角紧凑设置按钮，不能占用整条导航栏。右侧栏必须作为布局列压缩主内容，不做 Dialog、普通弹窗或遮罩覆盖。
 
+商机、报价、试驾、交付和产品列表在用户同时具备 AI 使用入口与对应业务页面权限时提供“询问 AI”行操作。点击后把当前业务对象交给共享 AI 侧栏；对象切换必须清空旧会话选择，生成中不得静默切换到另一对象，侧栏展开或页面刷新后仍从 Conversation 恢复原对象上下文。内部对象标识只用于后端鉴权和工具入参，不在 AI 主视图展示。
+
 AI 前端模块按当前代码结构约束落地：`modules/ai/api/ai-api.ts` 是 Spring Boot AI API 入口，`modules/ai/model/ai.types.ts` 是 AI 类型入口。`AiSidePanel.vue` 和独立 AI 页面复用同一套 `AiAssistantPanel.vue`，不得并行保留两个职责重复的对话面板、API 文件或类型文件。侧栏 header 包含 AI 图标、标题、副标题、展开按钮和关闭按钮；关闭只隐藏面板，展开进入 `/dashboard/ai` 并携带当前 `conversationNo` 或可恢复上下文。消息区独立滚动，输入区固定在底部，空状态展示 AI 标识、欢迎语和推荐问题卡片。
 
 AI Conversation 是多轮对话容器，AI Run 是 Conversation 中的一次执行。独立 AI 页面必须展示会话列表、新建会话、重命名和归档入口；右侧栏保持轻量，只提供当前会话、新对话和切换入口。前端发送问题时携带 `conversationNo`，未携带时由后端按当前用户和业务对象上下文解析默认会话。刷新和切换会话后必须以 Conversation detail 的 `turns` 恢复每一轮用户问题、AI 回答、业务结果卡片、Proposal、Workflow 和处理过程，不能只恢复单个 Run trace 或最新 Run。
 
+用户消息支持编辑和撤回。编辑提交消息版本并订阅后端返回的替代 Run；撤回只把消息和后续轮次移出 AI 活动上下文，不撤销已经执行的业务动作。运行中禁止切换会话、编辑或撤回。SSE 解析必须兼容 LF、CRLF、多行 data、UTF-8 跨块、坏帧隔离和 sequence 去重，断线通过 `afterSequence` 有界重连；模型 delta 进入字符队列平滑显示，不等待完整回答。
+
 AI Provider 配置页使用项目通用数据页风格，列表使用表格，新增、编辑和轮换 API Key 使用 Dialog。表单字段必须有可见 Label，不得只依赖 placeholder。前端内置千问、DeepSeek、MiniMax 和自定义 Provider 预设；已知 Provider 默认自动填充协议格式、Base URL、模型名和推荐参数，管理员只需要选择厂商、区域或模型并填写 API Key。Base URL、模型名、timeout、max output tokens 和 temperature 属于高级配置。高级配置数值范围必须与后端 DTO 校验一致，并在提交前显示字段错误；后端返回的 Provider 配置错误必须在页面中提示给用户。
 
 AI Provider 配置页必须提供返回 AI 工作台的明确按钮。配置列表中启用状态和测试状态使用状态徽标与颜色区分；测试、启用、停用作为行内主操作，编辑和轮换 API Key 放入更多菜单或同等低频操作区，禁止五个按钮无区分地挤在同一行。本地、开发、测试和 smoke 环境缺少 `AI_PROVIDER_KEY_ENCRYPTION_SECRET` 时，后端会自动生成并复用 `~/.car-dealer-crm/ai-provider-key.secret`；生产环境仍必须显式配置加密主密钥。
+
+同一管理页提供独立 AI 运行策略区，只有 `ai:policy:view` 或 `ai:policy:manage` 用户可见。策略覆盖工具总开关和允许列表、低风险 Proposal、STRICT/STANDARD、安全的 Provider 联网模式、最近 1 到 8 条消息、摘要上限和运行时限。前端校验只改善交互，Spring Boot 和 `dealer-ai` 必须执行同一策略。
 
 前端上下文只传对象类型、对象标识、入口和脱敏摘要，不传 userId、角色、权限、数据范围或审计操作者。上下文推荐问题根据 `CUSTOMER`、`CLUE`、`OPPORTUNITY`、`TRANSACTION`、`PRODUCT`、`INVENTORY`、`FOLLOW_TASK` 等对象类型变化；没有上下文时展示四个通用问题。推荐问题只作为快捷输入，后端仍校验对象权限和数据范围。
 

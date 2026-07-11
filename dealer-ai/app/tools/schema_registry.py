@@ -13,7 +13,18 @@ READONLY_TOOL_NAMES = (
     "get_inventory_alerts",
     "get_transaction_detail",
     "list_pending_transaction_approvals",
+    "get_opportunity_detail",
+    "get_quote_detail",
+    "get_test_drive_detail",
+    "get_delivery_detail",
+    "get_business_overview",
 )
+DETAIL_TOOL_ARGUMENTS = {
+    "get_opportunity_detail": "opportunityId",
+    "get_quote_detail": "quoteId",
+    "get_test_drive_detail": "testDriveId",
+    "get_delivery_detail": "deliveryId",
+}
 
 
 class ToolSchemaRegistry:
@@ -36,12 +47,19 @@ class ToolSchemaRegistry:
 def _readonly_tool_schema(name: str) -> ToolSchema:
     """构造只读工具 Schema，实际入参边界由 Spring Boot 再校验。"""
 
+    argument_name = DETAIL_TOOL_ARGUMENTS.get(name)
+    input_schema = {"type": "object", "additionalProperties": False}
+    if argument_name:
+        input_schema |= {
+            "properties": {argument_name: {"type": "integer", "minimum": 1}},
+            "required": [argument_name],
+        }
     return ToolSchema(
         name=name,
         description=f"Read-only CRM tool: {name}",
         risk_level=ToolRiskLevel.READONLY,
         requires_confirmation=False,
-        input_schema={"type": "object", "additionalProperties": False},
+        input_schema=input_schema,
     )
 
 

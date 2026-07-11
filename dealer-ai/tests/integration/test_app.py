@@ -75,3 +75,36 @@ def test_internal_run_uses_mock_orchestrator_without_real_model() -> None:
         "message_completed",
         "run_completed",
     ]
+
+
+def test_internal_stream_disables_buffering_and_orders_delta_before_completion() -> None:
+    app = create_app()
+    app.dependency_overrides[get_orchestrator] = lambda: LangGraphAgentOrchestrator(MockProvider())
+    client = TestClient(app)
+
+    with client.stream(
+        "POST",
+        "/internal/runs/stream",
+        headers={"X-Dealer-AI-Token": "dev-internal-token"},
+        json={
+            "run_id": "run-stream-1",
+            "user_prompt": "你好",
+            "provider_runtime_config": {
+                "provider_config_no": "AIPC-test",
+                "provider_format": "OPENAI_COMPATIBLE",
+                "base_url": "https://provider.test",
+                "model_name": "mock-model",
+                "api_key": "provider-key",
+                "timeout_seconds": 15,
+                "max_output_tokens": 64,
+                "temperature": 0,
+            },
+        },
+    ) as response:
+        body = "".join(response.iter_text())
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-cache, no-transform"
+        assert response.headers["x-accel-buffering"] == "no"
+        assert response.headers["connection"] == "keep-alive"
+
+    assert body.index("event: message_delta") < body.index("event: message_completed")

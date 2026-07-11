@@ -34,6 +34,15 @@ public final class ToolSchemas {
                     "categoryId", integer(1, null)));
             case "get_transaction_detail" -> object(Map.of(
                     "tranId", integer(1, null)), "tranId");
+            case "get_opportunity_detail" -> object(Map.of(
+                    "opportunityId", integer(1, null)), "opportunityId");
+            case "get_quote_detail" -> object(Map.of(
+                    "quoteId", integer(1, null)), "quoteId");
+            case "get_test_drive_detail" -> object(Map.of(
+                    "testDriveId", integer(1, null)), "testDriveId");
+            case "get_delivery_detail" -> object(Map.of(
+                    "deliveryId", integer(1, null)), "deliveryId");
+            case "get_business_overview" -> object(Map.of());
             case "list_pending_transaction_approvals" -> object(Map.of(
                     "page", integer(1, null),
                     "size", integer(1, 20)));

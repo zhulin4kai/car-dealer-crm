@@ -11,13 +11,16 @@ import com.autodealer.crm.ai.dto.AiMessageCommand;
 import com.autodealer.crm.ai.dto.AiRunResponse;
 import com.autodealer.crm.ai.dto.AiRunTraceResponse;
 import com.autodealer.crm.ai.dto.AiSseEventResponse;
+import com.autodealer.crm.ai.dto.AiAssistantPolicyResponse;
 import com.autodealer.crm.ai.dto.CancelAiRunRequest;
 import com.autodealer.crm.ai.dto.CreateAiConversationRequest;
 import com.autodealer.crm.ai.dto.CreateAiRunRequest;
 import com.autodealer.crm.ai.dto.DealerAiEventResponse;
 import com.autodealer.crm.ai.dto.DealerAiMessageHistory;
 import com.autodealer.crm.ai.dto.DealerAiRunRequest;
+import com.autodealer.crm.ai.dto.EditAiMessageRequest;
 import com.autodealer.crm.ai.dto.RenameAiConversationRequest;
+import com.autodealer.crm.ai.dto.WithdrawAiMessageRequest;
 import com.autodealer.crm.ai.enums.AiConversationStatus;
 import com.autodealer.crm.ai.enums.AiEntryPoint;
 import com.autodealer.crm.ai.enums.AiMessageRole;
@@ -33,15 +36,18 @@ import com.autodealer.crm.ai.model.TAiRun;
 import com.autodealer.crm.ai.model.TAiWorkflow;
 import com.autodealer.crm.ai.model.TAiWorkflowStep;
 import com.autodealer.crm.ai.service.AiConversationService;
+import com.autodealer.crm.ai.service.AiAssistantPolicyService;
 import com.autodealer.crm.ai.service.AiProviderConfigService;
 import com.autodealer.crm.ai.service.AiRunCancellationRegistry;
 import com.autodealer.crm.ai.service.AiRunCancellationToken;
+import com.autodealer.crm.ai.service.AiRunEventStore;
 import com.autodealer.crm.ai.service.AiSensitiveDataSanitizer;
 import com.autodealer.crm.ai.service.AiTraceService;
 import com.autodealer.crm.ai.service.DealerAiClient;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.result.CodeEnum;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -55,11 +61,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 public class AiConversationServiceImpl implements AiConversationService {
     private static final long SSE_TIMEOUT_MS = 60_000L;
-    private static final int RECENT_MESSAGE_LIMIT = 8;
+    private static final String DEFAULT_CONVERSATION_TITLE = "新的 AI 会话";
     private static final Set<String> TERMINAL_RUN_STATUSES = Set.of(
             AiRunStatus.COMPLETED.name(),
             AiRunStatus.FAILED.name(),
@@ -83,6 +92,10 @@ public class AiConversationServiceImpl implements AiConversationService {
     private final ToolRegistry toolRegistry;
     private final TAiWorkflowMapper workflowMapper;
     private final TAiWorkflowStepMapper workflowStepMapper;
+    private final AiAssistantPolicyService policyService;
+    private final AiRunEventStore runEventStore;
+    private final ConcurrentMap<String, CopyOnWriteArrayList<SseEmitter>> subscribers = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Object> eventLocks = new ConcurrentHashMap<>();
 
     public AiConversationServiceImpl(AiTraceService traceService,
                                      DealerAiClient dealerAiClient,
@@ -91,7 +104,9 @@ public class AiConversationServiceImpl implements AiConversationService {
                                      AiSensitiveDataSanitizer sanitizer,
                                      ToolRegistry toolRegistry,
                                      TAiWorkflowMapper workflowMapper,
-                                     TAiWorkflowStepMapper workflowStepMapper) {
+                                     TAiWorkflowStepMapper workflowStepMapper,
+                                     AiAssistantPolicyService policyService,
+                                     AiRunEventStore runEventStore) {
         this.traceService = traceService;
         this.dealerAiClient = dealerAiClient;
         this.providerConfigService = providerConfigService;
@@ -100,6 +115,8 @@ public class AiConversationServiceImpl implements AiConversationService {
         this.toolRegistry = toolRegistry;
         this.workflowMapper = workflowMapper;
         this.workflowStepMapper = workflowStepMapper;
+        this.policyService = policyService;
+        this.runEventStore = runEventStore;
     }
 
     @Override
@@ -155,13 +172,19 @@ public class AiConversationServiceImpl implements AiConversationService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public AiRunResponse createRun(CreateAiRunRequest request) {
+        AiAssistantPolicyResponse policy = policyService.getPolicy();
         AiEntryPoint entryPoint = AiEntryPoint.valueOf(request.getEntryPoint());
         TAiConversation conversation = resolveConversation(request, entryPoint);
+        conversation = traceService.lockOwnedConversation(conversation.getConversationNo());
         if (AiConversationStatus.ARCHIVED.name().equals(conversation.getStatus())) {
             throw new BusinessException(CodeEnum.AI_CONVERSATION_ARCHIVED, "AI 会话已归档，不能继续发送消息");
         }
         TAiRun parentRun = traceService.getLatestRunByConversationId(conversation.getId());
+        if (parentRun == null && DEFAULT_CONVERSATION_TITLE.equals(conversation.getTitle())) {
+            traceService.renameConversation(conversation.getConversationNo(), request.getPrompt());
+        }
         String contextObjectType = StringUtils.hasText(conversation.getContextObjectType())
                 ? conversation.getContextObjectType() : request.getContextObjectType();
         String contextObjectId = StringUtils.hasText(conversation.getContextObjectId())
@@ -174,7 +197,7 @@ public class AiConversationServiceImpl implements AiConversationService {
                 contextObjectType,
                 contextObjectId,
                 request.getPrompt(),
-                LocalDateTime.now().plusHours(1)));
+                LocalDateTime.now().plusSeconds(policy.getMaxRunSeconds())));
         run.setConversationNo(conversation.getConversationNo());
         traceService.appendMessage(new AiMessageCommand(
                 conversation.getId(),
@@ -188,6 +211,65 @@ public class AiConversationServiceImpl implements AiConversationService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AiRunResponse editMessage(String conversationNo,
+                                     String messageNo,
+                                     EditAiMessageRequest request) {
+        TAiConversation conversation = traceService.lockOwnedConversation(conversationNo);
+        requireActiveConversation(conversation);
+        TAiMessage message = traceService.getOwnedUserMessage(conversation.getId(), messageNo);
+        TAiRun replacedRun = traceService.getRunById(message.getRunId());
+        requireMessageInConversation(conversation, message, replacedRun);
+
+        traceService.supersedeMessage(message, request.getExpectedVersion());
+        List<TAiRun> invalidatedRuns = traceService.invalidateContextFromTurn(
+                conversation.getId(), replacedRun.getTurnNo(), "用户编辑历史消息");
+        invalidatedRuns.forEach(run -> cancellationRegistry.cancel(run.getRunNo()));
+
+        TAiRun parentRun = traceService.getLatestActiveRunBeforeTurn(
+                conversation.getId(), replacedRun.getTurnNo());
+        AiAssistantPolicyResponse policy = policyService.getPolicy();
+        TAiRun replacementRun = traceService.createRun(new AiCreateRunCommand(
+                conversation.getId(),
+                parentRun == null ? null : parentRun.getId(),
+                traceService.nextTurnNo(conversation.getId()),
+                AiEntryPoint.valueOf(replacedRun.getEntryPoint()),
+                replacedRun.getContextObjectType(),
+                replacedRun.getContextObjectId(),
+                request.getContent(),
+                LocalDateTime.now().plusSeconds(policy.getMaxRunSeconds())));
+        replacementRun.setConversationNo(conversation.getConversationNo());
+        traceService.appendMessage(new AiMessageCommand(
+                conversation.getId(), replacementRun.getId(), AiMessageRole.USER, 1, true,
+                request.getContent(), null, "ACTIVE",
+                (message.getRevisionNo() == null ? 1 : message.getRevisionNo()) + 1,
+                message.getId(), true, 1));
+        rebuildConversationSummary(conversation.getId(), replacementRun.getRunNo());
+        return AiRunResponse.from(replacementRun);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AiConversationDetailResponse withdrawMessage(String conversationNo,
+                                                         String messageNo,
+                                                         WithdrawAiMessageRequest request) {
+        TAiConversation conversation = traceService.lockOwnedConversation(conversationNo);
+        requireActiveConversation(conversation);
+        TAiMessage message = traceService.getOwnedUserMessage(conversation.getId(), messageNo);
+        TAiRun withdrawnRun = traceService.getRunById(message.getRunId());
+        requireMessageInConversation(conversation, message, withdrawnRun);
+
+        traceService.withdrawMessage(message, request.getExpectedVersion());
+        List<TAiRun> invalidatedRuns = traceService.invalidateContextFromTurn(
+                conversation.getId(), withdrawnRun.getTurnNo(), "用户撤回历史消息");
+        invalidatedRuns.forEach(run -> cancellationRegistry.cancel(run.getRunNo()));
+        TAiRun parentRun = traceService.getLatestActiveRunBeforeTurn(
+                conversation.getId(), withdrawnRun.getTurnNo());
+        rebuildConversationSummary(conversation.getId(), parentRun == null ? null : parentRun.getRunNo());
+        return getConversation(conversationNo);
+    }
+
+    @Override
     public AiRunResponse getRun(String runNo) {
         return AiRunResponse.from(traceService.getOwnedRun(runNo));
     }
@@ -198,15 +280,32 @@ public class AiConversationServiceImpl implements AiConversationService {
     }
 
     @Override
-    public SseEmitter streamRun(String runNo) {
+    public SseEmitter streamRun(String runNo, int afterSequence) {
         TAiRun run = traceService.getOwnedRun(runNo);
-        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
-        AiRunCancellationToken token = cancellationRegistry.register(runNo);
-        emitter.onCompletion(token::cancel);
-        emitter.onTimeout(token::cancel);
-        emitter.onError(error -> token.cancel());
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        CompletableFuture.runAsync(() -> runWithSecurityContext(authentication, () -> streamRunInternal(run, emitter, token)));
+        long configuredTimeout = policyService.getPolicy().getMaxRunSeconds() * 1000L + 15_000L;
+        SseEmitter emitter = new SseEmitter(Math.max(SSE_TIMEOUT_MS, configuredTimeout));
+        emitter.onCompletion(() -> removeSubscriber(runNo, emitter));
+        emitter.onTimeout(() -> removeSubscriber(runNo, emitter));
+        emitter.onError(error -> removeSubscriber(runNo, emitter));
+        synchronized (eventLock(runNo)) {
+            // 重放和加入实时订阅必须有序，避免先收到高序号广播后丢弃尚未重放的低序号事件。
+            replayEvents(run, emitter, afterSequence);
+            subscribers.computeIfAbsent(runNo, ignored -> new CopyOnWriteArrayList<>()).add(emitter);
+        }
+
+        if (TERMINAL_RUN_STATUSES.contains(run.getStatus())) {
+            emitter.complete();
+            return emitter;
+        }
+        if (traceService.startRunIfCreated(run.getId())) {
+            AiRunCancellationToken token = cancellationRegistry.register(runNo);
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            CompletableFuture.runAsync(() -> runWithSecurityContext(authentication,
+                    () -> streamRunInternal(run, token)));
+        } else if (TERMINAL_RUN_STATUSES.contains(traceService.getRunById(run.getId()).getStatus())) {
+            // 查询与订阅之间 Run 可能刚好结束，补查终态避免留下永不完成的 SSE 连接。
+            emitter.complete();
+        }
         return emitter;
     }
 
@@ -221,60 +320,51 @@ public class AiConversationServiceImpl implements AiConversationService {
         return AiRunResponse.from(traceService.getOwnedRun(runNo));
     }
 
-    private void streamRunInternal(TAiRun run, SseEmitter emitter, AiRunCancellationToken token) {
+    private void streamRunInternal(TAiRun run, AiRunCancellationToken token) {
         StreamRunState state = new StreamRunState();
         try {
-            if (TERMINAL_RUN_STATUSES.contains(run.getStatus())) {
-                sendCancelledIfNeeded(emitter, run);
-                emitter.complete();
-                return;
-            }
-            traceService.updateRunStatusIfNotTerminal(run.getId(), AiRunStatus.RUNNING, null, null);
             dealerAiClient.streamRunEvents(toDealerAiRequest(run), event -> {
                 if (token.isCancelled()) {
                     return;
                 }
                 state.lastSequence = event.getSequence() == null ? state.lastSequence : event.getSequence();
-                state.waitingForApproval = sendEvent(emitter, run, event, state) || state.waitingForApproval;
+                state.waitingForApproval = sendEvent(run, event, state) || state.waitingForApproval;
             }, token);
             if (token.isCancelled() || isRunCancelled(run.getId())) {
                 savePartialAssistant(run, state);
                 traceService.cancelRunIfCancellable(run.getId(), "用户停止生成");
-                sendCancelledIfNeeded(emitter, run);
-                emitter.complete();
+                sendCancelledIfNeeded(run, state);
                 return;
             }
             savePartialAssistant(run, state);
-            traceService.updateRunStatusIfNotTerminal(run.getId(),
-                    state.waitingForApproval ? AiRunStatus.WAITING_FOR_APPROVAL : AiRunStatus.COMPLETED,
-                    null, null);
-            emitter.complete();
+            AiRunStatus finalStatus = state.finalStatus != null
+                    ? state.finalStatus
+                    : (state.waitingForApproval ? AiRunStatus.WAITING_FOR_APPROVAL : AiRunStatus.COMPLETED);
+            traceService.updateRunStatusIfNotTerminal(run.getId(), finalStatus,
+                    state.finalErrorCode, state.finalErrorMessage);
         } catch (BusinessException ex) {
             if (token.isCancelled() || isRunCancelled(run.getId())) {
                 savePartialAssistant(run, state);
                 traceService.cancelRunIfCancellable(run.getId(), "用户停止生成");
-                sendCancelledIfNeeded(emitter, run);
-                emitter.complete();
+                sendCancelledIfNeeded(run, state);
                 return;
             }
             traceService.updateRunStatusIfNotTerminal(run.getId(), AiRunStatus.FAILED,
                     ex.getCodeEnum().name(), ex.getMessage());
-            sendError(emitter, run, ex.getCodeEnum().name(), ex.getMessage());
-            emitter.complete();
+            sendError(run, ex.getCodeEnum().name(), ex.getMessage(), state);
         } catch (RuntimeException ex) {
             if (token.isCancelled() || isRunCancelled(run.getId())) {
                 savePartialAssistant(run, state);
                 traceService.cancelRunIfCancellable(run.getId(), "用户停止生成");
-                sendCancelledIfNeeded(emitter, run);
-                emitter.complete();
+                sendCancelledIfNeeded(run, state);
                 return;
             }
             traceService.updateRunStatusIfNotTerminal(run.getId(), AiRunStatus.FAILED,
                     CodeEnum.AI_SSE_FAILED.name(), "AI 事件连接失败");
-            sendError(emitter, run, CodeEnum.AI_SSE_FAILED.name(), "AI 事件连接失败");
-            emitter.complete();
+            sendError(run, CodeEnum.AI_SSE_FAILED.name(), "AI 事件连接失败", state);
         } finally {
             cancellationRegistry.unregister(run.getRunNo(), token);
+            completeSubscribers(run.getRunNo());
         }
     }
 
@@ -291,6 +381,11 @@ public class AiConversationServiceImpl implements AiConversationService {
     }
 
     private DealerAiRunRequest toDealerAiRequest(TAiRun run) {
+        AiAssistantPolicyResponse policy = policyService.getPolicy();
+        if ("DISABLED".equals(policy.getNetworkMode())) {
+            throw new BusinessException(CodeEnum.AI_PROVIDER_CONFIG_DISABLED,
+                    "AI 策略已禁止模型供应商网络调用");
+        }
         DealerAiRunRequest request = new DealerAiRunRequest();
         request.setRunId(run.getRunNo());
         request.setUserPrompt(run.getPromptSummary());
@@ -299,7 +394,7 @@ public class AiConversationServiceImpl implements AiConversationService {
             request.setConversationNo(conversation.getConversationNo());
             request.setConversationSummary(conversation.getSummaryText());
             request.setMessageHistory(traceService.listRecentVisibleMessages(
-                            conversation.getId(), run.getId(), RECENT_MESSAGE_LIMIT).stream()
+                            conversation.getId(), run.getId(), policy.getContextMessageLimit()).stream()
                     .map(this::toMessageHistory)
                     .toList());
         } else {
@@ -310,10 +405,27 @@ public class AiConversationServiceImpl implements AiConversationService {
                     "object_type", run.getContextObjectType(),
                     "object_id", run.getContextObjectId()));
         }
-        request.setToolSchemas(toolRegistry.definitions().stream()
+        java.util.Set<String> allowedTools = java.util.Set.copyOf(policy.getAllowedToolNames());
+        List<ToolDefinition> permittedTools = Boolean.TRUE.equals(policy.getEnabledTools())
+                ? toolRegistry.definitionsForCurrentUser().stream()
+                    .filter(definition -> allowedTools.contains(definition.name()))
+                    .toList()
+                : List.of();
+        request.setToolSchemas(permittedTools.stream()
                 .map(this::toToolSchema)
                 .toList());
-        request.setAllowProposals(true);
+        request.setAllowProposals(Boolean.TRUE.equals(policy.getProposalsEnabled()));
+        request.setAssistantPolicy(Map.of(
+                "enabled_tools", Boolean.TRUE.equals(policy.getEnabledTools()),
+                "allowed_tool_names", permittedTools.stream().map(ToolDefinition::name).toList(),
+                "proposals_enabled", Boolean.TRUE.equals(policy.getProposalsEnabled()),
+                "max_tool_calls_per_run", policy.getMaxToolCallsPerRun(),
+                "safety_mode", policy.getSafetyMode(),
+                "network_mode", policy.getNetworkMode(),
+                "context_message_limit", policy.getContextMessageLimit(),
+                "summary_max_chars", policy.getSummaryMaxChars(),
+                "max_run_seconds", policy.getMaxRunSeconds(),
+                "version", policy.getVersion()));
         request.setProviderRuntimeConfig(providerConfigService.getEnabledRuntimeConfig());
         return request;
     }
@@ -331,7 +443,7 @@ public class AiConversationServiceImpl implements AiConversationService {
         return schema;
     }
 
-    private boolean sendEvent(SseEmitter emitter, TAiRun run, DealerAiEventResponse event, StreamRunState state) {
+    private boolean sendEvent(TAiRun run, DealerAiEventResponse event, StreamRunState state) {
         Map<String, Object> payload = filterPayload(event.getPayload());
         AiSseEventResponse response = new AiSseEventResponse();
         response.setEventId(sanitizer.sanitize(event.getEventId(), 64));
@@ -342,28 +454,22 @@ public class AiConversationServiceImpl implements AiConversationService {
                 ? LocalDateTime.now() : event.getOccurredAt().toLocalDateTime());
         response.setPayload(payload);
         recordEventTrace(run, response.getType(), response.getSequence(), payload, state);
-        try {
-            emitter.send(SseEmitter.event()
-                    .id(response.getEventId())
-                    .name(response.getType())
-                    .data(response));
-        } catch (IOException ex) {
-            throw new BusinessException(CodeEnum.AI_SSE_FAILED, "AI 事件发送失败", ex);
-        }
+        runEventStore.append(run.getId(), response);
+        broadcast(run.getRunNo(), response);
         return "proposal_created".equals(response.getType());
     }
 
-    private void sendError(SseEmitter emitter, TAiRun run, String code, String message) {
+    private void sendError(TAiRun run, String code, String message, StreamRunState state) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("code", sanitizer.sanitize(code, 64));
         payload.put("message", sanitizer.sanitize(message, 255));
         DealerAiEventResponse event = new DealerAiEventResponse();
         event.setEventId("error-" + System.nanoTime());
         event.setRunId(run.getRunNo());
-        event.setSequence(0);
+        event.setSequence(++state.lastSequence);
         event.setEventType("error");
         event.setPayload(payload);
-        sendEvent(emitter, run, event, new StreamRunState());
+        sendEvent(run, event, state);
     }
 
     private void recordEventTrace(TAiRun run,
@@ -401,6 +507,27 @@ public class AiConversationServiceImpl implements AiConversationService {
         }
         if ("proposal_created".equals(eventType)) {
             traceService.updateRunStatus(run.getId(), AiRunStatus.WAITING_FOR_APPROVAL, null, null);
+            return;
+        }
+        if ("error".equals(eventType)) {
+            state.finalErrorCode = text(payload, "code", CodeEnum.AI_SSE_FAILED.name());
+            state.finalErrorMessage = text(payload, "message", "AI 运行失败");
+            return;
+        }
+        if ("run_completed".equals(eventType)) {
+            String status = text(payload, "status", AiRunStatus.COMPLETED.name());
+            if (AiRunStatus.FAILED.name().equals(status)) {
+                state.finalStatus = AiRunStatus.FAILED;
+                state.finalErrorCode = text(payload, "error_code",
+                        text(payload, "errorCode", state.finalErrorCode == null
+                                ? CodeEnum.AI_SSE_FAILED.name() : state.finalErrorCode));
+                state.finalErrorMessage = text(payload, "message", state.finalErrorMessage == null
+                        ? "AI 运行失败" : state.finalErrorMessage);
+            } else if (AiRunStatus.CANCELLED.name().equals(status)) {
+                state.finalStatus = AiRunStatus.CANCELLED;
+                state.finalErrorCode = CodeEnum.AI_RUN_CANCELLED.name();
+                state.finalErrorMessage = text(payload, "message", "AI Run 已取消");
+            }
             return;
         }
         if (eventType != null && eventType.startsWith("workflow_")) {
@@ -658,18 +785,53 @@ public class AiConversationServiceImpl implements AiConversationService {
                 request.getPrompt());
     }
 
+    private void requireActiveConversation(TAiConversation conversation) {
+        if (AiConversationStatus.ARCHIVED.name().equals(conversation.getStatus())) {
+            throw new BusinessException(CodeEnum.AI_CONVERSATION_ARCHIVED, "AI 会话已归档");
+        }
+    }
+
+    private void requireMessageInConversation(TAiConversation conversation,
+                                              TAiMessage message,
+                                              TAiRun run) {
+        if (!conversation.getId().equals(message.getConversationId())
+                || !conversation.getId().equals(run.getConversationId())
+                || !"ACTIVE".equals(message.getStatus())
+                || !Boolean.TRUE.equals(run.getContextActive())) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "AI 消息已不在当前上下文中");
+        }
+    }
+
+    private void rebuildConversationSummary(Long conversationId, String lastRunNo) {
+        int maxChars = policyService.getPolicy().getSummaryMaxChars();
+        StringBuilder summary = new StringBuilder();
+        for (TAiMessage message : traceService.listActiveContextMessages(conversationId)) {
+            String label = AiMessageRole.USER.name().equals(message.getRole()) ? "用户问题：" : "AI 回答：";
+            if (!summary.isEmpty()) {
+                summary.append('\n');
+            }
+            summary.append(label).append(message.getContentSummary());
+        }
+        traceService.updateConversationAfterRun(conversationId, lastRunNo,
+                sanitizer.sanitizeDisplayText(summary.toString(), maxChars));
+    }
+
     private void updateConversationSummary(Long conversationId, String runNo, String label, String content) {
         if (conversationId == null) {
             return;
         }
         TAiConversation conversation = traceService.getConversationById(conversationId);
         String currentSummary = conversation.getSummaryText();
-        String safeCurrent = StringUtils.hasText(currentSummary) ? sanitizer.sanitize(currentSummary, 1400) : "";
+        int summaryMaxChars = policyService.getPolicy().getSummaryMaxChars();
+        int previousLimit = Math.max(0, summaryMaxChars - 600);
+        String safeCurrent = StringUtils.hasText(currentSummary)
+                ? sanitizer.sanitize(currentSummary, previousLimit) : "";
         String safeContent = sanitizer.sanitize(content, 500);
         String nextSummary = StringUtils.hasText(safeCurrent)
                 ? safeCurrent + "\n" + label + safeContent
                 : label + safeContent;
-        traceService.updateConversationAfterRun(conversationId, runNo, sanitizer.sanitize(nextSummary, 2000));
+        traceService.updateConversationAfterRun(conversationId, runNo,
+                sanitizer.sanitize(nextSummary, summaryMaxChars));
     }
 
     private DealerAiMessageHistory toMessageHistory(TAiMessage message) {
@@ -680,21 +842,77 @@ public class AiConversationServiceImpl implements AiConversationService {
             default -> "system";
         };
         history.setRole(role);
-        history.setContentSummary(message.getContentSummary());
+        history.setContentSummary(sanitizer.sanitizeDisplayText(message.getContentSummary(), 2000));
         return history;
     }
 
-    private void sendCancelledIfNeeded(SseEmitter emitter, TAiRun run) {
+    private void sendCancelledIfNeeded(TAiRun run, StreamRunState state) {
         DealerAiEventResponse event = new DealerAiEventResponse();
         event.setEventId("cancelled-" + System.nanoTime());
         event.setRunId(run.getRunNo());
-        event.setSequence(0);
+        event.setSequence(++state.lastSequence);
         event.setEventType("run_cancelled");
         event.setPayload(Map.of("status", AiRunStatus.CANCELLED.name(), "message", "已停止生成"));
         try {
-            sendEvent(emitter, run, event, new StreamRunState());
+            sendEvent(run, event, state);
         } catch (BusinessException ignored) {
             // 客户端主动断开时不把取消事件发送失败转成 Run 失败。
+        }
+    }
+
+    private void replayEvents(TAiRun run, SseEmitter emitter, int afterSequence) {
+        for (AiSseEventResponse response : runEventStore.listAfter(
+                run.getId(), run.getRunNo(), afterSequence)) {
+            try {
+                emitter.send(SseEmitter.event()
+                        .id(response.getEventId())
+                        .name(response.getType())
+                        .data(response));
+            } catch (IOException ex) {
+                removeSubscriber(run.getRunNo(), emitter);
+                return;
+            }
+        }
+    }
+
+    private void broadcast(String runNo, AiSseEventResponse response) {
+        synchronized (eventLock(runNo)) {
+            CopyOnWriteArrayList<SseEmitter> runSubscribers = subscribers.get(runNo);
+            if (runSubscribers == null) {
+                return;
+            }
+            for (SseEmitter emitter : runSubscribers) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .id(response.getEventId())
+                            .name(response.getType())
+                            .data(response));
+                } catch (IOException ex) {
+                    removeSubscriber(runNo, emitter);
+                }
+            }
+        }
+    }
+
+    private Object eventLock(String runNo) {
+        return eventLocks.computeIfAbsent(runNo, ignored -> new Object());
+    }
+
+    private void removeSubscriber(String runNo, SseEmitter emitter) {
+        CopyOnWriteArrayList<SseEmitter> runSubscribers = subscribers.get(runNo);
+        if (runSubscribers == null) {
+            return;
+        }
+        runSubscribers.remove(emitter);
+        if (runSubscribers.isEmpty()) {
+            subscribers.remove(runNo, runSubscribers);
+        }
+    }
+
+    private void completeSubscribers(String runNo) {
+        CopyOnWriteArrayList<SseEmitter> runSubscribers = subscribers.remove(runNo);
+        if (runSubscribers != null) {
+            runSubscribers.forEach(SseEmitter::complete);
         }
     }
 
@@ -703,5 +921,8 @@ public class AiConversationServiceImpl implements AiConversationService {
         private boolean assistantSaved;
         private boolean waitingForApproval;
         private int lastSequence = 1;
+        private AiRunStatus finalStatus;
+        private String finalErrorCode;
+        private String finalErrorMessage;
     }
 }

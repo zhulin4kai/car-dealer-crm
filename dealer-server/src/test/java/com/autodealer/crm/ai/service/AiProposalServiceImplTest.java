@@ -14,6 +14,7 @@ import com.autodealer.crm.ai.mapper.TAiActionProposalMapper;
 import com.autodealer.crm.ai.model.TAiActionProposal;
 import com.autodealer.crm.ai.model.TAiRun;
 import com.autodealer.crm.ai.service.impl.AiProposalServiceImpl;
+import com.autodealer.crm.ai.service.impl.AiProposalFailureRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.PermissionCodes;
 import com.autodealer.crm.dto.CreateCommunicationRecordRequest;
@@ -33,6 +34,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -55,6 +58,7 @@ class AiProposalServiceImplTest {
     @Mock private FollowTaskService followTaskService;
     @Mock private FollowRelatedObjectResolver relatedObjectResolver;
     @Mock private CurrentUserProvider currentUserProvider;
+    @Mock private AiProposalFailureRecorder failureRecorder;
 
     private AiProposalServiceImpl service;
     private ObjectMapper objectMapper;
@@ -72,7 +76,8 @@ class AiProposalServiceImplTest {
                 relatedObjectResolver,
                 currentUserProvider,
                 new AiSensitiveDataSanitizer(),
-                objectMapper);
+                objectMapper,
+                failureRecorder);
         run = new TAiRun();
         run.setId(1L);
         run.setRunNo("AIR1");
@@ -127,7 +132,6 @@ class AiProposalServiceImplTest {
         TAiActionProposal proposal = pendingFollowTaskProposal(LocalDateTime.now().minusMinutes(1));
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
         when(proposalMapper.updateStatusIfCurrent(eq(9L),
                 eq(AiProposalStatus.PENDING_CONFIRMATION.name()),
                 eq(AiProposalStatus.EXPIRED.name()), any(), any()))
@@ -149,7 +153,6 @@ class AiProposalServiceImplTest {
         proposal.setParamsHash("tampered");
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
         when(currentUserProvider.hasAuthority(PermissionCodes.FOLLOW_TASK_CREATE)).thenReturn(true);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.confirm(9L));
@@ -164,7 +167,6 @@ class AiProposalServiceImplTest {
         TAiActionProposal proposal = pendingCommunicationRecordProposal(LocalDateTime.now().plusMinutes(20));
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
         when(currentUserProvider.hasAuthority(PermissionCodes.COMMUNICATION_RECORD_CREATE)).thenReturn(true);
         when(proposalMapper.updateStatusIfCurrent(eq(9L), any(), any(), any(), any())).thenReturn(1);
         TCommunicationRecord record = new TCommunicationRecord();
@@ -190,7 +192,6 @@ class AiProposalServiceImplTest {
         TAiActionProposal proposal = pendingFollowTaskProposal(LocalDateTime.now().plusMinutes(20));
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
         when(currentUserProvider.hasAuthority(PermissionCodes.FOLLOW_TASK_CREATE)).thenReturn(false);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.confirm(9L));
@@ -204,7 +205,6 @@ class AiProposalServiceImplTest {
         TAiActionProposal proposal = pendingFollowTaskProposal(LocalDateTime.now().plusMinutes(20));
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
         when(proposalMapper.updateStatusIfCurrent(eq(9L),
                 eq(AiProposalStatus.PENDING_CONFIRMATION.name()),
                 eq(AiProposalStatus.REJECTED.name()), any(), any()))
@@ -227,7 +227,6 @@ class AiProposalServiceImplTest {
         TAiActionProposal proposal = pendingFollowTaskProposal(LocalDateTime.now().plusMinutes(20));
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
         when(currentUserProvider.hasAuthority(PermissionCodes.FOLLOW_TASK_CREATE)).thenReturn(true);
         when(proposalMapper.updateStatusIfCurrent(eq(9L), any(), any(), any(), any())).thenReturn(1);
         TFollowTask task = new TFollowTask();
@@ -254,7 +253,6 @@ class AiProposalServiceImplTest {
         proposal.setResultSummary("已创建跟进任务");
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
 
         AiProposalConfirmResponse response = service.confirm(9L);
 
@@ -269,7 +267,6 @@ class AiProposalServiceImplTest {
         TAiActionProposal proposal = pendingFollowTaskProposal(LocalDateTime.now().plusMinutes(20));
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
         when(currentUserProvider.hasAuthority(PermissionCodes.FOLLOW_TASK_CREATE)).thenReturn(true);
         when(proposalMapper.updateStatusIfCurrent(eq(9L),
                 eq(AiProposalStatus.PENDING_CONFIRMATION.name()),
@@ -287,7 +284,6 @@ class AiProposalServiceImplTest {
         TAiActionProposal proposal = pendingFollowTaskProposal(LocalDateTime.now().plusMinutes(20));
         when(proposalMapper.selectById(9L)).thenReturn(proposal);
         when(currentUserProvider.getCurrentUserId()).thenReturn(7);
-        when(currentUserProvider.isAdmin()).thenReturn(false);
         when(currentUserProvider.hasAuthority(PermissionCodes.FOLLOW_TASK_CREATE)).thenReturn(true);
         when(proposalMapper.updateStatusIfCurrent(eq(9L), any(), any(), any(), any())).thenReturn(1);
         when(followTaskService.createFollowTask(any()))
@@ -305,6 +301,31 @@ class AiProposalServiceImplTest {
                 "PROPOSAL_EXECUTE_FAILED".equals(command.eventType())
                         && command.resultStatus().name().equals("FAILED")
                         && CodeEnum.PARAM_ERROR.name().equals(command.errorCode())));
+    }
+
+    @Test
+    void confirmBusinessFailure_shouldPersistFailureAfterTransactionRollback() throws Exception {
+        TAiActionProposal proposal = pendingFollowTaskProposal(LocalDateTime.now().plusMinutes(20));
+        when(proposalMapper.selectById(9L)).thenReturn(proposal);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(7);
+        when(currentUserProvider.hasAuthority(PermissionCodes.FOLLOW_TASK_CREATE)).thenReturn(true);
+        when(proposalMapper.updateStatusIfCurrent(eq(9L), any(), any(), any(), any())).thenReturn(1);
+        when(followTaskService.createFollowTask(any()))
+                .thenThrow(new BusinessException(CodeEnum.PARAM_ERROR, "业务状态变化"));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThrows(BusinessException.class, () -> service.confirm(9L));
+            var synchronizations = TransactionSynchronizationManager.getSynchronizations();
+            assertEquals(1, synchronizations.size());
+
+            synchronizations.get(0).afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+            verify(failureRecorder).recordAfterRollback(
+                    proposal, CodeEnum.PARAM_ERROR.name(), "业务状态变化");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     private TAiActionProposal toPersisted(AiProposalCommand command) {

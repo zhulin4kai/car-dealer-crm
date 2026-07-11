@@ -5,11 +5,13 @@ import {
   CalendarCheck,
   FileText,
   Loader2,
+  Pencil,
   Phone,
   Send,
   Sparkles,
   Square,
   TrendingUp,
+  Undo2,
   UserRound,
   Wand2,
 } from '@lucide/vue'
@@ -23,6 +25,7 @@ import {
   confirmAiProposal,
   createAiProactiveSubscription,
   createAiRun,
+  editAiMessage,
   fetchAiConversation,
   fetchAiRunTrace,
   generateAiProactiveEvents,
@@ -34,6 +37,7 @@ import {
   resumeAiProactiveSubscription,
   resumeAiWorkflow,
   streamAiRunEvents,
+  withdrawAiMessage,
 } from '@/modules/ai/api/ai-api'
 import AiMarkdownMessage from '@/modules/ai/components/AiMarkdownMessage.vue'
 import AiProactivePanel from '@/modules/ai/components/AiProactivePanel.vue'
@@ -55,7 +59,9 @@ import type {
   AiWorkflow,
   AiWorkflowStep,
 } from '@/modules/ai/model/ai.types'
-import { messageTip } from '@/shared/utils/feedback'
+import { messageConfirm, messageTip } from '@/shared/utils/feedback'
+import { PERMISSIONS } from '@/shared/constants/permissions'
+import { usePermissionStore } from '@/stores/permission.store'
 
 defineOptions({
   name: 'AiAssistantPanel',
@@ -79,6 +85,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   runChange: [runNo: string]
   conversationChange: [conversationNo: string]
+  busyChange: [busy: boolean]
+  contextChange: [context: AiPageContext]
 }>()
 
 type RecommendationItem = {
@@ -99,6 +107,15 @@ type ConversationTurnView = {
   workflows: AiWorkflow[]
 }
 
+type CharacterQueueState = {
+  receivedContent: string
+  characters: string[]
+  completed: boolean
+  finalContent?: string
+  timer?: number
+  waiters: Array<() => void>
+}
+
 const WORKFLOW_NO_FIELD = `workflow${'No'}` as keyof AiWorkflow
 const STEP_TYPE_FIELD = `step${'Type'}` as keyof AiWorkflowStep
 const PAYLOAD_WORKFLOW_NO_FIELD = `workflow${'No'}`
@@ -106,22 +123,46 @@ const PAYLOAD_STEP_TYPE_FIELD = `step${'Type'}`
 
 const prompt = ref('')
 const loading = ref(false)
+const editingMessageId = ref<string | null>(null)
+const editingContent = ref('')
 const activeConversationNo = ref<string | undefined>(props.initialConversationNo)
 const activeRunNo = ref<string | undefined>(props.initialRunNo)
+const restoredContext = ref<AiPageContext>({})
 const conversationTurns = ref<ConversationTurnView[]>([])
 const proactiveSubscriptions = ref<AiProactiveSubscription[]>([])
 const proactiveEvents = ref<AiProactiveEvent[]>([])
 const activeController = ref<AbortController | null>(null)
+const characterQueues = new Map<string, CharacterQueueState>()
+const permissionStore = usePermissionStore()
 
 const isPageEntry = computed(() => props.entryPoint === 'PAGE')
+const effectiveContext = computed<AiPageContext>(() => {
+  const explicit = normalizedContext(props.context)
+  return explicit.objectType && explicit.objectId ? explicit : restoredContext.value
+})
 const canSend = computed(() => prompt.value.trim().length > 0 && !loading.value)
 const hasTurns = computed(() => conversationTurns.value.length > 0)
 const hasProactiveDetails = computed(
   () => proactiveSubscriptions.value.length > 0 || proactiveEvents.value.length > 0,
 )
+const canConfirmProposal = computed(() =>
+  permissionStore.hasPermission(PERMISSIONS.ai.proposalConfirm),
+)
+const canViewWorkflow = computed(() =>
+  permissionStore.hasPermission(PERMISSIONS.ai.workflowView),
+)
+const canManageWorkflow = computed(() =>
+  permissionStore.hasPermission(PERMISSIONS.ai.workflowManage),
+)
+const canViewProactive = computed(() =>
+  permissionStore.hasPermission(PERMISSIONS.ai.proactiveView),
+)
+const canManageProactive = computed(() =>
+  permissionStore.hasPermission(PERMISSIONS.ai.proactiveUse),
+)
 const recommendations = computed<RecommendationItem[]>(() => {
-  if (props.context.objectType && props.context.objectId) {
-    const objectLabel = contextLabel(props.context.objectType)
+  if (effectiveContext.value.objectType && effectiveContext.value.objectId) {
+    const objectLabel = contextLabel(effectiveContext.value.objectType)
     return [
       {
         label: `总结这个${objectLabel}的关键风险`,
@@ -186,8 +227,8 @@ async function sendPrompt(): Promise<void> {
       prompt: content,
       entryPoint: props.entryPoint,
       conversationNo: activeConversationNo.value,
-      contextObjectType: props.context.objectType,
-      contextObjectId: props.context.objectId,
+      contextObjectType: effectiveContext.value.objectType,
+      contextObjectId: effectiveContext.value.objectId,
     })
     turn.runNo = run.runNo
     turn.turnNo = run.turnNo
@@ -195,6 +236,10 @@ async function sendPrompt(): Promise<void> {
     activeRunNo.value = run.runNo
     if (run.conversationNo) {
       activeConversationNo.value = run.conversationNo
+      emit('conversationChange', run.conversationNo)
+    }
+    if (run.contextObjectType && run.contextObjectId) {
+      setRestoredContext(run.contextObjectType, run.contextObjectId)
     }
     emit('runChange', run.runNo)
     await streamAiRunEvents(
@@ -205,6 +250,8 @@ async function sendPrompt(): Promise<void> {
       },
       controller.signal,
     )
+    await waitForCharacterDrain(turn.id)
+    await refreshConversationAfterCompletedTurn(turn)
   } catch (error) {
     const assistantMessage = ensureAssistantMessage(turn)
     assistantMessage.pending = false
@@ -214,7 +261,10 @@ async function sendPrompt(): Promise<void> {
       return
     }
     if (receivedEvent) {
-      assistantMessage.content ||= '本次处理已完成'
+      stopCharacterQueue(turn.id, assistantMessage)
+      assistantMessage.error = true
+      assistantMessage.content ||= '流式连接中断，请稍后重试'
+      messageTip('AI 流式连接中断，已保留当前内容', 'error')
       return
     }
     assistantMessage.error = true
@@ -227,6 +277,118 @@ async function sendPrompt(): Promise<void> {
       emit('conversationChange', activeConversationNo.value)
     }
   }
+}
+
+async function refreshConversationAfterCompletedTurn(turn: ConversationTurnView): Promise<void> {
+  if (!activeConversationNo.value || turn.status !== 'COMPLETED') return
+  try {
+    applyConversationDetail(await fetchAiConversation(activeConversationNo.value))
+  } catch {
+    // 实时结果已经可用时，恢复接口失败不覆盖用户刚收到的回答。
+  }
+}
+
+function beginEditMessage(message: AiChatMessage): void {
+  if (loading.value) {
+    messageTip('请先停止当前生成，再编辑历史消息', 'warning')
+    return
+  }
+  if (!message.messageNo || !message.canEdit) return
+  editingMessageId.value = message.id
+  editingContent.value = message.content
+}
+
+function cancelEditMessage(): void {
+  editingMessageId.value = null
+  editingContent.value = ''
+}
+
+async function saveEditedMessage(turn: ConversationTurnView): Promise<void> {
+  const message = turn.userMessage
+  const conversationNo = activeConversationNo.value
+  const content = editingContent.value.trim()
+  const expectedVersion = messageVersion(message)
+  if (!message?.messageNo || !conversationNo || !content || expectedVersion === null) return
+  if (loading.value) {
+    messageTip('请先停止当前生成，再编辑历史消息', 'warning')
+    return
+  }
+
+  loading.value = true
+  const controller = new AbortController()
+  activeController.value = controller
+  const replacementTurn = createPendingTurn(content)
+  const turnIndex = conversationTurns.value.findIndex((item) => item.id === turn.id)
+  try {
+    const run = await editAiMessage(conversationNo, message.messageNo, {
+      content,
+      expectedVersion,
+    })
+    if (turnIndex >= 0) {
+      conversationTurns.value.splice(turnIndex, conversationTurns.value.length - turnIndex, replacementTurn)
+    }
+    cancelEditMessage()
+    replacementTurn.runNo = run.runNo
+    replacementTurn.turnNo = run.turnNo
+    replacementTurn.status = run.status
+    activeRunNo.value = run.runNo
+    if (run.contextObjectType && run.contextObjectId) {
+      setRestoredContext(run.contextObjectType, run.contextObjectId)
+    }
+    emit('runChange', run.runNo)
+    await streamAiRunEvents(
+      run.runNo,
+      (event) => handleSseEvent(event, replacementTurn),
+      controller.signal,
+    )
+    await waitForCharacterDrain(replacementTurn.id)
+    await refreshConversationAfterCompletedTurn(replacementTurn)
+  } catch (error) {
+    const assistantMessage = ensureAssistantMessage(replacementTurn)
+    if (isAbortError(error)) {
+      assistantMessage.cancelled = true
+      assistantMessage.content ||= '已停止生成'
+    } else {
+      assistantMessage.error = true
+      assistantMessage.content ||= '消息修改后重新生成失败'
+      messageTip(error instanceof Error ? error.message : '消息修改失败', 'error')
+    }
+  } finally {
+    loading.value = false
+    activeController.value = null
+  }
+}
+
+async function withdrawMessage(turn: ConversationTurnView): Promise<void> {
+  const message = turn.userMessage
+  const conversationNo = activeConversationNo.value
+  const expectedVersion = messageVersion(message)
+  if (!message?.messageNo || !message.canWithdraw || !conversationNo || expectedVersion === null) return
+  if (loading.value) {
+    messageTip('请先停止当前生成，再撤回历史消息', 'warning')
+    return
+  }
+  try {
+    await messageConfirm('撤回只会移出后续 AI 上下文，不会撤销已经执行的业务操作。是否继续？')
+  } catch {
+    return
+  }
+  loading.value = true
+  try {
+    applyConversationDetail(
+      await withdrawAiMessage(conversationNo, message.messageNo, { expectedVersion }),
+    )
+    messageTip('消息已撤回，后续回答不会再使用该内容', 'success')
+  } catch (error) {
+    messageTip(error instanceof Error ? error.message : '消息撤回失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+function messageVersion(message?: AiChatMessage): number | null {
+  const version = message?.version ?? message?.revisionNo
+  return typeof version === 'number' ? version : null
 }
 
 async function stopGeneration(): Promise<void> {
@@ -258,6 +420,7 @@ async function restoreRunTrace(runNo: string): Promise<void> {
   loading.value = true
   try {
     const trace = await fetchAiRunTrace(runNo)
+    setRestoredContext(trace.run.contextObjectType, trace.run.contextObjectId)
     if (trace.run.conversationNo) {
       activeConversationNo.value = trace.run.conversationNo
       emit('conversationChange', trace.run.conversationNo)
@@ -290,11 +453,15 @@ async function restoreConversation(conversationNo: string): Promise<void> {
 
 function applyConversationDetail(detail: AiConversationDetail): void {
   activeConversationNo.value = detail.conversation.conversationNo
+  setRestoredContext(
+    detail.conversation.contextObjectType,
+    detail.conversation.contextObjectId,
+  )
   activeRunNo.value = detail.latestRun?.runNo
   if (activeRunNo.value) {
     emit('runChange', activeRunNo.value)
   }
-  if (detail.turns?.length) {
+  if (Array.isArray(detail.turns)) {
     conversationTurns.value = detail.turns.map(toTurnFromConversationTurn)
     return
   }
@@ -303,6 +470,17 @@ function applyConversationDetail(detail: AiConversationDetail): void {
     return
   }
   conversationTurns.value = fallbackTurnsFromMessages(detail)
+}
+
+function setRestoredContext(objectType?: string, objectId?: string): void {
+  restoredContext.value = normalizedContext({ objectType, objectId })
+  emit('contextChange', effectiveContext.value)
+}
+
+function normalizedContext(context?: AiPageContext): AiPageContext {
+  const objectType = context?.objectType?.trim()
+  const objectId = context?.objectId?.trim()
+  return objectType && objectId ? { objectType, objectId } : {}
 }
 
 function toTurnFromConversationTurn(turn: AiConversationTurn): ConversationTurnView {
@@ -338,7 +516,9 @@ function toTurnFromTrace(trace: AiRunTrace): ConversationTurnView {
     status: trace.run.status,
     userMessage: userMessage ? toChatMessage(userMessage) : undefined,
     assistantMessage: assistantMessage ? toChatMessage(assistantMessage) : undefined,
-    toolResults: trace.toolCalls.map(toToolResult),
+    toolResults: trace.toolCalls
+      .filter((toolCall) => !isProposalToolName(toolCall.toolName))
+      .map(toToolResult),
     proposals: trace.proposals.map(toProposalFromTrace),
     workflows: trace.workflows ?? [],
   }
@@ -386,10 +566,20 @@ function createPendingTurn(content: string): ConversationTurnView {
 }
 
 function toChatMessage(message: AiRunTrace['messages'][number]): AiChatMessage {
+  const isActiveUserMessage =
+    message.role === 'USER' &&
+    (message.status === undefined || message.status === 'ACTIVE') &&
+    typeof message.version === 'number'
   return {
     id: `trace-message-${String(message.id)}`,
+    messageNo: message.messageNo,
     role: traceRoleToChatRole(message.role),
-    content: message.contentSummary,
+    content: message.contentSummary ?? '消息已撤回',
+    status: message.status,
+    revisionNo: message.revisionNo,
+    version: message.version,
+    canEdit: message.canEdit ?? isActiveUserMessage,
+    canWithdraw: message.canWithdraw ?? isActiveUserMessage,
   }
 }
 
@@ -427,19 +617,22 @@ function handleSseEvent(event: AiSseEvent, turn: ConversationTurnView): void {
   const assistantMessage = ensureAssistantMessage(turn)
   const delta = event.payload.content_delta ?? event.payload.delta
   if (event.type === 'message_delta' && typeof delta === 'string') {
-    assistantMessage.content += delta
+    enqueueAssistantCharacters(turn, delta)
     return
   }
   if (event.type === 'message_completed') {
-    if (typeof event.payload.content === 'string') {
-      assistantMessage.content = event.payload.content
-    }
-    assistantMessage.pending = false
+    completeAssistantCharacters(
+      turn,
+      typeof event.payload.content === 'string' ? event.payload.content : undefined,
+    )
     return
   }
   if (event.type === 'tool_call_completed') {
+    const toolName = String(event.payload.toolName ?? event.payload.tool_name ?? '')
+    // Proposal 有独立的确认卡片，重复展示成普通业务结果会让用户误以为已经写入。
+    if (isProposalToolName(toolName)) return
     turn.toolResults.push({
-      toolName: String(event.payload.toolName ?? event.payload.tool_name ?? ''),
+      toolName,
       summary: String(event.payload.outputSummary ?? event.payload.summary ?? '工具调用完成'),
       data: event.payload.data,
       objectRefs: String(event.payload.objectRefs ?? event.payload.object_refs ?? ''),
@@ -455,21 +648,107 @@ function handleSseEvent(event: AiSseEvent, turn: ConversationTurnView): void {
     return
   }
   if (event.type === 'error') {
+    stopCharacterQueue(turn.id, assistantMessage)
     assistantMessage.pending = false
     assistantMessage.error = true
     assistantMessage.content ||= String(event.payload.message ?? 'AI 助手请求失败')
   }
   if (event.type === 'run_completed') {
-    assistantMessage.pending = false
-    assistantMessage.content ||= '本次处理已完成'
+    completeAssistantCharacters(turn)
     turn.status = String(event.payload.status ?? 'COMPLETED')
   }
   if (event.type === 'run_cancelled') {
+    stopCharacterQueue(turn.id, assistantMessage)
     assistantMessage.pending = false
     assistantMessage.cancelled = true
     assistantMessage.content ||= '已停止生成'
     turn.status = 'CANCELLED'
   }
+}
+
+function isProposalToolName(toolName: string): boolean {
+  return toolName === 'create_communication_record_proposal' || toolName === 'create_follow_task_proposal'
+}
+
+function enqueueAssistantCharacters(turn: ConversationTurnView, content: string): void {
+  if (!content) return
+  const state = getCharacterQueue(turn.id)
+  state.receivedContent += content
+  state.characters.push(...Array.from(content))
+  scheduleCharacterDrain(turn, state)
+}
+
+function completeAssistantCharacters(turn: ConversationTurnView, finalContent?: string): void {
+  const state = getCharacterQueue(turn.id)
+  state.completed = true
+  if (finalContent && finalContent.startsWith(state.receivedContent)) {
+    const suffix = finalContent.slice(state.receivedContent.length)
+    state.receivedContent = finalContent
+    state.characters.push(...Array.from(suffix))
+  } else if (finalContent) {
+    state.finalContent = finalContent
+  }
+  scheduleCharacterDrain(turn, state)
+}
+
+function getCharacterQueue(turnId: string): CharacterQueueState {
+  const existing = characterQueues.get(turnId)
+  if (existing) return existing
+  const created: CharacterQueueState = {
+    receivedContent: '',
+    characters: [],
+    completed: false,
+    waiters: [],
+  }
+  characterQueues.set(turnId, created)
+  return created
+}
+
+function scheduleCharacterDrain(
+  turn: ConversationTurnView,
+  state: CharacterQueueState,
+): void {
+  if (state.timer) return
+  const drain = (): void => {
+    state.timer = undefined
+    const assistantMessage = ensureAssistantMessage(turn)
+    const batchSize = state.completed ? Math.max(1, Math.ceil(state.characters.length / 60)) : 1
+    if (state.characters.length) {
+      assistantMessage.content += state.characters.splice(0, batchSize).join('')
+    }
+    if (state.characters.length) {
+      state.timer = window.setTimeout(drain, 12)
+      return
+    }
+    if (!state.completed) return
+    if (state.finalContent) assistantMessage.content = state.finalContent
+    assistantMessage.content ||= '本次处理已完成'
+    assistantMessage.pending = false
+    state.waiters.splice(0).forEach((resolve) => resolve())
+    characterQueues.delete(turn.id)
+  }
+  state.timer = window.setTimeout(drain, 12)
+}
+
+function waitForCharacterDrain(turnId: string): Promise<void> {
+  const state = characterQueues.get(turnId)
+  if (!state || (state.completed && !state.timer && !state.characters.length)) {
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => state.waiters.push(resolve))
+}
+
+function stopCharacterQueue(turnId: string, message?: AiChatMessage): void {
+  const state = characterQueues.get(turnId)
+  if (!state) return
+  if (state.timer) window.clearTimeout(state.timer)
+  state.timer = undefined
+  if (message && state.characters.length) {
+    message.content += state.characters.join('')
+  }
+  state.characters = []
+  state.waiters.splice(0).forEach((resolve) => resolve())
+  characterQueues.delete(turnId)
 }
 
 function ensureAssistantMessage(turn: ConversationTurnView): AiChatMessage {
@@ -728,6 +1007,11 @@ function contextLabel(objectType: string): string {
   const labels: Record<string, string> = {
     CUSTOMER: '客户',
     CLUE: '线索',
+    OPPORTUNITY: '商机',
+    QUOTE: '报价',
+    TEST_DRIVE: '试驾',
+    DELIVERY: '交付',
+    PRODUCT: '产品',
     TRANSACTION: '交易',
     TRAN: '交易',
   }
@@ -737,6 +1021,7 @@ function contextLabel(objectType: string): string {
 function markActiveAssistantCancelled(): void {
   const lastTurn = [...conversationTurns.value].reverse().find((turn) => turn.assistantMessage)
   if (!lastTurn?.assistantMessage) return
+  stopCharacterQueue(lastTurn.id, lastTurn.assistantMessage)
   lastTurn.assistantMessage.pending = false
   lastTurn.assistantMessage.cancelled = true
   lastTurn.assistantMessage.content ||= '已停止生成'
@@ -751,7 +1036,7 @@ function hasTurnBusinessResults(turn: ConversationTurnView): boolean {
 }
 
 function hasTurnProcessDetails(turn: ConversationTurnView): boolean {
-  return turn.toolResults.length > 0 || turn.workflows.length > 0
+  return turn.toolResults.length > 0 || (canViewWorkflow.value && turn.workflows.length > 0)
 }
 
 function turnProcessSummaries(turn: ConversationTurnView): string[] {
@@ -762,11 +1047,25 @@ function turnProcessSummaries(turn: ConversationTurnView): string[] {
 
 onBeforeUnmount(() => {
   activeController.value?.abort()
+  characterQueues.forEach((_, turnId) => stopCharacterQueue(turnId))
+  emit('busyChange', false)
 })
 
 onMounted(() => {
-  void loadProactiveData().catch(() => undefined)
+  if (canViewProactive.value) void loadProactiveData().catch(() => undefined)
 })
+
+watch(
+  () => props.context,
+  () => emit('contextChange', effectiveContext.value),
+  { deep: true, immediate: true },
+)
+
+watch(
+  loading,
+  (busy) => emit('busyChange', busy),
+  { immediate: true },
+)
 
 watch(
   () => props.initialConversationNo,
@@ -796,7 +1095,10 @@ watch(
     class="flex h-full min-h-0 flex-col bg-[var(--crm-bg-surface)]"
     :class="isPageEntry ? 'bg-[var(--crm-bg-page)]' : ''"
   >
-    <div class="min-h-0 flex-1 overflow-y-auto" :class="isPageEntry ? 'px-6 py-6' : 'px-4 py-4'">
+    <div
+      class="min-h-0 flex-1 overflow-y-auto"
+      :class="isPageEntry ? 'px-3 py-5 sm:px-6 sm:py-6' : 'px-3 py-4 sm:px-4'"
+    >
       <div
         class="mx-auto flex min-h-full w-full flex-col"
         :class="isPageEntry ? 'max-w-[980px]' : 'max-w-none'"
@@ -848,10 +1150,71 @@ watch(
               class="ai-message-in flex justify-end gap-3"
               data-testid="ai-user-message"
             >
-              <div
-                class="max-w-[78%] rounded-2xl rounded-tr-md bg-[var(--crm-primary)] px-4 py-2.5 text-sm leading-6 text-white shadow-sm"
-              >
-                {{ turn.userMessage.content }}
+              <div class="group max-w-[82%]">
+                <div
+                  v-if="editingMessageId === turn.userMessage.id"
+                  class="min-w-[280px] rounded-2xl border border-[var(--crm-primary)] bg-[var(--crm-bg-surface)] p-3 shadow-sm"
+                >
+                  <Textarea
+                    v-model="editingContent"
+                    class="min-h-20 resize-none"
+                    maxlength="4000"
+                    aria-label="编辑消息内容"
+                  />
+                  <div class="mt-2 flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" type="button" @click="cancelEditMessage">
+                      取消
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="button"
+                      :disabled="!editingContent.trim()"
+                      @click="saveEditedMessage(turn)"
+                    >
+                      保存并重新生成
+                    </Button>
+                  </div>
+                </div>
+                <div
+                  v-else
+                  class="rounded-2xl rounded-tr-md bg-[var(--crm-primary)] px-4 py-2.5 text-sm leading-6 text-white shadow-sm"
+                >
+                  {{ turn.userMessage.content }}
+                </div>
+                <div
+                  v-if="
+                    editingMessageId !== turn.userMessage.id &&
+                    (turn.userMessage.canEdit || turn.userMessage.canWithdraw)
+                  "
+                  class="mt-1 flex justify-end gap-1 opacity-70 transition-opacity group-hover:opacity-100"
+                >
+                  <Button
+                    v-if="turn.userMessage.canEdit"
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    class="h-7 px-2 text-xs"
+                    :disabled="loading"
+                    aria-label="编辑这条消息"
+                    @click="beginEditMessage(turn.userMessage)"
+                  >
+                    <Pencil class="mr-1 h-3.5 w-3.5" />
+                    编辑
+                  </Button>
+                  <Button
+                    v-if="turn.userMessage.canWithdraw"
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    class="h-7 px-2 text-xs"
+                    :disabled="loading"
+                    aria-label="撤回这条消息"
+                    @click="withdrawMessage(turn)"
+                  >
+                    <Undo2 class="mr-1 h-3.5 w-3.5" />
+                    撤回
+                  </Button>
+                </div>
               </div>
               <div
                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--crm-bg-muted)] text-[var(--crm-text-secondary)]"
@@ -871,7 +1234,7 @@ watch(
                 <Sparkles class="h-4 w-4" />
               </div>
               <div
-                class="max-w-[78%] rounded-2xl rounded-tl-md border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] px-4 py-2.5 text-sm leading-6 text-[var(--crm-text-primary)] shadow-sm"
+                class="max-w-[84%] px-1 py-1 text-sm leading-6 text-[var(--crm-text-primary)]"
               >
                 <AiMarkdownMessage
                   v-if="turn.assistantMessage.content"
@@ -901,7 +1264,7 @@ watch(
             <section
               v-if="hasTurnBusinessResults(turn)"
               data-testid="ai-business-results"
-              class="ml-12 space-y-2"
+              class="space-y-2 sm:ml-12"
             >
               <AiToolResultCard
                 v-for="(result, index) in turn.toolResults"
@@ -913,9 +1276,10 @@ watch(
             <AiProposalCard
               v-for="proposal in turn.proposals"
               :key="String(proposal.proposalId)"
-              class="ml-12"
+              class="sm:ml-12"
               :proposal="proposal"
               :loading="loading"
+              :can-confirm="canConfirmProposal"
               @confirm="confirmProposal"
               @reject="rejectProposal"
             />
@@ -923,7 +1287,7 @@ watch(
             <details
               v-if="hasTurnProcessDetails(turn)"
               data-testid="ai-execution-details"
-              class="ml-12 rounded-lg border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-3 text-sm text-[var(--crm-text-secondary)]"
+              class="rounded-lg bg-[var(--crm-bg-muted)] p-3 text-sm text-[var(--crm-text-secondary)] sm:ml-12"
             >
               <summary class="cursor-pointer text-sm font-medium text-[var(--crm-text-secondary)]">
                 查看处理过程
@@ -942,9 +1306,10 @@ watch(
                   </ul>
                 </section>
                 <AiWorkflowPanel
-                  v-if="turn.workflows.length"
+                  v-if="canViewWorkflow && turn.workflows.length"
                   :workflows="turn.workflows"
                   :loading="loading"
+                  :can-manage="canManageWorkflow"
                   @pause="pauseWorkflow"
                   @resume="resumeWorkflow"
                   @cancel="cancelWorkflow"
@@ -954,7 +1319,7 @@ watch(
           </article>
 
           <details
-            v-if="hasProactiveDetails"
+            v-if="canViewProactive && hasProactiveDetails"
             data-testid="ai-proactive-details"
             class="rounded-lg border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-3 text-sm text-[var(--crm-text-secondary)]"
           >
@@ -966,6 +1331,7 @@ watch(
               :subscriptions="proactiveSubscriptions"
               :events="proactiveEvents"
               :loading="loading"
+              :can-manage="canManageProactive"
               @create-inventory="createInventorySubscription"
               @create-follow="createFollowSubscription"
               @pause="pauseSubscription"
@@ -980,7 +1346,7 @@ watch(
 
     <form
       class="shrink-0 border-t border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)]"
-      :class="isPageEntry ? 'px-6 py-4' : 'p-3'"
+      :class="isPageEntry ? 'px-3 py-4 sm:px-6' : 'p-3'"
       @submit.prevent="sendPrompt"
     >
       <div

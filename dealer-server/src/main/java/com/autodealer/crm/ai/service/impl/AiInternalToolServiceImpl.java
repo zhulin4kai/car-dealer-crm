@@ -6,8 +6,10 @@ import com.autodealer.crm.ai.ToolRegistry;
 import com.autodealer.crm.ai.dto.AiToolExecutionResponse;
 import com.autodealer.crm.ai.dto.ExecuteAiToolRequest;
 import com.autodealer.crm.ai.mapper.TAiRunMapper;
+import com.autodealer.crm.ai.mapper.TAiToolCallMapper;
 import com.autodealer.crm.ai.model.TAiRun;
 import com.autodealer.crm.ai.service.AiInternalToolService;
+import com.autodealer.crm.ai.service.AiAssistantPolicyService;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
@@ -18,18 +20,26 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 public class AiInternalToolServiceImpl implements AiInternalToolService {
     private final TAiRunMapper runMapper;
     private final UserService userService;
     private final ToolRegistry toolRegistry;
+    private final TAiToolCallMapper toolCallMapper;
+    private final AiAssistantPolicyService policyService;
 
     public AiInternalToolServiceImpl(TAiRunMapper runMapper,
                                      UserService userService,
-                                     ToolRegistry toolRegistry) {
+                                     ToolRegistry toolRegistry,
+                                     TAiToolCallMapper toolCallMapper,
+                                     AiAssistantPolicyService policyService) {
         this.runMapper = runMapper;
         this.userService = userService;
         this.toolRegistry = toolRegistry;
+        this.toolCallMapper = toolCallMapper;
+        this.policyService = policyService;
     }
 
     @Override
@@ -37,6 +47,21 @@ public class AiInternalToolServiceImpl implements AiInternalToolService {
         TAiRun run = runMapper.selectByRunNo(request.getRunNo());
         if (run == null) {
             throw new BusinessException(CodeEnum.AI_RUN_NOT_FOUND, "AI Run 不存在");
+        }
+        if (!"RUNNING".equals(run.getStatus())
+                || !Boolean.TRUE.equals(run.getContextActive())
+                || (run.getExpiresTime() != null && run.getExpiresTime().isBefore(LocalDateTime.now()))) {
+            throw new BusinessException(CodeEnum.AI_TOOL_FORBIDDEN, "AI Run 当前不允许执行工具");
+        }
+        var policy = policyService.getPolicy();
+        var definition = toolRegistry.getDefinition(toolName);
+        if (!Boolean.TRUE.equals(policy.getEnabledTools())
+                || !policy.getAllowedToolNames().contains(toolName)
+                || (definition.requiresConfirmation() && !Boolean.TRUE.equals(policy.getProposalsEnabled()))) {
+            throw new BusinessException(CodeEnum.AI_TOOL_FORBIDDEN, "AI 策略未允许该工具");
+        }
+        if (toolCallMapper.countByRunId(run.getId()) >= policy.getMaxToolCallsPerRun()) {
+            throw new BusinessException(CodeEnum.AI_TOOL_FORBIDDEN, "AI Run 工具调用次数已达上限");
         }
         TUser runUser = userService.getLoginUserById(run.getUserId());
         if (runUser == null || !runUser.isEnabled()) {

@@ -45,14 +45,26 @@ const allowedTags = [
   'ul',
 ]
 
+const normalizedContent = computed(() => normalizeModelMarkdown(props.content))
+
 const renderedHtml = computed(() =>
-  DOMPurify.sanitize(markdown.render(props.content), {
+  DOMPurify.sanitize(markdown.render(normalizedContent.value), {
     ALLOWED_TAGS: allowedTags,
     ALLOWED_ATTR: ['href', 'rel', 'target', 'title'],
     FORBID_TAGS: ['style', 'script', 'iframe', 'img'],
     FORBID_ATTR: ['style', 'onerror', 'onclick', 'onload'],
   }),
 )
+
+function normalizeModelMarkdown(content: string): string {
+  const inlineMarkers = content.match(/(?:^|[。！？!?])\s*\d{1,2}[.、](?=[^\s\d])/g)
+  if (!inlineMarkers || inlineMarkers.length < 2) return content
+  return content.replace(
+    /(^|[。！？!?])\s*(\d{1,2})[.、](?=[^\s\d])/g,
+    (_match, punctuation: string, index: string) =>
+      `${punctuation}${punctuation ? '\n\n' : ''}**${index}.** `,
+  )
+}
 </script>
 
 <template>

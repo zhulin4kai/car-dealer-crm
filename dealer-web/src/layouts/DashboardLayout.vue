@@ -143,19 +143,22 @@
       </div>
 
       <AiSidePanel
-        :open="aiPanelOpen && !isAiPage"
+        :open="aiAssistantStore.isPanelOpen && !isAiPage"
         :context="aiPageContext"
-        @close="aiPanelOpen = false"
+        @close="aiAssistantStore.closePanel"
         @expand="expandAiPanel"
       />
     </div>
 
-    <AiFloatingButton v-if="canUseAi && !isAiPage && !aiPanelOpen" @click="openAiPanel" />
+    <AiFloatingButton
+      v-if="canUseAi && !isAiPage && !aiAssistantStore.isPanelOpen"
+      @click="openAiPanel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Car, LogOut, PanelLeftClose, PanelLeftOpen, Sparkles } from '@lucide/vue'
 
@@ -168,6 +171,7 @@ import { PERMISSIONS } from '@/shared/constants/permissions'
 import { messageTip } from '@/shared/utils/feedback'
 import { resolveIcon } from '@/shared/utils/icon-mapper'
 import { useAppStore } from '@/stores/app.store'
+import { useAiAssistantStore } from '@/stores/ai-assistant.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { usePermissionStore } from '@/stores/permission.store'
 
@@ -178,9 +182,9 @@ defineOptions({
 const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
+const aiAssistantStore = useAiAssistantStore()
 const authStore = useAuthStore()
 const permissionStore = usePermissionStore()
-const aiPanelOpen = ref(false)
 
 const user = computed<User>(() => authStore.currentUser ?? {})
 const isCollapse = computed(() => appStore.sidebarCollapsed)
@@ -201,7 +205,7 @@ const getUserFirstChar = computed(() => {
   const name = user.value.name?.trim() ?? ''
   return name ? name.charAt(0).toUpperCase() : '管'
 })
-const aiPageContext = computed<AiPageContext>(() => {
+const routePageContext = computed<AiPageContext>(() => {
   const id = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
   const objectId = typeof id === 'string' ? id : undefined
   switch (route.name) {
@@ -217,6 +221,7 @@ const aiPageContext = computed<AiPageContext>(() => {
       return {}
   }
 })
+const aiPageContext = computed(() => aiAssistantStore.context)
 
 type NavigationMenuItem = Omit<Permission, 'url' | 'subPermissionList'> & {
   name: string
@@ -460,6 +465,7 @@ async function logout(): Promise<void> {
   try {
     await authStore.logout()
     permissionStore.clearPermissions()
+    aiAssistantStore.reset()
     messageTip('退出成功', 'success')
     await router.push('/')
   } catch {
@@ -472,11 +478,11 @@ function backToHome(): void {
 }
 
 function openAiPanel(): void {
-  aiPanelOpen.value = true
+  aiAssistantStore.openPanel(routePageContext.value)
 }
 
 function expandAiPanel(payload?: { conversationNo?: string; runNo?: string }): void {
-  aiPanelOpen.value = false
+  aiAssistantStore.closePanel()
   void router.push({
     name: 'ai-assistant',
     query: payload?.conversationNo
@@ -486,6 +492,13 @@ function expandAiPanel(payload?: { conversationNo?: string; runNo?: string }): v
         : undefined,
   })
 }
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (aiAssistantStore.isPanelOpen) aiAssistantStore.setContext(routePageContext.value)
+  },
+)
 
 onMounted(async () => {
   if (!authStore.currentUser) {

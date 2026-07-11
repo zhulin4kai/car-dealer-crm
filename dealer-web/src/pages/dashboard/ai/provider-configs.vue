@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import {
   ArrowLeft,
   CheckCircle2,
+  Globe2,
   KeyRound,
   MoreHorizontal,
   Pencil,
@@ -12,11 +13,14 @@ import {
   Power,
   RefreshCcw,
   Save,
+  ShieldCheck,
+  Wrench,
 } from '@lucide/vue'
 
 import { ApiError } from '@/shared/api/api-error'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
@@ -46,10 +50,12 @@ import {
   activateAiProviderConfig,
   createAiProviderConfig,
   disableAiProviderConfig,
+  fetchAiPolicy,
   listAiProviderConfigs,
   rotateAiProviderKey,
   testAiProviderConfig,
   updateAiProviderConfig,
+  updateAiPolicy,
 } from '@/modules/ai/api/ai-api'
 import {
   AI_PROVIDER_PRESETS,
@@ -61,6 +67,7 @@ import type {
   AiProviderConfig,
   AiProviderFormat,
   AiProviderTestStatus,
+  AiPolicy,
   CreateAiProviderConfigRequest,
 } from '@/modules/ai/model/ai.types'
 import { PERMISSIONS } from '@/shared/constants/permissions'
@@ -90,6 +97,36 @@ const rotatingConfig = ref<AiProviderConfig | null>(null)
 const rotateApiKey = ref('')
 const submitError = ref('')
 const rotateError = ref('')
+const policyLoaded = ref(false)
+const policySaving = ref(false)
+const policy = reactive<AiPolicy>({
+  enabledTools: true,
+  allowedToolNames: [],
+  proposalsEnabled: true,
+  maxToolCallsPerRun: 4,
+  safetyMode: 'STRICT',
+  networkMode: 'PROVIDER_ONLY',
+  contextMessageLimit: 8,
+  summaryMaxChars: 2000,
+  maxRunSeconds: 60,
+  version: 0,
+})
+const TOOL_OPTIONS = [
+  { name: 'search_customers', label: '客户检索', description: '按当前用户数据范围查询客户。' },
+  { name: 'get_customer_profile', label: '客户摘要', description: '读取有权查看的客户摘要。' },
+  { name: 'list_my_followups', label: '跟进任务', description: '查询当前账号可见的跟进任务。' },
+  { name: 'get_transaction_detail', label: '交易摘要', description: '读取有权查看的交易信息。' },
+  { name: 'list_pending_transaction_approvals', label: '待审批交易', description: '只读查询待处理交易。' },
+  { name: 'resolve_vehicle_product', label: '车辆商品', description: '读取车辆商品和规格。' },
+  { name: 'get_inventory_alerts', label: '库存预警', description: '查询当前库存风险。' },
+  { name: 'get_opportunity_detail', label: '商机详情', description: '读取有权查看的商机进展。' },
+  { name: 'get_quote_detail', label: '报价详情', description: '读取报价版本和商品金额。' },
+  { name: 'get_test_drive_detail', label: '试驾详情', description: '读取试驾预约与执行结果。' },
+  { name: 'get_delivery_detail', label: '交付详情', description: '读取交付计划、签收和异常摘要。' },
+  { name: 'get_business_overview', label: '经营概览', description: '读取当前权限范围内的经营指标。' },
+  { name: 'create_communication_record_proposal', label: '沟通记录提议', description: '只生成待确认提议。' },
+  { name: 'create_follow_task_proposal', label: '跟进任务提议', description: '只生成待确认提议。' },
+] as const
 const form = reactive<ProviderConfigForm>({
   presetKey: 'qwen',
   regionKey: 'cn-beijing',
@@ -113,6 +150,22 @@ const canManage = computed(() => permissionStore.hasPermission(PERMISSIONS.ai.pr
 const canRotateKey = computed(() =>
   permissionStore.hasPermission(PERMISSIONS.ai.providerConfigRotateKey),
 )
+const canViewPolicy = computed(() => permissionStore.hasPermission(PERMISSIONS.ai.policyView))
+const canManagePolicy = computed(() => permissionStore.hasPermission(PERMISSIONS.ai.policyManage))
+const policyValidationError = computed(() => {
+  const ranges = [
+    [policy.maxToolCallsPerRun, 1, 50, '单次工具调用数'],
+    [policy.contextMessageLimit, 1, 8, '最近消息数量'],
+    [policy.summaryMaxChars, 500, 8000, '摘要最大字符数'],
+    [policy.maxRunSeconds, 10, 600, '单次运行最长时间'],
+  ] as const
+  for (const [value, min, max, label] of ranges) {
+    if (!Number.isInteger(value) || value < min || value > max) {
+      return `${label}必须在 ${min} 到 ${max} 之间`
+    }
+  }
+  return ''
+})
 const isEditing = computed(() => editingConfigNo.value !== null)
 const selectedPreset = computed(() => findAiProviderPreset(form.presetKey))
 const selectedPresetModels = computed(() => selectedPreset.value.models)
@@ -156,6 +209,53 @@ async function loadConfigs(): Promise<void> {
     configs.value = await listAiProviderConfigs()
   } finally {
     loading.value = false
+  }
+}
+
+async function loadPolicy(): Promise<void> {
+  try {
+    Object.assign(policy, await fetchAiPolicy())
+    policy.allowedToolNames = [...policy.allowedToolNames]
+    policyLoaded.value = true
+  } catch (error) {
+    messageTip(getErrorMessage(error, 'AI 策略加载失败'), 'error')
+  }
+}
+
+function isToolAllowed(toolName: string): boolean {
+  return policy.allowedToolNames.includes(toolName)
+}
+
+function toggleTool(toolName: string, enabled: boolean): void {
+  if (enabled) {
+    if (!policy.allowedToolNames.includes(toolName)) {
+      policy.allowedToolNames.push(toolName)
+    }
+    return
+  }
+  policy.allowedToolNames = policy.allowedToolNames.filter((name) => name !== toolName)
+}
+
+async function savePolicy(): Promise<void> {
+  if (!canManagePolicy.value || policySaving.value) return
+  if (policyValidationError.value) {
+    messageTip(policyValidationError.value, 'error')
+    return
+  }
+  policySaving.value = true
+  try {
+    Object.assign(
+      policy,
+      await updateAiPolicy({
+        ...policy,
+        allowedToolNames: [...policy.allowedToolNames],
+      }),
+    )
+    messageTip('AI 运行策略已保存', 'success')
+  } catch (error) {
+    messageTip(getErrorMessage(error, 'AI 运行策略保存失败'), 'error')
+  } finally {
+    policySaving.value = false
   }
 }
 
@@ -422,6 +522,7 @@ function modelLabel(model: AiProviderModelPreset): string {
 onMounted(() => {
   resetForm()
   void loadConfigs()
+  if (canViewPolicy.value) void loadPolicy()
 })
 </script>
 
@@ -586,6 +687,167 @@ onMounted(() => {
 
       <div v-if="loading" class="border-t border-[var(--crm-border-light)] px-5 py-3 text-sm text-[var(--crm-text-tertiary)]">
         处理中...
+      </div>
+    </section>
+
+    <section v-if="canViewPolicy" class="crm-panel" data-testid="ai-policy-section">
+      <div
+        class="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--crm-border-light)] px-5 py-4"
+      >
+        <div>
+          <h2 class="text-base font-semibold text-[var(--crm-text-primary)]">AI 运行策略</h2>
+          <p class="mt-1 text-sm text-[var(--crm-text-tertiary)]">
+            控制系统允许使用的工具、安全级别和上下文规模；用户仍只能访问其 CRM 权限范围内的数据。
+          </p>
+        </div>
+        <Button
+          v-if="canManagePolicy"
+          class="gap-2"
+          :disabled="!policyLoaded || policySaving || !!policyValidationError"
+          @click="savePolicy"
+        >
+          <Save class="h-4 w-4" />
+          保存运行策略
+        </Button>
+      </div>
+
+      <div v-if="policyLoaded" class="grid gap-6 p-5 xl:grid-cols-2">
+        <Alert v-if="policyValidationError" variant="destructive" class="xl:col-span-2">
+          <AlertDescription>{{ policyValidationError }}</AlertDescription>
+        </Alert>
+        <section class="space-y-4 rounded-xl border border-[var(--crm-border-light)] p-4">
+          <div class="flex items-start gap-3">
+            <Wrench class="mt-0.5 h-5 w-5 text-[var(--crm-primary)]" />
+            <div>
+              <h3 class="font-semibold text-[var(--crm-text-primary)]">业务工具</h3>
+              <p class="mt-1 text-xs leading-5 text-[var(--crm-text-tertiary)]">
+                系统开关只会进一步收紧能力，不能替代每个用户原有的功能权限和数据范围。
+              </p>
+            </div>
+          </div>
+          <label class="flex items-center gap-3 text-sm">
+            <Checkbox v-model="policy.enabledTools" :disabled="!canManagePolicy" />
+            <span>允许 AI 使用已批准的业务工具</span>
+          </label>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label
+              v-for="tool in TOOL_OPTIONS"
+              :key="tool.name"
+              class="flex items-start gap-3 rounded-lg bg-[var(--crm-bg-muted)] p-3"
+            >
+              <Checkbox
+                class="mt-0.5"
+                :model-value="isToolAllowed(tool.name)"
+                :disabled="!canManagePolicy || !policy.enabledTools"
+                @update:model-value="toggleTool(tool.name, $event === true)"
+              />
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-[var(--crm-text-primary)]">
+                  {{ tool.label }}
+                </span>
+                <span class="mt-1 block text-xs leading-5 text-[var(--crm-text-tertiary)]">
+                  {{ tool.description }}
+                </span>
+              </span>
+            </label>
+          </div>
+          <label class="flex items-center gap-3 text-sm">
+            <Checkbox v-model="policy.proposalsEnabled" :disabled="!canManagePolicy" />
+            <span>允许生成需要用户确认的低风险提议</span>
+          </label>
+          <div class="max-w-[240px] space-y-2">
+            <Label>单次运行最多工具调用数</Label>
+            <Input
+              v-model.number="policy.maxToolCallsPerRun"
+              type="number"
+              min="1"
+              max="50"
+              :disabled="!canManagePolicy"
+            />
+          </div>
+        </section>
+
+        <section class="space-y-4 rounded-xl border border-[var(--crm-border-light)] p-4">
+          <div class="flex items-start gap-3">
+            <ShieldCheck class="mt-0.5 h-5 w-5 text-[var(--crm-primary)]" />
+            <div>
+              <h3 class="font-semibold text-[var(--crm-text-primary)]">安全策略</h3>
+              <p class="mt-1 text-xs leading-5 text-[var(--crm-text-tertiary)]">
+                严格模式会使用更保守的敏感信息处理和工具选择规则。
+              </p>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <Label>安全模式</Label>
+            <NativeSelect v-model="policy.safetyMode" class="w-full" :disabled="!canManagePolicy">
+              <option value="STRICT">严格保护</option>
+              <option value="STANDARD">标准保护</option>
+            </NativeSelect>
+          </div>
+          <div class="space-y-2">
+            <Label>单次运行最长时间（秒）</Label>
+            <Input
+              v-model.number="policy.maxRunSeconds"
+              type="number"
+              min="10"
+              max="600"
+              :disabled="!canManagePolicy"
+            />
+          </div>
+        </section>
+
+        <section class="space-y-4 rounded-xl border border-[var(--crm-border-light)] p-4">
+          <div class="flex items-start gap-3">
+            <Globe2 class="mt-0.5 h-5 w-5 text-[var(--crm-primary)]" />
+            <div>
+              <h3 class="font-semibold text-[var(--crm-text-primary)]">联网边界</h3>
+              <p class="mt-1 text-xs leading-5 text-[var(--crm-text-tertiary)]">
+                这里只允许连接管理员配置的模型供应商，不开放任意网页访问、URL 抓取或通用网络请求。
+              </p>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <Label>模型供应商网络</Label>
+            <NativeSelect v-model="policy.networkMode" class="w-full" :disabled="!canManagePolicy">
+              <option value="DISABLED">禁止模型供应商网络调用</option>
+              <option value="PROVIDER_ONLY">仅允许当前启用的模型供应商</option>
+            </NativeSelect>
+          </div>
+        </section>
+
+        <section class="space-y-4 rounded-xl border border-[var(--crm-border-light)] p-4">
+          <div>
+            <h3 class="font-semibold text-[var(--crm-text-primary)]">上下文与摘要</h3>
+            <p class="mt-1 text-xs leading-5 text-[var(--crm-text-tertiary)]">
+              控制每次发送给模型的最近消息数量和脱敏摘要长度。
+            </p>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="space-y-2">
+              <Label>最近消息数量</Label>
+              <Input
+                v-model.number="policy.contextMessageLimit"
+                type="number"
+                min="1"
+                max="8"
+                :disabled="!canManagePolicy"
+              />
+            </div>
+            <div class="space-y-2">
+              <Label>摘要最大字符数</Label>
+              <Input
+                v-model.number="policy.summaryMaxChars"
+                type="number"
+                min="500"
+                max="8000"
+                :disabled="!canManagePolicy"
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+      <div v-else class="px-5 py-10 text-center text-sm text-[var(--crm-text-tertiary)]">
+        正在加载 AI 运行策略...
       </div>
     </section>
 

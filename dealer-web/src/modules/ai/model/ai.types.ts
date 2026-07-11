@@ -66,10 +66,19 @@ export interface AiRun {
 
 export interface AiTraceMessage {
   id: EntityId
+  messageNo?: string
   role: 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL'
   sequenceNo: number
   visibleToUser?: boolean
-  contentSummary: string
+  contentSummary: string | null
+  status?: 'ACTIVE' | 'SUPERSEDED' | 'WITHDRAWN'
+  revisionNo?: number
+  includedInContext?: boolean
+  version?: number
+  canEdit?: boolean
+  canWithdraw?: boolean
+  editTime?: string
+  withdrawnTime?: string
   createTime?: string
 }
 
@@ -312,12 +321,45 @@ export interface AiSseEvent {
 
 export interface AiChatMessage {
   id: string
+  messageNo?: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  status?: 'ACTIVE' | 'SUPERSEDED' | 'WITHDRAWN'
+  revisionNo?: number
+  version?: number
+  canEdit?: boolean
+  canWithdraw?: boolean
   pending?: boolean
   cancelled?: boolean
   error?: boolean
 }
+
+export interface EditAiMessageRequest {
+  content: string
+  expectedVersion: number
+}
+
+export interface WithdrawAiMessageRequest {
+  expectedVersion: number
+}
+
+export type AiSafetyMode = 'STRICT' | 'STANDARD'
+export type AiNetworkMode = 'DISABLED' | 'PROVIDER_ONLY'
+
+export interface AiPolicy {
+  enabledTools: boolean
+  allowedToolNames: string[]
+  proposalsEnabled: boolean
+  maxToolCallsPerRun: number
+  safetyMode: AiSafetyMode
+  networkMode: AiNetworkMode
+  contextMessageLimit: number
+  summaryMaxChars: number
+  maxRunSeconds: number
+  version: number
+}
+
+export type UpdateAiPolicyRequest = AiPolicy
 
 export type AiProviderFormat = 'OPENAI_COMPATIBLE' | 'ANTHROPIC'
 export type AiProviderTestStatus = 'UNTESTED' | 'SUCCESS' | 'FAILED'

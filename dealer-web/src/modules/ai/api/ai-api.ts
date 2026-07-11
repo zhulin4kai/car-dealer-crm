@@ -4,6 +4,7 @@ import { readStoredToken } from '@/shared/storage/token-storage'
 import type {
   AiConversation,
   AiConversationDetail,
+  AiPolicy,
   AiProviderConfig,
   AiProviderConfigTestResponse,
   AiProposalConfirmResponse,
@@ -19,10 +20,16 @@ import type {
   CreateAiProactiveSubscriptionRequest,
   CreateAiWorkflowRequest,
   CreateAiRunRequest,
+  EditAiMessageRequest,
   RotateAiProviderKeyRequest,
   RenameAiConversationRequest,
+  UpdateAiPolicyRequest,
   UpdateAiProviderConfigRequest,
+  WithdrawAiMessageRequest,
 } from '@/modules/ai/model/ai.types'
+
+const MAX_SSE_RECONNECTS = 2
+const TERMINAL_SSE_EVENTS = new Set(['run_completed', 'run_cancelled'])
 
 export function listAiConversations(includeArchived = false): Promise<AiConversation[]> {
   return httpClient.get<AiConversation[]>('/api/ai/conversations', {
@@ -55,6 +62,28 @@ export function renameAiConversation(
 export function archiveAiConversation(conversationNo: string): Promise<AiConversation> {
   return httpClient.post<AiConversation>(
     `/api/ai/conversations/${encodeURIComponent(conversationNo)}/archive`,
+  )
+}
+
+export function editAiMessage(
+  conversationNo: string,
+  messageNo: string,
+  data: EditAiMessageRequest,
+): Promise<AiRun> {
+  return httpClient.patch<AiRun>(
+    `/api/ai/conversations/${encodeURIComponent(conversationNo)}/messages/${encodeURIComponent(messageNo)}`,
+    data,
+  )
+}
+
+export function withdrawAiMessage(
+  conversationNo: string,
+  messageNo: string,
+  data: WithdrawAiMessageRequest,
+): Promise<AiConversationDetail> {
+  return httpClient.post<AiConversationDetail>(
+    `/api/ai/conversations/${encodeURIComponent(conversationNo)}/messages/${encodeURIComponent(messageNo)}/withdraw`,
+    data,
   )
 }
 
@@ -201,50 +230,123 @@ export function disableAiProviderConfig(configNo: string): Promise<AiProviderCon
   return httpClient.post<AiProviderConfig>(`/api/ai/provider-configs/${configNo}/disable`)
 }
 
+export function fetchAiPolicy(): Promise<AiPolicy> {
+  return httpClient.get<AiPolicy>('/api/ai/policy')
+}
+
+export function updateAiPolicy(data: UpdateAiPolicyRequest): Promise<AiPolicy> {
+  return httpClient.put<AiPolicy>('/api/ai/policy', data)
+}
+
+export interface StreamAiRunOptions {
+  afterSequence?: number
+  maxReconnects?: number
+}
+
 export async function streamAiRunEvents(
   runNo: string,
   onEvent: (event: AiSseEvent) => void,
   signal?: AbortSignal,
+  options: StreamAiRunOptions = {},
 ): Promise<void> {
-  const token = readStoredToken()
-  const response = await fetch(`${env.apiBaseUrl}/api/ai/runs/${encodeURIComponent(runNo)}/events`, {
-    method: 'GET',
-    headers: token ? { Authorization: `Bearer ${token.token}` } : {},
-    signal,
-  })
-
-  if (!response.ok || !response.body) {
-    throw new Error(`AI SSE failed: ${response.status}`)
-  }
-
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
+  const maxReconnects = options.maxReconnects ?? MAX_SSE_RECONNECTS
+  let reconnectCount = 0
+  let lastSequence = options.afterSequence ?? 0
 
   while (true) {
+    if (signal?.aborted) throw createAbortError()
+    const token = readStoredToken()
+    const query = lastSequence > 0 ? `?afterSequence=${lastSequence}` : ''
+    try {
+      const response = await fetch(
+        `${env.apiBaseUrl}/api/ai/runs/${encodeURIComponent(runNo)}/events${query}`,
+        {
+          method: 'GET',
+          headers: token ? { Authorization: `Bearer ${token.token}` } : {},
+          signal,
+        },
+      )
+
+      if (!response.ok || !response.body) {
+        throw new Error(`AI SSE failed: ${response.status}`)
+      }
+
+      const result = await decodeAiSseStream(response.body, onEvent, lastSequence)
+      lastSequence = result.lastSequence
+      if (result.terminal) return
+    } catch (error) {
+      if (signal?.aborted || isAbortError(error)) throw error
+      if (reconnectCount >= maxReconnects) throw error
+    }
+
+    if (reconnectCount >= maxReconnects) {
+      throw new Error('AI SSE ended before a terminal event')
+    }
+    reconnectCount += 1
+  }
+}
+
+export async function decodeAiSseStream(
+  stream: ReadableStream<Uint8Array>,
+  onEvent: (event: AiSseEvent) => void,
+  afterSequence = 0,
+): Promise<{ lastSequence: number; terminal: boolean }> {
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let lastSequence = afterSequence
+  let terminal = false
+
+  const consumeFrame = (frame: string): void => {
+    if (terminal) return
+    const event = parseSseFrame(frame)
+    if (!event) return
+    if (event.sequence > 0 && event.sequence <= lastSequence) return
+    if (event.sequence > 0) lastSequence = event.sequence
+    onEvent(event)
+    terminal ||= TERMINAL_SSE_EVENTS.has(event.type)
+  }
+
+  while (!terminal) {
     const { value, done } = await reader.read()
     if (done) break
     buffer += decoder.decode(value, { stream: true })
-    const chunks = buffer.split('\n\n')
-    buffer = chunks.pop() ?? ''
-    chunks.forEach((chunk) => {
-      const event = parseSseChunk(chunk)
-      if (event) onEvent(event)
-    })
+    const frames = buffer.split(/\r?\n\r?\n/)
+    buffer = frames.pop() ?? ''
+    frames.forEach(consumeFrame)
   }
 
-  const tail = parseSseChunk(buffer)
-  if (tail) onEvent(tail)
+  buffer += decoder.decode()
+  if (!terminal && buffer.trim()) consumeFrame(buffer)
+  await reader.cancel().catch(() => undefined)
+  return { lastSequence, terminal }
 }
 
-function parseSseChunk(chunk: string): AiSseEvent | null {
-  const dataLine = chunk
+export function parseSseFrame(frame: string): AiSseEvent | null {
+  const data = frame
     .split(/\r?\n/)
-    .find((line) => line.startsWith('data:'))
-  if (!dataLine) return null
-  const raw = dataLine.slice(5).trim()
-  if (!raw) return null
-  return JSON.parse(raw) as AiSseEvent
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).replace(/^ /, ''))
+    .join('\n')
+  if (!data.trim()) return null
+  try {
+    const parsed: unknown = JSON.parse(data)
+    if (!parsed || typeof parsed !== 'object') return null
+    const event = parsed as Partial<AiSseEvent>
+    if (typeof event.type !== 'string' || typeof event.sequence !== 'number') return null
+    return parsed as AiSseEvent
+  } catch {
+    // 单个损坏事件不应中断后续已经到达的有效增量。
+    return null
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function createAbortError(): DOMException {
+  return new DOMException('The operation was aborted', 'AbortError')
 }
 
 function normalizeContextPayload<

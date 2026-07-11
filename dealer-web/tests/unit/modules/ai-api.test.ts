@@ -16,6 +16,8 @@ import {
   createAiProactiveSubscription,
   createAiWorkflow,
   disableAiProviderConfig,
+  editAiMessage,
+  fetchAiPolicy,
   fetchAiConversation,
   fetchAiRun,
   fetchAiRunTrace,
@@ -33,6 +35,8 @@ import {
   resumeAiWorkflow,
   testAiProviderConfig,
   updateAiProviderConfig,
+  updateAiPolicy,
+  withdrawAiMessage,
 } from '@/modules/ai/api/ai-api'
 
 const mockedAxios = vi.mocked(axios)
@@ -60,6 +64,8 @@ describe('ai api contract', () => {
     await fetchAiConversation('AIC1')
     await renameAiConversation('AIC1', { title: '交易分析' })
     await archiveAiConversation('AIC1')
+    await editAiMessage('AIC1', 'AIM1', { content: '修改后的问题', expectedVersion: 2 })
+    await withdrawAiMessage('AIC1', 'AIM1', { expectedVersion: 3 })
     await fetchAiRun('AIR1')
     await fetchAiRunTrace('AIR1')
     await cancelAiRun('AIR1', '停止生成')
@@ -105,6 +111,19 @@ describe('ai api contract', () => {
     await testAiProviderConfig('AIPC1')
     await activateAiProviderConfig('AIPC1')
     await disableAiProviderConfig('AIPC1')
+    await fetchAiPolicy()
+    await updateAiPolicy({
+      enabledTools: true,
+      allowedToolNames: ['search_customers'],
+      proposalsEnabled: true,
+      maxToolCallsPerRun: 4,
+      safetyMode: 'STRICT',
+      networkMode: 'PROVIDER_ONLY',
+      contextMessageLimit: 8,
+      summaryMaxChars: 2000,
+      maxRunSeconds: 60,
+      version: 3,
+    })
 
     expect(mockedAxios.request.mock.calls.map(([config]) => [config.method, config.url])).toEqual([
       ['post', '/api/ai/runs'],
@@ -113,6 +132,8 @@ describe('ai api contract', () => {
       ['get', '/api/ai/conversations/AIC1'],
       ['patch', '/api/ai/conversations/AIC1/title'],
       ['post', '/api/ai/conversations/AIC1/archive'],
+      ['patch', '/api/ai/conversations/AIC1/messages/AIM1'],
+      ['post', '/api/ai/conversations/AIC1/messages/AIM1/withdraw'],
       ['get', '/api/ai/runs/AIR1'],
       ['get', '/api/ai/runs/AIR1/trace'],
       ['post', '/api/ai/runs/AIR1/cancel'],
@@ -136,6 +157,8 @@ describe('ai api contract', () => {
       ['post', '/api/ai/provider-configs/AIPC1/test'],
       ['post', '/api/ai/provider-configs/AIPC1/activate'],
       ['post', '/api/ai/provider-configs/AIPC1/disable'],
+      ['get', '/api/ai/policy'],
+      ['put', '/api/ai/policy'],
     ])
   })
 

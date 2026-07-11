@@ -181,5 +181,7 @@ export const PERMISSIONS = {
     providerConfigView: 'ai:provider-config:view',
     providerConfigManage: 'ai:provider-config:manage',
     providerConfigRotateKey: 'ai:provider-config:rotate-key',
+    policyView: 'ai:policy:view',
+    policyManage: 'ai:policy:manage',
   },
 } as const

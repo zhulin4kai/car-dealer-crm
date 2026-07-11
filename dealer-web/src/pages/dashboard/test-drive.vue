@@ -74,7 +74,7 @@
               <TableHead class="w-[150px]">结束</TableHead>
               <TableHead class="w-[120px]">状态</TableHead>
               <TableHead class="w-[110px]">改期次数</TableHead>
-              <TableHead class="w-[260px]">操作</TableHead>
+              <TableHead class="w-[290px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -101,6 +101,13 @@
                 <div class="flex items-center gap-1">
                   <RowActionButton v-has-permission="PERMISSIONS.testDrive.view" label="详情" @click="openDetail(item)">
                     <Eye class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.ai.assistantUse"
+                    label="询问 AI"
+                    @click="openAiAssistant(item.id)"
+                  >
+                    <Sparkles class="h-4 w-4" />
                   </RowActionButton>
                   <RowActionButton
                     v-if="canReschedule(item)"
@@ -431,6 +438,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  Sparkles,
   Trophy,
 } from '@lucide/vue'
 import { fetchCustomerOptions } from '@/modules/customer/api/customer-api'
@@ -465,6 +473,7 @@ import type { EntityId } from '@/shared/types/id'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
+import { useAiAssistantStore } from '@/stores/ai-assistant.store'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -482,6 +491,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
 import {
   Table,
   TableBody,
@@ -491,6 +501,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+
+const aiAssistantStore = useAiAssistantStore()
+
+function openAiAssistant(id: EntityId): void {
+  aiAssistantStore.openPanel({ objectType: 'TEST_DRIVE', objectId: String(id) })
+}
 
 type CustomerOption = SelectOption & {
   customerId?: EntityId

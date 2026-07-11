@@ -8,6 +8,7 @@ import com.autodealer.crm.ai.ToolRiskLevel;
 import com.autodealer.crm.ai.dto.ExecuteAiToolRequest;
 import com.autodealer.crm.ai.enums.AiResultStatus;
 import com.autodealer.crm.ai.mapper.TAiRunMapper;
+import com.autodealer.crm.ai.mapper.TAiToolCallMapper;
 import com.autodealer.crm.ai.model.TAiRun;
 import com.autodealer.crm.ai.service.impl.AiInternalToolServiceImpl;
 import com.autodealer.crm.config.security.CurrentUserProvider;
@@ -39,6 +40,8 @@ class AiInternalToolServiceImplTest {
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private AiTraceService traceService;
     @Mock private ToolExecutor executor;
+    @Mock private TAiToolCallMapper toolCallMapper;
+    @Mock private AiAssistantPolicyService policyService;
 
     private AiInternalToolServiceImpl service;
 
@@ -60,7 +63,16 @@ class AiInternalToolServiceImplTest {
                 traceService,
                 new AiSensitiveDataSanitizer(),
                 new ObjectMapper());
-        service = new AiInternalToolServiceImpl(runMapper, userService, registry);
+        com.autodealer.crm.ai.dto.AiAssistantPolicyResponse policy =
+                new com.autodealer.crm.ai.dto.AiAssistantPolicyResponse();
+        policy.setEnabledTools(true);
+        policy.setAllowedToolNames(List.of("search_customers"));
+        policy.setProposalsEnabled(true);
+        policy.setMaxToolCallsPerRun(8);
+        when(policyService.getPolicy()).thenReturn(policy);
+        when(toolCallMapper.countByRunId(1L)).thenReturn(0);
+        service = new AiInternalToolServiceImpl(
+                runMapper, userService, registry, toolCallMapper, policyService);
     }
 
     @Test
@@ -112,6 +124,8 @@ class AiInternalToolServiceImplTest {
         run.setId(1L);
         run.setRunNo("AIR1");
         run.setUserId(7);
+        run.setStatus("RUNNING");
+        run.setContextActive(true);
         return run;
     }
 

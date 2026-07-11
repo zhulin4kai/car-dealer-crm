@@ -25,6 +25,8 @@ public class TAiRun implements Serializable {
     private LocalDateTime startedTime;
     private LocalDateTime completedTime;
     private LocalDateTime expiresTime;
+    private Boolean contextActive;
+    private String invalidationReason;
     private LocalDateTime createTime;
     private Integer createBy;
 

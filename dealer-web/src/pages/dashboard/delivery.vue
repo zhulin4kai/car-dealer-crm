@@ -69,7 +69,7 @@
               <TableHead class="w-[150px]">状态</TableHead>
               <TableHead class="w-[180px]">计划交付</TableHead>
               <TableHead class="w-[180px]">实际交付</TableHead>
-              <TableHead class="w-[170px]">操作</TableHead>
+              <TableHead class="w-[205px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -92,6 +92,13 @@
                 <div class="flex items-center gap-1">
                   <RowActionButton v-has-permission="PERMISSIONS.delivery.view" label="详情" @click="openDetail(delivery)">
                     <Eye class="h-4 w-4" />
+                  </RowActionButton>
+                  <RowActionButton
+                    v-has-permission="PERMISSIONS.ai.assistantUse"
+                    label="询问 AI"
+                    @click="openAiAssistant(delivery.id)"
+                  >
+                    <Sparkles class="h-4 w-4" />
                   </RowActionButton>
                   <RowActionButton v-has-permission="PERMISSIONS.delivery.sign" label="签收" @click="openSign(delivery)">
                     <CheckCircle2 class="h-4 w-4" />
@@ -306,7 +313,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, Plus, RotateCcw, Search, XCircle } from '@lucide/vue'
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, Plus, RotateCcw, Search, Sparkles, XCircle } from '@lucide/vue'
 import {
   cancelDelivery,
   createDelivery,
@@ -334,6 +341,7 @@ import { messageTip } from '@/shared/utils/feedback'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
 import RowActionButton from '@/shared/ui/RowActionButton.vue'
 import StatusBadge from '@/shared/ui/StatusBadge.vue'
+import { useAiAssistantStore } from '@/stores/ai-assistant.store'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -351,6 +359,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
 import {
   Table,
   TableBody,
@@ -360,6 +369,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+
+const aiAssistantStore = useAiAssistantStore()
+
+function openAiAssistant(id: string | number): void {
+  aiAssistantStore.openPanel({ objectType: 'DELIVERY', objectId: String(id) })
+}
 
 const ALL_STATUS = '__ALL_DELIVERY_STATUS__'
 

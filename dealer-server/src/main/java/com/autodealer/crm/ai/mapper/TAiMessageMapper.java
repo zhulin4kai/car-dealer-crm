@@ -17,4 +17,22 @@ public interface TAiMessageMapper {
     List<TAiMessage> selectRecentVisibleByConversationId(@Param("conversationId") Long conversationId,
                                                          @Param("excludeRunId") Long excludeRunId,
                                                          @Param("limit") Integer limit);
+
+    TAiMessage selectOwnedUserMessageByNo(@Param("conversationId") Long conversationId,
+                                          @Param("messageNo") String messageNo,
+                                          @Param("userId") Integer userId);
+
+    List<TAiMessage> selectActiveContextByConversationId(@Param("conversationId") Long conversationId);
+
+    int supersedeIfVersionMatches(@Param("id") Long id,
+                                  @Param("expectedVersion") Integer expectedVersion,
+                                  @Param("editBy") Integer editBy);
+
+    int withdrawIfVersionMatches(@Param("id") Long id,
+                                 @Param("expectedVersion") Integer expectedVersion,
+                                 @Param("withdrawnBy") Integer withdrawnBy);
+
+    int excludeContextFromTurn(@Param("conversationId") Long conversationId,
+                               @Param("turnNo") Integer turnNo,
+                               @Param("editBy") Integer editBy);
 }

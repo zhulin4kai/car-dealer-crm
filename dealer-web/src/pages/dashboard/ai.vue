@@ -4,6 +4,16 @@ import { useRoute, useRouter } from 'vue-router'
 import { Archive, Edit3, MessageSquarePlus, Settings } from '@lucide/vue'
 
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   archiveAiConversation,
@@ -12,9 +22,9 @@ import {
   renameAiConversation,
 } from '@/modules/ai/api/ai-api'
 import AiAssistantPanel from '@/modules/ai/components/AiAssistantPanel.vue'
-import type { AiConversation } from '@/modules/ai/model/ai.types'
+import type { AiConversation, AiPageContext } from '@/modules/ai/model/ai.types'
 import { PERMISSIONS } from '@/shared/constants/permissions'
-import { messageTip } from '@/shared/utils/feedback'
+import { messageConfirm, messageTip } from '@/shared/utils/feedback'
 import { usePermissionStore } from '@/stores/permission.store'
 
 defineOptions({
@@ -27,6 +37,10 @@ const permissionStore = usePermissionStore()
 const conversations = ref<AiConversation[]>([])
 const conversationsLoading = ref(false)
 const selectedConversationNo = ref<string | undefined>()
+const restoredContext = ref<AiPageContext>({})
+const renameDialogOpen = ref(false)
+const renameTitle = ref('')
+const renameSubmitting = ref(false)
 
 const initialRunNo = computed(() => {
   const value = route.query.runNo
@@ -38,6 +52,26 @@ const initialConversationNo = computed(() => {
 })
 const canViewProviderConfig = computed(() =>
   permissionStore.hasPermission(PERMISSIONS.ai.providerConfigView),
+)
+const activeConversationContext = computed<AiPageContext>(() => {
+  const selected = conversations.value.find(
+    (conversation) => conversation.conversationNo === selectedConversationNo.value,
+  )
+  if (selected) {
+    return selected.contextObjectType && selected.contextObjectId
+      ? {
+          objectType: selected.contextObjectType,
+          objectId: selected.contextObjectId,
+        }
+      : {}
+  }
+  return restoredContext.value
+})
+const selectedConversationTitle = computed(
+  () =>
+    conversations.value.find(
+      (conversation) => conversation.conversationNo === selectedConversationNo.value,
+    )?.title ?? '当前会话',
 )
 
 async function loadConversations(): Promise<void> {
@@ -51,7 +85,11 @@ async function loadConversations(): Promise<void> {
 
 async function createConversation(): Promise<void> {
   try {
-    const conversation = await createAiConversation({ entryPoint: 'PAGE' })
+    const conversation = await createAiConversation({
+      entryPoint: 'PAGE',
+      contextObjectType: activeConversationContext.value.objectType,
+      contextObjectId: activeConversationContext.value.objectId,
+    })
     conversations.value = [conversation, ...conversations.value]
     await selectConversation(conversation.conversationNo)
   } catch (error) {
@@ -63,6 +101,11 @@ async function archiveConversation(): Promise<void> {
   const conversationNo = selectedConversationNo.value
   if (!conversationNo) return
   try {
+    await messageConfirm(`归档“${selectedConversationTitle.value}”后将从默认会话列表隐藏，是否继续？`)
+  } catch {
+    return
+  }
+  try {
     await archiveAiConversation(conversationNo)
     selectedConversationNo.value = undefined
     await router.replace({ name: 'ai-assistant', query: undefined })
@@ -72,18 +115,25 @@ async function archiveConversation(): Promise<void> {
   }
 }
 
-async function renameConversation(): Promise<void> {
+function openRenameDialog(): void {
+  if (!selectedConversationNo.value) return
+  renameTitle.value = selectedConversationTitle.value
+  renameDialogOpen.value = true
+}
+
+async function submitRename(): Promise<void> {
   const conversationNo = selectedConversationNo.value
-  if (!conversationNo) return
-  const currentTitle =
-    conversations.value.find((conversation) => conversation.conversationNo === conversationNo)?.title ?? ''
-  const title = window.prompt('请输入新的会话名称', currentTitle)?.trim()
-  if (!title) return
+  const title = renameTitle.value.trim()
+  if (!conversationNo || !title || renameSubmitting.value) return
+  renameSubmitting.value = true
   try {
     await renameAiConversation(conversationNo, { title })
+    renameDialogOpen.value = false
     await loadConversations()
   } catch (error) {
     messageTip(error instanceof Error ? error.message : 'AI 会话重命名失败', 'error')
+  } finally {
+    renameSubmitting.value = false
   }
 }
 
@@ -96,6 +146,10 @@ function handleConversationChange(conversationNo: string): void {
   selectedConversationNo.value = conversationNo
   void router.replace({ name: 'ai-assistant', query: { conversationNo } })
   void loadConversations().catch(() => undefined)
+}
+
+function handleContextChange(context: AiPageContext): void {
+  restoredContext.value = context
 }
 
 function formatConversationTime(value?: string): string {
@@ -117,8 +171,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex h-[calc(100vh-var(--crm-header-height))] min-h-0 bg-[var(--crm-bg-page)]">
-    <aside class="flex w-[280px] shrink-0 flex-col border-r border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)]">
+  <div class="flex h-[calc(100vh-var(--crm-header-height))] min-h-0 flex-col bg-[var(--crm-bg-page)] md:flex-row">
+    <aside class="flex max-h-[220px] w-full shrink-0 flex-col border-b border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] md:max-h-none md:w-[280px] md:border-b-0 md:border-r">
       <div class="flex h-14 items-center justify-between border-b border-[var(--crm-border-light)] px-4">
         <div class="font-semibold text-[var(--crm-text-primary)]">AI 会话</div>
         <Button variant="outline" size="sm" class="gap-2" @click="createConversation">
@@ -151,13 +205,13 @@ onMounted(() => {
           </div>
         </button>
       </div>
-      <div class="border-t border-[var(--crm-border-light)] p-3">
+      <div class="grid grid-cols-2 gap-2 border-t border-[var(--crm-border-light)] p-3 md:block">
         <Button
           variant="outline"
           size="sm"
-          class="mb-2 w-full gap-2"
+          class="w-full gap-2 md:mb-2"
           :disabled="!selectedConversationNo"
-          @click="renameConversation"
+          @click="openRenameDialog"
         >
           <Edit3 class="h-4 w-4" />
           重命名当前会话
@@ -175,7 +229,7 @@ onMounted(() => {
       </div>
     </aside>
 
-    <div class="relative min-w-0 flex-1">
+    <div class="relative min-h-0 min-w-0 flex-1">
       <TooltipProvider v-if="canViewProviderConfig" :delay-duration="120">
         <Tooltip>
           <TooltipTrigger as-child>
@@ -200,7 +254,34 @@ onMounted(() => {
         :initial-conversation-no="initialConversationNo"
         :initial-run-no="initialRunNo"
         @conversation-change="handleConversationChange"
+        @context-change="handleContextChange"
       />
     </div>
+
+    <Dialog v-model:open="renameDialogOpen">
+      <DialogContent class="sm:max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>重命名 AI 会话</DialogTitle>
+          <DialogDescription>名称仅用于区分会话，不会改变已有消息和业务上下文。</DialogDescription>
+        </DialogHeader>
+        <form class="space-y-2" @submit.prevent="submitRename">
+          <Label for="ai-conversation-title">会话名称</Label>
+          <Input
+            id="ai-conversation-title"
+            v-model="renameTitle"
+            maxlength="128"
+            autocomplete="off"
+          />
+        </form>
+        <DialogFooter>
+          <Button variant="outline" :disabled="renameSubmitting" @click="renameDialogOpen = false">
+            取消
+          </Button>
+          <Button :disabled="renameSubmitting || !renameTitle.trim()" @click="submitRename">
+            保存
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

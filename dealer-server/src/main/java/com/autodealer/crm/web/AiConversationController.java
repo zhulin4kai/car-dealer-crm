@@ -3,7 +3,10 @@ package com.autodealer.crm.web;
 import com.autodealer.crm.ai.dto.AiConversationDetailResponse;
 import com.autodealer.crm.ai.dto.AiConversationResponse;
 import com.autodealer.crm.ai.dto.CreateAiConversationRequest;
+import com.autodealer.crm.ai.dto.EditAiMessageRequest;
+import com.autodealer.crm.ai.dto.AiRunResponse;
 import com.autodealer.crm.ai.dto.RenameAiConversationRequest;
+import com.autodealer.crm.ai.dto.WithdrawAiMessageRequest;
 import com.autodealer.crm.ai.service.AiConversationService;
 import com.autodealer.crm.constant.PermissionCodes;
 import com.autodealer.crm.result.R;
@@ -58,5 +61,22 @@ public class AiConversationController {
     @PreAuthorize("hasAuthority('" + PermissionCodes.AI_USE + "')")
     public R<AiConversationResponse> archive(@PathVariable String conversationNo) {
         return R.OK(aiConversationService.archiveConversation(conversationNo));
+    }
+
+    @PatchMapping("/{conversationNo}/messages/{messageNo}")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.AI_USE + "')")
+    public R<AiRunResponse> editMessage(@PathVariable String conversationNo,
+                                        @PathVariable String messageNo,
+                                        @Valid @RequestBody EditAiMessageRequest request) {
+        return R.OK(aiConversationService.editMessage(conversationNo, messageNo, request));
+    }
+
+    @PostMapping("/{conversationNo}/messages/{messageNo}/withdraw")
+    @PreAuthorize("hasAuthority('" + PermissionCodes.AI_USE + "')")
+    public R<AiConversationDetailResponse> withdrawMessage(
+            @PathVariable String conversationNo,
+            @PathVariable String messageNo,
+            @Valid @RequestBody WithdrawAiMessageRequest request) {
+        return R.OK(aiConversationService.withdrawMessage(conversationNo, messageNo, request));
     }
 }

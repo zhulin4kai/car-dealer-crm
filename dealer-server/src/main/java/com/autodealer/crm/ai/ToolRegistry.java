@@ -54,6 +54,20 @@ public class ToolRegistry {
                 .toList();
     }
 
+    public List<ToolDefinition> definitionsForCurrentUser() {
+        return definitions().stream()
+                .filter(definition -> currentUserProvider.hasAuthority(definition.permissionCode()))
+                .toList();
+    }
+
+    public ToolDefinition getDefinition(String toolName) {
+        ToolExecutor executor = executors.get(toolName);
+        if (executor == null) {
+            throw new BusinessException(CodeEnum.AI_TOOL_NOT_FOUND, "AI 工具不存在");
+        }
+        return executor.definition();
+    }
+
     public ToolExecutionResult execute(ToolExecutionContext context, String toolName, Map<String, Object> arguments) {
         ToolExecutor executor = executors.get(toolName);
         if (executor == null) {

@@ -13,6 +13,7 @@ defineOptions({
 const props = defineProps<{
   proposal: AiProposal
   loading?: boolean
+  canConfirm?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -31,7 +32,7 @@ const riskLabel = computed(() => {
     case 'HIGH':
       return '高风险'
     default:
-      return props.proposal.riskLevel
+      return '需确认'
   }
 })
 
@@ -42,8 +43,32 @@ const typeLabel = computed(() => {
     case 'create_follow_task_proposal':
       return '创建跟进任务'
     default:
-      return props.proposal.proposalType
+      return '待确认业务操作'
   }
+})
+
+const relatedObjectLabel = computed(() => {
+  const labels: Record<string, string> = {
+    CLUE: '线索',
+    CUSTOMER: '客户',
+    OPPORTUNITY: '商机',
+    TEST_DRIVE: '试驾',
+    ORDER: '订单',
+    TRANSACTION: '交易',
+  }
+  return labels[props.proposal.relatedObjectType] ?? '业务对象'
+})
+
+const expiresTimeLabel = computed(() => {
+  const date = new Date(props.proposal.expiresTime)
+  if (Number.isNaN(date.getTime())) return '以系统有效期为准'
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
 })
 
 const statusLabel = computed(() => {
@@ -65,7 +90,7 @@ const statusLabel = computed(() => {
 </script>
 
 <template>
-  <div class="rounded-lg border border-[var(--crm-border-light)] bg-[var(--crm-bg-surface)] p-3">
+  <div class="border-l-2 border-[var(--crm-primary)] py-1 pl-4">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
         <div class="font-semibold text-[var(--crm-text-primary)]">{{ typeLabel }}</div>
@@ -74,15 +99,14 @@ const statusLabel = computed(() => {
       <Badge variant="outline" class="shrink-0 rounded-md">{{ riskLabel }}</Badge>
     </div>
     <div class="mt-3 space-y-2 text-xs text-[var(--crm-text-tertiary)]">
-      <div>关联对象：{{ proposal.relatedObjectType }} {{ proposal.relatedObjectId }}</div>
+      <div>关联范围：{{ relatedObjectLabel }}</div>
       <div>影响说明：{{ proposal.impactSummary }}</div>
-      <div>过期时间：{{ proposal.expiresTime }}</div>
-      <div>权限：{{ proposal.permissionCode }}</div>
+      <div>有效期至：{{ expiresTimeLabel }}</div>
     </div>
     <div v-if="proposal.status && proposal.status !== 'PENDING_CONFIRMATION'" class="mt-3 text-sm">
       状态：{{ statusLabel }}
     </div>
-    <div v-else class="mt-3 flex justify-end gap-2">
+    <div v-else-if="canConfirm" class="mt-3 flex justify-end gap-2">
       <Button variant="outline" size="sm" :disabled="loading" @click="emit('reject', proposal)">
         <X class="mr-1 h-4 w-4" />
         拒绝
@@ -91,6 +115,9 @@ const statusLabel = computed(() => {
         <Check class="mr-1 h-4 w-4" />
         确认
       </Button>
+    </div>
+    <div v-else class="mt-3 text-xs text-[var(--crm-text-tertiary)]">
+      当前账号可查看该提议，但没有确认权限。
     </div>
   </div>
 </template>

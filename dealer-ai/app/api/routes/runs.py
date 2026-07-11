@@ -53,4 +53,9 @@ async def stream_run_events(
     return StreamingResponse(
         encode_internal_events(orchestrator.run(request)),
         media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )

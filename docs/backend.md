@@ -59,14 +59,15 @@ dealer-server/src/main/java/com/autodealer/crm/
 
 ## AI 业务助手模块
 
-AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation、Run、Message、Provider 配置、ToolRegistry、Proposal、Workflow、主动提醒、追踪和审计。
+AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation、Run、Message、Provider 配置、全局运行策略、ToolRegistry、Proposal、Workflow、主动提醒、追踪和审计。
 
 - Conversation 是多轮对话容器，绑定用户，可选绑定业务对象。
 - Run 是 Conversation 中的一次执行，负责模型调用、工具调用、SSE 和状态流转。
-- Message 同时归属于 Conversation 和 Run，用于会话恢复和 Run trace。
-- Spring Boot 调用 `dealer-ai` 时下发 `conversationNo`、脱敏 `conversationSummary`、最近 8 条用户可见 `messageHistory`、工具 Schema 和 Provider runtime config。
+- Message 同时归属于 Conversation 和 Run，并通过不可变修订、上下文纳入标记和版本号支持编辑与撤回。
+- Spring Boot 调用 `dealer-ai` 时下发 `conversationNo`、脱敏 `conversationSummary`、策略允许的最近 1 到 8 条活动 `messageHistory`、工具权限交集、运行策略和 Provider runtime config。
 - Provider runtime config 只用于服务间请求，不进入 Conversation、Message、SSE、trace 或日志。
 - 归档 Conversation 只隐藏用户侧列表，不删除底层 Run、Message、ToolCall、Proposal、Workflow、Approval 或 ExecutionEvent。
+- 同一 Run 通过 CAS 只启动一次；脱敏事件写入 `t_ai_run_event`，SSE 重新订阅按 `afterSequence` 重放而不重复执行。
 
 ---
 
@@ -1696,9 +1697,12 @@ AI 业务助手已落地为 Spring Boot + 独立 `dealer-ai` 的旁路增强架�
 | Controller | `web/AiWorkflowController.java` | 创建、查询、暂停、恢复、取消、完成和失败处理受控工作流 |
 | Controller | `web/AiProactiveController.java` | 创建、查询、暂停、恢复、取消主动提醒订阅，并查询或生成当前用户提醒事件 |
 | Controller | `web/AiProviderConfigController.java` | 管理员创建、编辑、测试、启用、停用和轮换模型 Provider 配置 |
+| Controller | `web/AiAssistantPolicyController.java` | 管理员查看和更新工具、安全、联网、上下文和运行时限策略 |
 | Registry | `ai/ToolRegistry.java` | Spring Boot 最终工具白名单、权限、风险等级和审计边界 |
 | Trace Service | `ai/service/AiTraceService.java` | 写入 AI Run、Message、ToolCall、Proposal、Approval 和 ExecutionEvent |
 | Provider Service | `ai/service/AiProviderConfigService.java` | 加密保存 API Key、生成运行时 Provider 配置、执行连接测试和启用互斥 |
+| Policy Service | `ai/service/AiAssistantPolicyService.java` | 保存全局策略并用乐观锁防止管理员并发覆盖 |
+| Run Event Store | `ai/service/AiRunEventStore.java` | 持久化脱敏 SSE 事件并按 Run 序号重放 |
 | Proposal Service | `ai/service/AiProposalService.java` | 保存规范化参数、参数哈希、影响说明和过期时间，并在确认时执行已保存参数 |
 | Workflow Service | `ai/service/AiWorkflowService.java` | 持久化工作流、步骤状态和工作流控制事件 |
 | Proactive Service | `ai/service/AiProactiveService.java` | 按当前用户权限和订阅规则生成主动提醒事件 |
@@ -1717,6 +1721,11 @@ AI 业务助手已落地为 Spring Boot + 独立 `dealer-ai` 的旁路增强架�
 - `get_inventory_alerts`
 - `get_transaction_detail`
 - `list_pending_transaction_approvals`
+- `get_opportunity_detail`
+- `get_quote_detail`
+- `get_test_drive_detail`
+- `get_delivery_detail`
+- `get_business_overview`
 - `create_communication_record_proposal`
 - `create_follow_task_proposal`
 
@@ -1729,7 +1738,9 @@ AI 追踪独立于业务操作审计。`dealer-ai` 不直接写数据库，所�
 | 表名 | 说明 |
 |------|------|
 | `t_ai_run` | AI Run 元数据和状态 |
-| `t_ai_message` | 用户、助手、系统和工具消息摘要 |
+| `t_ai_run_event` | 可按序号重放的脱敏 Run SSE 事件 |
+| `t_ai_assistant_policy` | 全局工具、安全、联网、上下文和运行时限策略 |
+| `t_ai_message` | 用户、助手、系统和工具的安全展示文本、修订状态和上下文标记 |
 | `t_ai_tool_call` | 工具调用输入摘要、输出摘要、权限、风险和结果 |
 | `t_ai_action_proposal` | 低风险 Proposal、规范化参数、参数哈希、影响说明和过期时间 |
 | `t_ai_approval` | 用户确认、拒绝或过期记录；确认语义使用 `CONFIRMED` |
@@ -1782,8 +1793,10 @@ Run trace 查询必须恢复 messages、toolCalls、proposals、approvals、work
 | `t_dic_value` | 字典值表 | id, type_code, type_value, order, remark |
 | `t_login_log` | 登录审计日志表 | id, login_act, user_id, result, reason_code, ip, browser, os, request_id, create_time |
 | `t_operation_log` | 操作审计日志表 | id, user_id, action_code, module_name, object_type, resource_id, result, detail, ip, request_id, create_time |
-| `t_ai_run` | AI Run 表 | id, run_no, user_id, entry_point, status, prompt_summary, expires_time |
-| `t_ai_message` | AI 消息表 | id, run_id, role, sequence_no, content_summary |
+| `t_ai_run` | AI Run 表 | id, run_no, conversation_id, parent_run_id, turn_no, user_id, status, context_active, expires_time |
+| `t_ai_run_event` | AI Run 事件表 | id, run_id, event_id, sequence_no, event_type, payload_json, occurred_time |
+| `t_ai_assistant_policy` | AI 全局策略表 | id, enabled_tools, allowed_tool_names, safety_mode, network_mode, context_message_limit, version |
+| `t_ai_message` | AI 消息表 | id, message_no, run_id, role, status, revision_no, included_in_context, version, content_summary |
 | `t_ai_tool_call` | AI 工具调用表 | id, run_id, tool_name, permission_code, risk_level, output_summary, display_payload_json, result_status |
 | `t_ai_action_proposal` | AI 动作提议表 | id, run_id, proposal_type, status, risk_level, normalized_params, params_hash |
 | `t_ai_approval` | AI 确认表 | id, run_id, proposal_id, decision, result_status |

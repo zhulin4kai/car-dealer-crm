@@ -24,7 +24,9 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -155,6 +157,7 @@ public class AiProviderConfigServiceImpl implements AiProviderConfigService {
         if (config == null) {
             throw new BusinessException(CodeEnum.AI_PROVIDER_CONFIG_NOT_FOUND, "AI 模型配置不存在");
         }
+        validateBaseUrl(config.getBaseUrl());
         Integer userId = currentUserProvider.getCurrentUserId();
         mapper.disableAll(userId);
         requireOne(mapper.updateEnabled(config.getId(), true, userId), "AI 模型配置启用失败");
@@ -179,6 +182,7 @@ public class AiProviderConfigServiceImpl implements AiProviderConfigService {
         if (!Boolean.TRUE.equals(config.getEnabled())) {
             throw new BusinessException(CodeEnum.AI_PROVIDER_CONFIG_DISABLED, "AI 模型配置未启用");
         }
+        validateBaseUrl(config.getBaseUrl());
         ProviderRuntimeConfig runtimeConfig = new ProviderRuntimeConfig();
         runtimeConfig.setProviderConfigNo(config.getConfigNo());
         runtimeConfig.setProviderFormat(config.getProviderFormat());
@@ -200,6 +204,7 @@ public class AiProviderConfigServiceImpl implements AiProviderConfigService {
     }
 
     private void testProviderConnection(TAiProviderConfig config) {
+        validateBaseUrl(config.getBaseUrl());
         String apiKey = keyCipher.decrypt(config.getEncryptedApiKey(), config.getApiKeyNonce());
         int timeoutSeconds = Math.min(safeTimeout(config.getTimeoutSeconds()), TEST_TIMEOUT_SECONDS);
         int maxTokens = Math.min(safeMaxOutputTokens(config.getMaxOutputTokens()), TEST_MAX_OUTPUT_TOKENS);
@@ -258,11 +263,48 @@ public class AiProviderConfigServiceImpl implements AiProviderConfigService {
     }
 
     private void validateBaseUrl(String value) {
-        URI uri = URI.create(value);
-        String scheme = uri.getScheme();
-        if (!("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
-            throw new BusinessException(CodeEnum.PARAM_ERROR, "AI 模型 Base URL 必须是 HTTP 或 HTTPS");
+        final URI uri;
+        try {
+            uri = URI.create(value == null ? "" : value.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "AI 模型 Base URL 格式错误", ex);
         }
+        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "AI 模型 Base URL 必须使用 HTTPS");
+        }
+        if (!StringUtils.hasText(uri.getHost()) || uri.getUserInfo() != null
+                || uri.getQuery() != null || uri.getFragment() != null) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "AI 模型 Base URL 不允许凭据、查询参数或片段");
+        }
+        String host = uri.getHost().toLowerCase(java.util.Locale.ROOT);
+        if ("localhost".equals(host) || host.endsWith(".localhost")
+                || host.endsWith(".local") || host.endsWith(".internal")) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "AI 模型 Base URL 不允许访问内部地址");
+        }
+        try {
+            for (InetAddress address : InetAddress.getAllByName(host)) {
+                if (isUnsafeProviderAddress(address)) {
+                    throw new BusinessException(CodeEnum.PARAM_ERROR, "AI 模型 Base URL 不允许访问内部地址");
+                }
+            }
+        } catch (UnknownHostException ex) {
+            throw new BusinessException(CodeEnum.PARAM_ERROR, "AI 模型 Base URL 主机无法解析", ex);
+        }
+    }
+
+    private boolean isUnsafeProviderAddress(InetAddress address) {
+        if (address.isAnyLocalAddress() || address.isLoopbackAddress()
+                || address.isLinkLocalAddress() || address.isSiteLocalAddress()
+                || address.isMulticastAddress()) {
+            return true;
+        }
+        byte[] bytes = address.getAddress();
+        if (bytes.length == 4) {
+            int first = Byte.toUnsignedInt(bytes[0]);
+            int second = Byte.toUnsignedInt(bytes[1]);
+            return first == 0 || first >= 224 || (first == 100 && second >= 64 && second <= 127);
+        }
+        return bytes.length == 16 && (Byte.toUnsignedInt(bytes[0]) & 0xfe) == 0xfc;
     }
 
     private String normalizeBaseUrl(String value) {

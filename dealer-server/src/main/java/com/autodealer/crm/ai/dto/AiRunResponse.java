@@ -21,6 +21,8 @@ public class AiRunResponse {
     private LocalDateTime startedTime;
     private LocalDateTime completedTime;
     private LocalDateTime expiresTime;
+    private Boolean contextActive;
+    private String invalidationReason;
 
     public static AiRunResponse from(TAiRun run) {
         AiRunResponse response = new AiRunResponse();
@@ -38,6 +40,8 @@ public class AiRunResponse {
         response.setStartedTime(run.getStartedTime());
         response.setCompletedTime(run.getCompletedTime());
         response.setExpiresTime(run.getExpiresTime());
+        response.setContextActive(run.getContextActive());
+        response.setInvalidationReason(run.getInvalidationReason());
         return response;
     }
 }

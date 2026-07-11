@@ -42,23 +42,31 @@ describe('ai frontend ui contracts', () => {
     expect(source).not.toContain("'menu:ai',\n  'menu:activity'")
     expect(source).toContain('openAiPanel')
     expect(source).toContain('expandAiPanel')
+    expect(source).toContain('useAiAssistantStore')
+    expect(source).toContain('aiAssistantStore.isPanelOpen')
     expect(source).toContain("objectType: 'CUSTOMER'")
     expect(source).toContain("objectType: 'TRANSACTION'")
     expect(source).not.toMatch(/dataScope|permissions\s*:/)
   })
 
-  it('side panel compresses main content and expands to ai page with run context', () => {
+  it('side panel compresses desktop content, covers mobile viewport and expands with run context', () => {
     const source = fs.readFileSync(sidePanel, 'utf8')
 
-    expect(source).toContain('w-[420px] shrink-0')
+    expect(source).toContain('sm:w-[420px]')
+    expect(source).toContain('max-w-[100vw]')
     expect(source).toContain('currentConversationNo')
+    expect(source).toContain(':key="contextKey"')
+    expect(source).toContain('visibleConversations')
     expect(source).toContain('@conversation-change="handleConversationChange"')
     expect(source).toContain('createAiConversation')
     expect(source).toContain('listAiConversations')
     expect(source).toContain('切换 AI 会话')
     expect(source).toContain('@run-change="currentRunNo = $event"')
     expect(source).toContain("$emit('expand', { conversationNo: currentConversationNo, runNo: currentRunNo })")
-    expect(source).not.toMatch(/fixed|inset-y-0|shadow-\[/)
+    expect(source).toContain('@media (max-width: 639px)')
+    expect(source).toContain('position: fixed')
+    expect(source).toContain('inset: 0')
+    expect(source).toContain('width: 100vw')
   })
 
   it('ai page uses compact provider config entry without occupying a toolbar row', () => {
@@ -68,6 +76,13 @@ describe('ai frontend ui contracts', () => {
     expect(source).toContain('size="icon"')
     expect(source).toContain('to="/dashboard/ai/provider-configs"')
     expect(source).toContain('PERMISSIONS.ai.providerConfigView')
+    expect(source).toContain('activeConversationContext')
+    expect(source).toContain('contextObjectType: activeConversationContext.value.objectType')
+    expect(source).toContain('@context-change="handleContextChange"')
+    expect(source).toContain('<DialogTitle>重命名 AI 会话</DialogTitle>')
+    expect(source).toContain('messageConfirm')
+    expect(source).not.toContain('window.prompt')
+    expect(source).not.toContain('window.confirm')
     expect(source).not.toContain('border-b border-[var(--crm-border-light)] px-6 py-3')
     expect(source).not.toContain('<Settings class="mr-2 h-4 w-4" />')
   })
@@ -99,6 +114,11 @@ describe('ai frontend ui contracts', () => {
     expect(source).toContain('submitError')
     expect(source).toContain('getErrorMessage')
     expect(source).toContain('openRotateDialog')
+    expect(source).toContain("name: 'get_opportunity_detail', label: '商机详情'")
+    expect(source).toContain("name: 'get_quote_detail', label: '报价详情'")
+    expect(source).toContain("name: 'get_test_drive_detail', label: '试驾详情'")
+    expect(source).toContain("name: 'get_delivery_detail', label: '交付详情'")
+    expect(source).toContain("name: 'get_business_overview', label: '经营概览'")
     expect(source).toContain('border-[var(--crm-info-bg)] text-[var(--crm-info)]')
     expect(source).toContain('border-[var(--crm-success-bg)] text-[var(--crm-success)]')
     expect(source).toContain('border-[var(--crm-danger-bg)] text-[var(--crm-danger)]')
@@ -130,6 +150,8 @@ describe('ai frontend ui contracts', () => {
     expect(source).toContain('fetchAiRunTrace')
     expect(source).toContain('conversationTurns')
     expect(source).toContain('toTurnFromConversationTurn')
+    expect(source).toContain('effectiveContext')
+    expect(source).toContain('detail.conversation.contextObjectType')
     expect(source).toContain('displayPayload')
     expect(source).toContain('AiMarkdownMessage')
     expect(source).toContain('proposal_created')
@@ -146,12 +168,20 @@ describe('ai frontend ui contracts', () => {
     expect(source).toContain('已停止生成，已保留当前部分内容。')
     expect(source).toContain('max-w-[980px]')
     expect(source).toContain('rows="1"')
-    expect(source).not.toContain('min-h-20 resize-none')
+    expect(source).toContain('aria-label="编辑消息内容"')
+    expect(source).toContain('保存并重新生成')
+    expect(source).toContain('messageConfirm')
+    expect(source).toContain("OPPORTUNITY: '商机'")
+    expect(source).toContain("QUOTE: '报价'")
+    expect(source).toContain("TEST_DRIVE: '试驾'")
+    expect(source).toContain("DELIVERY: '交付'")
+    expect(source).toContain("PRODUCT: '产品'")
     expect(source).not.toContain('已完成，本次结果见下方卡片')
     expect(source).not.toContain('工具摘要')
     expect(source).not.toContain('执行细节')
     expect(source).not.toContain('startWorkflow')
     expect(source).not.toContain('v-html')
+    expect(source).not.toContain('window.confirm')
   })
 
   it('tool result cards render crm business labels instead of raw fields', () => {
@@ -162,6 +192,11 @@ describe('ai frontend ui contracts', () => {
     expect(source).toContain('库存预警')
     expect(source).toContain('跟进任务')
     expect(source).toContain('商品信息')
+    expect(source).toContain('商机进展')
+    expect(source).toContain('报价详情')
+    expect(source).toContain('试驾详情')
+    expect(source).toContain('交付详情')
+    expect(source).toContain('经营概览')
     expect(source).toContain('交易编号')
     expect(source).toContain('客户')
     expect(source).toContain('金额')
@@ -219,6 +254,19 @@ describe('ai frontend ui contracts', () => {
     expect(document.body.innerHTML).not.toContain('<script>')
   })
 
+  it('normalizes compact numbered answers into readable numbered sections', () => {
+    const { container } = render(AiMarkdownMessage, {
+      props: {
+        content: '1.第一点说明。2.第二点说明。3.第三点说明。',
+      },
+    })
+
+    const labels = Array.from(container.querySelectorAll('strong')).map((item) => item.textContent)
+    expect(labels).toEqual(['1.', '2.', '3.'])
+    expect(container.textContent).toContain('第一点说明。')
+    expect(container.querySelectorAll('.ai-markdown-message > p')).toHaveLength(2)
+  })
+
   it('workflow panel displays business process without internal identifiers', () => {
     const source = fs.readFileSync(workflowPanel, 'utf8')
 
@@ -235,7 +283,7 @@ describe('ai frontend ui contracts', () => {
   it('assistant panel restores tool results and proposal status from run trace', () => {
     const source = fs.readFileSync(assistantPanel, 'utf8')
 
-    expect(source).toContain('detail.turns?.length')
+    expect(source).toContain('Array.isArray(detail.turns)')
     expect(source).toContain('turn.toolResults')
     expect(source).toContain('toolCall.displayPayload')
     expect(source).toContain('trace.proposals.map')

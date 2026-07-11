@@ -130,6 +130,16 @@ public class AiTraceServiceImpl implements AiTraceService {
     }
 
     @Override
+    public TAiConversation lockOwnedConversation(String conversationNo) {
+        TAiConversation conversation = conversationMapper.selectOwnedByConversationNoForUpdate(
+                conversationNo, currentUserProvider.getCurrentUserId());
+        if (conversation == null) {
+            throw new BusinessException(CodeEnum.ACCESS_DENIED, "AI Conversation 不存在或无权访问");
+        }
+        return conversation;
+    }
+
+    @Override
     public TAiConversation getConversationById(Long conversationId) {
         TAiConversation conversation = conversationMapper.selectById(conversationId);
         if (conversation == null) {
@@ -177,8 +187,54 @@ public class AiTraceServiceImpl implements AiTraceService {
     }
 
     @Override
+    public List<TAiMessage> listActiveContextMessages(Long conversationId) {
+        return messageMapper.selectActiveContextByConversationId(conversationId);
+    }
+
+    @Override
+    public TAiMessage getOwnedUserMessage(Long conversationId, String messageNo) {
+        TAiMessage message = messageMapper.selectOwnedUserMessageByNo(
+                conversationId, messageNo, currentUserProvider.getCurrentUserId());
+        if (message == null) {
+            throw new BusinessException(CodeEnum.NOT_FOUND, "AI 用户消息不存在或无权访问");
+        }
+        return message;
+    }
+
+    @Override
+    public void supersedeMessage(TAiMessage message, int expectedVersion) {
+        if (messageMapper.supersedeIfVersionMatches(message.getId(), expectedVersion,
+                currentUserProvider.getCurrentUserId()) != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "AI 消息已被修改");
+        }
+    }
+
+    @Override
+    public void withdrawMessage(TAiMessage message, int expectedVersion) {
+        if (messageMapper.withdrawIfVersionMatches(message.getId(), expectedVersion,
+                currentUserProvider.getCurrentUserId()) != 1) {
+            throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "AI 消息已被修改");
+        }
+    }
+
+    @Override
     public TAiRun getLatestRunByConversationId(Long conversationId) {
         return runMapper.selectLatestByConversationId(conversationId);
+    }
+
+    @Override
+    public TAiRun getLatestActiveRunBeforeTurn(Long conversationId, int turnNo) {
+        return runMapper.selectLatestActiveBeforeTurn(conversationId, turnNo);
+    }
+
+    @Override
+    public List<TAiRun> invalidateContextFromTurn(Long conversationId, int turnNo, String reason) {
+        List<TAiRun> invalidatedRuns = runMapper.selectActiveFromTurn(conversationId, turnNo);
+        if (!invalidatedRuns.isEmpty()) {
+            runMapper.invalidateFromTurn(conversationId, turnNo, sanitizer.sanitize(reason, 255));
+            messageMapper.excludeContextFromTurn(conversationId, turnNo, currentUserProvider.getCurrentUserId());
+        }
+        return invalidatedRuns;
     }
 
     @Override
@@ -198,7 +254,7 @@ public class AiTraceServiceImpl implements AiTraceService {
         LocalDateTime now = LocalDateTime.now();
         requireOne(conversationMapper.updateAfterRun(conversationId,
                 sanitizer.sanitize(lastRunNo, 64),
-                sanitizer.sanitize(summaryText, 2000),
+                sanitizer.sanitize(summaryText, 8000),
                 now,
                 now,
                 currentUserProvider.getCurrentUserId()), "AI Conversation 更新失败");
@@ -219,9 +275,10 @@ public class AiTraceServiceImpl implements AiTraceService {
         run.setEntryPoint(command.entryPoint().name());
         run.setContextObjectType(sanitizer.sanitize(command.contextObjectType(), 64));
         run.setContextObjectId(sanitizer.sanitize(command.contextObjectId(), 64));
-        run.setPromptSummary(sanitizer.sanitize(command.prompt(), 500));
+        run.setPromptSummary(sanitizer.sanitizeDisplayText(command.prompt(), 4000));
         run.setStatus(AiRunStatus.CREATED.name());
         run.setExpiresTime(command.expiresTime());
+        run.setContextActive(true);
         run.setCreateTime(now);
         run.setCreateBy(currentUser.getId());
         requireOne(runMapper.insert(run), "AI Run 写入失败");
@@ -297,6 +354,12 @@ public class AiTraceServiceImpl implements AiTraceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public boolean startRunIfCreated(Long runId) {
+        return runMapper.startIfCreated(runId) == 1;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean cancelRunIfCancellable(Long runId, String reason) {
         return runMapper.cancelIfCancellable(runId,
                 CodeEnum.AI_RUN_CANCELLED.name(),
@@ -307,12 +370,20 @@ public class AiTraceServiceImpl implements AiTraceService {
     @Transactional(rollbackFor = Exception.class)
     public TAiMessage appendMessage(AiMessageCommand command) {
         TAiMessage message = new TAiMessage();
+        message.setMessageNo(command.messageNo() == null
+                ? "AIM" + UUID.randomUUID().toString().replace("-", "")
+                : sanitizer.sanitize(command.messageNo(), 64));
         message.setConversationId(command.conversationId());
         message.setRunId(command.runId());
         message.setRole(command.role().name());
         message.setSequenceNo(command.sequenceNo());
         message.setVisibleToUser(command.visibleToUser() == null || command.visibleToUser());
-        message.setContentSummary(sanitizer.sanitizeDisplayText(command.content(), 2000));
+        message.setStatus(command.status() == null ? "ACTIVE" : command.status());
+        message.setRevisionNo(command.revisionNo() == null ? 1 : command.revisionNo());
+        message.setSupersedesMessageId(command.supersedesMessageId());
+        message.setIncludedInContext(command.includedInContext() == null || command.includedInContext());
+        message.setVersion(command.version() == null ? 1 : command.version());
+        message.setContentSummary(sanitizer.sanitizeDisplayText(command.content(), 16000));
         message.setCreateTime(LocalDateTime.now());
         message.setCreateBy(currentUserProvider.getCurrentUserId());
         requireOne(messageMapper.insert(message), "AI Message 写入失败");
@@ -330,6 +401,7 @@ public class AiTraceServiceImpl implements AiTraceService {
         toolCall.setInputSummary(sanitizer.sanitize(command.inputSummary(), 1000));
         toolCall.setOutputSummary(sanitizer.sanitize(command.outputSummary(), 1000));
         toolCall.setObjectRefs(sanitizer.sanitize(command.objectRefs(), 1000));
+        toolCall.setDisplayPayloadJson(command.displayPayloadJson());
         toolCall.setResultStatus(command.resultStatus().name());
         toolCall.setErrorCode(sanitizer.sanitize(command.errorCode(), 64));
         toolCall.setDurationMs(command.durationMs());

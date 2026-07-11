@@ -20,6 +20,8 @@
         <result column="started_time" property="startedTime" />
         <result column="completed_time" property="completedTime" />
         <result column="expires_time" property="expiresTime" />
+        <result column="context_active" property="contextActive" />
+        <result column="invalidation_reason" property="invalidationReason" />
         <result column="create_time" property="createTime" />
         <result column="create_by" property="createBy" />
     </resultMap>
@@ -29,18 +31,18 @@
         r.parent_run_id, r.turn_no,
         r.user_id, r.user_name, r.entry_point, r.context_object_type, r.context_object_id,
         r.prompt_summary, r.status, r.error_code, r.error_message, r.started_time, r.completed_time,
-        r.expires_time, r.create_time, r.create_by
+        r.expires_time, r.context_active, r.invalidation_reason, r.create_time, r.create_by
     </sql>
 
     <insert id="insert" parameterType="com.autodealer.crm.ai.model.TAiRun" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO t_ai_run
         (run_no, conversation_id, parent_run_id, turn_no, user_id, user_name, entry_point, context_object_type, context_object_id,
          prompt_summary, status, error_code, error_message, started_time, completed_time,
-         expires_time, create_time, create_by)
+         expires_time, context_active, invalidation_reason, create_time, create_by)
         VALUES
         (#{runNo}, #{conversationId}, #{parentRunId}, #{turnNo}, #{userId}, #{userName}, #{entryPoint}, #{contextObjectType}, #{contextObjectId},
          #{promptSummary}, #{status}, #{errorCode}, #{errorMessage}, #{startedTime}, #{completedTime},
-         #{expiresTime}, #{createTime}, #{createBy})
+         #{expiresTime}, #{contextActive}, #{invalidationReason}, #{createTime}, #{createBy})
     </insert>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -79,8 +81,30 @@
         FROM t_ai_run r
         LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
         WHERE r.conversation_id = #{conversationId}
+          AND r.context_active = TRUE
         ORDER BY r.turn_no DESC, r.create_time DESC, r.id DESC
         LIMIT 1
+    </select>
+
+    <select id="selectLatestActiveBeforeTurn" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_run r
+        LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
+        WHERE r.conversation_id = #{conversationId}
+          AND r.context_active = TRUE
+          AND r.turn_no &lt; #{turnNo}
+        ORDER BY r.turn_no DESC, r.id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectActiveFromTurn" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_run r
+        LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
+        WHERE r.conversation_id = #{conversationId}
+          AND r.context_active = TRUE
+          AND r.turn_no &gt;= #{turnNo}
+        ORDER BY r.turn_no ASC, r.id ASC
     </select>
 
     <select id="selectByConversationId" resultMap="BaseResultMap">
@@ -88,6 +112,7 @@
         FROM t_ai_run r
         LEFT JOIN t_ai_conversation c ON c.id = r.conversation_id
         WHERE r.conversation_id = #{conversationId}
+          AND r.context_active = TRUE
         ORDER BY r.turn_no ASC, r.create_time ASC, r.id ASC
     </select>
 
@@ -130,6 +155,16 @@
           AND status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED')
     </update>
 
+    <update id="startIfCreated">
+        UPDATE t_ai_run
+        SET status = 'RUNNING',
+            started_time = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+          AND status = 'CREATED'
+          AND context_active = TRUE
+          AND (expires_time IS NULL OR expires_time &gt; CURRENT_TIMESTAMP)
+    </update>
+
     <update id="cancelIfCancellable">
         UPDATE t_ai_run
         SET status = 'CANCELLED',
@@ -138,5 +173,18 @@
             completed_time = CURRENT_TIMESTAMP
         WHERE id = #{id}
           AND status IN ('CREATED', 'RUNNING')
+    </update>
+
+    <update id="invalidateFromTurn">
+        UPDATE t_ai_run
+        SET context_active = FALSE,
+            invalidation_reason = #{reason},
+            status = CASE WHEN status IN ('CREATED', 'RUNNING') THEN 'CANCELLED' ELSE status END,
+            error_code = CASE WHEN status IN ('CREATED', 'RUNNING') THEN 'AI_RUN_CANCELLED' ELSE error_code END,
+            error_message = CASE WHEN status IN ('CREATED', 'RUNNING') THEN #{reason} ELSE error_message END,
+            completed_time = CASE WHEN status IN ('CREATED', 'RUNNING') THEN CURRENT_TIMESTAMP ELSE completed_time END
+        WHERE conversation_id = #{conversationId}
+          AND turn_no &gt;= #{turnNo}
+          AND context_active = TRUE
     </update>
 </mapper>

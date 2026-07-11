@@ -14,7 +14,7 @@ class ChatMessage(BaseModel):
     """发送给模型 Provider 的对话消息，禁止承载认证令牌或业务权限上下文。"""
 
     role: str = Field(min_length=1, max_length=32)
-    content: str = Field(default="", max_length=8000)
+    content: str = Field(default="", max_length=12000)
 
 
 class ChatCompletionChunk(BaseModel):

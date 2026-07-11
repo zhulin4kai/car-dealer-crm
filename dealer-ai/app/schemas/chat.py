@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any
 
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import AliasChoices, AnyHttpUrl, BaseModel, Field
 
 
 class RunStatus(StrEnum):
@@ -47,17 +47,69 @@ class MessageHistoryItem(BaseModel):
     content_summary: str = Field(min_length=1, max_length=2000)
 
 
+class AssistantPolicy(BaseModel):
+    """Spring Boot 为单次 Run 解析后的助手策略，不承载用户权限或数据范围。"""
+
+    proposals_enabled: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("proposals_enabled", "proposalsEnabled"),
+    )
+    max_tool_calls_per_run: int = Field(
+        default=8,
+        ge=0,
+        le=50,
+        validation_alias=AliasChoices("max_tool_calls_per_run", "maxToolCallsPerRun"),
+    )
+    safety_mode: str = Field(
+        default="STANDARD",
+        pattern="^(STANDARD|STRICT)$",
+        validation_alias=AliasChoices("safety_mode", "safetyMode"),
+    )
+    network_mode: str = Field(
+        default="PROVIDER_ONLY",
+        pattern="^(DISABLED|PROVIDER_ONLY)$",
+        validation_alias=AliasChoices("network_mode", "networkMode"),
+    )
+    context_message_limit: int = Field(
+        default=8,
+        ge=0,
+        le=8,
+        validation_alias=AliasChoices("context_message_limit", "contextMessageLimit"),
+    )
+    summary_max_chars: int = Field(
+        default=2000,
+        ge=0,
+        le=8000,
+        validation_alias=AliasChoices("summary_max_chars", "summaryMaxChars"),
+    )
+    max_run_seconds: int = Field(
+        default=60,
+        ge=1,
+        le=600,
+        validation_alias=AliasChoices("max_run_seconds", "maxRunSeconds"),
+    )
+    business_instruction: str | None = Field(
+        default=None,
+        max_length=2000,
+        validation_alias=AliasChoices("business_instruction", "businessInstruction"),
+    )
+
+
 class ChatRunRequest(BaseModel):
     """Spring Boot 发起 AI Run 编排的内部请求。"""
 
     run_id: str = Field(min_length=1, max_length=64)
     user_prompt: str = Field(min_length=1, max_length=4000)
     conversation_no: str | None = Field(default=None, max_length=64)
-    conversation_summary: str | None = Field(default=None, max_length=2000)
+    conversation_summary: str | None = Field(default=None, max_length=8000)
     message_history: list[MessageHistoryItem] = Field(default_factory=list, max_length=8)
     context: AiContextObject | None = None
     tool_schemas: list[dict[str, Any]] = Field(default_factory=list)
     allow_proposals: bool = False
+    assistant_policy: AssistantPolicy | None = Field(
+        default=None,
+        validation_alias=AliasChoices("assistant_policy", "assistantPolicy"),
+    )
     provider_runtime_config: ProviderRuntimeConfig
 
 

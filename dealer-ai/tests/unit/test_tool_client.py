@@ -142,7 +142,10 @@ async def test_tool_client_disables_env_proxy_for_internal_tool_api(
     )
 
     assert captured["trust_env"] is False
-    assert captured["endpoint"] == "http://localhost:8089/internal/ai/tools/get_inventory_alerts/execute"
+    assert (
+        captured["endpoint"]
+        == "http://localhost:8089/internal/ai/tools/get_inventory_alerts/execute"
+    )
 
 
 def test_tool_call_request_rejects_trusted_context_fields() -> None:
@@ -176,4 +179,15 @@ def test_proposal_argument_validation_rejects_unsupported_business_values() -> N
                 "relatedObjectId": 12,
                 "dueTime": "2026-07-01T10:00:00",
             },
+        )
+
+
+def test_new_readonly_tool_arguments_reject_dynamic_sql_or_url_fields() -> None:
+    with pytest.raises(ValueError):
+        validate_tool_arguments("get_business_overview", {"sql": "select * from t_user"})
+
+    with pytest.raises(ValueError):
+        validate_tool_arguments(
+            "get_opportunity_detail",
+            {"opportunityId": 21, "url": "https://example.com"},
         )

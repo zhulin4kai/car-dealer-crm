@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -47,8 +48,9 @@ public class AiRunController {
 
     @GetMapping(value = "/{runNo}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @PreAuthorize("hasAuthority('" + PermissionCodes.AI_USE + "')")
-    public SseEmitter events(@PathVariable String runNo) {
-        return aiConversationService.streamRun(runNo);
+    public SseEmitter events(@PathVariable String runNo,
+                             @RequestParam(defaultValue = "0") int afterSequence) {
+        return aiConversationService.streamRun(runNo, afterSequence);
     }
 
     @PostMapping("/{runNo}/cancel")

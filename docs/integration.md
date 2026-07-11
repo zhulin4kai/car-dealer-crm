@@ -14,8 +14,9 @@
 
 - 前端通过 `/api/ai/conversations` 创建、查询、重命名和归档 AI Conversation。Conversation 详情响应中的 `turns` 是会话恢复主契约，前端必须用它恢复每轮消息、业务卡片、Proposal、Workflow 和处理过程。
 - 前端发送问题时调用 `/api/ai/runs`，优先携带当前 `conversationNo`；未携带时后端按当前用户和业务对象上下文解析默认会话。
-- 前端订阅 `/api/ai/runs/{runNo}/events` 获取本次 Run SSE；刷新恢复整个会话时调用 `/api/ai/conversations/{conversationNo}`。
-- Spring Boot 调用 `dealer-ai` 时携带 `conversationNo`、脱敏会话摘要和最近 8 条用户可见消息；`dealer-ai` 不保存会话。
+- 前端订阅 `/api/ai/runs/{runNo}/events` 获取本次 Run SSE；断线时携带 `afterSequence` 重放后续持久化事件，同一 Run 不会再次启动。刷新恢复整个会话时调用 `/api/ai/conversations/{conversationNo}`。
+- Spring Boot 调用 `dealer-ai` 时携带 `conversationNo`、脱敏会话摘要、管理员配置的最近 1 到 8 条活动消息、工具权限交集和运行策略；`dealer-ai` 不保存会话。
+- 用户消息编辑调用 `PATCH /api/ai/conversations/{conversationNo}/messages/{messageNo}`，撤回调用对应 `/withdraw`；两者使用 `expectedVersion` 防止并发覆盖。
 - 会话归档后默认列表不显示，但 Run trace 和审计链仍可按权限查询。
 
 ---
@@ -868,6 +869,10 @@ apiFunction(params).then(response => {
 | fetchAiRun | GET | /api/ai/runs/{runNo} | 路径参数: runNo | R\<AiRunResponse\> | AiRunController.detail | 刷新或断线后恢复 Run 状态 |
 | fetchAiRunTrace | GET | /api/ai/runs/{runNo}/trace | 路径参数: runNo | R\<AiRunTraceResponse\> | AiRunController.trace | 恢复 Run、消息、工具调用、Proposal、工作流和执行事件 |
 | streamAiRunEvents | GET | /api/ai/runs/{runNo}/events | 路径参数: runNo | text/event-stream | AiRunController.events | 前端只订阅 Spring Boot SSE |
+| editAiMessage | PATCH | /api/ai/conversations/{conversationNo}/messages/{messageNo} | 路径参数 + content、expectedVersion | R\<AiRunResponse\> | AiConversationController.editMessage | 创建替代 Run，旧分支保留审计但退出上下文 |
+| withdrawAiMessage | POST | /api/ai/conversations/{conversationNo}/messages/{messageNo}/withdraw | 路径参数 + expectedVersion | R\<AiConversationDetailResponse\> | AiConversationController.withdrawMessage | 撤回不回滚已执行业务动作 |
+| getAiAssistantPolicy | GET | /api/ai/policy | 无 | R\<AiAssistantPolicyResponse\> | AiAssistantPolicyController.getPolicy | 管理员查看全局工具、安全、联网和上下文策略 |
+| updateAiAssistantPolicy | PUT | /api/ai/policy | data: UpdateAiAssistantPolicyRequest | R\<AiAssistantPolicyResponse\> | AiAssistantPolicyController.updatePolicy | 使用 version 乐观锁更新全局策略 |
 | confirmAiProposal | POST | /api/ai/proposals/{proposalId}/confirm | 路径参数: proposalId | R\<AiProposalConfirmResponse\> | AiProposalController.confirm | 只执行后端保存参数 |
 | rejectAiProposal | POST | /api/ai/proposals/{proposalId}/reject | 路径参数: proposalId | R\<AiProposalConfirmResponse\> | AiProposalController.reject | 拒绝待确认 Proposal |
 | executeInternalAiTool | POST | /internal/ai/tools/{toolName}/execute | header: X-Dealer-AI-Tool-Token, data: ExecuteAiToolRequest | R\<AiToolExecutionResponse\> | AiInternalToolController.execute | 仅供 dealer-ai 内部调用 |

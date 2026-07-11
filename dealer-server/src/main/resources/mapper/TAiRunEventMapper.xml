@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.ai.mapper.TAiRunEventMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.ai.model.TAiRunEvent">
+        <id column="id" property="id" />
+        <result column="run_id" property="runId" />
+        <result column="event_id" property="eventId" />
+        <result column="sequence_no" property="sequenceNo" />
+        <result column="event_type" property="eventType" />
+        <result column="payload_json" property="payloadJson" />
+        <result column="occurred_time" property="occurredTime" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.autodealer.crm.ai.model.TAiRunEvent" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_ai_run_event
+        (run_id, event_id, sequence_no, event_type, payload_json, occurred_time, create_time)
+        VALUES
+        (#{runId}, #{eventId}, #{sequenceNo}, #{eventType}, #{payloadJson}, #{occurredTime}, #{createTime})
+    </insert>
+
+    <select id="countSameEvent" resultType="int">
+        SELECT COUNT(*)
+        FROM t_ai_run_event
+        WHERE run_id = #{runId}
+          AND (event_id = #{eventId} OR sequence_no = #{sequenceNo})
+    </select>
+
+    <select id="selectAfterSequence" resultMap="BaseResultMap">
+        SELECT id, run_id, event_id, sequence_no, event_type, payload_json, occurred_time, create_time
+        FROM t_ai_run_event
+        WHERE run_id = #{runId}
+          AND sequence_no &gt; #{afterSequence}
+        ORDER BY sequence_no ASC, id ASC
+    </select>
+</mapper>

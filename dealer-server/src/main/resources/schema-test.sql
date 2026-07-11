@@ -1050,7 +1050,7 @@ CREATE TABLE IF NOT EXISTS t_ai_conversation
     entry_point         VARCHAR(32) NOT NULL,
     context_object_type VARCHAR(64),
     context_object_id   VARCHAR(64),
-    summary_text        VARCHAR(2000),
+    summary_text        VARCHAR(8000),
     last_run_no         VARCHAR(64),
     last_message_time   TIMESTAMP,
     create_time         TIMESTAMP NOT NULL,
@@ -1079,13 +1079,15 @@ CREATE TABLE IF NOT EXISTS t_ai_run
     entry_point         VARCHAR(32) NOT NULL,
     context_object_type VARCHAR(64),
     context_object_id   VARCHAR(64),
-    prompt_summary      VARCHAR(500) NOT NULL,
+    prompt_summary      VARCHAR(4000) NOT NULL,
     status              VARCHAR(32) NOT NULL,
     error_code          VARCHAR(64),
     error_message       VARCHAR(255),
     started_time        TIMESTAMP,
     completed_time      TIMESTAMP,
     expires_time        TIMESTAMP,
+    context_active      BOOLEAN NOT NULL DEFAULT TRUE,
+    invalidation_reason VARCHAR(255),
     create_time         TIMESTAMP NOT NULL,
     create_by           INTEGER NOT NULL,
     PRIMARY KEY (id),
@@ -1102,6 +1104,54 @@ CREATE INDEX IF NOT EXISTS idx_ai_run_user_time ON t_ai_run(user_id, create_time
 CREATE INDEX IF NOT EXISTS idx_ai_run_status ON t_ai_run(status, create_time);
 CREATE INDEX IF NOT EXISTS idx_ai_run_context ON t_ai_run(context_object_type, context_object_id);
 CREATE INDEX IF NOT EXISTS idx_ai_run_conversation_turn ON t_ai_run(conversation_id, turn_no, id);
+
+CREATE TABLE IF NOT EXISTS t_ai_run_event
+(
+    id            BIGINT NOT NULL AUTO_INCREMENT,
+    run_id        BIGINT NOT NULL,
+    event_id      VARCHAR(64) NOT NULL,
+    sequence_no   INTEGER NOT NULL,
+    event_type    VARCHAR(64) NOT NULL,
+    payload_json  TEXT NOT NULL,
+    occurred_time TIMESTAMP NOT NULL,
+    create_time   TIMESTAMP NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ai_run_event_sequence UNIQUE (run_id, sequence_no),
+    CONSTRAINT uk_ai_run_event_id UNIQUE (run_id, event_id),
+    CONSTRAINT fk_ai_run_event_run FOREIGN KEY (run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_ai_assistant_policy
+(
+    id                     BIGINT NOT NULL,
+    enabled_tools          BOOLEAN NOT NULL DEFAULT TRUE,
+    allowed_tool_names     TEXT NOT NULL,
+    proposals_enabled      BOOLEAN NOT NULL DEFAULT TRUE,
+    max_tool_calls_per_run INTEGER NOT NULL,
+    safety_mode            VARCHAR(32) NOT NULL,
+    network_mode           VARCHAR(32) NOT NULL,
+    context_message_limit  INTEGER NOT NULL,
+    summary_max_chars      INTEGER NOT NULL,
+    max_run_seconds        INTEGER NOT NULL,
+    version                INTEGER NOT NULL,
+    create_time            TIMESTAMP NOT NULL,
+    create_by              INTEGER NOT NULL,
+    edit_time              TIMESTAMP,
+    edit_by                INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT chk_ai_policy_singleton CHECK (id = 1),
+    CONSTRAINT chk_ai_policy_safety_mode CHECK (safety_mode IN ('STRICT', 'STANDARD')),
+    CONSTRAINT chk_ai_policy_network_mode CHECK (network_mode IN ('DISABLED', 'PROVIDER_ONLY')),
+    CONSTRAINT chk_ai_policy_context_limit CHECK (context_message_limit BETWEEN 1 AND 8)
+);
+
+MERGE INTO t_ai_assistant_policy
+(id, enabled_tools, allowed_tool_names, proposals_enabled, max_tool_calls_per_run,
+ safety_mode, network_mode, context_message_limit, summary_max_chars, max_run_seconds,
+ version, create_time, create_by, edit_time, edit_by)
+KEY(id) VALUES
+(1, TRUE, '["create_communication_record_proposal","create_follow_task_proposal","get_business_overview","get_customer_profile","get_delivery_detail","get_inventory_alerts","get_opportunity_detail","get_quote_detail","get_test_drive_detail","get_transaction_detail","list_my_followups","list_pending_transaction_approvals","resolve_vehicle_product","search_customers"]',
+ TRUE, 8, 'STRICT', 'PROVIDER_ONLY', 8, 2000, 120, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1);
 
 CREATE TABLE IF NOT EXISTS t_ai_provider_config
 (
@@ -1173,19 +1223,32 @@ CREATE INDEX IF NOT EXISTS idx_ai_workflow_user_status ON t_ai_workflow(user_id,
 CREATE TABLE IF NOT EXISTS t_ai_message
 (
     id              BIGINT NOT NULL AUTO_INCREMENT,
+    message_no      VARCHAR(64) NOT NULL,
     conversation_id BIGINT NOT NULL,
     run_id          BIGINT NOT NULL,
     role            VARCHAR(32) NOT NULL,
     sequence_no     INTEGER NOT NULL,
     visible_to_user BOOLEAN NOT NULL DEFAULT TRUE,
-    content_summary VARCHAR(2000) NOT NULL,
+    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    revision_no     INTEGER NOT NULL DEFAULT 1,
+    supersedes_message_id BIGINT,
+    included_in_context BOOLEAN NOT NULL DEFAULT TRUE,
+    version         INTEGER NOT NULL DEFAULT 1,
+    content_summary VARCHAR(16000) NOT NULL,
     create_time     TIMESTAMP NOT NULL,
     create_by       INTEGER NOT NULL,
+    edit_time       TIMESTAMP,
+    edit_by         INTEGER,
+    withdrawn_time  TIMESTAMP,
+    withdrawn_by    INTEGER,
     PRIMARY KEY (id),
     CONSTRAINT uk_ai_message_run_seq UNIQUE (run_id, sequence_no),
+    CONSTRAINT uk_ai_message_no UNIQUE (message_no),
     CONSTRAINT fk_ai_message_conversation FOREIGN KEY (conversation_id) REFERENCES t_ai_conversation(id) ON DELETE RESTRICT,
     CONSTRAINT fk_ai_message_run FOREIGN KEY (run_id) REFERENCES t_ai_run(id) ON DELETE RESTRICT,
-    CONSTRAINT chk_ai_message_role CHECK (role IN ('USER', 'ASSISTANT', 'SYSTEM', 'TOOL'))
+    CONSTRAINT fk_ai_message_supersedes FOREIGN KEY (supersedes_message_id) REFERENCES t_ai_message(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ai_message_role CHECK (role IN ('USER', 'ASSISTANT', 'SYSTEM', 'TOOL')),
+    CONSTRAINT chk_ai_message_status CHECK (status IN ('ACTIVE', 'SUPERSEDED', 'WITHDRAWN'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_ai_message_conversation_time ON t_ai_message(conversation_id, visible_to_user, create_time, id);

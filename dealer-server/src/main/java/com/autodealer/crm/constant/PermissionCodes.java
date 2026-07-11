@@ -159,4 +159,6 @@ public final class PermissionCodes {
     public static final String AI_PROVIDER_CONFIG_VIEW = "ai:provider-config:view";
     public static final String AI_PROVIDER_CONFIG_MANAGE = "ai:provider-config:manage";
     public static final String AI_PROVIDER_CONFIG_ROTATE_KEY = "ai:provider-config:rotate-key";
+    public static final String AI_POLICY_VIEW = "ai:policy:view";
+    public static final String AI_POLICY_MANAGE = "ai:policy:manage";
 }

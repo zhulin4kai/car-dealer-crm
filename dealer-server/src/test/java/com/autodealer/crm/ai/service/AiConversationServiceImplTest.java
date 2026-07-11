@@ -11,6 +11,8 @@ import com.autodealer.crm.ai.dto.AiRunTraceResponse;
 import com.autodealer.crm.ai.dto.CreateAiRunRequest;
 import com.autodealer.crm.ai.dto.DealerAiEventResponse;
 import com.autodealer.crm.ai.dto.DealerAiRunRequest;
+import com.autodealer.crm.ai.dto.EditAiMessageRequest;
+import com.autodealer.crm.ai.dto.WithdrawAiMessageRequest;
 import com.autodealer.crm.ai.dto.ProviderRuntimeConfig;
 import com.autodealer.crm.ai.enums.AiConversationStatus;
 import com.autodealer.crm.ai.enums.AiEntryPoint;
@@ -39,6 +41,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 class AiConversationServiceImplTest {
 
@@ -60,14 +63,15 @@ class AiConversationServiceImplTest {
         run.setStatus(AiRunStatus.CREATED.name());
         run.setCreateTime(LocalDateTime.of(2026, 6, 28, 11, 0));
         TAiConversation conversation = conversation("AIC202606300001", 11L, null, null);
+        conversation.setTitle("新的 AI 会话");
         when(traceService.findOrCreateConversation(any(), any(), any(), any())).thenReturn(conversation);
+        when(traceService.lockOwnedConversation("AIC202606300001")).thenReturn(conversation);
         when(traceService.getConversationById(11L)).thenReturn(conversation);
         when(traceService.nextTurnNo(11L)).thenReturn(1);
         when(traceService.createRun(any())).thenReturn(run);
         when(toolRegistry.definitions()).thenReturn(List.of());
-        AiConversationServiceImpl service = new AiConversationServiceImpl(
-                traceService, dealerAiClient, providerConfigService, cancellationRegistry,
-                new AiSensitiveDataSanitizer(), toolRegistry, workflowMapper, workflowStepMapper);
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
         CreateAiRunRequest request = new CreateAiRunRequest();
         request.setEntryPoint(AiEntryPoint.PAGE.name());
         request.setPrompt("查客户跟进");
@@ -89,6 +93,7 @@ class AiConversationServiceImplTest {
                         && Boolean.TRUE.equals(command.visibleToUser())
                         && command.content().equals("查客户跟进")));
         verify(traceService).updateConversationAfterRun(11L, "AIR202606280001", "用户问题：查客户跟进");
+        verify(traceService).renameConversation("AIC202606300001", "查客户跟进");
     }
 
     @Test
@@ -109,9 +114,8 @@ class AiConversationServiceImplTest {
         when(traceService.getLatestRunByConversationId(11L)).thenReturn(secondRun);
         when(traceService.getRunTrace(firstRun)).thenReturn(trace(firstRun, "第一轮回答", "get_customer_profile"));
         when(traceService.getRunTrace(secondRun)).thenReturn(trace(secondRun, "第二轮回答", "list_pending_transaction_approvals"));
-        AiConversationServiceImpl service = new AiConversationServiceImpl(
-                traceService, dealerAiClient, providerConfigService, cancellationRegistry,
-                new AiSensitiveDataSanitizer(), toolRegistry, workflowMapper, workflowStepMapper);
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
 
         AiConversationDetailResponse detail = service.getConversation("AIC202606300010");
 
@@ -148,11 +152,10 @@ class AiConversationServiceImplTest {
             consumer.accept(event("evt-2", 2, "proposal_created", Map.of("proposalId", 9)));
             return null;
         }).when(dealerAiClient).streamRunEvents(any(), any(), any());
-        AiConversationServiceImpl service = new AiConversationServiceImpl(
-                traceService, dealerAiClient, providerConfigService, cancellationRegistry,
-                new AiSensitiveDataSanitizer(), toolRegistry, workflowMapper, workflowStepMapper);
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
 
-        service.streamRun("AIR202606280002");
+        service.streamRun("AIR202606280002", 0);
 
         verify(traceService, timeout(1000)).appendMessage(org.mockito.ArgumentMatchers.argThat(command ->
                 command.runId().equals(3L)
@@ -192,11 +195,10 @@ class AiConversationServiceImplTest {
                     "title", "客户跟进辅助工作流")));
             return null;
         }).when(dealerAiClient).streamRunEvents(any(), any(), any());
-        AiConversationServiceImpl service = new AiConversationServiceImpl(
-                traceService, dealerAiClient, providerConfigService, cancellationRegistry,
-                new AiSensitiveDataSanitizer(), toolRegistry, workflowMapper, workflowStepMapper);
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
 
-        service.streamRun("AIR202606280003");
+        service.streamRun("AIR202606280003", 0);
 
         verify(traceService, timeout(1000).atLeastOnce())
                 .recordExecutionEvent(org.mockito.ArgumentMatchers.argThat((AiExecutionEventCommand command) ->
@@ -240,11 +242,10 @@ class AiConversationServiceImplTest {
             consumer.accept(event("evt-1", 1, "run_completed", Map.of("status", "COMPLETED")));
             return null;
         }).when(dealerAiClient).streamRunEvents(any(), any(), any());
-        AiConversationServiceImpl service = new AiConversationServiceImpl(
-                traceService, dealerAiClient, providerConfigService, cancellationRegistry,
-                new AiSensitiveDataSanitizer(), toolRegistry, workflowMapper, workflowStepMapper);
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
 
-        service.streamRun("AIR202606280004");
+        service.streamRun("AIR202606280004", 0);
 
         verify(dealerAiClient, timeout(1000)).streamRunEvents(org.mockito.ArgumentMatchers.argThat(
                 (DealerAiRunRequest request) -> {
@@ -261,6 +262,164 @@ class AiConversationServiceImplTest {
                 }), any(), any());
     }
 
+    @Test
+    void streamRun_runtimeCompletedWithFailedStatus_shouldKeepRunFailed() {
+        AiTraceService traceService = mock(AiTraceService.class);
+        DealerAiClient dealerAiClient = mock(DealerAiClient.class);
+        ToolRegistry toolRegistry = mock(ToolRegistry.class);
+        AiProviderConfigService providerConfigService = mock(AiProviderConfigService.class);
+        AiRunCancellationRegistry cancellationRegistry = new AiRunCancellationRegistry();
+        TAiWorkflowMapper workflowMapper = mock(TAiWorkflowMapper.class);
+        TAiWorkflowStepMapper workflowStepMapper = mock(TAiWorkflowStepMapper.class);
+        TAiRun run = run("AIR-FAILED", null, 1);
+        run.setStatus(AiRunStatus.CREATED.name());
+        run.setPromptSummary("测试失败");
+        when(traceService.getOwnedRun("AIR-FAILED")).thenReturn(run);
+        when(traceService.getRunById(run.getId())).thenReturn(run);
+        when(providerConfigService.getEnabledRuntimeConfig()).thenReturn(runtimeConfig());
+        when(toolRegistry.definitions()).thenReturn(List.of());
+        doAnswer(invocation -> {
+            DealerAiEventConsumer consumer = invocation.getArgument(1);
+            consumer.accept(event("evt-failed", 2, "run_completed", Map.of(
+                    "status", "FAILED",
+                    "error_code", "PROVIDER_TIMEOUT",
+                    "message", "模型请求超时")));
+            return null;
+        }).when(dealerAiClient).streamRunEvents(any(), any(), any());
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
+
+        service.streamRun("AIR-FAILED", 0);
+
+        verify(traceService, timeout(1000)).updateRunStatusIfNotTerminal(
+                run.getId(), AiRunStatus.FAILED, "PROVIDER_TIMEOUT", "模型请求超时");
+    }
+
+    @Test
+    void streamRun_errorEventThenFailedTerminal_shouldKeepToolFailureClassification() {
+        AiTraceService traceService = mock(AiTraceService.class);
+        DealerAiClient dealerAiClient = mock(DealerAiClient.class);
+        ToolRegistry toolRegistry = mock(ToolRegistry.class);
+        AiProviderConfigService providerConfigService = mock(AiProviderConfigService.class);
+        AiRunCancellationRegistry cancellationRegistry = new AiRunCancellationRegistry();
+        TAiWorkflowMapper workflowMapper = mock(TAiWorkflowMapper.class);
+        TAiWorkflowStepMapper workflowStepMapper = mock(TAiWorkflowStepMapper.class);
+        TAiRun run = run("AIR-TOOL-FAILED", null, 1);
+        run.setStatus(AiRunStatus.CREATED.name());
+        run.setPromptSummary("越权客户测试");
+        when(traceService.getOwnedRun("AIR-TOOL-FAILED")).thenReturn(run);
+        when(traceService.getRunById(run.getId())).thenReturn(run);
+        when(providerConfigService.getEnabledRuntimeConfig()).thenReturn(runtimeConfig());
+        when(toolRegistry.definitions()).thenReturn(List.of());
+        doAnswer(invocation -> {
+            DealerAiEventConsumer consumer = invocation.getArgument(1);
+            consumer.accept(event("evt-error", 2, "error", Map.of(
+                    "code", "AI_TOOL_EXECUTION_FAILED",
+                    "message", "AI 工具调用失败，请稍后重试")));
+            consumer.accept(event("evt-failed", 3, "run_completed", Map.of("status", "FAILED")));
+            return null;
+        }).when(dealerAiClient).streamRunEvents(any(), any(), any());
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
+
+        service.streamRun("AIR-TOOL-FAILED", 0);
+
+        verify(traceService, timeout(1000)).updateRunStatusIfNotTerminal(
+                run.getId(), AiRunStatus.FAILED,
+                "AI_TOOL_EXECUTION_FAILED", "AI 工具调用失败，请稍后重试");
+    }
+
+    @Test
+    void editMessage_shouldInvalidateFollowingContextAndCreateImmutableRevision() {
+        AiTraceService traceService = mock(AiTraceService.class);
+        DealerAiClient dealerAiClient = mock(DealerAiClient.class);
+        ToolRegistry toolRegistry = mock(ToolRegistry.class);
+        AiProviderConfigService providerConfigService = mock(AiProviderConfigService.class);
+        AiRunCancellationRegistry cancellationRegistry = new AiRunCancellationRegistry();
+        TAiWorkflowMapper workflowMapper = mock(TAiWorkflowMapper.class);
+        TAiWorkflowStepMapper workflowStepMapper = mock(TAiWorkflowStepMapper.class);
+        TAiConversation conversation = conversation("AIC-EDIT", 11L, null, null);
+        TAiMessage original = new TAiMessage();
+        original.setId(21L);
+        original.setMessageNo("AIM-OLD");
+        original.setConversationId(11L);
+        original.setRunId(2L);
+        original.setRole(AiMessageRole.USER.name());
+        original.setStatus("ACTIVE");
+        original.setRevisionNo(1);
+        original.setVersion(1);
+        TAiRun oldRun = run("AIR-OLD", 11L, 2);
+        oldRun.setContextActive(true);
+        TAiRun replacement = run("AIR-NEW", 11L, 3);
+        replacement.setStatus(AiRunStatus.CREATED.name());
+        replacement.setContextActive(true);
+        when(traceService.lockOwnedConversation("AIC-EDIT")).thenReturn(conversation);
+        when(traceService.getOwnedUserMessage(11L, "AIM-OLD")).thenReturn(original);
+        when(traceService.getRunById(2L)).thenReturn(oldRun);
+        when(traceService.invalidateContextFromTurn(11L, 2, "用户编辑历史消息"))
+                .thenReturn(List.of(oldRun));
+        when(traceService.nextTurnNo(11L)).thenReturn(3);
+        when(traceService.createRun(any())).thenReturn(replacement);
+        when(traceService.listActiveContextMessages(11L)).thenReturn(List.of());
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
+        EditAiMessageRequest request = new EditAiMessageRequest();
+        request.setContent("修改后的问题");
+        request.setExpectedVersion(1);
+
+        AiRunResponse response = service.editMessage("AIC-EDIT", "AIM-OLD", request);
+
+        assertEquals("AIR-NEW", response.getRunNo());
+        verify(traceService).supersedeMessage(original, 1);
+        ArgumentCaptor<AiMessageCommand> messageCaptor = ArgumentCaptor.forClass(AiMessageCommand.class);
+        verify(traceService).appendMessage(messageCaptor.capture());
+        assertEquals(21L, messageCaptor.getValue().supersedesMessageId());
+        assertEquals(2, messageCaptor.getValue().revisionNo());
+        assertEquals("修改后的问题", messageCaptor.getValue().content());
+    }
+
+    @Test
+    void withdrawMessage_shouldRemoveTurnAndFollowingRunsFromActiveConversation() {
+        AiTraceService traceService = mock(AiTraceService.class);
+        DealerAiClient dealerAiClient = mock(DealerAiClient.class);
+        ToolRegistry toolRegistry = mock(ToolRegistry.class);
+        AiProviderConfigService providerConfigService = mock(AiProviderConfigService.class);
+        AiRunCancellationRegistry cancellationRegistry = new AiRunCancellationRegistry();
+        TAiWorkflowMapper workflowMapper = mock(TAiWorkflowMapper.class);
+        TAiWorkflowStepMapper workflowStepMapper = mock(TAiWorkflowStepMapper.class);
+        TAiConversation conversation = conversation("AIC-WITHDRAW", 11L, null, null);
+        TAiMessage message = new TAiMessage();
+        message.setId(22L);
+        message.setMessageNo("AIM-WITHDRAW");
+        message.setConversationId(11L);
+        message.setRunId(2L);
+        message.setRole(AiMessageRole.USER.name());
+        message.setStatus("ACTIVE");
+        message.setVersion(1);
+        TAiRun run = run("AIR-WITHDRAW", 11L, 2);
+        run.setContextActive(true);
+        when(traceService.lockOwnedConversation("AIC-WITHDRAW")).thenReturn(conversation);
+        when(traceService.getOwnedConversation("AIC-WITHDRAW")).thenReturn(conversation);
+        when(traceService.getOwnedUserMessage(11L, "AIM-WITHDRAW")).thenReturn(message);
+        when(traceService.getRunById(2L)).thenReturn(run);
+        when(traceService.invalidateContextFromTurn(11L, 2, "用户撤回历史消息"))
+                .thenReturn(List.of(run));
+        when(traceService.listActiveContextMessages(11L)).thenReturn(List.of());
+        when(traceService.listConversationMessages(11L)).thenReturn(List.of());
+        when(traceService.listRunsByConversationId(11L)).thenReturn(List.of());
+        AiConversationServiceImpl service = service(traceService, dealerAiClient, providerConfigService,
+                cancellationRegistry, toolRegistry, workflowMapper, workflowStepMapper);
+        WithdrawAiMessageRequest request = new WithdrawAiMessageRequest();
+        request.setExpectedVersion(1);
+
+        AiConversationDetailResponse response = service.withdrawMessage(
+                "AIC-WITHDRAW", "AIM-WITHDRAW", request);
+
+        assertEquals(0, response.getTurns().size());
+        verify(traceService).withdrawMessage(message, 1);
+        verify(traceService).updateConversationAfterRun(11L, null, "");
+    }
+
     private ProviderRuntimeConfig runtimeConfig() {
         ProviderRuntimeConfig config = new ProviderRuntimeConfig();
         config.setProviderConfigNo("AIPC202606290001");
@@ -272,6 +431,42 @@ class AiConversationServiceImplTest {
         config.setMaxOutputTokens(64);
         config.setTemperature(BigDecimal.valueOf(0.2));
         return config;
+    }
+
+    private AiConversationServiceImpl service(AiTraceService traceService,
+                                              DealerAiClient dealerAiClient,
+                                              AiProviderConfigService providerConfigService,
+                                              AiRunCancellationRegistry cancellationRegistry,
+                                              ToolRegistry toolRegistry,
+                                              TAiWorkflowMapper workflowMapper,
+                                              TAiWorkflowStepMapper workflowStepMapper) {
+        AiAssistantPolicyService policyService = mock(AiAssistantPolicyService.class);
+        AiRunEventStore eventStore = mock(AiRunEventStore.class);
+        when(policyService.getPolicy()).thenReturn(policy());
+        when(eventStore.listAfter(any(), any(), any(Integer.class))).thenReturn(List.of());
+        when(traceService.startRunIfCreated(any())).thenReturn(true);
+        when(toolRegistry.definitionsForCurrentUser()).thenAnswer(invocation -> toolRegistry.definitions());
+        return new AiConversationServiceImpl(
+                traceService, dealerAiClient, providerConfigService, cancellationRegistry,
+                new AiSensitiveDataSanitizer(), toolRegistry, workflowMapper, workflowStepMapper,
+                policyService, eventStore);
+    }
+
+    private com.autodealer.crm.ai.dto.AiAssistantPolicyResponse policy() {
+        com.autodealer.crm.ai.dto.AiAssistantPolicyResponse policy =
+                new com.autodealer.crm.ai.dto.AiAssistantPolicyResponse();
+        policy.setEnabledTools(true);
+        policy.setAllowedToolNames(List.of(
+                "get_inventory_alerts", "get_customer_profile", "list_pending_transaction_approvals"));
+        policy.setProposalsEnabled(true);
+        policy.setMaxToolCallsPerRun(8);
+        policy.setSafetyMode("STRICT");
+        policy.setNetworkMode("PROVIDER_ONLY");
+        policy.setContextMessageLimit(8);
+        policy.setSummaryMaxChars(2000);
+        policy.setMaxRunSeconds(120);
+        policy.setVersion(1);
+        return policy;
     }
 
     private DealerAiEventResponse event(String eventId,

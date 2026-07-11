@@ -343,6 +343,10 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT 'AI 模型配置-管理', 'ai:provider-config:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT 'AI 模型配置-轮换密钥', 'ai:provider-config:rotate-key', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 策略-查看', 'ai:policy:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT 'AI 策略-管理', 'ai:policy:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
 
 -- ==================== Role Permissions ====================
 -- 管理员显式拥有当前全部已启用权限；后续新增权限时必须同步补充管理员映射。

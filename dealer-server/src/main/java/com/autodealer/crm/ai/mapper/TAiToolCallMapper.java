@@ -11,4 +11,6 @@ public interface TAiToolCallMapper {
     int insert(TAiToolCall record);
 
     List<TAiToolCall> selectByRunId(@Param("runId") Long runId);
+
+    int countByRunId(@Param("runId") Long runId);
 }

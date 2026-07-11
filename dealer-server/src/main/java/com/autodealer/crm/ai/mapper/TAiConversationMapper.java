@@ -16,6 +16,9 @@ public interface TAiConversationMapper {
     TAiConversation selectOwnedByConversationNo(@Param("conversationNo") String conversationNo,
                                                 @Param("userId") Integer userId);
 
+    TAiConversation selectOwnedByConversationNoForUpdate(@Param("conversationNo") String conversationNo,
+                                                         @Param("userId") Integer userId);
+
     TAiConversation selectActiveByContext(@Param("userId") Integer userId,
                                           @Param("contextObjectType") String contextObjectType,
                                           @Param("contextObjectId") String contextObjectId);

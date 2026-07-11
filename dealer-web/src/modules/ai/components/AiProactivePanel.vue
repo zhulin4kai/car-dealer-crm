@@ -16,6 +16,7 @@ defineProps<{
   subscriptions: AiProactiveSubscription[]
   events: AiProactiveEvent[]
   loading?: boolean
+  canManage?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -39,7 +40,7 @@ function statusLabel(status: string): string {
     CREATED: '已创建',
     GENERATING: '生成中',
   }
-  return labels[status] ?? status
+  return labels[status] ?? '未知状态'
 }
 
 function typeLabel(type: string): string {
@@ -50,7 +51,27 @@ function typeLabel(type: string): string {
     DAILY_SUMMARY: '每日摘要',
     PERIODIC_SALES_ANALYSIS: '周期分析',
   }
-  return labels[type] ?? type
+  return labels[type] ?? '业务提醒'
+}
+
+function frequencyLabel(frequency: string): string {
+  const labels: Record<string, string> = {
+    REALTIME_LIMITED: '实时限频',
+    DAILY: '每天',
+    WEEKLY: '每周',
+    MONTHLY: '每月',
+  }
+  return labels[frequency] ?? '按系统计划'
+}
+
+function objectTypeLabel(objectType: string): string {
+  const labels: Record<string, string> = {
+    CUSTOMER: '客户',
+    TRANSACTION: '交易',
+    INVENTORY: '库存',
+    FOLLOW_TASK: '跟进任务',
+  }
+  return labels[objectType] ?? '业务对象'
 }
 </script>
 
@@ -61,13 +82,13 @@ function typeLabel(type: string): string {
         <Bell class="h-4 w-4 text-[var(--crm-primary)]" />
         主动提醒
       </div>
-      <Button variant="outline" size="sm" :disabled="loading" @click="emit('generate')">
+      <Button v-if="canManage" variant="outline" size="sm" :disabled="loading" @click="emit('generate')">
         <RefreshCw class="mr-1 h-4 w-4" />
         生成
       </Button>
     </div>
 
-    <div class="flex flex-wrap gap-2">
+    <div v-if="canManage" class="flex flex-wrap gap-2">
       <Button size="sm" :disabled="loading" @click="emit('createFollow')">订阅跟进提醒</Button>
       <Button variant="outline" size="sm" :disabled="loading" @click="emit('createInventory')">
         订阅库存预警
@@ -84,7 +105,7 @@ function typeLabel(type: string): string {
           <div class="min-w-0">
             <div class="truncate text-sm font-semibold">{{ typeLabel(subscription.subscriptionType) }}</div>
             <div class="mt-1 text-xs text-[var(--crm-text-tertiary)]">
-              {{ subscription.frequency }} · 每日 {{ subscription.dailyLimit }} 次 · 单次
+              {{ frequencyLabel(subscription.frequency) }} · 每日 {{ subscription.dailyLimit }} 次 · 单次
               {{ subscription.maxResults }} 条
             </div>
           </div>
@@ -96,7 +117,7 @@ function typeLabel(type: string): string {
           静默时间：{{ subscription.quietStartTime || '--' }} -
           {{ subscription.quietEndTime || '--' }}
         </div>
-        <div class="mt-3 flex justify-end gap-2">
+        <div v-if="canManage" class="mt-3 flex justify-end gap-2">
           <Button
             v-if="subscription.status === 'ACTIVE'"
             variant="outline"
@@ -149,7 +170,7 @@ function typeLabel(type: string): string {
         </div>
         <div class="mt-2 text-xs text-[var(--crm-text-tertiary)]">
           {{ typeLabel(event.eventType) }}
-          <span v-if="event.objectType"> · {{ event.objectType }} {{ event.objectId }}</span>
+          <span v-if="event.objectType"> · {{ objectTypeLabel(event.objectType) }}</span>
         </div>
         <div v-if="event.detailSummary" class="mt-2 text-xs text-[var(--crm-text-secondary)]">
           {{ event.detailSummary }}

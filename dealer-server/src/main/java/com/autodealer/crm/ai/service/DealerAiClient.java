@@ -107,6 +107,8 @@ public class DealerAiClient {
                     data.append(line.substring(5).trim());
                 }
             }
+            // 部分 Provider 会直接关闭连接而不补最后一个空行，EOF 前仍需提交完整事件。
+            emitData(data, consumer);
         }
     }
 
