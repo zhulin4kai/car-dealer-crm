@@ -117,7 +117,7 @@ resolve_compose_command() {
 collect_candidates() {
   local compose_cmd=""
   if compose_cmd="$(resolve_compose_command 2>/dev/null)" && [ -f "${COMPOSE_FILE}" ]; then
-    add_candidate "compose_project" "项目容器、网络、数据卷和本地构建镜像（${compose_cmd} down --volumes --rmi local）"
+    add_candidate "compose_project" "项目容器（含 AI）、网络、业务数据卷、AI Provider 主密钥卷和本地构建镜像（${compose_cmd} down --volumes --rmi local）"
   fi
 
   if state_has_action runtime_images; then

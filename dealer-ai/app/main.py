@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.routes import health, runs
+from app.core.config import get_settings
 from app.core.errors import ServiceError
 from app.core.logging import configure_logging
 
@@ -18,8 +19,11 @@ logger = logging.getLogger(__name__)
 def create_app() -> FastAPI:
     """创建 `dealer-ai` 应用，只注册内部路由和稳定错误转换器。"""
 
+    # 服务进程必须在监听端口前发现无效令牌或地址，避免以“已启动”状态接收请求。
+    settings = get_settings()
     configure_logging()
     app = FastAPI(title="dealer-ai", version="0.1.0")
+    app.state.settings = settings
     app.include_router(health.router)
     app.include_router(runs.router)
 

@@ -137,7 +137,7 @@ car-dealer-crm/
 |------|------|----------|
 | `dealer-web` | 浏览器端 CRM 和 AI 工作台，只调用 Spring Boot API，不直连 `dealer-ai` | `http://localhost:5173`（本地开发）/ `http://localhost:8080`（演示容器） |
 | `dealer-server` | 业务控制面，负责认证、权限、数据范围、事务、审计、Provider 配置、AI Conversation / Run / Tool / Proposal / Workflow 持久化 | `http://localhost:8089` |
-| `dealer-ai` | 内部 AI 编排面，只供 `dealer-server` 调用，负责 LangGraph 编排、模型 Provider 适配和 Spring Boot 内部 Tool API 调用 | `http://localhost:8091` |
+| `dealer-ai` | 内部 AI 编排面，只供 `dealer-server` 调用，负责 LangGraph 编排、模型 Provider 适配和 Spring Boot 内部 Tool API 调用 | `http://localhost:8091`（本地调试）/ `http://ai:8091`（容器内网） |
 | MySQL / MariaDB | 业务关系型数据库 | `localhost:3306`（本地）/ `localhost:13306`（演示容器） |
 | Redis | JWT、缓存和会话辅助数据 | `localhost:6379`（本地）/ `localhost:16379`（演示容器） |
 
@@ -147,9 +147,9 @@ AI 业务助手的正式模型配置由管理员在系统内维护。API Key 由
 
 ### 一键运行
 
-一键运行只要求脚本能够安装或检测到 Docker / Docker Desktop。Maven、JDK、Node.js、MySQL、Redis 都在容器中构建或运行，不要求用户电脑预装。
+一键运行只要求脚本能够安装或检测到 Docker / Docker Desktop。Maven、JDK、Node.js、Python、MySQL、Redis 都在容器中构建或运行，不要求用户电脑预装。
 
-当前一键演示脚本启动核心 CRM 服务：`dealer-web`、`dealer-server`、MySQL 和 Redis。完整 AI 助手能力需要额外启动 `dealer-ai`，并确保 `dealer-server` 的 `DEALER_AI_BASE_URL` 指向该服务。
+一键演示脚本统一启动 `dealer-web`、`dealer-server`、`dealer-ai`、MySQL 和 Redis。`dealer-ai` 只在 Compose 内网暴露，由 `dealer-server` 通过 `http://ai:8091` 调用，不需要再单独运行 uv 命令。
 
 macOS / Linux / fish：
 
@@ -164,7 +164,9 @@ Windows PowerShell：
 powershell -ExecutionPolicy Bypass -File scripts/demo-bootstrap.ps1
 ```
 
-脚本会检测系统和 Shell，按菜单引导安装或启动 Docker，测试 Docker Hub 镜像源，拉取 MySQL/Redis 镜像，构建后端与前端镜像，并在启动前检查端口冲突。
+脚本会检测系统和 Shell，按菜单引导安装或启动 Docker，测试 Docker Hub 镜像源，拉取 MySQL/Redis 镜像，构建前端、后端与 AI 镜像，并在启动前检查端口冲突。镜像源可连接但缺少某个构建基础镜像时，脚本会保留已拉取的 MySQL/Redis 镜像并改用官方 Docker Hub 重试构建。启动完成前会等待 `dealer-ai` 的 `/ready` 检查；如果超时或容器异常，脚本会输出 AI 与后端关键日志并以失败状态退出，不会虚报启动成功。
+
+首次从旧版演示环境升级时，必须通过启动脚本执行升级；脚本会在新主密钥卷为空的前提下迁移旧 `dealer-server` 容器中的 AI Provider 主密钥。全新安装由 Spring Boot 在 `server-ai-secret` 卷内生成主密钥，后续重建容器不会导致已保存的 Provider API Key 无法解密。
 
 默认访问地址：
 
@@ -202,7 +204,7 @@ powershell -ExecutionPolicy Bypass -File scripts/demo-cleanup.ps1
 
 清理脚本会先列出即将删除的项目，再让用户选择全部删除或部分删除，最后要求输入 `DELETE` 二次确认。可删除内容包括：
 
-- 当前项目的容器、网络、数据卷和本地构建镜像。
+- 当前项目的容器（包含 `dealer-ai`）、网络、业务数据卷、AI Provider 主密钥卷和本地构建镜像。
 - 启动脚本拉取过的 MySQL / Redis 镜像。
 - 启动脚本主动安装过的 Docker / Docker Desktop / Docker Compose。
 - 启动脚本主动写入过的 Linux Docker daemon 镜像配置。
@@ -228,7 +230,7 @@ Docker 本体只会在启动脚本记录到“由脚本主动安装”时才出�
 3. `dealer-server`。
 4. `dealer-web`。
 
-AI 编排服务启动：
+只有需要脱离 Compose 单独调试 `dealer-ai` 时，才使用下面的 uv 命令：
 
 ```bash
 cd dealer-ai

@@ -4,6 +4,7 @@ services:
   mysql:
     image: ${MYSQL_IMAGE:-mysql:8.0}
     container_name: car-dealer-crm-mysql
+    restart: unless-stopped
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -28,6 +29,7 @@ services:
   redis:
     image: ${REDIS_IMAGE:-redis:7.4-alpine}
     container_name: car-dealer-crm-redis
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-16379}:6379"
@@ -39,8 +41,32 @@ services:
       timeout: 5s
       retries: 20
 
+  ai:
+    container_name: car-dealer-crm-ai
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/dealer-ai.Dockerfile
+      args:
+        DOCKERHUB_LIBRARY_PREFIX: ${DOCKERHUB_LIBRARY_PREFIX:-}
+        PYPI_INDEX_URL: ${PYPI_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    environment:
+      # Spring 与 Python 统一读取同一个环境名，Python 仍兼容旧变量。
+      DEALER_AI_ENV: ${DEALER_AI_ENV:-local}
+      DEALER_AI_INTERNAL_TOKEN: ${DEALER_AI_INTERNAL_TOKEN:?DEALER_AI_INTERNAL_TOKEN must be set}
+      DEALER_AI_SPRING_TOOL_BASE_URL: http://server:8089/internal/ai
+      DEALER_AI_SPRING_TOOL_TOKEN: ${DEALER_AI_TOOL_TOKEN:?DEALER_AI_TOOL_TOKEN must be set}
+      TZ: Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
   server:
     container_name: car-dealer-crm-server
+    restart: unless-stopped
     build:
       context: .
       dockerfile: docker/dealer-server.Dockerfile
@@ -53,9 +79,17 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-car-dealer-crm-local-secret}
+      DEALER_AI_ENV: ${DEALER_AI_ENV:-local}
+      DEALER_AI_BASE_URL: http://ai:8091
+      DEALER_AI_INTERNAL_TOKEN: ${DEALER_AI_INTERNAL_TOKEN:?DEALER_AI_INTERNAL_TOKEN must be set}
+      DEALER_AI_TOOL_TOKEN: ${DEALER_AI_TOOL_TOKEN:?DEALER_AI_TOOL_TOKEN must be set}
+      AI_PROVIDER_KEY_ENCRYPTION_SECRET_FILE: /root/.car-dealer-crm/ai-provider-key.secret
       TZ: Asia/Shanghai
     ports:
       - "${SERVER_PORT:-8089}:8089"
+    volumes:
+      # Provider 密钥由 Spring 加密；持久化本地主密钥以保证容器重建后仍可解密。
+      - server-ai-secret:/root/.car-dealer-crm
     depends_on:
       mysql:
         condition: service_healthy
@@ -64,6 +98,7 @@ services:
 
   web:
     container_name: car-dealer-crm-web
+    restart: unless-stopped
     build:
       context: .
       dockerfile: docker/dealer-web.Dockerfile
@@ -79,3 +114,4 @@ services:
 volumes:
   mysql-data:
   redis-data:
+  server-ai-secret:

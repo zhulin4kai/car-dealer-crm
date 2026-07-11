@@ -22,6 +22,11 @@ REDIS_PORT_VALUE=""
 STATE_DIR="${HOME}/.car-dealer-crm-demo"
 STATE_ACTIONS_FILE="${STATE_DIR}/actions.txt"
 STATE_ENV_FILE="${STATE_DIR}/state.env"
+AI_CONTAINER_NAME="car-dealer-crm-ai"
+SERVER_CONTAINER_NAME="car-dealer-crm-server"
+AI_SECRET_VOLUME="car-dealer-crm-demo_server-ai-secret"
+AI_SECRET_PATH="/root/.car-dealer-crm/ai-provider-key.secret"
+AI_READY_TIMEOUT_SECONDS=180
 
 log() {
   printf '[INFO] %s\n' "$*"
@@ -751,6 +756,16 @@ get_env_value() {
   grep "^${key}=" "${file}" | tail -n 1 | cut -d= -f2-
 }
 
+set_runtime_env_value() {
+  local key="$1"
+  local value="$2"
+  local temp_file
+  temp_file="$(mktemp)"
+  grep -v "^${key}=" "${RUNTIME_ENV_FILE}" > "${temp_file}" || true
+  printf '%s=%s\n' "${key}" "${value}" >> "${temp_file}"
+  mv "${temp_file}" "${RUNTIME_ENV_FILE}"
+}
+
 pull_runtime_images() {
   local compose_cmd="$1"
 
@@ -798,6 +813,168 @@ pull_runtime_images() {
   record_state_action runtime_images
 }
 
+migrate_ai_provider_secret_if_needed() {
+  local compose_cmd="$1"
+  local docker_cmd="docker"
+  if [[ "${compose_cmd}" == sudo\ * ]]; then
+    docker_cmd="sudo docker"
+  fi
+
+  # shellcheck disable=SC2086
+  if ! ${docker_cmd} inspect "${SERVER_CONTAINER_NAME}" >/dev/null 2>&1; then
+    return
+  fi
+
+  local temp_dir source_key existing_key old_image helper_id=""
+  temp_dir="$(mktemp -d)"
+  source_key="${temp_dir}/source-key"
+  existing_key="${temp_dir}/existing-key"
+
+  # shellcheck disable=SC2086
+  if ! ${docker_cmd} cp "${SERVER_CONTAINER_NAME}:${AI_SECRET_PATH}" "${source_key}" >/dev/null 2>&1; then
+    rm -rf "${temp_dir}"
+    return
+  fi
+
+  # shellcheck disable=SC2086
+  if ! old_image="$(${docker_cmd} inspect --format '{{.Image}}' "${SERVER_CONTAINER_NAME}")"; then
+    rm -rf "${temp_dir}"
+    die "无法读取旧 server 容器镜像，已停止启动以保护 AI Provider 主密钥。"
+  fi
+  # shellcheck disable=SC2086
+  if ! ${docker_cmd} volume inspect "${AI_SECRET_VOLUME}" >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    if ! ${docker_cmd} volume create \
+      --label com.docker.compose.project=car-dealer-crm-demo \
+      --label com.docker.compose.volume=server-ai-secret \
+      "${AI_SECRET_VOLUME}" >/dev/null; then
+      rm -rf "${temp_dir}"
+      die "无法创建 AI Provider 主密钥卷。"
+    fi
+  fi
+
+  # shellcheck disable=SC2086
+  if ! helper_id="$(${docker_cmd} create --volume "${AI_SECRET_VOLUME}:/root/.car-dealer-crm" "${old_image}")"; then
+    rm -rf "${temp_dir}"
+    die "无法检查 AI Provider 主密钥卷，已停止启动。"
+  fi
+  # shellcheck disable=SC2086
+  if ${docker_cmd} cp "${helper_id}:${AI_SECRET_PATH}" "${existing_key}" >/dev/null 2>&1; then
+    if ! cmp -s "${source_key}" "${existing_key}"; then
+      # shellcheck disable=SC2086
+      ${docker_cmd} rm -f "${helper_id}" >/dev/null 2>&1 || true
+      rm -rf "${temp_dir}"
+      die "AI Provider 主密钥卷与旧 server 容器不一致，已停止启动以保护已有 Provider 配置。"
+    fi
+    # shellcheck disable=SC2086
+    ${docker_cmd} rm -f "${helper_id}" >/dev/null 2>&1 || true
+    rm -rf "${temp_dir}"
+    log "AI Provider 主密钥卷已有密钥，跳过旧容器迁移。"
+    return
+  fi
+
+  # shellcheck disable=SC2086
+  if ! ${docker_cmd} cp "${source_key}" "${helper_id}:${AI_SECRET_PATH}" >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    ${docker_cmd} rm -f "${helper_id}" >/dev/null 2>&1 || true
+    rm -rf "${temp_dir}"
+    die "旧 AI Provider 主密钥迁移失败，已停止启动以避免已有 Provider 配置失效。"
+  fi
+
+  # shellcheck disable=SC2086
+  if ! ${docker_cmd} cp "${helper_id}:${AI_SECRET_PATH}" "${existing_key}" >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    ${docker_cmd} rm -f "${helper_id}" >/dev/null 2>&1 || true
+    rm -rf "${temp_dir}"
+    die "AI Provider 主密钥迁移后校验失败，已停止启动。"
+  fi
+  if ! cmp -s "${source_key}" "${existing_key}"; then
+    # shellcheck disable=SC2086
+    ${docker_cmd} rm -f "${helper_id}" >/dev/null 2>&1 || true
+    rm -rf "${temp_dir}"
+    die "AI Provider 主密钥迁移后内容不一致，已停止启动。"
+  fi
+
+  # shellcheck disable=SC2086
+  ${docker_cmd} rm -f "${helper_id}" >/dev/null 2>&1 || true
+  rm -rf "${temp_dir}"
+  log "已把旧 server 容器中的 AI Provider 主密钥迁移到持久卷。"
+}
+
+show_ai_server_logs() {
+  local compose_cmd="$1"
+  warn "输出 dealer-ai 与 dealer-server 最近日志，便于定位启动失败原因。"
+  # shellcheck disable=SC2086
+  ${compose_cmd} --env-file "${RUNTIME_ENV_FILE}" -f "${COMPOSE_FILE}" \
+    logs --no-color --tail 120 ai server || true
+}
+
+wait_for_ai_ready() {
+  local compose_cmd="$1"
+  local docker_cmd="docker"
+  if [[ "${compose_cmd}" == sudo\ * ]]; then
+    docker_cmd="sudo docker"
+  fi
+  local started_at status health
+  started_at="${SECONDS}"
+  log "等待 AI 编排服务通过 /ready 检查。"
+
+  while [ "$((SECONDS - started_at))" -lt "${AI_READY_TIMEOUT_SECONDS}" ]; do
+    # shellcheck disable=SC2086
+    if ! ${docker_cmd} inspect "${AI_CONTAINER_NAME}" >/dev/null 2>&1; then
+      sleep 2
+      continue
+    fi
+
+    # shellcheck disable=SC2086
+    status="$(${docker_cmd} inspect --format '{{.State.Status}}' "${AI_CONTAINER_NAME}" 2>/dev/null || true)"
+    # shellcheck disable=SC2086
+    health="$(${docker_cmd} inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+      "${AI_CONTAINER_NAME}" 2>/dev/null || true)"
+
+    if [ "${health}" = "healthy" ]; then
+      log "AI 编排服务已就绪。"
+      return
+    fi
+    if [ "${health}" = "unhealthy" ] || [ "${status}" = "exited" ] || [ "${status}" = "dead" ]; then
+      show_ai_server_logs "${compose_cmd}"
+      die "AI 编排服务启动失败，当前状态: ${status:-unknown}/${health:-unknown}。"
+    fi
+    sleep 2
+  done
+
+  show_ai_server_logs "${compose_cmd}"
+  die "等待 AI 编排服务就绪超时（${AI_READY_TIMEOUT_SECONDS} 秒）。"
+}
+
+start_compose_project() {
+  local compose_cmd="$1"
+  # shellcheck disable=SC2086
+  if ${compose_cmd} --env-file "${RUNTIME_ENV_FILE}" -f "${COMPOSE_FILE}" up -d --build; then
+    return
+  fi
+
+  if [ -z "${SELECTED_DOCKERHUB_LIBRARY_PREFIX}" ]; then
+    show_ai_server_logs "${compose_cmd}"
+    die "项目容器构建或启动失败。"
+  fi
+
+  local mysql_image redis_image
+  mysql_image="$(get_env_value MYSQL_IMAGE)"
+  redis_image="$(get_env_value REDIS_IMAGE)"
+  warn "当前 Docker Hub 镜像缺少构建基础镜像或构建失败，改用官方 Docker Hub 重试。"
+  SELECTED_DOCKERHUB_LIBRARY_PREFIX=""
+  create_runtime_env_file
+  set_runtime_env_value MYSQL_IMAGE "${mysql_image}"
+  set_runtime_env_value REDIS_IMAGE "${redis_image}"
+
+  # shellcheck disable=SC2086
+  if ! ${compose_cmd} --env-file "${RUNTIME_ENV_FILE}" -f "${COMPOSE_FILE}" up -d --build; then
+    show_ai_server_logs "${compose_cmd}"
+    die "项目容器使用官方 Docker Hub 重试后仍构建或启动失败。"
+  fi
+}
+
 run_project() {
   [ -f "${COMPOSE_FILE}" ] || die "缺少 ${COMPOSE_FILE}"
 
@@ -806,12 +983,13 @@ run_project() {
   resolve_host_ports
   create_runtime_env_file
   trap cleanup_runtime_env_file EXIT
+  migrate_ai_provider_secret_if_needed "${compose_cmd}"
   pull_runtime_images "${compose_cmd}"
 
   log "开始构建并启动项目环境。首次执行会下载基础镜像和依赖，耗时较长。"
   cd "${REPO_ROOT}"
-  # shellcheck disable=SC2086
-  ${compose_cmd} --env-file "${RUNTIME_ENV_FILE}" -f "${COMPOSE_FILE}" up -d --build
+  start_compose_project "${compose_cmd}"
+  wait_for_ai_ready "${compose_cmd}"
   record_common_state
   record_state_action compose_project
   # shellcheck disable=SC2086
@@ -831,7 +1009,7 @@ main() {
   print_docker_status
   select_dockerhub_mirror
 
-  log "项目镜像会使用脚本本次检测到的镜像源；如所有大陆镜像不可达，则回退官方 Docker Hub。"
+  log "项目镜像会使用脚本本次检测到的镜像源；镜像源不可达或缺少构建基础镜像时回退官方 Docker Hub。"
 
   local choice
   choice="$(ask_choice "Docker 环境已就绪，请选择下一步：" "1" "1 2" \
@@ -840,6 +1018,7 @@ main() {
   if [ "${choice}" = "1" ]; then
     run_project
   else
+    warn "已有旧版演示环境时，首次升级必须重新运行本脚本并选择启动，才能迁移 AI Provider 主密钥。"
     log "之后可运行：docker compose --env-file .env.demo -f compose.yaml up -d --build"
   fi
 }

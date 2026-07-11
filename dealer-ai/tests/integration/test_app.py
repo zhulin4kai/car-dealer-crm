@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.routes.runs import get_orchestrator
+from app.core.config import get_settings
+from app.core.errors import ConfigurationError
 from app.main import create_app
 from app.orchestrator.langgraph_adapter import LangGraphAgentOrchestrator
 from app.providers.base import ChatCompletionChunk, ChatMessage, ProviderAdapter
@@ -31,6 +34,42 @@ def test_health_route_available() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "UP", "service": "dealer-ai"}
+
+
+def test_ready_route_reports_validated_process_without_external_dependencies() -> None:
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "READY", "service": "dealer-ai"}
+
+
+def test_ready_route_rejects_uninitialized_process() -> None:
+    app = create_app()
+    del app.state.settings
+    client = TestClient(app)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "NOT_READY", "service": "dealer-ai"}
+
+
+def test_create_app_rejects_invalid_non_local_settings_immediately(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DEALER_AI_ENV", "prod")
+    monkeypatch.setenv("DEALER_AI_INTERNAL_TOKEN", "dev-internal-token")
+    monkeypatch.setenv("DEALER_AI_SPRING_TOOL_TOKEN", "dev-internal-token")
+    get_settings.cache_clear()
+
+    try:
+        with pytest.raises(ConfigurationError):
+            create_app()
+    finally:
+        get_settings.cache_clear()
 
 
 def test_internal_run_requires_service_token() -> None:

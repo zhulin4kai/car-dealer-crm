@@ -95,7 +95,7 @@ function Collect-Candidates {
     $candidates = [System.Collections.Generic.List[object]]::new()
     $composeCommand = Resolve-ComposeCommand
     if ($composeCommand -and (Test-Path $ComposeFile)) {
-        Add-Candidate $candidates 'compose_project' "项目容器、网络、数据卷和本地构建镜像（$composeCommand down --volumes --rmi local）"
+        Add-Candidate $candidates 'compose_project' "项目容器（含 AI）、网络、业务数据卷、AI Provider 主密钥卷和本地构建镜像（$composeCommand down --volumes --rmi local）"
     }
     if (State-HasAction 'runtime_images') {
         Add-Candidate $candidates 'runtime_images' '启动脚本拉取过的 MySQL/Redis 镜像'

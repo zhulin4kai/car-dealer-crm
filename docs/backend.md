@@ -1687,6 +1687,8 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 
 AI 业务助手已落地为 Spring Boot + 独立 `dealer-ai` 的旁路增强架构。普通业务页面和普通业务 API 的主链路不依赖 AI，AI 只能通过 Spring Boot 受控入口查询、生成低风险 Proposal、展示受控工作流和生成主动提醒。
 
+演示环境由 Docker Compose 统一托管 `dealer-server` 和 `dealer-ai`。Spring Boot 通过容器内网地址 `http://ai:8091` 调用编排服务，`dealer-ai` 不向宿主机发布端口；启动脚本必须等 `/ready` 健康检查通过后才能报告成功。单独运行 uvicorn 仅用于本地调试，不是演示环境的正式启动入口。
+
 ### 22.1 Spring Boot 模块
 
 | 类型 | 落点 | 说明 |
@@ -1710,7 +1712,7 @@ AI 业务助手已落地为 Spring Boot + 独立 `dealer-ai` 的旁路增强架�
 
 业务枚举、状态、类型和值以 Spring Boot Java enum、后端 DTO 校验和 OpenAPI 契约为准。`dealer-ai` 只能生成后端已支持的值，不能在 Python 编排、Prompt 或 Pydantic 默认值中临时创造 CRM 业务值。
 
-模型 Provider 配置真源在 Spring Boot。API Key 使用 AES-GCM 加密入库，响应只返回掩码；`providerRuntimeConfig` 只在 Spring Boot 到 `dealer-ai` 的服务间请求中出现，不进入前端、SSE、trace 或日志。`prod` 等非本地环境必须显式配置 `AI_PROVIDER_KEY_ENCRYPTION_SECRET`；`local`、`dev`、`test`、`smoke` 环境未配置时，后端自动生成并复用 `~/.car-dealer-crm/ai-provider-key.secret`，删除该文件后旧 Provider API Key 密文需要重新录入。
+模型 Provider 配置真源在 Spring Boot。API Key 使用 AES-GCM 加密入库，响应只返回掩码；`providerRuntimeConfig` 只在 Spring Boot 到 `dealer-ai` 的服务间请求中出现，不进入前端、SSE、trace 或日志。`prod` 等非本地环境必须显式配置 `AI_PROVIDER_KEY_ENCRYPTION_SECRET`；`local`、`dev`、`test`、`smoke` 环境未配置时，后端自动生成并复用 `~/.car-dealer-crm/ai-provider-key.secret`。Compose 将该目录挂载到 `server-ai-secret` 命名卷；启动脚本只在卷内尚无密钥时迁移旧容器密钥，清理该卷后旧 Provider API Key 密文需要重新录入。
 
 ### 22.2 已实现工具
 

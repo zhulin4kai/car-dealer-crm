@@ -904,6 +904,8 @@ AI SSE 已实现事件：`run_started`、`message_delta`、`message_completed`�
 
 `dealer-web` 不调用独立 AI 服务；`dealer-ai` 不连接业务数据库、Redis 会话或 Mapper。`dealer-ai` 只通过内部 Tool API 请求 Spring Boot，最终权限、数据范围、参数校验、Proposal 保存和业务写入均由 Spring Boot 控制。
 
+Compose 演示环境使用服务名 `ai` 和容器名 `car-dealer-crm-ai` 托管编排服务。`dealer-server` 的目标地址固定为容器内网 `http://ai:8091`，浏览器和宿主机不直接访问该端口。启动脚本等待 `/ready` 通过；超时、退出或 unhealthy 时输出 `ai`、`server` 最近日志并以非零状态结束。Spring Boot 的本地 AI Provider 主密钥目录挂载到 `server-ai-secret` 命名卷，旧容器密钥只允许在目标卷为空时迁移。
+
 ToolCall 成功结果必须通过 Spring Boot 保存脱敏 `displayPayload`，Run trace 和 Conversation turns 都必须返回该字段，保证刷新和切换会话后业务卡片不丢失。
 
 `dealer-ai` 生成的工具参数和 Proposal 参数必须使用 Spring Boot Java enum、后端 DTO 校验和 OpenAPI enum 已支持的值。ToolCall 成功和失败都由 Spring Boot 写入 trace，`fetchAiRunTrace` 刷新恢复时必须能返回 toolCalls、proposals、approvals、workflows 和 executionEvents，前端不得只依赖当前 SSE 连接展示结果。主动提醒生成在 Spring Boot 内完成，复用现有只读业务口径，不调用 `dealer-ai`。
@@ -912,8 +914,11 @@ Provider API Key 明文只允许出现在新增和轮换请求体中。Spring Bo
 
 服务间认证变量关系：
 
+- `DEALER_AI_ENV`：Spring Boot 与 `dealer-ai` 共用的运行环境名；Python 继续兼容旧 `DEALER_AI_ENVIRONMENT`，Compose 统一使用前者。
+- `DEALER_AI_BASE_URL`：Spring Boot 调用 `dealer-ai` 的内部地址，Compose 固定为 `http://ai:8091`。
 - `DEALER_AI_INTERNAL_TOKEN`：Spring Boot 调用 `dealer-ai` 的 token，`dealer-ai` 用同名变量校验。
 - `DEALER_AI_TOOL_TOKEN`：Spring Boot 内部 Tool API 校验 `X-Dealer-AI-Tool-Token` 的 token。
+- `DEALER_AI_SPRING_TOOL_BASE_URL`：`dealer-ai` 调用 Spring Boot Tool API 的内部地址，Compose 固定为 `http://server:8089/internal/ai`。
 - `DEALER_AI_SPRING_TOOL_TOKEN`：`dealer-ai` 调用 Spring Boot 内部 Tool API 时发送的 token，必须与 `DEALER_AI_TOOL_TOKEN` 一致。
 - 本地 `local/dev/test/smoke` 环境默认使用 `dev-internal-token`，非本地环境必须显式配置上述 token，不允许使用默认值启动。
 

@@ -19,6 +19,11 @@ $RedisPortValue = ''
 $StateDir = Join-Path $HOME '.car-dealer-crm-demo'
 $StateActionsFile = Join-Path $StateDir 'actions.txt'
 $StateEnvFile = Join-Path $StateDir 'state.env'
+$AiContainerName = 'car-dealer-crm-ai'
+$ServerContainerName = 'car-dealer-crm-server'
+$AiSecretVolume = 'car-dealer-crm-demo_server-ai-secret'
+$AiSecretPath = '/root/.car-dealer-crm/ai-provider-key.secret'
+$AiReadyTimeoutSeconds = 180
 
 function Write-Info {
     param([string] $Message)
@@ -491,6 +496,16 @@ function Get-EnvValue {
     return ''
 }
 
+function Set-RuntimeEnvValue {
+    param(
+        [string] $Key,
+        [string] $Value
+    )
+    $lines = Get-Content $RuntimeEnvFile | Where-Object { $_ -notmatch "^$Key=" }
+    $lines += "$Key=$Value"
+    Set-Content -Encoding UTF8 $RuntimeEnvFile $lines
+}
+
 function New-RuntimeEnvFile {
     if (-not (Test-Path $EnvFile)) {
         throw "缺少 $EnvFile"
@@ -575,28 +590,173 @@ function Pull-RuntimeImages {
     Record-StateAction 'runtime_images'
 }
 
+function Move-LegacyAiProviderSecret {
+    docker inspect $ServerContainerName *> $null
+    if ($LASTEXITCODE -ne 0) {
+        return
+    }
+
+    $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "car-dealer-crm-ai-secret-$PID"
+    $sourceKey = Join-Path $tempDir 'source-key'
+    $existingKey = Join-Path $tempDir 'existing-key'
+    $helperId = ''
+    if (Test-Path $tempDir) {
+        Remove-Item -Recurse -Force $tempDir
+    }
+    New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
+
+    try {
+        docker cp "${ServerContainerName}:$AiSecretPath" $sourceKey *> $null
+        if ($LASTEXITCODE -ne 0) {
+            return
+        }
+
+        $oldImage = docker inspect --format '{{.Image}}' $ServerContainerName
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($oldImage)) {
+            throw '无法读取旧 server 容器镜像，已停止启动以保护 AI Provider 主密钥。'
+        }
+
+        docker volume inspect $AiSecretVolume *> $null
+        if ($LASTEXITCODE -ne 0) {
+            docker volume create `
+                --label 'com.docker.compose.project=car-dealer-crm-demo' `
+                --label 'com.docker.compose.volume=server-ai-secret' `
+                $AiSecretVolume *> $null
+            if ($LASTEXITCODE -ne 0) {
+                throw '无法创建 AI Provider 主密钥卷。'
+            }
+        }
+
+        $helperId = docker create --volume "${AiSecretVolume}:/root/.car-dealer-crm" $oldImage
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($helperId)) {
+            throw '无法检查 AI Provider 主密钥卷，已停止启动。'
+        }
+
+        docker cp "${helperId}:$AiSecretPath" $existingKey *> $null
+        if ($LASTEXITCODE -eq 0) {
+            $sourceHash = (Get-FileHash -Algorithm SHA256 -Path $sourceKey).Hash
+            $existingHash = (Get-FileHash -Algorithm SHA256 -Path $existingKey).Hash
+            if ($sourceHash -ne $existingHash) {
+                throw 'AI Provider 主密钥卷与旧 server 容器不一致，已停止启动以保护已有 Provider 配置。'
+            }
+            Write-Info 'AI Provider 主密钥卷已有密钥，跳过旧容器迁移。'
+            return
+        }
+
+        docker cp $sourceKey "${helperId}:$AiSecretPath" *> $null
+        if ($LASTEXITCODE -ne 0) {
+            throw '旧 AI Provider 主密钥迁移失败，已停止启动以避免已有 Provider 配置失效。'
+        }
+
+        docker cp "${helperId}:$AiSecretPath" $existingKey *> $null
+        if ($LASTEXITCODE -ne 0) {
+            throw 'AI Provider 主密钥迁移后校验失败，已停止启动。'
+        }
+        $sourceHash = (Get-FileHash -Algorithm SHA256 -Path $sourceKey).Hash
+        $existingHash = (Get-FileHash -Algorithm SHA256 -Path $existingKey).Hash
+        if ($sourceHash -ne $existingHash) {
+            throw 'AI Provider 主密钥迁移后内容不一致，已停止启动。'
+        }
+        Write-Info '已把旧 server 容器中的 AI Provider 主密钥迁移到持久卷。'
+    } finally {
+        if (-not [string]::IsNullOrWhiteSpace($helperId)) {
+            docker rm -f $helperId *> $null
+        }
+        if (Test-Path $tempDir) {
+            Remove-Item -Recurse -Force $tempDir
+        }
+    }
+}
+
+function Show-AiServerLogs {
+    Write-Warn '输出 dealer-ai 与 dealer-server 最近日志，便于定位启动失败原因。'
+    docker compose --env-file $RuntimeEnvFile -f $ComposeFile logs --no-color --tail 120 ai server
+}
+
+function Wait-AiReady {
+    Write-Info '等待 AI 编排服务通过 /ready 检查。'
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    while ($stopwatch.Elapsed.TotalSeconds -lt $AiReadyTimeoutSeconds) {
+        docker inspect $AiContainerName *> $null
+        if ($LASTEXITCODE -ne 0) {
+            Start-Sleep -Seconds 2
+            continue
+        }
+
+        $status = docker inspect --format '{{.State.Status}}' $AiContainerName 2>$null
+        $health = docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' $AiContainerName 2>$null
+        if ($health -eq 'healthy') {
+            Write-Info 'AI 编排服务已就绪。'
+            return
+        }
+        if ($health -eq 'unhealthy' -or $status -eq 'exited' -or $status -eq 'dead') {
+            Show-AiServerLogs
+            throw "AI 编排服务启动失败，当前状态: $status/$health。"
+        }
+        Start-Sleep -Seconds 2
+    }
+
+    Show-AiServerLogs
+    throw "等待 AI 编排服务就绪超时（$AiReadyTimeoutSeconds 秒）。"
+}
+
+function Start-ComposeProject {
+    docker compose --env-file $RuntimeEnvFile -f $ComposeFile up -d --build
+    if ($LASTEXITCODE -eq 0) {
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($SelectedDockerHubLibraryPrefix)) {
+        Show-AiServerLogs
+        throw '项目容器构建或启动失败。'
+    }
+
+    $mysqlImage = Get-EnvValue 'MYSQL_IMAGE'
+    $redisImage = Get-EnvValue 'REDIS_IMAGE'
+    Write-Warn '当前 Docker Hub 镜像缺少构建基础镜像或构建失败，改用官方 Docker Hub 重试。'
+    $script:SelectedDockerHubLibraryPrefix = ''
+    New-RuntimeEnvFile
+    Set-RuntimeEnvValue 'MYSQL_IMAGE' $mysqlImage
+    Set-RuntimeEnvValue 'REDIS_IMAGE' $redisImage
+
+    docker compose --env-file $RuntimeEnvFile -f $ComposeFile up -d --build
+    if ($LASTEXITCODE -ne 0) {
+        Show-AiServerLogs
+        throw '项目容器使用官方 Docker Hub 重试后仍构建或启动失败。'
+    }
+}
+
 function Run-Project {
     if (-not (Test-Path $ComposeFile)) {
         throw "缺少 $ComposeFile"
     }
 
     New-RuntimeEnvFile
+    $webPort = ''
+    $serverPort = ''
+    $mysqlPort = ''
     Push-Location $RepoRoot
     try {
+        Move-LegacyAiProviderSecret
         Pull-RuntimeImages
         Write-Info '开始构建并启动项目环境。首次执行会下载基础镜像和依赖，耗时较长。'
-        docker compose --env-file $RuntimeEnvFile -f $ComposeFile up -d --build
+        Start-ComposeProject
+        Wait-AiReady
         Record-CommonState
         Record-StateAction 'compose_project'
         docker compose --env-file $RuntimeEnvFile -f $ComposeFile ps
+        $webPort = Get-EnvValue 'WEB_PORT'
+        $serverPort = Get-EnvValue 'SERVER_PORT'
+        $mysqlPort = Get-EnvValue 'MYSQL_PORT'
     } finally {
         Pop-Location
         Remove-RuntimeEnvFile
     }
 
-    Write-Info "前端访问地址: http://localhost:$(Get-EnvValue 'WEB_PORT')"
-    Write-Info "后端 API 地址: http://localhost:$(Get-EnvValue 'SERVER_PORT')"
-    Write-Info "MySQL 本机端口: $(Get-EnvValue 'MYSQL_PORT')，数据库: car_dealer_crm"
+    Write-Info "前端访问地址: http://localhost:$webPort"
+    Write-Info "后端 API 地址: http://localhost:$serverPort"
+    Write-Info "MySQL 本机端口: $mysqlPort，数据库: car_dealer_crm"
 }
 
 if (-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') {
@@ -609,7 +769,7 @@ Ensure-Docker
 Ensure-Compose
 Print-DockerStatus
 Select-DockerHubMirror
-Write-Info '项目镜像会使用脚本本次检测到的镜像源；如所有大陆镜像不可达，则回退官方 Docker Hub。'
+Write-Info '项目镜像会使用脚本本次检测到的镜像源；镜像源不可达或缺少构建基础镜像时回退官方 Docker Hub。'
 
 $choice = Ask-Choice `
     'Docker 环境已就绪，请选择下一步：' `
@@ -623,5 +783,6 @@ $choice = Ask-Choice `
 if ($choice -eq '1') {
     Run-Project
 } else {
+    Write-Warn '已有旧版演示环境时，首次升级必须重新运行本脚本并选择启动，才能迁移 AI Provider 主密钥。'
     Write-Info '之后可运行：docker compose --env-file .env.demo -f compose.yaml up -d --build'
 }

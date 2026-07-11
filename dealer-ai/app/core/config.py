@@ -26,7 +26,14 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "dealer-ai"
-    environment: str = Field(default="local", min_length=1)
+    environment: str = Field(
+        default="local",
+        min_length=1,
+        validation_alias=AliasChoices(
+            "DEALER_AI_ENV",
+            "DEALER_AI_ENVIRONMENT",
+        ),
+    )
     internal_token: str = Field(default=DEFAULT_LOCAL_TOKEN, min_length=8)
     spring_tool_base_url: AnyHttpUrl = "http://localhost:8089/internal/ai"
     spring_tool_token: str = Field(default=DEFAULT_LOCAL_TOKEN, min_length=8)

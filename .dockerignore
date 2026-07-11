@@ -6,5 +6,12 @@ dealer-server/target
 dealer-web/node_modules
 dealer-web/dist
 dealer-web/coverage
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/*.py[cod]
+dealer-ai/.env
+dealer-ai/.env.*
 **/.DS_Store
 **/*.log

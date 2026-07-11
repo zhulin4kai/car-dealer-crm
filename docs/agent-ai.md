@@ -102,6 +102,8 @@ AI 不是业务真源，不是普通业务页面的替代入口，也不直接�
 
 ## 当前实现基线
 
+- Compose 演示环境以 `ai` 服务统一托管 `dealer-ai`，容器只暴露内网端口；一键启动等待 `/ready` 成功，单独 uvicorn 命令只用于本地调试。
+- Spring Boot 本地 AI Provider 主密钥保存在 `server-ai-secret` 命名卷；升级脚本只在新卷没有密钥时迁移旧 `dealer-server` 容器中的主密钥，避免容器重建后已有 Provider 密文失效。
 - `dealer-ai/app/api/routes/runs.py` 固定创建 `LangGraphAgentOrchestrator`，不保留 simple/langgraph 双运行路线。
 - `dealer-ai/app/core/config.py` 只保留服务运行参数和 Tool API 配置，正式 Provider 配置由 Spring Boot 下发 `providerRuntimeConfig`。
 - OpenAI-compatible 和 Anthropic Provider Adapter 从 Run 级 `providerRuntimeConfig` 读取模型配置。

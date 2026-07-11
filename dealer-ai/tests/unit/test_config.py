@@ -34,6 +34,33 @@ def test_non_local_environment_requires_explicit_service_tokens() -> None:
         Settings(environment="prod")
 
 
+@pytest.mark.parametrize("environment_name", ["DEALER_AI_ENV", "DEALER_AI_ENVIRONMENT"])
+def test_settings_accepts_environment_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+    environment_name: str,
+) -> None:
+    monkeypatch.setenv(environment_name, "prod")
+    monkeypatch.setenv("DEALER_AI_INTERNAL_TOKEN", "prod-internal-token")
+    monkeypatch.setenv("DEALER_AI_SPRING_TOOL_TOKEN", "prod-tool-token")
+
+    settings = Settings()
+
+    assert settings.environment == "prod"
+
+
+def test_dealer_ai_env_takes_precedence_over_legacy_environment_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DEALER_AI_ENV", "prod")
+    monkeypatch.setenv("DEALER_AI_ENVIRONMENT", "local")
+    monkeypatch.setenv("DEALER_AI_INTERNAL_TOKEN", "prod-internal-token")
+    monkeypatch.setenv("DEALER_AI_SPRING_TOOL_TOKEN", "prod-tool-token")
+
+    settings = Settings()
+
+    assert settings.environment == "prod"
+
+
 def test_settings_accepts_request_timeout_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AI_PROVIDER_TIMEOUT_SECONDS", "20")
 
