@@ -1,10 +1,14 @@
 import { httpClient } from '@/shared/api/http-client'
 import type { PageResult } from '@/shared/api/api-types'
 import type { EntityId } from '@/shared/types/id'
+import type { OwnerCandidate, OwnerCandidateQuery } from '@/modules/user/model/owner.types'
 import type {
-  AssignUserRolesRequest, ChangePasswordRequest, CreateUserRequest,
-  HandoverUserResponsibilitiesRequest, HandoverUserResponsibilitiesResponse,
-  LoginForm, UpdateUserRequest, User, UserListQuery,
+  ChangePasswordRequest, CreateUserRequest,
+  ChangeManagedUserStatusRequest, CreateManagedUserRequest, CreateManagedUserResult, LoginForm,
+  ChangeManagedUserLoginAccountRequest, ChangeManagedUserSecurityExpirationRequest,
+  ManagedUserDetail, PasswordResetDeliveryResult, ResetManagedUserPasswordRequest,
+  UpdateManagedUserProfileRequest, UpdateUserRequest, User, UserFilterOptions,
+  UserListQuery, UserListSummary,
 } from '@/modules/user/model/user.types'
 
 export function login(payload: URLSearchParams | LoginForm): Promise<string> {
@@ -25,16 +29,75 @@ export function fetchLoginInfo(): Promise<User> {
   return httpClient.get<User>('/api/login/info')
 }
 
-export function fetchUserPage(params: UserListQuery): Promise<PageResult<User>> {
-  return httpClient.get<PageResult<User>>('/api/users', { params })
+export function fetchUserPage(
+  params: UserListQuery,
+  signal?: AbortSignal,
+): Promise<PageResult<UserListSummary>> {
+  return httpClient.get<PageResult<UserListSummary>>('/api/users', { params, signal })
+}
+
+export function fetchUserFilterOptions(
+  organizationUnitId?: EntityId,
+  signal?: AbortSignal,
+): Promise<UserFilterOptions> {
+  return httpClient.get<UserFilterOptions>('/api/users/filter-options', {
+    ...(organizationUnitId !== undefined ? { params: { organizationUnitId } } : {}),
+    signal,
+  })
+}
+
+export function fetchManagedUserDetail(
+  id: EntityId,
+  signal?: AbortSignal,
+): Promise<ManagedUserDetail> {
+  return httpClient.get<ManagedUserDetail>(`/api/users/${id}`, { signal })
+}
+
+export function createManagedUser(request: CreateManagedUserRequest): Promise<CreateManagedUserResult> {
+  return httpClient.post<CreateManagedUserResult>('/api/users', request)
+}
+
+export function updateManagedUserProfile(
+  id: EntityId,
+  request: UpdateManagedUserProfileRequest,
+): Promise<ManagedUserDetail> {
+  return httpClient.put<ManagedUserDetail>(`/api/users/${id}/profile`, request)
+}
+
+export function changeManagedUserStatus(
+  id: EntityId,
+  request: ChangeManagedUserStatusRequest,
+): Promise<ManagedUserDetail> {
+  return httpClient.post<ManagedUserDetail>(`/api/users/${id}/status`, request)
+}
+
+export function changeManagedUserLoginAccount(
+  id: EntityId,
+  request: ChangeManagedUserLoginAccountRequest,
+): Promise<ManagedUserDetail> {
+  return httpClient.put<ManagedUserDetail>(`/api/users/${id}/login-account`, request)
+}
+
+export function changeManagedUserSecurityExpiration(
+  id: EntityId,
+  request: ChangeManagedUserSecurityExpirationRequest,
+): Promise<ManagedUserDetail> {
+  return httpClient.put<ManagedUserDetail>(`/api/users/${id}/security-expiration`, request)
+}
+
+export function resetManagedUserPassword(
+  id: EntityId,
+  request: ResetManagedUserPasswordRequest,
+): Promise<PasswordResetDeliveryResult> {
+  return httpClient.post<PasswordResetDeliveryResult>(`/api/users/${id}/password-reset`, request)
 }
 
 export function fetchUserDetail(id: EntityId): Promise<User> {
   return httpClient.get<User>(`/api/user/${id}`)
 }
 
-export function fetchOwnerList(): Promise<User[]> {
-  return httpClient.get<User[]>('/api/owner')
+export function fetchOwnerList(params: OwnerCandidateQuery): Promise<OwnerCandidate[]> {
+  return httpClient.get<OwnerCandidate[]>('/api/owner', { params })
 }
 
 export function createUser(data: CreateUserRequest): Promise<User> {
@@ -65,19 +128,8 @@ export function batchDisableUsers(ids: EntityId[]): Promise<unknown> {
   return httpClient.put('/api/users/batch-disable', { ids })
 }
 
-export function assignUserRoles(id: EntityId, data: AssignUserRolesRequest): Promise<unknown> {
-  return httpClient.put(`/api/user/${id}/roles`, data)
-}
-
 export function changeUserPassword(id: EntityId, data: ChangePasswordRequest): Promise<unknown> {
   return httpClient.put(`/api/user/${id}/password`, data)
-}
-
-export function handoverUserResponsibilities(
-  id: EntityId,
-  data: HandoverUserResponsibilitiesRequest,
-): Promise<HandoverUserResponsibilitiesResponse> {
-  return httpClient.put<HandoverUserResponsibilitiesResponse>(`/api/user/${id}/handover`, data)
 }
 
 export const getUserList = fetchUserPage

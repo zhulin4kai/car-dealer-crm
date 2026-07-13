@@ -1,402 +1,239 @@
 <template>
-  <div class="crm-data-page">
-    <section class="crm-panel">
-      <div class="crm-panel-body">
-        <div class="crm-toolbar-actions">
-          <Button v-has-permission="PERMISSIONS.user.add" class="gap-2" @click="add">
-            <Plus class="h-4 w-4" />
-            添加用户
-          </Button>
-          <Button
-            v-has-permission="PERMISSIONS.user.status"
-            variant="destructive"
-            class="gap-2"
-            :disabled="!userIdArray.length"
-            @click="batchDel"
-          >
-            <Ban class="h-4 w-4" />
-            批量禁用
-          </Button>
+  <div class="crm-data-page space-y-4">
+    <section class="crm-panel p-4">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 class="text-xl font-semibold">用户管理工作台</h1>
+          <p class="text-sm text-muted-foreground">
+            按人员、组织、授权与账号状态查询；个人资料请在个人中心维护。
+          </p>
         </div>
+        <Button v-has-permission="PERMISSIONS.user.add" @click="openCreateDialog"
+          ><Plus class="h-4 w-4" />新增用户</Button
+        >
       </div>
+      <div
+        v-if="filterError"
+        class="mb-3 flex items-center justify-between rounded border border-destructive/40 p-3 text-sm text-destructive"
+      >
+        <span>{{ filterError }}</span
+        ><Button variant="outline" size="sm" @click="loadFilters">重试</Button>
+      </div>
+      <UserFilterBar
+        :model-value="filters"
+        :options="filterOptions"
+        :loading="loading || filterLoading"
+        @search="search"
+        @reset="reset"
+      />
+    </section>
+
+    <section
+      v-if="createdResult"
+      class="crm-panel flex flex-wrap items-center justify-between gap-3 p-4"
+      aria-live="polite"
+    >
+      <div class="space-y-1 text-sm">
+        <p class="font-medium">用户 {{ createdResult.user.name }} 已创建</p>
+        <p>邀请凭证已排队，等待安全通知服务投递</p>
+      </div>
+      <Button
+        v-if="permissionStore.hasPermission(PERMISSIONS.user.view)"
+        variant="outline"
+        @click="openCreatedUser"
+      >查看用户详情</Button>
+      <span v-else class="text-xs text-muted-foreground">当前账号没有用户详情读取权限</span>
     </section>
 
     <section class="crm-panel">
-      <div class="crm-table-shell">
-        <Table class="min-w-[960px]">
-          <TableHeader class="bg-[var(--crm-bg-muted)]">
-            <TableRow>
-              <TableHead class="w-[55px]">
-                <Checkbox :checked="allSelected" @update:checked="toggleSelectAll" />
+      <div
+        v-if="selectedRows.length"
+        class="flex flex-wrap items-center justify-between gap-3 border-b p-4"
+      >
+        <p class="text-sm">已选择 {{ selectedRows.length }} 人（单次最多 50 人）</p>
+        <div class="flex flex-wrap gap-2">
+          <Button
+            v-has-permission="PERMISSIONS.user.role"
+            variant="outline"
+            :disabled="batchLoading || selectedRows.length > 50"
+            @click="openBatchDialog('roles')"
+          >
+            批量调整角色
+          </Button>
+          <Button
+            v-has-permission="PERMISSIONS.user.permission"
+            variant="outline"
+            :disabled="batchLoading || selectedRows.length > 50"
+            @click="openBatchDialog('permissions')"
+          >
+            批量调整个人权限
+          </Button>
+        </div>
+      </div>
+      <div v-if="errorMessage" class="space-y-3 py-16 text-center">
+        <p class="text-destructive">{{ errorMessage }}</p>
+        <Button variant="outline" @click="load">重新加载</Button>
+      </div>
+      <div v-else class="crm-table-shell">
+        <Table class="min-w-[1280px]">
+          <TableHeader class="bg-[var(--crm-bg-muted)]"
+            ><TableRow>
+              <TableHead class="w-[48px]">
+                <Checkbox
+                  aria-label="选择本页可授权用户"
+                  :checked="allSelectableSelected"
+                  :disabled="!selectableRows.length"
+                  @update:checked="toggleAllRows($event === true)"
+                />
               </TableHead>
               <TableHead
-                class="w-[60px]"
                 sortable
-                sort-key="index"
+                sort-key="employeeNo"
                 :sort-by="sortBy"
                 :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >序号</TableHead
-              >
-              <TableHead
-                sortable
-                sort-key="loginAct"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >账号</TableHead
+                @sort="changeSort"
+                >员工编号</TableHead
               >
               <TableHead
                 sortable
                 sort-key="name"
                 :sort-by="sortBy"
                 :sort-direction="sortDirection"
-                @sort="toggleSort"
+                @sort="changeSort"
                 >姓名</TableHead
               >
               <TableHead
                 sortable
-                sort-key="phone"
+                sort-key="loginAct"
                 :sort-by="sortBy"
                 :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >手机</TableHead
+                @sort="changeSort"
+                >账号</TableHead
+              >
+              <TableHead>组织 / 岗位</TableHead><TableHead>直属管理者</TableHead
+              ><TableHead>角色</TableHead>
+              <TableHead
+                sortable
+                sort-key="employmentStatus"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="changeSort"
+                >任职状态</TableHead
               >
               <TableHead
                 sortable
-                sort-key="email"
+                sort-key="accountStatus"
                 :sort-by="sortBy"
                 :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >邮箱</TableHead
-              >
-              <TableHead
-                sortable
-                sort-key="accountEnabled"
-                :sort-by="sortBy"
-                :sort-direction="sortDirection"
-                @sort="toggleSort"
+                @sort="changeSort"
                 >账号状态</TableHead
               >
               <TableHead
                 sortable
-                sort-key="createTime"
+                sort-key="lockStatus"
                 :sort-by="sortBy"
                 :sort-direction="sortDirection"
-                @sort="toggleSort"
-                >创建时间</TableHead
+                @sort="changeSort"
+                >锁定状态</TableHead
               >
-              <TableHead>操作</TableHead>
-            </TableRow>
-          </TableHeader>
+              <TableHead
+                sortable
+                sort-key="lastLoginTime"
+                :sort-by="sortBy"
+                :sort-direction="sortDirection"
+                @sort="changeSort"
+                >最近登录</TableHead
+              ><TableHead>操作</TableHead>
+            </TableRow></TableHeader
+          >
           <TableBody>
-            <TableRow v-if="displayUserList.length === 0">
-              <TableCell colspan="9" class="h-32 text-center text-[var(--crm-text-tertiary)]"
-                >暂无用户数据</TableCell
-              >
-            </TableRow>
-            <TableRow v-for="(row, idx) in displayUserList" :key="row.id">
+            <TableRow v-if="loading"
+              ><TableCell colspan="12" class="h-32 text-center text-muted-foreground"
+                >加载用户列表...</TableCell
+              ></TableRow
+            >
+            <TableRow v-else-if="rows.length === 0"
+              ><TableCell colspan="12" class="h-32 text-center text-muted-foreground"
+                >没有符合条件的用户</TableCell
+              ></TableRow
+            >
+            <TableRow v-for="row in rows" v-else :key="row.id">
               <TableCell>
                 <Checkbox
-                  :checked="userIdArray.includes(row.id)"
-                  :disabled="!isAccountEnabled(row)"
-                  @update:checked="(v: boolean) => toggleRowSelection(row, v)"
+                  :aria-label="`选择用户${row.name}`"
+                  :checked="selectedIds.includes(row.id)"
+                  :disabled="!can(row, MANAGED_USER_ACTION.AUTHORIZATION_VIEW)"
+                  :title="reason(row, MANAGED_USER_ACTION.AUTHORIZATION_VIEW)"
+                  @update:checked="toggleRow(row, $event === true)"
                 />
               </TableCell>
-              <TableCell class="text-[var(--crm-text-tertiary)]">{{ startIndex(idx) }}</TableCell>
+              <TableCell>{{ row.employeeNo || '--' }}</TableCell
+              ><TableCell class="font-medium">{{ row.name }}</TableCell
+              ><TableCell class="font-mono text-xs">{{ row.loginAct }}</TableCell>
               <TableCell
-                class="max-w-[150px] truncate font-mono text-xs text-[var(--crm-text-secondary)]"
-                >{{ row.loginAct || '--' }}</TableCell
+                ><div>{{ row.organizationName || '未设置' }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ row.positionName || '未设置岗位' }}
+                </div></TableCell
               >
-              <TableCell
-                class="max-w-[150px] truncate font-semibold text-[var(--crm-text-primary)]"
-                >{{ row.name || '--' }}</TableCell
-              >
-              <TableCell class="max-w-[150px] truncate">{{ formatPhone(row.phone) }}</TableCell>
-              <TableCell class="max-w-[180px] truncate">{{ row.email || '--' }}</TableCell>
-              <TableCell>
-                <StatusBadge
-                  :label="isAccountEnabled(row) ? '启用' : '禁用'"
-                  :tone="isAccountEnabled(row) ? 'success' : 'muted'"
-                />
-              </TableCell>
-              <TableCell class="max-w-[180px] truncate">{{
-                formatDateTime(row.createTime)
+              <TableCell>{{ row.managerName || '未设置' }}</TableCell
+              ><TableCell>{{
+                row.roleNames.length ? row.roleNames.join('、') : '未分配'
               }}</TableCell>
-              <TableCell>
-                <div class="flex items-center gap-1">
-                  <RowActionButton
-                    v-has-permission="PERMISSIONS.user.view"
-                    label="详情"
-                    @click="view(row.id)"
-                  >
-                    <Eye class="h-4 w-4" />
-                  </RowActionButton>
-                  <RowActionButton
-                    v-has-permission="PERMISSIONS.user.edit"
-                    label="编辑"
-                    @click="edit(row.id)"
-                  >
-                    <Pencil class="h-4 w-4" />
-                  </RowActionButton>
-                  <RowActionButton
-                    v-has-permission="PERMISSIONS.user.status"
-                    label="交接"
-                    @click="openHandoverDialog(row)"
-                  >
-                    <ArrowRightLeft class="h-4 w-4" />
-                  </RowActionButton>
-                  <RowActionButton
-                    v-has-permission="PERMISSIONS.user.status"
-                    :label="isAccountEnabled(row) ? '禁用' : '启用'"
-                    :danger="isAccountEnabled(row)"
-                    @click="toggleUserStatus(row)"
-                  >
-                    <Ban v-if="isAccountEnabled(row)" class="h-4 w-4" />
-                    <Power v-else class="h-4 w-4" />
-                  </RowActionButton>
-                </div>
-              </TableCell>
+              <TableCell>{{ row.employmentStatus }}</TableCell
+              ><TableCell>{{ row.accountStatus }}</TableCell
+              ><TableCell>{{ row.lockStatus }}</TableCell
+              ><TableCell>{{ formatDateTime(row.lastLoginTime) }}</TableCell>
+              <TableCell
+                ><Button
+                  size="sm"
+                  variant="ghost"
+                  :disabled="!can(row, MANAGED_USER_ACTION.VIEW)"
+                  :title="reason(row, MANAGED_USER_ACTION.VIEW)"
+                  @click="openDetail(row)"
+                  >详情</Button
+                ></TableCell
+              >
             </TableRow>
           </TableBody>
         </Table>
       </div>
       <div class="crm-table-footer">
         <DataTablePagination
-          :page="currentPage"
+          :page="page"
           :page-size="pageSize"
           :total="total"
-          @change="toPage"
+          @change="changePage"
         />
       </div>
     </section>
 
-    <!-- 新增/编辑用户的弹窗 -->
-    <Dialog v-model:open="userDialogVisible">
-      <DialogContent class="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{{ isEditMode ? '编辑用户' : '新增用户' }}</DialogTitle>
-        </DialogHeader>
-        <form class="space-y-4" @submit.prevent="userSubmit">
-          <div class="space-y-2">
-            <Label>账号</Label>
-            <Input v-model="loginAct" />
-            <p v-if="errors.loginAct" class="text-sm text-destructive">{{ errors.loginAct }}</p>
-          </div>
-
-          <div class="space-y-2" v-if="!isEditMode">
-            <Label>密码</Label>
-            <Input type="password" v-model="loginPwd" />
-            <p v-if="errors.loginPwd" class="text-sm text-destructive">{{ errors.loginPwd }}</p>
-          </div>
-
-          <div class="space-y-2">
-            <Label>姓名</Label>
-            <Input v-model="name" />
-            <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
-          </div>
-
-          <div class="space-y-2">
-            <Label>手机</Label>
-            <Input v-model="phone" />
-            <p v-if="errors.phone" class="text-sm text-destructive">{{ errors.phone }}</p>
-          </div>
-
-          <div class="space-y-2">
-            <Label>邮箱</Label>
-            <Input v-model="email" />
-            <p v-if="errors.email" class="text-sm text-destructive">{{ errors.email }}</p>
-          </div>
-        </form>
-        <DialogFooter>
-          <Button variant="outline" @click="userDialogVisible = false" :disabled="submitting"
-            >关 闭</Button
-          >
-          <Button @click="userSubmit" :disabled="submitting">{{
-            submitting ? '提交中...' : '提 交'
-          }}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    <!-- 用户详情的弹窗 -->
-    <Dialog v-model:open="userDetailDialogVisible">
-      <DialogContent class="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>用户详情</DialogTitle>
-        </DialogHeader>
-        <div v-if="loadingDetail" class="py-8 text-center text-muted-foreground">加载中...</div>
-        <div v-else-if="userDetail" class="space-y-3">
-          <div class="space-y-1">
-            <Label>ID</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.id }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>账号</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.loginAct }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>密码</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">******</div>
-          </div>
-          <div class="space-y-1">
-            <Label>姓名</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.name }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>手机</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.phone }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>邮箱</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.email }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>账号未过期</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">
-              {{ userDetail.accountNoExpired === 1 ? '是' : '否' }}
-            </div>
-          </div>
-          <div class="space-y-1">
-            <Label>密码未过期</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">
-              {{ userDetail.credentialsNoExpired === 1 ? '是' : '否' }}
-            </div>
-          </div>
-          <div class="space-y-1">
-            <Label>账号未锁定</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">
-              {{ userDetail.accountNoLocked === 1 ? '是' : '否' }}
-            </div>
-          </div>
-          <div class="space-y-1">
-            <Label>账号是否启用</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">
-              {{ userDetail.accountEnabled === 1 ? '是' : '否' }}
-            </div>
-          </div>
-          <div class="space-y-1">
-            <Label>创建时间</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.createTime }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>创建人</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.createByDO?.name }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>编辑时间</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.editTime }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>编辑人</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.editByDO?.name }}</div>
-          </div>
-          <div class="space-y-1">
-            <Label>最近登录时间</Label>
-            <div class="w-full bg-muted rounded px-4 py-2">{{ userDetail.lastLoginTime }}</div>
-          </div>
-        </div>
-        <div v-else class="py-8 text-center text-muted-foreground">加载失败</div>
-        <DialogFooter>
-          <Button variant="secondary" @click="userDetailDialogVisible = false">返 回</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    <Dialog v-model:open="handoverDialogVisible">
-      <DialogContent class="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>责任交接</DialogTitle>
-        </DialogHeader>
-        <div class="space-y-4">
-          <div class="space-y-2">
-            <Label>原负责人</Label>
-            <div class="w-full rounded-md bg-muted px-4 py-2 text-sm">
-              {{ handoverSourceUser?.name || handoverSourceUser?.loginAct || '--' }}
-            </div>
-          </div>
-          <div class="space-y-2">
-            <Label>目标负责人</Label>
-            <Select v-model="handoverTargetUserId" :disabled="loadingOwners">
-              <SelectTrigger class="w-full">
-                <SelectValue :placeholder="loadingOwners ? '加载中...' : '请选择目标负责人'" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="item in handoverOwnerOptions"
-                  :key="item.id"
-                  :value="String(item.id)"
-                >
-                  {{ item.name || item.loginAct }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="space-y-2">
-            <Label>交接原因</Label>
-            <Textarea v-model="handoverReason" :rows="5" placeholder="请输入交接原因" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="handoverSubmitting"
-            @click="handoverDialogVisible = false"
-            >取 消</Button
-          >
-          <Button type="button" :disabled="handoverSubmitting || loadingOwners" @click="submitHandover">
-            <Loader2 v-if="handoverSubmitting" class="mr-1 h-4 w-4 animate-spin" />
-            确认交接
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <UserFormDialog
+      v-model:open="createDialogOpen"
+      mode="create"
+      :options="createOptions"
+      :submitting="createSubmitting"
+      :role-options-loading="assignableRoleLoading"
+      :role-options-error="assignableRoleError"
+      @organization-change="loadAssignableRoles"
+      @create="submitCreate"
+    />
+    <BatchAuthorizationDialog
+      v-model:open="batchDialogOpen"
+      :mode="batchMode"
+      :details="batchDetails"
+      :submitting="batchSubmitting"
+      @save-roles="submitBatchRoles"
+      @save-permissions="submitBatchPermissions"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { PERMISSIONS } from '@/shared/constants/permissions'
-import { ref, computed, onMounted } from 'vue'
-import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
-import * as z from 'zod'
-import {
-  fetchUserPage,
-  fetchUserDetail,
-  createUser,
-  updateUser,
-  disableUser,
-  enableUser,
-  batchDisableUsers,
-  fetchOwnerList,
-  handoverUserResponsibilities,
-} from '@/modules/user/api/user-api'
-import type { User } from '@/modules/user/model/user.types'
-import {
-  toCreateUserRequest,
-  toUpdateUserRequest,
-  type UserFormValues,
-} from '@/modules/user/model/user.types'
-import { messageConfirm, messageTip } from '@/shared/utils/feedback'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { Plus } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
@@ -406,357 +243,333 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  batchUpdateUserPermissions,
+  batchUpdateUserRoleAssignments,
+  fetchUserAuthorizationDetail,
+} from '@/modules/access/api/user-authorization-api'
+import BatchAuthorizationDialog from '@/modules/access/components/BatchAuthorizationDialog.vue'
+import {
+  getUserAuthorizationErrorMessage,
+  isAccessVersionConflict,
+} from '@/modules/access/model/access-error'
+import {
+  USER_AUTHORIZATION_ACTION,
+  type BatchUpdateUserPermissionsRequest,
+  type BatchUpdateUserRolesRequest,
+  type UserAuthorizationDetail,
+} from '@/modules/access/model/user-permission.types'
+import UserFilterBar from '@/modules/user/components/UserFilterBar.vue'
+import UserFormDialog from '@/modules/user/components/UserFormDialog.vue'
+import { createManagedUser, fetchUserFilterOptions } from '@/modules/user/api/user-api'
+import { useUserList } from '@/modules/user/composables/use-user-list'
+import {
+  MANAGED_USER_ACTION,
+  type CreateManagedUserRequest,
+  type CreateManagedUserResult,
+  type ManagedUserAction,
+  type UserFilterOptions,
+  type UserListSummary,
+} from '@/modules/user/model/user.types'
 import DataTablePagination from '@/shared/ui/DataTablePagination.vue'
-import RowActionButton from '@/shared/ui/RowActionButton.vue'
-import StatusBadge from '@/shared/ui/StatusBadge.vue'
-import { formatDateTime, formatPhone } from '@/shared/utils/display-format'
-import { useClientSort } from '@/shared/utils/table-sort'
-import { ArrowRightLeft, Ban, Eye, Loader2, Pencil, Plus, Power } from '@lucide/vue'
+import { PERMISSIONS } from '@/shared/constants/permissions'
+import type { EntityId } from '@/shared/types/id'
+import { formatDateTime } from '@/shared/utils/display-format'
+import { messageTip } from '@/shared/utils/feedback'
+import { usePermissionStore } from '@/stores/permission.store'
 
-const userList = ref<User[]>([])
-const pageSize = ref(10)
-const total = ref(0)
-const userDialogVisible = ref(false)
-const userIdArray = ref<(number | string)[]>([])
-const currentPage = ref(1)
-const isEditMode = ref(false)
-const editingUserId = ref<number | null>(null)
-const submitting = ref(false)
-const loadingDetail = ref(false)
+const EMPTY_OPTIONS: UserFilterOptions = {
+  organizations: [],
+  positions: [],
+  managers: [],
+  roles: [],
+  assignableRoles: [],
+  employmentStatuses: [],
+  accountStatuses: [],
+  lockStatuses: [],
+  bootstrapRequired: false,
+  bootstrapAllowed: false,
+  bootstrapRootOrganizationId: null,
+  bootstrapRootOrganizationVersion: null,
+}
+const router = useRouter()
+const permissionStore = usePermissionStore()
 const {
+  filters,
+  rows,
+  page,
+  pageSize,
+  total,
   sortBy,
   sortDirection,
-  sortedRows: displayUserList,
-  toggleSort,
-} = useClientSort<User>(userList, {
-  index: 'id',
-  loginAct: 'loginAct',
-  name: 'name',
-  phone: 'phone',
-  email: 'email',
-  accountEnabled: (row) => (isAccountEnabled(row) ? 1 : 0),
-  createTime: 'createTime',
-})
-
-const userDetailDialogVisible = ref(false)
-const userDetail = ref<User | null>(null)
-const handoverDialogVisible = ref(false)
-const handoverSourceUser = ref<User | null>(null)
-const handoverTargetUserId = ref('')
-const handoverReason = ref('')
-const handoverSubmitting = ref(false)
-const loadingOwners = ref(false)
-const ownerOptions = ref<User[]>([])
-const handoverOwnerOptions = computed(() => {
-  const sourceId = handoverSourceUser.value?.id
-  return ownerOptions.value.filter((owner) => String(owner.id) !== String(sourceId))
-})
-
-const createUserSchema = toTypedSchema(
-  z.object({
-    loginAct: z.string().min(1, '请输入登录账号'),
-    loginPwd: z.string().min(6, '登录密码长度为6-16位').max(16, '登录密码长度为6-16位'),
-    name: z.string().min(1, '请输入姓名'),
-    phone: z
-      .string()
-      .min(1, '请输入手机号码')
-      .regex(/^1[3-9]\d{9}$/, '手机号码格式有误'),
-    email: z
-      .string()
-      .min(1, '请输入邮箱')
-      .regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, '邮箱格式有误'),
-  }),
+  loading,
+  errorMessage,
+  load,
+  search,
+  reset,
+  changePage,
+  changeSort,
+} = useUserList()
+const filterOptions = ref<UserFilterOptions>(EMPTY_OPTIONS)
+const createOptions = ref<UserFilterOptions>(EMPTY_OPTIONS)
+const filterLoading = ref(false)
+const filterError = ref('')
+const createDialogOpen = ref(false)
+const createSubmitting = ref(false)
+const createdResult = ref<CreateManagedUserResult | null>(null)
+const selectedIds = ref<EntityId[]>([])
+const batchDialogOpen = ref(false)
+const batchMode = ref<'roles' | 'permissions'>('roles')
+const batchDetails = ref<UserAuthorizationDetail[]>([])
+const batchLoading = ref(false)
+const batchSubmitting = ref(false)
+let filterController: AbortController | null = null
+let assignableRoleController: AbortController | null = null
+let batchController: AbortController | null = null
+let assignableRoleRequestId = 0
+const assignableRoleLoading = ref(false)
+const assignableRoleError = ref('')
+const selectableRows = computed(() =>
+  rows.value.filter((row) => can(row, MANAGED_USER_ACTION.AUTHORIZATION_VIEW)),
+)
+const selectedRows = computed(() => rows.value.filter((row) => selectedIds.value.includes(row.id)))
+const allSelectableSelected = computed(
+  () =>
+    selectableRows.value.length > 0 &&
+    selectableRows.value.every((row) => selectedIds.value.includes(row.id)),
 )
 
-const updateUserSchema = toTypedSchema(
-  z.object({
-    loginAct: z.string().min(1, '请输入登录账号'),
-    loginPwd: z.string().optional(),
-    name: z.string().min(1, '请输入姓名'),
-    phone: z
-      .string()
-      .min(1, '请输入手机号码')
-      .regex(/^1[3-9]\d{9}$/, '手机号码格式有误'),
-    email: z
-      .string()
-      .min(1, '请输入邮箱')
-      .regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, '邮箱格式有误'),
-  }),
-)
-
-const validationSchema = computed(() => (isEditMode.value ? updateUserSchema : createUserSchema))
-
-const { handleSubmit, errors, resetForm, defineField } = useForm<UserFormValues>({
-  validationSchema,
-  initialValues: {
-    loginAct: '',
-    loginPwd: '',
-    name: '',
-    phone: '',
-    email: '',
-  },
-})
-const [loginAct] = defineField('loginAct')
-const [loginPwd] = defineField('loginPwd')
-const [name] = defineField('name')
-const [phone] = defineField('phone')
-const [email] = defineField('email')
-
-const allSelected = computed(
-  () => {
-    const enabledRows = displayUserList.value.filter(isAccountEnabled)
-    return enabledRows.length > 0 && userIdArray.value.length === enabledRows.length
-  },
-)
-
-function toggleSelectAll(checked: boolean) {
-  if (checked) {
-    userIdArray.value = displayUserList.value
-      .filter(isAccountEnabled)
-      .map((data) => data.id)
-      .filter((id): id is number | string => id !== undefined)
-  } else {
-    userIdArray.value = []
-  }
+function can(row: UserListSummary, action: ManagedUserAction): boolean {
+  return row.allowedActions.includes(action)
 }
-
-function toggleRowSelection(row: User, checked: boolean) {
-  if (!isAccountEnabled(row)) {
+function reason(row: UserListSummary, action: ManagedUserAction): string {
+  return can(row, action) ? '' : (row.unavailableReasons[action] ?? '服务端未允许此操作')
+}
+function openDetail(row: UserListSummary): void {
+  if (can(row, MANAGED_USER_ACTION.VIEW))
+    void router.push({ name: 'user-detail', params: { id: String(row.id) } })
+}
+function openCreatedUser(): void {
+  if (createdResult.value && permissionStore.hasPermission(PERMISSIONS.user.view))
+    void router.push({ name: 'user-detail', params: { id: String(createdResult.value.user.id) } })
+}
+function toggleRow(row: UserListSummary, checked: boolean): void {
+  if (!can(row, MANAGED_USER_ACTION.AUTHORIZATION_VIEW)) return
+  if (checked && selectedIds.value.length >= 50) {
+    messageTip('单次最多选择 50 名用户', 'warning')
     return
   }
-  if (checked && row.id !== undefined) {
-    if (!userIdArray.value.includes(row.id)) {
-      userIdArray.value.push(row.id)
+  selectedIds.value = checked
+    ? [...selectedIds.value, row.id]
+    : selectedIds.value.filter((id) => String(id) !== String(row.id))
+}
+function toggleAllRows(checked: boolean): void {
+  if (!checked) {
+    selectedIds.value = []
+    return
+  }
+  selectedIds.value = selectableRows.value.slice(0, 50).map((row) => row.id)
+  if (selectableRows.value.length > 50)
+    messageTip('本页可授权用户超过 50 人，已选择前 50 人', 'warning')
+}
+function cloneOptions(options: UserFilterOptions): UserFilterOptions {
+  return {
+    ...options,
+    organizations: [...options.organizations],
+    positions: [...options.positions],
+    managers: [...options.managers],
+    roles: [...options.roles],
+    assignableRoles: [...options.assignableRoles],
+    employmentStatuses: [...options.employmentStatuses],
+    accountStatuses: [...options.accountStatuses],
+    lockStatuses: [...options.lockStatuses],
+  }
+}
+function openCreateDialog(): void {
+  assignableRoleController?.abort()
+  assignableRoleRequestId += 1
+  assignableRoleLoading.value = false
+  assignableRoleError.value = ''
+  createOptions.value = cloneOptions(filterOptions.value)
+  createDialogOpen.value = true
+}
+
+async function loadFilters(): Promise<void> {
+  filterController?.abort()
+  const controller = new AbortController()
+  filterController = controller
+  filterLoading.value = true
+  filterError.value = ''
+  try {
+    const result = await fetchUserFilterOptions(undefined, controller.signal)
+    if (controller.signal.aborted || filterController !== controller) return
+    filterOptions.value = result
+    if (!createDialogOpen.value) createOptions.value = cloneOptions(result)
+  } catch {
+    if (!controller.signal.aborted) {
+      filterOptions.value = EMPTY_OPTIONS
+      if (!createDialogOpen.value) createOptions.value = EMPTY_OPTIONS
+      filterError.value = '加载筛选候选项失败'
     }
-  } else {
-    userIdArray.value = userIdArray.value.filter((id: number | string) => id !== row.id)
-  }
-}
-
-function isAccountEnabled(user: User): boolean {
-  return user.accountEnabled === 1 || user.accountEnabled === undefined
-}
-
-async function getData(current: number) {
-  try {
-    const resp = await fetchUserPage({ page: current, size: pageSize.value })
-    userList.value = resp.list
-    pageSize.value = resp.pageSize ?? 10
-    total.value = resp.total
-    userIdArray.value = []
-  } catch {
-    messageTip('获取用户列表失败', 'error')
-  }
-}
-
-function toPage(current: number) {
-  void getData(current)
-  currentPage.value = current
-}
-
-async function view(id: number) {
-  userDetailDialogVisible.value = true
-  loadingDetail.value = true
-  userDetail.value = null
-  try {
-    userDetail.value = await fetchUserDetail(id)
-  } catch {
-    messageTip('加载用户详情失败', 'error')
   } finally {
-    loadingDetail.value = false
+    if (filterController === controller) {
+      filterLoading.value = false
+      filterController = null
+    }
   }
 }
 
-function add() {
-  isEditMode.value = false
-  editingUserId.value = null
-  resetForm({
-    values: {
-      loginAct: '',
-      loginPwd: '',
-      name: '',
-      phone: '',
-      email: '',
-    },
-  })
-  userDialogVisible.value = true
-}
-
-const userSubmit = handleSubmit(async (formData) => {
-  if (submitting.value) return
-  submitting.value = true
+async function loadAssignableRoles(organizationUnitId: string | null): Promise<void> {
+  const currentRequestId = ++assignableRoleRequestId
+  assignableRoleController?.abort()
+  assignableRoleController = null
+  assignableRoleError.value = ''
+  createOptions.value = { ...cloneOptions(filterOptions.value), managers: [], assignableRoles: [] }
+  if (!organizationUnitId) {
+    assignableRoleLoading.value = false
+    return
+  }
+  const controller = new AbortController()
+  assignableRoleController = controller
+  assignableRoleLoading.value = true
   try {
-    if (isEditMode.value) {
-      if (editingUserId.value === null) {
-        messageTip('编辑模式缺少用户 ID', 'error')
-        return
-      }
-      await updateUser(toUpdateUserRequest(formData, editingUserId.value))
-      messageTip('编辑成功', 'success')
-    } else {
-      await createUser(toCreateUserRequest(formData))
-      messageTip('提交成功', 'success')
-    }
-    userDialogVisible.value = false
-    try {
-      await getData(currentPage.value)
-    } catch {
-      messageTip('用户已保存，但列表刷新失败', 'warning')
+    const result = await fetchUserFilterOptions(organizationUnitId, controller.signal)
+    if (controller.signal.aborted || currentRequestId !== assignableRoleRequestId) return
+    createOptions.value = {
+      ...cloneOptions(filterOptions.value),
+      managers: [...result.managers],
+      assignableRoles: [...result.assignableRoles],
     }
   } catch {
-    messageTip(isEditMode.value ? '编辑失败' : '提交失败', 'error')
+    if (controller.signal.aborted || currentRequestId !== assignableRoleRequestId) return
+    createOptions.value = { ...cloneOptions(filterOptions.value), managers: [], assignableRoles: [] }
+    assignableRoleError.value = '加载当前组织的直属管理者和可委派角色失败，请重试选择组织'
   } finally {
-    submitting.value = false
-  }
-})
-
-async function edit(id: number) {
-  isEditMode.value = true
-  editingUserId.value = id
-  try {
-    const user = await fetchUserDetail(id)
-    if (editingUserId.value !== id) return
-    resetForm({
-      values: {
-        loginAct: user.loginAct ?? '',
-        loginPwd: '',
-        name: user.name ?? '',
-        phone: user.phone ?? '',
-        email: user.email ?? '',
-      },
-    })
-    userDialogVisible.value = true
-  } catch {
-    messageTip('加载用户信息失败', 'error')
+    if (currentRequestId === assignableRoleRequestId) {
+      assignableRoleLoading.value = false
+      assignableRoleController = null
+    }
   }
 }
 
-async function del(id: number) {
+async function submitCreate(request: CreateManagedUserRequest): Promise<void> {
+  if (createSubmitting.value) return
+  createSubmitting.value = true
   try {
-    await messageConfirm('您确定要禁用该账号吗？')
+    const result = await createManagedUser(request)
+    createdResult.value = result
+    createDialogOpen.value = false
+    messageTip('用户已创建，邀请凭证已排队等待投递', 'success')
+    await load()
   } catch {
-    messageTip('取消禁用', 'warning')
-    return
-  }
-  try {
-    await disableUser(id)
-    messageTip('禁用成功', 'success')
-    await getData(currentPage.value)
-  } catch {
-    messageTip('禁用失败', 'error')
-  }
-}
-
-async function enable(id: number) {
-  try {
-    await messageConfirm('您确定要启用该账号吗？')
-  } catch {
-    messageTip('取消启用', 'warning')
-    return
-  }
-  try {
-    await enableUser(id)
-    messageTip('启用成功', 'success')
-    await getData(currentPage.value)
-  } catch {
-    messageTip('启用失败', 'error')
-  }
-}
-
-async function toggleUserStatus(row: User) {
-  if (row.id === undefined) {
-    messageTip('用户ID为空，无法操作', 'warning')
-    return
-  }
-  if (isAccountEnabled(row)) {
-    await del(Number(row.id))
-  } else {
-    await enable(Number(row.id))
-  }
-}
-
-async function loadOwnerOptions() {
-  loadingOwners.value = true
-  try {
-    ownerOptions.value = await fetchOwnerList()
-  } catch {
-    ownerOptions.value = []
-    messageTip('加载负责人失败', 'error')
+    messageTip('创建用户失败，请根据服务端提示检查资料', 'error')
   } finally {
-    loadingOwners.value = false
+    createSubmitting.value = false
   }
 }
 
-async function openHandoverDialog(row: User) {
-  if (row.id === undefined) {
-    messageTip('用户ID为空，无法交接', 'warning')
-    return
-  }
-  handoverSourceUser.value = row
-  handoverTargetUserId.value = ''
-  handoverReason.value = ''
-  handoverDialogVisible.value = true
-  await loadOwnerOptions()
-}
-
-async function submitHandover() {
-  if (!handoverSourceUser.value?.id) {
-    messageTip('原负责人不存在', 'error')
-    return
-  }
-  if (!handoverTargetUserId.value) {
-    messageTip('请选择目标负责人', 'warning')
-    return
-  }
-  const reason = handoverReason.value.trim()
-  if (!reason) {
-    messageTip('请输入交接原因', 'warning')
-    return
-  }
-  handoverSubmitting.value = true
+async function openBatchDialog(mode: 'roles' | 'permissions'): Promise<void> {
+  if (!selectedRows.value.length || batchLoading.value) return
+  batchController?.abort()
+  const controller = new AbortController()
+  batchController = controller
+  batchLoading.value = true
   try {
-    const response = await handoverUserResponsibilities(handoverSourceUser.value.id, {
-      targetUserId: Number(handoverTargetUserId.value),
-      reason,
-    })
-    messageTip(
-      `交接完成：活动${response.activityCount}条，线索${response.clueCount}条，客户${response.customerCount}条`,
-      'success',
+    const details = await Promise.all(
+      selectedRows.value.map((row) => fetchUserAuthorizationDetail(row.id, controller.signal)),
     )
-    handoverDialogVisible.value = false
-    await getData(currentPage.value)
-  } catch {
-    messageTip('交接失败', 'error')
+    if (controller.signal.aborted || batchController !== controller) return
+    const requiredAction =
+      mode === 'roles'
+        ? USER_AUTHORIZATION_ACTION.ROLE_UPDATE
+        : USER_AUTHORIZATION_ACTION.PERMISSION_UPDATE
+    const denied = details.find((detail) => !detail.allowedActions.includes(requiredAction))
+    if (denied) {
+      messageTip(
+        `${denied.user.name}：${denied.unavailableReasons[requiredAction] ?? '当前不允许调整授权'}`,
+        'warning',
+      )
+      return
+    }
+    batchMode.value = mode
+    batchDetails.value = details
+    batchDialogOpen.value = true
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      messageTip(getUserAuthorizationErrorMessage(error, '加载批量授权候选失败'), 'error')
+    }
   } finally {
-    handoverSubmitting.value = false
+    if (batchController === controller) {
+      batchController = null
+      batchLoading.value = false
+    }
   }
 }
 
-async function batchDel() {
-  if (userIdArray.value.length <= 0) {
-    messageTip('请选择要禁用的数据', 'warning')
-    return
-  }
+async function submitBatchRoles(request: BatchUpdateUserRolesRequest): Promise<void> {
+  if (batchSubmitting.value) return
+  batchSubmitting.value = true
   try {
-    await messageConfirm('您确定要禁用这些账号吗？')
-  } catch {
-    messageTip('取消批量禁用', 'warning')
-    return
-  }
-  try {
-    await batchDisableUsers(userIdArray.value)
-    messageTip('批量禁用成功', 'success')
-    await getData(currentPage.value)
-  } catch {
-    messageTip('批量禁用失败', 'error')
+    const result = await batchUpdateUserRoleAssignments(request)
+    messageTip(`批量角色调整完成，实际变更 ${result.changedTargetCount} 人`, 'success')
+    await finishBatch()
+  } catch (error) {
+    messageTip(getUserAuthorizationErrorMessage(error, '批量角色调整失败'), 'error')
+    await refreshBatchOnConflict(error)
+  } finally {
+    batchSubmitting.value = false
   }
 }
 
-function startIndex(index: number) {
-  return (currentPage.value - 1) * pageSize.value + index + 1
+async function submitBatchPermissions(request: BatchUpdateUserPermissionsRequest): Promise<void> {
+  if (batchSubmitting.value) return
+  batchSubmitting.value = true
+  try {
+    const result = await batchUpdateUserPermissions(request)
+    messageTip(`批量个人权限调整完成，实际变更 ${result.changedTargetCount} 人`, 'success')
+    await finishBatch()
+  } catch (error) {
+    messageTip(getUserAuthorizationErrorMessage(error, '批量个人权限调整失败'), 'error')
+    await refreshBatchOnConflict(error)
+  } finally {
+    batchSubmitting.value = false
+  }
 }
+
+async function finishBatch(): Promise<void> {
+  batchDialogOpen.value = false
+  batchDetails.value = []
+  selectedIds.value = []
+  await load()
+}
+
+async function refreshBatchOnConflict(error: unknown): Promise<void> {
+  if (!isAccessVersionConflict(error)) return
+  try {
+    const latestDetails = await Promise.all(
+      batchDetails.value.map((detail) => fetchUserAuthorizationDetail(detail.user.id)),
+    )
+    batchDetails.value = latestDetails
+    await load()
+  } catch {
+    batchDialogOpen.value = false
+    batchDetails.value = []
+    messageTip('授权事实刷新失败，请重新选择用户后再试', 'error')
+    await load()
+  }
+}
+
+watch(rows, (nextRows) => {
+  const visibleIds = new Set(nextRows.map((row) => String(row.id)))
+  selectedIds.value = selectedIds.value.filter((id) => visibleIds.has(String(id)))
+})
 
 onMounted(() => {
-  void getData(1)
+  void Promise.all([loadFilters(), load()])
+})
+onBeforeUnmount(() => {
+  filterController?.abort()
+  assignableRoleController?.abort()
+  batchController?.abort()
 })
 </script>

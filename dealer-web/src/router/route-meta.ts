@@ -6,5 +6,9 @@ declare module 'vue-router' {
     title?: string
     activeMenu?: string
     permission?: string
+    allowDuringPasswordChange?: boolean
+    allowDuringUserManagementGate?: boolean
+    allowDuringPendingAdminSetup?: boolean
+    allowDuringRecoveryBootstrap?: boolean
   }
 }

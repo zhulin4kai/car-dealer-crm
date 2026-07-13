@@ -9,6 +9,50 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false, title: '登录' },
   },
   {
+    path: '/activate',
+    name: 'activate-account',
+    component: () => import('@/pages/activate.vue'),
+    meta: { requiresAuth: false, title: '激活账号' },
+  },
+  {
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: () => import('@/pages/forgot-password.vue'),
+    meta: { requiresAuth: false, title: '找回密码' },
+  },
+  {
+    path: '/reset-password',
+    name: 'reset-password',
+    component: () => import('@/pages/reset-password.vue'),
+    meta: { requiresAuth: false, title: '重置密码' },
+  },
+  {
+    path: '/verify-contact',
+    name: 'verify-contact',
+    component: () => import('@/pages/verify-contact.vue'),
+    meta: { requiresAuth: false, title: '验证联系方式' },
+  },
+  {
+    path: '/first-password-change',
+    name: 'first-password-change',
+    component: () => import('@/pages/first-password-change.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '首次登录修改密码',
+      allowDuringPasswordChange: true,
+    },
+  },
+  {
+    path: '/user-management-gate',
+    name: 'user-management-gate',
+    component: () => import('@/pages/user-management-gate.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '用户管理状态',
+      allowDuringUserManagementGate: true,
+    },
+  },
+  {
     path: '/dashboard',
     name: 'dashboard',
     component: () => import('@/layouts/DashboardLayout.vue'),
@@ -23,6 +67,17 @@ export const routes: RouteRecordRaw[] = [
           title: '统计',
           activeMenu: '/dashboard',
           permission: PERMISSIONS.statistic.view,
+        },
+      },
+      {
+        path: 'profile',
+        name: 'profile',
+        component: () => import('@/pages/dashboard/profile.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '个人中心',
+          activeMenu: '/dashboard/profile',
+          allowDuringPendingAdminSetup: true,
         },
       },
       {
@@ -56,6 +111,51 @@ export const routes: RouteRecordRaw[] = [
           title: '用户管理',
           activeMenu: '/dashboard/user',
           permission: PERMISSIONS.user.list,
+          allowDuringRecoveryBootstrap: true,
+        },
+      },
+      {
+        path: 'user/:id',
+        name: 'user-detail',
+        component: () => import('@/pages/dashboard/user/[id].vue'),
+        meta: {
+          requiresAuth: true,
+          title: '用户详情',
+          activeMenu: '/dashboard/user',
+          permission: PERMISSIONS.user.view,
+        },
+      },
+      {
+        path: 'organization',
+        name: 'organization',
+        component: () => import('@/pages/dashboard/organization.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '组织架构',
+          activeMenu: '/dashboard/organization',
+          permission: PERMISSIONS.organization.list,
+        },
+      },
+      {
+        path: 'role',
+        name: 'role-management',
+        component: () => import('@/pages/dashboard/role.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '角色管理',
+          activeMenu: '/dashboard/role',
+          permission: PERMISSIONS.role.list,
+        },
+      },
+      {
+        path: 'permission',
+        name: 'permission-catalog',
+        component: () => import('@/pages/dashboard/permission.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '权限目录',
+          activeMenu: '/dashboard/permission',
+          permission: PERMISSIONS.permission.list,
         },
       },
       {

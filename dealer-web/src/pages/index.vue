@@ -182,6 +182,13 @@
                   记住我
                 </Label>
               </div>
+              <button
+                type="button"
+                class="text-sm text-[var(--crm-primary)] hover:underline"
+                @click="router.push('/forgot-password')"
+              >
+                忘记密码？
+              </button>
             </div>
 
             <Button

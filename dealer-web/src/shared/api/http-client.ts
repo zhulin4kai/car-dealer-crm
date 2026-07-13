@@ -1,9 +1,10 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
 import { ApiError } from '@/shared/api/api-error'
-import { isSessionInvalidCode } from '@/shared/api/error-codes'
+import { API_ERROR_CODE, isSessionInvalidCode } from '@/shared/api/error-codes'
 import type { ApiEnvelope, DownloadResult } from '@/shared/api/api-types'
 import { notifySessionInvalid } from '@/shared/auth/session-invalid-handler'
+import { notifyUserManagementGate } from '@/shared/auth/user-management-gate-handler'
 import { env } from '@/shared/config/env'
 import { readStoredToken } from '@/shared/storage/token-storage'
 
@@ -25,12 +26,34 @@ axiosClient.interceptors.request.use((config) => {
   return config
 })
 
-function envelopeToApiError(envelope: ApiEnvelope<unknown>): ApiError {
-  const sessionInvalid = isSessionInvalidCode(envelope.code)
+function shouldInvalidateSession(envelope: ApiEnvelope<unknown>, httpStatus?: number): boolean {
+  if (httpStatus === 403) {
+    return false
+  }
+  if (httpStatus === 401) {
+    return envelope.code !== API_ERROR_CODE.AUTH_LOGIN_FAILED
+  }
+  return isSessionInvalidCode(envelope.code)
+}
+
+function envelopeToApiError(envelope: ApiEnvelope<unknown>, httpStatus?: number): ApiError {
+  const sessionInvalid = shouldInvalidateSession(envelope, httpStatus)
   if (sessionInvalid) {
     void notifySessionInvalid({ code: envelope.code, msg: envelope.msg })
   }
-  return new ApiError(envelope.code, envelope.msg || '请求失败', envelope, sessionInvalid)
+  if (
+    envelope.code === API_ERROR_CODE.ADMIN_BOOTSTRAP_REQUIRED ||
+    envelope.code === API_ERROR_CODE.RECOVERY_ACCOUNT_BUSINESS_FORBIDDEN
+  ) {
+    void notifyUserManagementGate({ code: envelope.code })
+  }
+  return new ApiError(
+    envelope.code,
+    envelope.msg || '请求失败',
+    envelope,
+    sessionInvalid,
+    httpStatus,
+  )
 }
 
 axiosClient.interceptors.response.use(
@@ -39,7 +62,7 @@ axiosClient.interceptors.response.use(
     if (axios.isAxiosError(error)) {
       const envelope = error.response?.data as ApiEnvelope<unknown> | undefined
       if (typeof envelope?.code === 'number') {
-        return Promise.reject(envelopeToApiError(envelope))
+        return Promise.reject(envelopeToApiError(envelope, error.response?.status))
       }
     }
     return Promise.reject(error)
@@ -51,7 +74,7 @@ async function request<T>(config: AxiosRequestConfig): Promise<T> {
   const envelope = response.data
 
   if (envelope.code !== 200) {
-    throw envelopeToApiError(envelope)
+    throw envelopeToApiError(envelope, response.status)
   }
 
   return envelope.data
@@ -80,12 +103,12 @@ function parseFilename(contentDisposition: string | undefined): string {
   return 'download.bin'
 }
 
-async function blobToApiError(blob: Blob): Promise<ApiError | null> {
+async function blobToApiError(blob: Blob, httpStatus?: number): Promise<ApiError | null> {
   const text = await blob.text()
   try {
     const envelope = JSON.parse(text) as ApiEnvelope<unknown>
     if (envelope && typeof envelope.code === 'number') {
-      return envelopeToApiError(envelope)
+      return envelopeToApiError(envelope, httpStatus)
     }
   } catch {
     // not valid JSON
@@ -104,7 +127,7 @@ async function download(url: string, config?: AxiosRequestConfig): Promise<Downl
     })
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
-      const apiError = await blobToApiError(error.response.data)
+      const apiError = await blobToApiError(error.response.data, error.response.status)
       if (apiError) {
         throw apiError
       }
@@ -116,7 +139,7 @@ async function download(url: string, config?: AxiosRequestConfig): Promise<Downl
   const contentType = String(response.headers['content-type'] ?? '')
 
   if (contentType.includes('application/json')) {
-    const apiError = await blobToApiError(blob)
+    const apiError = await blobToApiError(blob, response.status)
     if (apiError) {
       throw apiError
     }

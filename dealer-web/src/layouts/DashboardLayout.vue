@@ -56,40 +56,56 @@
       </nav>
 
       <div class="border-t border-[var(--crm-border-light)] p-3">
-        <button
-          v-if="isCollapse"
-          class="flex w-full items-center justify-center rounded-lg px-0 py-3 text-[var(--crm-primary)] transition-colors hover:bg-[var(--crm-bg-hover)]"
-          type="button"
-          title="退出登录"
-          aria-label="退出登录"
-          @click="logout"
-        >
-          <div
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-sm font-semibold text-[var(--crm-primary)]"
-          >
-            {{ getUserFirstChar }}
-          </div>
-        </button>
-        <div v-else class="flex items-center gap-3 rounded-lg px-2 py-3">
-          <div
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-sm font-semibold text-[var(--crm-primary)]"
-          >
-            {{ getUserFirstChar }}
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="truncate text-sm font-semibold">{{ user.name || '管理员' }}</div>
-            <div class="mt-0.5 truncate text-xs text-[var(--crm-text-tertiary)]">当前用户</div>
-          </div>
-          <button
-            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--crm-text-tertiary)] transition-colors hover:bg-[var(--crm-danger-bg)] hover:text-[var(--crm-danger)]"
-            type="button"
-            title="退出登录"
-            aria-label="退出登录"
-            @click="logout"
-          >
-            <LogOut class="h-4 w-4" />
-          </button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <button
+              class="flex w-full items-center rounded-lg py-3 text-left text-[var(--crm-text-primary)] transition-colors hover:bg-[var(--crm-bg-hover)]"
+              :class="isCollapse ? 'justify-center px-0' : 'gap-3 px-2'"
+              type="button"
+              title="打开用户菜单"
+              aria-label="打开用户菜单"
+            >
+              <img
+                v-if="user.avatarUrl"
+                :src="user.avatarUrl"
+                alt="当前用户头像"
+                class="h-9 w-9 shrink-0 rounded-full object-cover"
+              />
+              <div
+                v-else
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--crm-primary-light)] text-sm font-semibold text-[var(--crm-primary)]"
+              >
+                {{ getUserFirstChar }}
+              </div>
+              <template v-if="!isCollapse">
+                <div class="min-w-0 flex-1">
+                  <div class="truncate text-sm font-semibold">{{ user.name || '当前用户' }}</div>
+                  <div class="mt-0.5 truncate text-xs text-[var(--crm-text-tertiary)]">
+                    {{ user.loginAct || '个人账号' }}
+                  </div>
+                </div>
+                <ChevronUp class="h-4 w-4 shrink-0 text-[var(--crm-text-tertiary)]" />
+              </template>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent :side="isCollapse ? 'right' : 'top'" align="start" class="w-56">
+            <DropdownMenuLabel>{{ user.name || '当前用户' }}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem v-if="!isProtectedRecoveryAccount" @select="openProfile">
+              <UserRound />
+              个人中心
+            </DropdownMenuItem>
+            <DropdownMenuItem v-if="!isProtectedRecoveryAccount" @select="openPasswordChange">
+              <KeyRound />
+              修改密码
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" @select="logout">
+              <LogOut />
+              退出登录
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
 
@@ -160,13 +176,34 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Car, LogOut, PanelLeftClose, PanelLeftOpen, Sparkles } from '@lucide/vue'
+import {
+  Car,
+  ChevronUp,
+  KeyRound,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sparkles,
+  UserRound,
+} from '@lucide/vue'
 
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import AiFloatingButton from '@/modules/ai/components/AiFloatingButton.vue'
 import AiSidePanel from '@/modules/ai/components/AiSidePanel.vue'
 import type { AiPageContext } from '@/modules/ai/model/ai.types'
-import type { Permission, User } from '@/modules/user/model/user.types'
+import {
+  USER_MANAGEMENT_GATE_STATE,
+  type Permission,
+  type User,
+} from '@/modules/user/model/user.types'
 import { PERMISSIONS } from '@/shared/constants/permissions'
 import { messageTip } from '@/shared/utils/feedback'
 import { resolveIcon } from '@/shared/utils/icon-mapper'
@@ -187,9 +224,16 @@ const authStore = useAuthStore()
 const permissionStore = usePermissionStore()
 
 const user = computed<User>(() => authStore.currentUser ?? {})
+const isProtectedRecoveryAccount = computed(() => user.value.protectedRecoveryAccount === true)
 const isCollapse = computed(() => appStore.sidebarCollapsed)
-const canUseAi = computed(() => permissionStore.hasPermission(PERMISSIONS.ai.assistantUse))
-const isAiPage = computed(() => route.name === 'ai-assistant' || route.name === 'ai-provider-configs')
+const canUseAi = computed(
+  () =>
+    user.value.userManagementGateState === USER_MANAGEMENT_GATE_STATE.READY &&
+    permissionStore.hasPermission(PERMISSIONS.ai.assistantUse),
+)
+const isAiPage = computed(
+  () => route.name === 'ai-assistant' || route.name === 'ai-provider-configs',
+)
 const currentRouterPath = computed(() => String(route.meta.activeMenu ?? route.path))
 const pageTitle = computed(() => {
   if (route.path === '/dashboard') {
@@ -253,7 +297,14 @@ const BUSINESS_MENU_CODES = new Set([
   'menu:delivery',
   'menu:tran',
 ])
-const SYSTEM_MENU_CODES = new Set(['menu:user', DICT_MENU_CODE, AUDIT_MENU_CODE])
+const SYSTEM_MENU_CODES = new Set([
+  'menu:user',
+  'menu:organization',
+  'menu:role',
+  'menu:permission',
+  DICT_MENU_CODE,
+  AUDIT_MENU_CODE,
+])
 const MENU_ITEM_OVERRIDES: Record<string, Partial<Pick<NavigationMenuItem, 'name' | 'icon'>>> = {
   'menu:dashboard': { name: '工作台', icon: 'Gauge' },
   [AI_MENU_CODE]: { name: 'AI 助手', icon: 'Sparkles' },
@@ -309,16 +360,24 @@ const NAVIGATION_ITEM_ORDER: Record<string, number> = {
   'page:product:promotion': 3,
   'page:product:stock': 4,
   'menu:user': 1,
-  [DICT_MENU_CODE]: 2,
-  'page:audit:login': 3,
-  'page:audit:operation': 4,
+  'menu:organization': 2,
+  'menu:role': 3,
+  'menu:permission': 4,
+  [DICT_MENU_CODE]: 5,
+  'page:audit:login': 6,
+  'page:audit:operation': 7,
 }
 
 const routablePathSet = computed(() => new Set(router.getRoutes().map((item) => item.path)))
 
-const navigationMenuItems = computed(() =>
-  permissionStore.menuPermissionList.flatMap(toFlatNavigationItems),
-)
+const navigationMenuItems = computed(() => {
+  const items = permissionStore.menuPermissionList.flatMap(toFlatNavigationItems)
+  if (!isProtectedRecoveryAccount.value) {
+    return user.value.userManagementGateState === USER_MANAGEMENT_GATE_STATE.READY ? items : []
+  }
+  if (user.value.userManagementGateState !== USER_MANAGEMENT_GATE_STATE.UNINITIALIZED) return []
+  return items.filter((item) => item.code === 'menu:user' || item.url === '/dashboard/user')
+})
 const navigationSections = computed<NavigationSection[]>(() => {
   const sections = NAVIGATION_SECTION_DEFINITIONS.map((section) => ({
     key: section.key,
@@ -475,6 +534,14 @@ async function logout(): Promise<void> {
 
 function backToHome(): void {
   void router.push('/dashboard')
+}
+
+function openProfile(): void {
+  void router.push({ name: 'profile' })
+}
+
+function openPasswordChange(): void {
+  void router.push({ name: 'profile', hash: '#change-password' })
 }
 
 function openAiPanel(): void {

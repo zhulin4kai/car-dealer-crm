@@ -8,6 +8,10 @@ import {
   registerSessionInvalidHandler,
   resetSessionInvalidHandler,
 } from '@/shared/auth/session-invalid-handler'
+import {
+  registerUserManagementGateHandler,
+  resetUserManagementGateHandler,
+} from '@/shared/auth/user-management-gate-handler'
 import { writeStoredToken } from '@/shared/storage/token-storage'
 
 const mockedAxios = vi.mocked(axios)
@@ -33,6 +37,7 @@ describe('http client', () => {
     localStorage.clear()
     sessionStorage.clear()
     resetSessionInvalidHandler()
+    resetUserManagementGateHandler()
   })
 
   it('unwraps backend envelopes', async () => {
@@ -141,6 +146,108 @@ describe('http client', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 
+  it('notifies session-invalid handler for HTTP 401 compatibility errors', async () => {
+    const handler = vi.fn().mockResolvedValue(undefined)
+    registerSessionInvalidHandler({ handleSessionInvalid: handler })
+    const rejectResponse = mockedAxios.interceptors.response.use.mock.calls[0]?.[1] as
+      | ((error: unknown) => Promise<never>)
+      | undefined
+
+    const rejection = rejectResponse?.({
+      response: {
+        status: 401,
+        data: { code: 505, msg: 'token已过期', data: null },
+      },
+    })
+
+    await expect(rejection).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ApiError)
+      expect((error as ApiError).isSessionInvalid).toBe(true)
+      return true
+    })
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not clear the session for HTTP 403 even when the response code is inconsistent', async () => {
+    const handler = vi.fn().mockResolvedValue(undefined)
+    registerSessionInvalidHandler({ handleSessionInvalid: handler })
+    const rejectResponse = mockedAxios.interceptors.response.use.mock.calls[0]?.[1] as
+      | ((error: unknown) => Promise<never>)
+      | undefined
+
+    const rejection = rejectResponse?.({
+      response: {
+        status: 403,
+        data: { code: API_ERROR_CODE.TOKEN_EXPIRED, msg: '没有访问权限', data: null },
+      },
+    })
+
+    await expect(rejection).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ApiError)
+      expect((error as ApiError).isSessionInvalid).toBe(false)
+      return true
+    })
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    API_ERROR_CODE.ADMIN_BOOTSTRAP_REQUIRED,
+    API_ERROR_CODE.RECOVERY_ACCOUNT_BUSINESS_FORBIDDEN,
+  ])('notifies the user-management gate handler for stable code %s', async (code) => {
+    const handler = vi.fn().mockResolvedValue(undefined)
+    registerUserManagementGateHandler({ handleUserManagementGate: handler })
+    mockedAxios.request.mockResolvedValueOnce({
+      data: { code, msg: '用户管理门禁阻断', data: null },
+    })
+
+    await expect(httpClient.get('/api/test')).rejects.toMatchObject({ code })
+    await Promise.resolve()
+
+    expect(handler).toHaveBeenCalledWith({ code })
+  })
+
+  it('preserves the HTTP status alongside the stable business code', async () => {
+    const rejectResponse = mockedAxios.interceptors.response.use.mock.calls[0]?.[1] as
+      | ((error: unknown) => Promise<never>)
+      | undefined
+
+    const rejection = rejectResponse?.({
+      response: {
+        status: 409,
+        data: { code: API_ERROR_CODE.ROLE_VERSION_CONFLICT, msg: '个人资料版本冲突', data: null },
+      },
+    })
+
+    await expect(rejection).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ApiError)
+      expect((error as ApiError).code).toBe(API_ERROR_CODE.ROLE_VERSION_CONFLICT)
+      expect((error as ApiError).httpStatus).toBe(409)
+      return true
+    })
+  })
+
+  it('does not treat an HTTP 401 login failure as an invalid existing session', async () => {
+    const handler = vi.fn().mockResolvedValue(undefined)
+    registerSessionInvalidHandler({ handleSessionInvalid: handler })
+    const rejectResponse = mockedAxios.interceptors.response.use.mock.calls[0]?.[1] as
+      | ((error: unknown) => Promise<never>)
+      | undefined
+
+    const rejection = rejectResponse?.({
+      response: {
+        status: 401,
+        data: { code: API_ERROR_CODE.AUTH_LOGIN_FAILED, msg: '账号或密码错误', data: null },
+      },
+    })
+
+    await expect(rejection).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ApiError)
+      expect((error as ApiError).isSessionInvalid).toBe(false)
+      return true
+    })
+    expect(handler).not.toHaveBeenCalled()
+  })
+
   it('does not notify session-invalid handler for network errors', async () => {
     const handler = vi.fn().mockResolvedValue(undefined)
     registerSessionInvalidHandler({ handleSessionInvalid: handler })
@@ -160,6 +267,7 @@ describe('httpClient.download', () => {
     localStorage.clear()
     sessionStorage.clear()
     resetSessionInvalidHandler()
+    resetUserManagementGateHandler()
   })
 
   it('returns blob and filename from Content-Disposition filename*', async () => {

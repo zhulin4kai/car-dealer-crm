@@ -1,8 +1,13 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { fetchLoginInfo, login as loginRequest, logout as logoutRequest } from '@/modules/user/api/user-api'
+import {
+  fetchLoginInfo,
+  login as loginRequest,
+  logout as logoutRequest,
+} from '@/modules/user/api/user-api'
 import type { LoginForm, User } from '@/modules/user/model/user.types'
+import type { UserProfile } from '@/modules/user/model/user-profile.types'
 import { clearPermissionCodes } from '@/shared/storage/permission-storage'
 import { clearStoredToken, readStoredToken, writeStoredToken } from '@/shared/storage/token-storage'
 
@@ -28,6 +33,7 @@ export const useAuthStore = defineStore('auth', () => {
     const jwt = await loginRequest(loginParams)
     token.value = jwt
     rememberMe.value = form.rememberMe
+    currentUser.value = null
     writeStoredToken(jwt, form.rememberMe)
   }
 
@@ -35,6 +41,17 @@ export const useAuthStore = defineStore('auth', () => {
     const user = await fetchLoginInfo()
     currentUser.value = user
     return user
+  }
+
+  function applyCurrentUserProfile(profile: UserProfile): void {
+    currentUser.value = {
+      ...(currentUser.value ?? {}),
+      id: profile.id,
+      name: profile.name,
+      phone: profile.phone ?? undefined,
+      email: profile.email ?? undefined,
+      avatarUrl: profile.avatarUrl ?? undefined,
+    }
   }
 
   async function logout(): Promise<void> {
@@ -62,6 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
     restoreSession,
     login,
     loadCurrentUser,
+    applyCurrentUserProfile,
     logout,
     forceLogout,
   }

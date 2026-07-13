@@ -164,7 +164,38 @@ export const PERMISSIONS = {
     delete: 'user:delete',
     status: 'user:status',
     role: 'user:role',
+    permission: 'user:permission',
     password: 'user:password',
+    sensitiveView: 'user:sensitive:view',
+  },
+  organization: {
+    list: 'organization:list',
+    view: 'organization:view',
+    add: 'organization:add',
+    edit: 'organization:edit',
+    status: 'organization:status',
+  },
+  position: {
+    list: 'position:list',
+    add: 'position:add',
+    edit: 'position:edit',
+    status: 'position:status',
+  },
+  employee: {
+    assignment: 'employee:assignment',
+    reporting: 'employee:reporting',
+  },
+  role: {
+    list: 'role:list',
+    view: 'role:view',
+    add: 'role:add',
+    edit: 'role:edit',
+    copy: 'role:copy',
+    status: 'role:status',
+    permissionManage: 'role:permission:manage',
+  },
+  permission: {
+    list: 'permission:list',
   },
   statistic: {
     view: 'statistic:view',
