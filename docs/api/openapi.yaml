@@ -13,6 +13,10 @@ tags:
     description: 登录态与当前用户
   - name: User
     description: 用户、角色和负责人
+  - name: Organization
+    description: 组织、岗位、员工任职和汇报关系
+  - name: Access
+    description: 角色目录、适用组织和只读权限矩阵
   - name: Clue
     description: 线索与线索备注
   - name: Customer
@@ -49,6 +53,747 @@ tags:
     description: AI 业务助手、Run、SSE、ToolRegistry 和低风险 Proposal
 
 paths:
+  /api/credentials/activate:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: activateAccount
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ActivateAccountRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/CredentialCommandOk"}, "400": {$ref: "#/components/responses/CredentialBadRequest"}, "409": {$ref: "#/components/responses/CredentialConflict"}, "410": {$ref: "#/components/responses/CredentialGone"}, "422": {$ref: "#/components/responses/CredentialUnprocessable"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/credentials/forgot-password:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: forgotPassword
+      description: 无论账号是否存在都返回同形响应，禁止账号枚举。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ForgotPasswordRequest"}}}}
+      responses: {"202": {$ref: "#/components/responses/CredentialRequestOk"}, "400": {$ref: "#/components/responses/CredentialBadRequest"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/credentials/reset-password:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: resetPassword
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ResetPasswordRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/CredentialCommandOk"}, "400": {$ref: "#/components/responses/CredentialBadRequest"}, "409": {$ref: "#/components/responses/CredentialConflict"}, "410": {$ref: "#/components/responses/CredentialGone"}, "422": {$ref: "#/components/responses/CredentialUnprocessable"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/credentials/verify-contact:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: verifyOwnContact
+      description: 消费一次性联系方式验证凭证；凭证只对签发时绑定的账号、渠道、联系方式和资料版本有效。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/VerifyContactRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/CredentialCommandOk"}, "400": {$ref: "#/components/responses/CredentialBadRequest"}, "409": {$ref: "#/components/responses/CredentialConflict"}, "410": {$ref: "#/components/responses/CredentialGone"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/recovery/break-glass/request:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: requestBreakGlassRecovery
+      description: 默认关闭；仅在显式启用且外部恢复密钥匹配时，为固定受保护恢复账号签发一次性恢复凭证。响应和审计不得暴露密钥或原始凭证。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/BreakGlassRequest"}}}}
+      responses: {"202": {$ref: "#/components/responses/ManagedCredentialDeliveryOk"}, "400": {$ref: "#/components/responses/CredentialBadRequest"}, "403": {$ref: "#/components/responses/Forbidden"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/CredentialServiceUnavailable"}}
+  /api/recovery/break-glass/complete:
+    post:
+      tags: [Auth]
+      security: []
+      operationId: completeBreakGlassRecovery
+      description: 消费单次 break-glass 凭证，只能恢复固定受保护恢复账号；成功后撤销旧凭证和旧会话。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/BreakGlassCompleteRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/CredentialCommandOk"}, "400": {$ref: "#/components/responses/CredentialBadRequest"}, "409": {$ref: "#/components/responses/CredentialConflict"}, "410": {$ref: "#/components/responses/CredentialGone"}, "422": {$ref: "#/components/responses/CredentialUnprocessable"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/recovery/admin-access:
+    post:
+      tags: [Auth]
+      operationId: recoverOrdinaryAdministratorAccess
+      description: 仅固定恢复账号在 PENDING_FIRST_CHANGE 或 DEGRADED 状态可调用。服务端自行选择仍保留有效 admin 成员关系、有效任职且至少具有一个当前员工联系方式的普通账号；请求不能指定目标，也不能增加角色或修改组织。恢复凭证通过 Outbox 异步投递，目标完成首次改密并验证至少一个当前员工联系方式后才计入 READY。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdminAccessRecoveryRequest"}}}}
+      responses: {"202": {$ref: "#/components/responses/AdminAccessRecoveryAccepted"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "409": {$ref: "#/components/responses/Conflict"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/CredentialServiceUnavailable"}}
+  /api/credentials/first-password-change:
+    put:
+      tags: [Auth]
+      operationId: firstPasswordChange
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ChangeOwnPasswordRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/CredentialCommandOk"}, "400": {$ref: "#/components/responses/CredentialBadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "409": {$ref: "#/components/responses/CredentialConflict"}, "422": {$ref: "#/components/responses/CredentialUnprocessable"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/credentials/change-password:
+    put:
+      tags: [Auth]
+      operationId: changeOwnPassword
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ChangeOwnPasswordRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/CredentialCommandOk"}, "400": {$ref: "#/components/responses/CredentialBadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "409": {$ref: "#/components/responses/CredentialConflict"}, "422": {$ref: "#/components/responses/CredentialUnprocessable"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/profile:
+    get:
+      tags: [User]
+      operationId: getOwnProfile
+      description: 查询本人非授权资料和只读授权来源。固定恢复账号使用独立资料来源，个人中心例外不开放常规治理或日常业务。
+      responses: {"200": {$ref: "#/components/responses/UserProfileOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "500": {$ref: "#/components/responses/ServerError"}}
+    put:
+      tags: [User]
+      operationId: updateOwnProfile
+      description: 仅接受白名单字段；操作者由服务端登录态确定，任何授权字段都会被拒绝。固定恢复账号只能更新本人非授权资料和独立专用联系方式，该渠道不计入普通管理员 READY 条件。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateOwnProfileRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserProfileOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/profile/contact-verification:
+    post:
+      tags: [User]
+      operationId: requestOwnContactVerification
+      description: 为当前已登录账号的当前手机或邮箱签发一次性验证凭证；同一渠道已验证时仍返回稳定同形响应。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ContactVerificationRequest"}}}}
+      responses: {"202": {$ref: "#/components/responses/ManagedCredentialDeliveryOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "409": {$ref: "#/components/responses/Conflict"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/CredentialServiceUnavailable"}}
+  /api/me/sessions:
+    get:
+      tags: [Auth]
+      operationId: listOwnSessions
+      responses: {"200": {$ref: "#/components/responses/UserSessionCollectionOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/me/sessions/{sessionId}/revoke:
+    post:
+      tags: [Auth]
+      operationId: revokeOwnSession
+      parameters: [{name: sessionId, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RevokeSessionRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserSessionCollectionOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "404": {$ref: "#/components/responses/SessionNotFound"}, "409": {$ref: "#/components/responses/SessionConflict"}, "410": {$ref: "#/components/responses/SessionGone"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/SessionServiceUnavailable"}}
+  /api/me/sessions/revoke-others:
+    post:
+      tags: [Auth]
+      operationId: revokeOwnOtherSessions
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RevokeSessionRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserSessionCollectionOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "409": {$ref: "#/components/responses/SessionConflict"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/SessionServiceUnavailable"}}
+  /api/me/sessions/revoke-all:
+    post:
+      tags: [Auth]
+      operationId: revokeAllOwnSessions
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RevokeSessionRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserSessionCollectionOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "409": {$ref: "#/components/responses/SessionConflict"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/SessionServiceUnavailable"}}
+  /api/roles:
+    get:
+      tags: [Access]
+      operationId: listRoles
+      summary: 分页查询操作者可见角色
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 10}, description: 与 RoleAccessServiceImpl 的 1—200 限制一致。}
+        - {name: keyword, in: query, schema: {type: string}}
+        - {name: enabled, in: query, schema: {type: boolean}}
+      responses: {"200": {$ref: "#/components/responses/RolePageOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "500": {$ref: "#/components/responses/ServerError"}}
+    post:
+      tags: [Access]
+      operationId: createRole
+      summary: 创建稳定 code 的自定义角色
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateRoleRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/RoleObjectOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/roles/organization-options:
+    get:
+      tags: [Access]
+      operationId: listRoleOrganizationOptions
+      summary: 查询操作者可覆盖的角色适用组织
+      responses: {"200": {$ref: "#/components/responses/OrganizationOptionArrayOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/roles/{id}:
+    get:
+      tags: [Access]
+      operationId: getRole
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses: {"200": {$ref: "#/components/responses/RoleObjectOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "500": {$ref: "#/components/responses/ServerError"}}
+    put:
+      tags: [Access]
+      operationId: updateRole
+      summary: 按版本编辑角色，code 不可修改
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateRoleRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/RoleObjectOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/roles/{id}/copy:
+    post:
+      tags: [Access]
+      operationId: copyRole
+      summary: 复制角色及可合法委派的权限集合
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CopyRoleRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/RoleObjectOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/roles/{id}/enable:
+    put:
+      tags: [Access]
+      operationId: enableRole
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ChangeRoleStatusRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/RoleObjectOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/roles/{id}/disable:
+    put:
+      tags: [Access]
+      operationId: disableRole
+      summary: 仅在无当前或未来成员时停用非受保护角色
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ChangeRoleStatusRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/RoleObjectOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/permissions/tree:
+    get:
+      tags: [Access]
+      operationId: getPermissionCatalog
+      summary: 查询只读权限目录，不提供权限 code 创建或编辑入口
+      responses: {"200": {$ref: "#/components/responses/PermissionCatalogArrayOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/roles/{id}/permissions:
+    get:
+      tags: [Access]
+      operationId: getRolePermissionMatrix
+      summary: 查询角色权限矩阵
+      description: 必须同时具备 role:view 与 permission:list；只有角色读取权时可查看角色资料，但不得得到权限 ID-only 或空目录矩阵。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses: {"200": {$ref: "#/components/responses/RolePermissionMatrixOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "500": {$ref: "#/components/responses/ServerError"}}
+    put:
+      tags: [Access]
+      operationId: updateRolePermissionMatrix
+      summary: 原子替换矩阵并递增受影响用户 authVersion
+      description: 仅实际新增权限校验操作者当前拥有且可委派；无差异请求幂等返回且不升版本。sessionCleanupWarningCount 为空表示 Redis 清理在事务提交后执行，不能在本响应内证明结果；数据库 authVersion 已在提交前失效旧令牌。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateRolePermissionMatrixRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UpdateRolePermissionMatrixOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/roles/{id}/permissions/preview:
+    post:
+      tags: [Access]
+      operationId: previewRolePermissionMatrix
+      summary: 预览权限差异、敏感级别、影响用户组织和会话数
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/PreviewRolePermissionMatrixRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/PreviewRolePermissionMatrixOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+
+  /api/users/{id}/authorization:
+    get:
+      tags: [Access]
+      operationId: getUserAuthorization
+      summary: 查询目标用户角色、个人三态权限、有效来源和可编辑边界
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses:
+        "200": {$ref: "#/components/responses/UserAuthorizationDetailOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/users/{id}:
+    get:
+      tags: [User]
+      operationId: getManagedUserDetail
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses: {"200": {$ref: "#/components/responses/ManagedUserDetailOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/lifecycle:
+    get:
+      tags: [User]
+      operationId: getUserLifecycleContext
+      description: 查询受管员工当前任职、状态迁移、候选和版本；携带 organizationUnitId 时，managerCandidates 必须按该目标组织重新计算，适用于调岗和返聘；本人、受保护账号及范围外目标 fail-close。
+      parameters:
+        - {$ref: "#/components/parameters/Id"}
+        - {name: organizationUnitId, in: query, required: false, schema: {type: integer}, description: 目标主要组织；用于重新计算直属管理者候选、是否必填及空值例外。}
+      responses: {"200": {$ref: "#/components/responses/UserLifecycleContextOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "410": {$ref: "#/components/responses/LifecycleSnapshotGone"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/lifecycle/transfer:
+    post:
+      tags: [User]
+      operationId: transferEmployeeLifecycle
+      description: 关闭原任职和直属汇报事实并创建新事实；不覆盖历史。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/TransferEmployeeRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserLifecycleContextOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "410": {$ref: "#/components/responses/LifecycleSnapshotGone"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/lifecycle/departure/precheck:
+    post:
+      tags: [User]
+      operationId: precheckUserDeparture
+      description: 统计六个直接责任域及 Quote/Tran 客户派生影响；返回随机、一次性、有限时的 opaque Token，服务端只保存摘要并绑定用户、员工版本、原因和精确事实指纹。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/DeparturePrecheckRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/DeparturePrecheckOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "410": {$ref: "#/components/responses/LifecycleSnapshotGone"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/lifecycle/departure/start:
+    post:
+      tags: [User]
+      operationId: startUserDeparture
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/StartDepartureRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserLifecycleContextOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "410": {$ref: "#/components/responses/LifecycleSnapshotGone"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/lifecycle/departure/handover:
+    post:
+      tags: [User]
+      operationId: confirmUserDepartureHandover
+      description: 仅允许六个直接责任域；Quote/Tran 只随 Customer 派生核验，待审批和 CommunicationRecord 永不更新。任一资格漂移、试驾冲突、计数、历史或审计失败均回滚。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ConfirmHandoverRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/HandoverResultOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "410": {$ref: "#/components/responses/LifecycleSnapshotGone"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/lifecycle/departure/complete:
+    post:
+      tags: [User]
+      operationId: completeUserDeparture
+      description: 重新预检六域为零后，原子关闭任职、汇报和授权，禁用账号、提升安全版本并撤销会话。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CompleteDepartureRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserLifecycleContextOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "410": {$ref: "#/components/responses/LifecycleSnapshotGone"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/lifecycle/rehire:
+    post:
+      tags: [User]
+      operationId: rehireEmployeeLifecycle
+      description: 从 LEFT 创建全新任职和直属汇报事实，不覆盖离职历史且不恢复任何旧角色或个人权限。RECOVER 同步完成并返回 200，要求现有凭证有效；INVITE 原子建立预交付承诺并返回 202/QUEUED，实际凭证只在提交后生成和投递。两者都拒绝账号到期、人工锁定或尚未结束的自动锁定。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RehireEmployeeRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/RehireResultOk"}, "202": {$ref: "#/components/responses/RehireInviteAccepted"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "410": {$ref: "#/components/responses/LifecycleSnapshotGone"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/CredentialServiceUnavailable"}}
+  /api/users/{id}/invitation:
+    post:
+      tags: [User]
+      operationId: reinviteManagedUser
+      description: 仅待激活、下级、范围内且非受保护账号允许；重签会在同一事务撤销旧邀请。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ManagedCredentialRequest"}}}}
+      responses: {"202": {$ref: "#/components/responses/ManagedCredentialDeliveryOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/CredentialServiceUnavailable"}}
+  /api/users/{id}/password-reset:
+    post:
+      tags: [User]
+      operationId: resetManagedUserPassword
+      description: 禁止重置本人、同级、上级、范围外和受保护账号；立即提升 authVersion 并要求首次改密。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ManagedCredentialRequest"}}}}
+      responses: {"202": {$ref: "#/components/responses/PasswordResetDeliveryOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/CredentialServiceUnavailable"}}
+  /api/users/{id}/status:
+    post:
+      tags: [User]
+      operationId: changeManagedUserStatus
+      description: 人工锁定与自动锁定为独立事实；人工解锁不会伪造登录成功。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ManagedUserStatusRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/ManagedUserDetailOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/login-account:
+    put:
+      tags: [User]
+      operationId: changeManagedUserLoginAccount
+      description: 独立修改下属登录账号；禁止本人、同级、上级、范围外和受保护账号，校验永久登录标识归属和账号版本，旧标识退休后不得分配给其他用户。成功后提升 authVersion、撤销旧会话并审计旧值和新值；同一用户可以显式切回自己已退休的历史标识。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ManagedUserLoginAccountRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/ManagedUserDetailOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/security-expiration:
+    put:
+      tags: [User]
+      operationId: changeManagedUserSecurityExpiration
+      description: 独立设置或清除账号到期时间与凭证到期时间；null 表示清除，过去或当前时间表示立即到期，未来时间到点后动态失效。禁止本人、受保护账号、越级越范围操作及为最后一个有效普通管理员设置任一到期时间。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/ManagedUserSecurityExpirationRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/ManagedUserDetailOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/profile:
+    put:
+      tags: [User]
+      operationId: updateManagedUserProfile
+      description: 仅允许管理链和组织范围内的上级修改姓名、电话、邮箱；禁止本人、受保护账号及任何授权、任职或账号状态字段。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateManagedUserProfileRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/ManagedUserDetailOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/Conflict"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/sessions:
+    get:
+      tags: [User]
+      operationId: listManagedUserSessions
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses: {"200": {$ref: "#/components/responses/UserSessionCollectionOk"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "500": {$ref: "#/components/responses/ServerError"}}
+  /api/users/{id}/history:
+    get:
+      tags: [User]
+      operationId: getManagedUserHistory
+      summary: 查询受管用户的授权、组织、账号和安全历史
+      description: 同时要求操作审计详情权限与目标用户管理范围；本人、跨范围和受保护账号均不可查询。响应只包含结构化安全投影，不返回原始操作日志 detail、IP、密码、摘要、令牌或完整联系方式。
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - {name: page, in: query, required: false, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: size, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 10}}
+        - {name: actionCode, in: query, required: false, schema: {type: string}}
+        - {name: startTime, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: endTime, in: query, required: false, schema: {type: string, format: date-time}}
+      responses:
+        "200": {$ref: "#/components/responses/UserHistoryCollectionOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/users/{id}/sessions/{sessionId}/revoke:
+    post:
+      tags: [User]
+      operationId: revokeManagedUserSession
+      parameters: [{$ref: "#/components/parameters/Id"}, {name: sessionId, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RevokeSessionRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserSessionCollectionOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/SessionNotFound"}, "409": {$ref: "#/components/responses/SessionConflict"}, "410": {$ref: "#/components/responses/SessionGone"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/SessionServiceUnavailable"}}
+  /api/users/{id}/sessions/revoke-all:
+    post:
+      tags: [User]
+      operationId: revokeAllManagedUserSessions
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/RevokeSessionRequest"}}}}
+      responses: {"200": {$ref: "#/components/responses/UserSessionCollectionOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/Forbidden"}, "404": {$ref: "#/components/responses/NotFound"}, "409": {$ref: "#/components/responses/SessionConflict"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/SessionServiceUnavailable"}}
+  /api/users/{id}/authorization/roles:
+    put:
+      tags: [Access]
+      operationId: replaceUserRoleAssignments
+      summary: 按目标用户版本原子替换当前角色事实
+      description: 任何用户均不得调整本人；移除事实按服务端当前时间关闭，不物理删除历史；新增不超过操作者委派上限。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateUserRoleAssignmentsRequest"}}}}
+      responses:
+        "200": {$ref: "#/components/responses/UserAuthorizationDetailOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/users/{id}/authorization/permissions:
+    put:
+      tags: [Access]
+      operationId: updateUserPersonalPermissions
+      summary: 批量更新个人 INHERIT、GRANT、DENY 当前态
+      description: effectiveFrom 为空时按服务端当前时间立即生效，显式未来时间按约束预约；effectiveTo 必须晚于实际生效时间。DENY 优先；批量全成功或全失败并在事务内提升目标 authVersion。
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateUserPermissionsRequest"}}}}
+      responses:
+        "200": {$ref: "#/components/responses/UserAuthorizationDetailOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/users/authorization/batch/roles:
+    put:
+      tags: [Access]
+      operationId: batchUpdateUserRoleAssignments
+      summary: 批量分配或撤销受管用户角色
+      description: 每个目标必须携带自己的 authorizationVersion；目标不可重复，最多 50 人。服务端在单一事务内逐一校验管理范围、委派上限、受保护角色和可用管理员约束，任一目标失败则整批回滚。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/BatchUpdateUserRolesRequest"}}}}
+      responses:
+        "200": {$ref: "#/components/responses/UserAuthorizationBatchResultOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/users/authorization/batch/permissions:
+    put:
+      tags: [Access]
+      operationId: batchUpdateUserPersonalPermissions
+      summary: 批量更新受管用户个人权限
+      description: 每个目标必须携带自己的 authorizationVersion；目标不可重复，最多 50 人。changes 对所有目标一致并支持立即或未来生效，服务端在单一事务内完成全部校验和写入，任一目标失败则整批回滚。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/BatchUpdateUserPermissionsRequest"}}}}
+      responses:
+        "200": {$ref: "#/components/responses/UserAuthorizationBatchResultOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+
+  /api/organization-units/tree:
+    get:
+      tags: [Organization]
+      operationId: getOrganizationTree
+      summary: 查询当前操作者组织范围内的组织树
+      responses:
+        "200": {$ref: "#/components/responses/OrganizationUnitArrayOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/organization-units:
+    post:
+      tags: [Organization]
+      operationId: createOrganizationUnit
+      summary: 创建组织
+      description: code 创建后不可修改；设置负责人不会自动生成汇报关系。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateOrganizationUnitRequest"}
+      responses:
+        "200": {$ref: "#/components/responses/OrganizationUnitObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/organization-units/{id}:
+    put:
+      tags: [Organization]
+      operationId: updateOrganizationUnit
+      summary: 按版本编辑组织
+      parameters:
+        - {$ref: "#/components/parameters/OrganizationUnitId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UpdateOrganizationUnitRequest"}
+      responses:
+        "200": {$ref: "#/components/responses/OrganizationUnitObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/organization-units/{id}/enable:
+    put:
+      tags: [Organization]
+      operationId: enableOrganizationUnit
+      summary: 启用组织
+      parameters:
+        - {$ref: "#/components/parameters/OrganizationUnitId"}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/ChangeEntityStatusRequest"}}}
+      responses:
+        "200": {$ref: "#/components/responses/OrganizationUnitObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/organization-units/{id}/disable:
+    put:
+      tags: [Organization]
+      operationId: disableOrganizationUnit
+      summary: 停用组织
+      description: 存在有效下级或在职员工时返回 409；请求必须提交 expectedVersion 和 reason。
+      parameters:
+        - {$ref: "#/components/parameters/OrganizationUnitId"}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/ChangeEntityStatusRequest"}}}
+      responses:
+        "200": {$ref: "#/components/responses/OrganizationUnitObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/organization-units/parent-candidates:
+    get:
+      tags: [Organization]
+      operationId: getOrganizationParentCandidates
+      summary: 查询服务端过滤后的可选上级组织
+      parameters:
+        - {name: type, in: query, required: true, schema: {$ref: "#/components/schemas/OrganizationUnitType"}}
+        - {name: excludeId, in: query, required: false, schema: {type: integer}}
+      responses:
+        "200": {$ref: "#/components/responses/OrganizationUnitArrayOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/organization-units/leader-candidates:
+    get:
+      tags: [Organization]
+      operationId: getOrganizationLeaderCandidates
+      summary: 查询服务端过滤后的负责人候选人
+      parameters:
+        - {name: organizationUnitId, in: query, required: false, schema: {type: integer}, description: 编辑时的目标组织；与保存使用同一候选范围规则}
+        - {name: parentId, in: query, required: false, schema: {type: integer}, description: 新建时的上级组织；organizationUnitId 优先}
+      responses:
+        "200": {$ref: "#/components/responses/ManagerCandidateArrayOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/organization-units/{id}/employees:
+    get:
+      tags: [Organization]
+      operationId: getOrganizationEmployees
+      summary: 查询管理范围内组织的员工摘要
+      description: 响应不包含手机号、邮箱等敏感字段。
+      parameters:
+        - {$ref: "#/components/parameters/OrganizationUnitId"}
+      responses:
+        "200": {$ref: "#/components/responses/EmployeeSummaryArrayOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/positions:
+    get:
+      tags: [Organization]
+      operationId: getPositions
+      summary: 查询可管理岗位
+      responses:
+        "200": {$ref: "#/components/responses/PositionArrayOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "500": {$ref: "#/components/responses/ServerError"}
+    post:
+      tags: [Organization]
+      operationId: createPosition
+      summary: 创建岗位
+      description: code 创建后不可修改。
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/CreatePositionRequest"}}}
+      responses:
+        "200": {$ref: "#/components/responses/PositionObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/positions/{id}:
+    put:
+      tags: [Organization]
+      operationId: updatePosition
+      summary: 按版本编辑岗位
+      parameters:
+        - {$ref: "#/components/parameters/PositionId"}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UpdatePositionRequest"}}}
+      responses:
+        "200": {$ref: "#/components/responses/PositionObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/positions/{id}/enable:
+    put:
+      tags: [Organization]
+      operationId: enablePosition
+      summary: 启用岗位
+      parameters:
+        - {$ref: "#/components/parameters/PositionId"}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/ChangeEntityStatusRequest"}}}
+      responses:
+        "200": {$ref: "#/components/responses/PositionObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/positions/{id}/disable:
+    put:
+      tags: [Organization]
+      operationId: disablePosition
+      summary: 停用岗位
+      description: 存在有效任职时返回 409；内置占位岗位不可操作。
+      parameters:
+        - {$ref: "#/components/parameters/PositionId"}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/ChangeEntityStatusRequest"}}}
+      responses:
+        "200": {$ref: "#/components/responses/PositionObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/employees/{id}/organization-membership:
+    get:
+      tags: [Organization]
+      operationId: getEmployeeOrganizationMembership
+      summary: 查询管理范围内员工任职
+      description: 本接口不提供本人资料入口；本人资料属于独立的个人中心契约。
+      parameters:
+        - {$ref: "#/components/parameters/EmployeeId"}
+      responses:
+        "200": {$ref: "#/components/responses/EmployeeOrganizationMembershipObjectOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/ServerError"}
+    put:
+      tags: [Organization]
+      operationId: updateEmployeeOrganizationMembership
+      summary: 按版本调整员工任职或汇报关系
+      description: 用户不得调整本人。调用者必须是目标员工的有效上级且目标处于其组织范围；受保护账号不可调整。服务端按前后差异分别校验 employee:assignment 和 employee:reporting，不因请求携带未变化分区而要求额外权限。当前单值汇报字段只维护 DIRECT 直属关系；ACTING 临时汇报必须通过独立的多关系命令维护。除目标员工是根公司负责人外，有效主要任职必须有直属管理者。
+      parameters:
+        - {$ref: "#/components/parameters/EmployeeId"}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UpdateEmployeeOrganizationRequest"}}}
+      responses:
+        "200": {$ref: "#/components/responses/EmployeeOrganizationMembershipObjectOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/employees/{id}/manager-candidates:
+    get:
+      tags: [Organization]
+      operationId: getEmployeeManagerCandidates
+      summary: 查询服务端过滤后的直属管理者候选
+      description: 按目标组织而不是旧任职组织筛选可用直属管理者；用于任职调整、汇报调整、调岗和返聘。未传 organizationUnitId 时以当前主要任职组织为锚点。
+      parameters:
+        - {$ref: "#/components/parameters/EmployeeId"}
+        - name: organizationUnitId
+          in: query
+          required: false
+          schema: {type: integer}
+          description: 目标组织 ID；组织变化后客户端必须重新查询候选。
+      responses:
+        "200": {$ref: "#/components/responses/ManagerCandidateArrayOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/employees/{id}/acting-reporting-relations:
+    get:
+      tags: [Organization]
+      operationId: getEmployeeActingReportings
+      summary: 查询员工当前代理管理关系
+      description: ACTING 是独立的有限期多关系资源，不会替代或覆盖唯一 DIRECT 直属管理者。
+      parameters:
+        - {$ref: "#/components/parameters/EmployeeId"}
+      responses:
+        "200": {$ref: "#/components/responses/ActingReportingCollectionOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/ServerError"}
+    put:
+      tags: [Organization]
+      operationId: replaceEmployeeActingReportings
+      summary: 按员工版本替换代理管理关系集合
+      description: 关系立即生效且必须在一年内失效；空数组仅结束 ACTING。服务端在统一图锁内重验管理者资格，并按有效期交集拒绝 DIRECT/ACTING 混合汇报环。
+      parameters:
+        - {$ref: "#/components/parameters/EmployeeId"}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/ReplaceActingReportingsRequest"}}}
+      responses:
+        "200": {$ref: "#/components/responses/ActingReportingCollectionOk"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/employees/{id}/acting-reporting-relations/manager-candidates:
+    get:
+      tags: [Organization]
+      operationId: getEmployeeActingManagerCandidates
+      summary: 查询代理管理者基础候选
+      description: 返回目标主要组织及其上级组织内的可用管理者；最终有效期环校验在保存命令内完成。
+      parameters:
+        - {$ref: "#/components/parameters/EmployeeId"}
+      responses:
+        "200": {$ref: "#/components/responses/ManagerCandidateArrayOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/ServerError"}
+  /api/employees/{id}/organization-history:
+    get:
+      tags: [Organization]
+      operationId: getEmployeeOrganizationHistory
+      summary: 查询管理范围内员工的任职与汇报历史
+      parameters:
+        - {$ref: "#/components/parameters/EmployeeId"}
+      responses:
+        "200": {$ref: "#/components/responses/OrganizationHistoryArrayOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "500": {$ref: "#/components/responses/ServerError"}
+
   /api/ai/conversations:
     get:
       tags: [AI]
@@ -1211,6 +1956,10 @@ paths:
       tags: [Auth]
       operationId: login
       summary: 登录并获取 JWT
+      description: >-
+        认证成功后签发仅携带 userId、sessionId、authVersion、iat、exp 等最小身份声明的 JWT。
+        只有 Redis 会话写入与登录审计均成功时才返回 Token；Redis set 返回 false
+        或抛出异常时返回 500，且不得向客户端发放 JWT。
       security: []
       requestBody:
         required: true
@@ -1244,12 +1993,18 @@ paths:
     post:
       tags: [Auth]
       operationId: logout
-      summary: 退出登录并清理当前 JWT
+      summary: 退出当前登录会话
+      description: >-
+        只撤销当前 JWT 的 sessionId 对应会话事实，不递增 authVersion，其他设备会话保持有效。
+        数据库撤销提交后删除该会话的 Redis 精确键和用户会话索引；清理失败返回 503，
+        数据库中的撤销事实仍保证当前 Token 不再有效。
       responses:
         "200":
-          $ref: "#/components/responses/EmptyOk"
+          $ref: "#/components/responses/StringOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/SessionServiceUnavailable"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1260,7 +2015,7 @@ paths:
       summary: 获取当前登录用户信息
       responses:
         "200":
-          $ref: "#/components/responses/UserObject"
+          $ref: "#/components/responses/LoginInfoOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
@@ -1555,9 +2310,13 @@ paths:
       tags: [User]
       operationId: listOwners
       summary: 查询可选负责人列表
+      description: permissionCode 必须是服务端白名单中的具体业务动作且当前操作者实际拥有；qualificationContext 仅接受稳定资格枚举。
+      parameters:
+        - {name: permissionCode, in: query, required: true, schema: {type: string}}
+        - {name: qualificationContext, in: query, required: true, schema: {type: string, enum: [ACTIVITY_OWNER, CLUE_OWNER, CUSTOMER_OWNER, TRANSACTION_OWNER]}}
       responses:
         "200":
-          description: 查询成功，data 为用户对象数组。
+          description: 查询成功，data 为最小负责人候选数组。
           content:
             application/json:
               schema:
@@ -1568,9 +2327,13 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: "#/components/schemas/User"
+                          $ref: "#/components/schemas/OwnerCandidate"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1578,47 +2341,63 @@ paths:
     get:
       tags: [User]
       operationId: listUsers
-      summary: 分页查询用户列表
+      summary: 在服务端管理范围内稳定分页查询用户工作台
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Size"
-        - name: loginAct
+        - name: keyword
           in: query
-          schema:
-            type: string
-          description: 登录账号，模糊查询。
-        - name: name
-          in: query
-          schema:
-            type: string
-          description: 用户姓名，模糊查询。
-        - name: phone
-          in: query
-          schema:
-            type: string
-          description: 手机号，模糊查询。
-        - name: email
-          in: query
-          schema:
-            type: string
-          description: 邮箱，模糊查询。
+          schema: {type: string}
+          description: 登录账号、姓名或员工编号关键词。
+        - {name: organizationUnitId, in: query, schema: {type: integer}}
+        - {name: positionId, in: query, schema: {type: integer}}
+        - {name: managerEmployeeId, in: query, schema: {type: integer}}
+        - {name: roleId, in: query, schema: {type: integer}}
+        - {name: employmentStatus, in: query, schema: {type: string, enum: [PENDING, ACTIVE, HANDOVER, LEFT, NOT_APPLICABLE]}}
+        - {name: accountStatus, in: query, schema: {type: string, enum: [INVITED, ACTIVE, DISABLED]}}
+        - {name: lockStatus, in: query, schema: {type: string, enum: [UNLOCKED, AUTO_LOCKED, MANUAL_LOCKED]}}
+        - {name: sortBy, in: query, schema: {type: string, enum: [employeeNo, name, loginAct, employmentStatus, accountStatus, lockStatus, lastLoginTime], default: employeeNo}}
+        - {name: sortDirection, in: query, schema: {type: string, enum: [asc, desc], default: asc}}
       responses:
         "200":
           $ref: "#/components/responses/UserPageOk"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/UserManagementGateForbidden"
         "422":
           $ref: "#/components/responses/Unprocessable"
         "500":
           $ref: "#/components/responses/ServerError"
+    post:
+      tags: [User]
+      operationId: inviteManagedUser
+      description: 创建待激活账号、员工档案、主要任职、汇报关系与初始角色；响应只含投递状态，不含原始凭证。
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CreateManagedUserRequest"}}}}
+      responses: {"202": {$ref: "#/components/responses/CreateManagedUserResultOk"}, "400": {$ref: "#/components/responses/BadRequest"}, "401": {$ref: "#/components/responses/Unauthorized"}, "403": {$ref: "#/components/responses/UserManagementGateForbidden"}, "409": {$ref: "#/components/responses/Conflict"}, "429": {$ref: "#/components/responses/CredentialTooManyRequests"}, "500": {$ref: "#/components/responses/ServerError"}, "503": {$ref: "#/components/responses/CredentialServiceUnavailable"}}
+
+  /api/users/filter-options:
+    get:
+      tags: [User]
+      operationId: getManagedUserFilterOptions
+      summary: 查询当前管理范围内可见的用户筛选选项
+      parameters:
+        - {name: organizationUnitId, in: query, required: false, schema: {type: integer}, description: 新建或调整任职时选择的目标组织；存在时按该组织返回直属管理者 candidates 和不超过操作者委派上限的 assignableRoles。}
+      responses:
+        "200": {$ref: "#/components/responses/ManagedUserFilterOptionsOk"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/UserManagementGateForbidden"}
+        "500": {$ref: "#/components/responses/ServerError"}
 
   /api/user:
     post:
       tags: [User]
       operationId: createUser
-      summary: 新增用户
+      deprecated: true
+      summary: 已停用的旧用户创建入口
+      description: 始终 fail-close；迁移到 POST /api/users 邀请创建流程。
       requestBody:
         required: true
         content:
@@ -1626,22 +2405,16 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateUserRequest"
       responses:
-        "200":
-          $ref: "#/components/responses/UserDetailObject"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
     put:
       tags: [User]
       operationId: updateUser
-      summary: 更新用户
+      deprecated: true
+      summary: 已停用的旧万能用户更新入口
+      description: 始终 fail-close；迁移到资料、任职、授权和状态专用命令。
       requestBody:
         required: true
         content:
@@ -1649,31 +2422,23 @@ paths:
             schema:
               $ref: "#/components/schemas/UpdateUserRequest"
       responses:
-        "200":
-          $ref: "#/components/responses/UserDetailObject"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/user/{id}:
     get:
       tags: [User]
       operationId: getUser
-      summary: 查询用户详情
+      deprecated: true
+      summary: 兼容查询受管用户详情
+      description: 只读兼容入口；新客户端使用 GET /api/users/{id}。
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          $ref: "#/components/responses/UserDetailObject"
+          $ref: "#/components/responses/ManagedUserDetailOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1687,112 +2452,84 @@ paths:
     put:
       tags: [User]
       operationId: disableUser
-      summary: 禁用用户
+      deprecated: true
+      summary: 已停用的旧禁用入口
+      description: 始终 fail-close；使用 POST /api/users/{id}/status 并提交版本和原因。
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
-        "200":
-          $ref: "#/components/responses/EmptyOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/user/{id}/enable:
     put:
       tags: [User]
       operationId: enableUser
-      summary: 启用用户
+      deprecated: true
+      summary: 已停用的旧启用入口
+      description: 始终 fail-close；使用 POST /api/users/{id}/status 并提交版本和原因。
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
-        "200":
-          $ref: "#/components/responses/EmptyOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/user/{id}/lock:
     put:
       tags: [User]
       operationId: lockUser
-      summary: 锁定用户
+      deprecated: true
+      summary: 已停用的旧人工锁定入口
+      description: 始终 fail-close；使用 POST /api/users/{id}/status 并提交版本和原因。
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
-        "200":
-          $ref: "#/components/responses/EmptyOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/user/{id}/unlock:
     put:
       tags: [User]
       operationId: unlockUser
-      summary: 解锁用户
+      deprecated: true
+      summary: 已停用的旧人工解锁入口
+      description: 始终 fail-close；使用 POST /api/users/{id}/status 并提交版本和原因。
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
-        "200":
-          $ref: "#/components/responses/EmptyOk"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/users/batch-disable:
     put:
       tags: [User]
       operationId: batchDisableUsers
-      summary: 批量禁用用户
+      deprecated: true
+      summary: 已停用的旧批量禁用入口
+      description: 始终 fail-close；批量状态治理必须使用后续显式命令而非绕过单用户版本控制。
       requestBody:
         $ref: "#/components/requestBodies/BatchIds"
       responses:
-        "200":
-          $ref: "#/components/responses/EmptyOk"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/user/{id}/roles:
     put:
       tags: [User]
       operationId: assignUserRoles
-      summary: 分配用户角色
+      deprecated: true
+      summary: 已停用的旧角色分配入口
+      description: 始终 fail-close；使用 PUT /api/users/{id}/authorization/roles。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1802,24 +2539,18 @@ paths:
             schema:
               $ref: "#/components/schemas/AssignUserRolesRequest"
       responses:
-        "200":
-          $ref: "#/components/responses/EmptyOk"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/user/{id}/password:
     put:
       tags: [User]
       operationId: changeUserPassword
-      summary: 修改用户密码
+      deprecated: true
+      summary: 已停用的旧管理员改密入口
+      description: 始终 fail-close；本人改密使用 PUT /api/credentials/change-password，管理员重置使用 POST /api/users/{id}/password-reset。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1829,25 +2560,18 @@ paths:
             schema:
               $ref: "#/components/schemas/ChangePasswordRequest"
       responses:
-        "200":
-          $ref: "#/components/responses/EmptyOk"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/user/{id}/handover:
     put:
       tags: [User]
       operationId: handoverUserResponsibilities
-      summary: 交接用户当前负责业务对象
-      description: 将原负责人当前负责的活动、线索和客户整体交接给有效销售负责人；商机、试驾、跟进任务等对象由对应业务域落地负责人字段后纳入。
+      deprecated: true
+      summary: 已停用的旧责任交接入口
+      description: 始终 fail-close；迁移到 Task 20 调岗离职交接闭环命令。
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1857,29 +2581,10 @@ paths:
             schema:
               $ref: "#/components/schemas/HandoverUserResponsibilitiesRequest"
       responses:
-        "200":
-          description: 交接成功。
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/R"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/HandoverUserResponsibilitiesResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/clues:
     get:
@@ -5889,8 +6594,31 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: >-
+        新 JWT 只携带 userId、sessionId、authVersion、iat、exp。请求必须同时通过签名、
+        Redis 会话摘要、数据库会话撤销/空闲/绝对期限、账号状态和 authVersion 校验。
+        缺少 sessionId 的旧 JWT 仅在显式配置的兼容截止时间之前按旧精确键校验；默认禁用兼容。
+        任一校验失败均返回 401。
 
   parameters:
+    OrganizationUnitId:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer}
+      description: 组织 ID。
+    PositionId:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer}
+      description: 岗位 ID。
+    EmployeeId:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer}
+      description: 员工 ID，不是登录用户 ID。
     Id:
       name: id
       in: path
@@ -5968,6 +6696,93 @@ components:
             $ref: "#/components/schemas/BatchIdsRequest"
 
   responses:
+    SessionNotFound:
+      description: 会话不存在或不属于目标用户，稳定错误码 631。
+      content: {application/json: {schema: {$ref: "#/components/schemas/SessionErrorR"}}}
+    SessionConflict:
+      description: 会话已撤销或 sessionRevision 冲突，稳定错误码 632 或 634。
+      content: {application/json: {schema: {$ref: "#/components/schemas/SessionErrorR"}}}
+    SessionGone:
+      description: 会话已过期，稳定错误码 633。
+      content: {application/json: {schema: {$ref: "#/components/schemas/SessionErrorR"}}}
+    SessionServiceUnavailable:
+      description: Redis 会话清理未得到成功确认，稳定错误码 635；不得返回伪成功。
+      content: {application/json: {schema: {$ref: "#/components/schemas/SessionErrorR"}}}
+    CredentialBadRequest:
+      description: 凭证无效或请求格式错误。
+      content: {application/json: {schema: {$ref: "#/components/schemas/CredentialErrorR"}}}
+    CredentialConflict:
+      description: 凭证已消费、已撤销或密码历史冲突。
+      content: {application/json: {schema: {$ref: "#/components/schemas/CredentialErrorR"}}}
+    CredentialGone:
+      description: 一次性凭证已过期。
+      content: {application/json: {schema: {$ref: "#/components/schemas/CredentialErrorR"}}}
+    CredentialUnprocessable:
+      description: 密码不满足统一安全策略。
+      content: {application/json: {schema: {$ref: "#/components/schemas/CredentialErrorR"}}}
+    CredentialServiceUnavailable:
+      description: 安全通知渠道或凭证派生密钥未配置，待投递事实尚未写入。
+      content: {application/json: {schema: {$ref: "#/components/schemas/CredentialErrorR"}}}
+    CredentialTooManyRequests:
+      description: 凭证请求或消费超过账号、联系方式摘要或来源地址的安全窗口，稳定错误码 628。
+      content: {application/json: {schema: {$ref: "#/components/schemas/CredentialErrorR"}}}
+    UserManagementGateForbidden:
+      description: 用户管理受保护接口的组合 403：普通功能、数据或管理边界拒绝使用稳定错误码 520；初始化尚未完成或受保护恢复账号越过四态白名单使用 641 或 642。
+      content: {application/json: {schema: {$ref: "#/components/schemas/UserManagementGateErrorR"}}}
+    CredentialCommandOk:
+      description: 凭证命令完成，响应不含密码、摘要或原始凭证。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/CredentialCommandResult"}}}]}}}
+    CredentialRequestOk:
+      description: 请求已受理并返回 QUEUED；账号是否存在不影响响应形状，网络投递只在提交后执行。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/CredentialRequestAccepted"}}}]}}}
+    UserProfileOk:
+      description: 本人资料及只读任职、角色、权限来源聚合。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserProfile"}}}]}}}
+    LoginInfoOk:
+      description: 当前登录用户的展示资料与实时权限。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/LoginInfo"}}}]}}}
+    ManagedUserDetailOk:
+      description: 受管用户最小详情。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedUserDetail"}}}]}}}
+    ManagedUserFilterOptionsOk:
+      description: 当前管理范围内的组织、岗位、管理者、角色和状态筛选选项。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedUserFilterOptions"}}}]}}}
+    ManagedCredentialDeliveryOk:
+      description: 管理端凭证投递状态，不含原始凭证。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedCredentialDeliveryResult"}}}]}}}
+    PasswordResetDeliveryOk:
+      description: 管理员密码重置投递状态。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/PasswordResetDeliveryResult"}}}]}}}
+    CreateManagedUserResultOk:
+      description: 待激活用户与凭证投递状态。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/CreateManagedUserResult"}}}]}}}
+    AdminAccessRecoveryAccepted:
+      description: 降级普通管理员恢复已原子受理，凭证处于 QUEUED；不返回恢复密钥、nonce 或原始凭证。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/AdminAccessRecoveryResult"}}}]}}}
+    UserSessionCollectionOk:
+      description: 脱敏会话列表与可执行动作。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserSessionCollection"}}}]}}}
+    UserHistoryCollectionOk:
+      description: 受审计权限与目标管理范围约束的结构化用户历史投影。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserHistoryCollection"}}}]}}}
+    UserLifecycleContextOk:
+      description: 人员生命周期上下文。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserLifecycleContext"}}}]}}}
+    DeparturePrecheckOk:
+      description: 离职精确责任预检快照。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/DeparturePrecheck"}}}]}}}
+    HandoverResultOk:
+      description: 六域完整交接结果。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/HandoverResult"}}}]}}}
+    RehireResultOk:
+      description: RECOVER 模式同步返聘结果；restoredLegacyAuthorizationCount 必须为 0，credentialDeliveryStatus 不得为 QUEUED。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RehireResult"}}}]}}}
+    RehireInviteAccepted:
+      description: INVITE 模式返聘已原子受理，credentialDeliveryStatus 为 QUEUED；只保存预交付承诺，原始凭证在提交后生成并投递。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RehireResult"}}}]}}}
+    LifecycleSnapshotGone:
+      description: 服务端一次性预检快照已过期；业务错误码 637，HTTP 状态 410。
+      content: {application/json: {schema: {$ref: "#/components/schemas/LifecycleErrorR"}}}
     EmptyOk:
       description: 操作成功，无业务数据。
       content:
@@ -6654,7 +7469,7 @@ components:
                     items:
                       $ref: "#/components/schemas/TransactionInvoice"
     UserPageOk:
-      description: 分页查询成功，data.list 为用户详情数组。
+      description: 分页查询成功，data.list 为用户工作台摘要，不包含密码、凭证或联系方式。
       content:
         application/json:
           schema:
@@ -6670,7 +7485,7 @@ components:
                           list:
                             type: array
                             items:
-                              $ref: "#/components/schemas/UserDetailResponse"
+                              $ref: "#/components/schemas/ManagedUserSummary"
     CluePageOk:
       description: 分页查询成功，data.list 为线索数组。
       content:
@@ -6996,6 +7811,60 @@ components:
                     type: array
                     items:
                       $ref: "#/components/schemas/TranProduct"
+    OrganizationUnitObjectOk:
+      description: 组织操作成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/OrganizationUnitResponse"}}}]}}}
+    OrganizationUnitArrayOk:
+      description: 组织查询成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/OrganizationUnitResponse"}}}}]}}}
+    PositionObjectOk:
+      description: 岗位操作成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/PositionResponse"}}}]}}}
+    PositionArrayOk:
+      description: 岗位查询成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/PositionResponse"}}}}]}}}
+    EmployeeSummaryArrayOk:
+      description: 员工摘要查询成功，不包含手机号和邮箱。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/EmployeeSummaryResponse"}}}}]}}}
+    EmployeeOrganizationMembershipObjectOk:
+      description: 员工任职查询或更新成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/EmployeeOrganizationMembershipResponse"}}}]}}}
+    ManagerCandidateArrayOk:
+      description: 管理者候选查询成功，不包含敏感个人字段。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/ManagerCandidateResponse"}}}}]}}}
+    ActingReportingCollectionOk:
+      description: 代理管理关系集合查询或替换成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/ActingReportingCollectionResponse"}}}]}}}
+    OrganizationHistoryArrayOk:
+      description: 组织任职与汇报历史查询成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/OrganizationChangeHistoryResponse"}}}}]}}}
+    UserAuthorizationDetailOk:
+      description: 用户有效授权及可编辑边界。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserAuthorizationDetail"}}}]}}}
+    UserAuthorizationBatchResultOk:
+      description: 批量用户授权更新成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserAuthorizationBatchResult"}}}]}}}
+    RoleObjectOk:
+      description: 角色操作成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RoleResponse"}}}]}}}
+    RolePageOk:
+      description: 角色分页查询成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {allOf: [{$ref: "#/components/schemas/PageInfo"}, {type: object, properties: {list: {type: array, items: {$ref: "#/components/schemas/RoleResponse"}}}}]}}}]}}}
+    OrganizationOptionArrayOk:
+      description: 可覆盖组织选项查询成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/AccessOrganizationOption"}}}}]}}}
+    PermissionCatalogArrayOk:
+      description: 权限目录树查询成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/PermissionCatalogItem"}}}}]}}}
+    RolePermissionMatrixOk:
+      description: 角色权限矩阵查询成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RolePermissionMatrix"}}}]}}}
+    PreviewRolePermissionMatrixOk:
+      description: 角色权限变更预览成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RolePermissionPreview"}}}]}}}
+    UpdateRolePermissionMatrixOk:
+      description: 角色权限矩阵保存成功。
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UpdateRolePermissionResponse"}}}]}}}
     BadRequest:
       description: 请求参数错误。
       content:
@@ -7003,13 +7872,15 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorR"
     Unauthorized:
-      description: 未认证、Token 无效或 Token 过期。
+      description: >-
+        未认证，或 Token 缺失、格式/签名无效、过期、已被撤销、Redis 会话缺失或不匹配、
+        数据库账号状态不可用、authVersion 与数据库权威版本不一致。
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorR"
     Forbidden:
-      description: 功能权限或数据权限不足。
+      description: 已认证但功能、数据或管理边界不足时通常返回 520；用户管理四态前置门禁还可能返回 641 或 642。不得按会话失效处理。
       content:
         application/json:
           schema:
@@ -7040,6 +7911,1142 @@ components:
             $ref: "#/components/schemas/ErrorR"
 
   schemas:
+    LifecycleErrorCode:
+      type: integer
+      enum: [636, 637, 638, 639, 640]
+    LifecycleErrorR:
+      allOf:
+        - $ref: "#/components/schemas/ErrorR"
+        - type: object
+          properties: {code: {$ref: "#/components/schemas/LifecycleErrorCode"}}
+    UserLifecycleAction:
+      type: string
+      enum: [TRANSFER, DEPARTURE_PRECHECK, DEPARTURE_START, HANDOVER_CONFIRM, DEPARTURE_COMPLETE, REHIRE]
+    DirectHandoverResourceType:
+      type: string
+      enum: [ACTIVITY, CLUE, CUSTOMER, OPPORTUNITY, FOLLOW_TASK, TEST_DRIVE]
+    HandoverResourceType:
+      type: string
+      enum: [ACTIVITY, CLUE, CUSTOMER, OPPORTUNITY, FOLLOW_TASK, TEST_DRIVE, QUOTE, TRAN]
+    LifecycleCandidate:
+      type: object
+      required: [id, label]
+      properties: {id: {type: integer}, label: {type: string}, secondaryLabel: {type: string, nullable: true}}
+    HandoverCandidate:
+      allOf:
+        - $ref: "#/components/schemas/LifecycleCandidate"
+        - type: object
+          required: [eligible, qualificationCode, qualificationName]
+          properties: {eligible: {type: boolean}, qualificationCode: {type: string}, qualificationName: {type: string}, unavailableReason: {type: string, nullable: true}}
+    UserLifecycleTransition:
+      type: object
+      required: [action, fromStatus, toStatus, label]
+      properties: {action: {$ref: "#/components/schemas/UserLifecycleAction"}, fromStatus: {type: string}, toStatus: {type: string}, label: {type: string}, disabledReason: {type: string, nullable: true}}
+    LifecycleAssignmentSummary:
+      type: object
+      properties: {organizationCode: {type: string, nullable: true}, organizationName: {type: string, nullable: true}, positionCode: {type: string, nullable: true}, positionName: {type: string, nullable: true}, managerEmployeeNo: {type: string, nullable: true}, managerName: {type: string, nullable: true}, effectiveFrom: {type: string, format: date-time, nullable: true}}
+    UserLifecycleContext:
+      type: object
+      required: [userId, employeeId, employmentStatus, employeeVersion, activeRoleCount, activePersonalPermissionCount, activeSessionCount, additionalAssignmentCount, reportingRelationCount, organizationCandidates, positionCandidates, managerCandidates, managerRequired, handoverCandidates, allowedActions, unavailableReasons, statusTransitions]
+      properties:
+        userId: {type: integer}
+        employeeId: {type: integer}
+        employmentStatus: {type: string, enum: [PENDING, ACTIVE, HANDOVER, LEFT]}
+        employeeVersion: {type: integer, minimum: 0}
+        currentAssignment: {$ref: "#/components/schemas/LifecycleAssignmentSummary", nullable: true}
+        activeRoleCount: {type: integer, minimum: 0}
+        activePersonalPermissionCount: {type: integer, minimum: 0}
+        activeSessionCount: {type: integer, minimum: 0}
+        additionalAssignmentCount: {type: integer, minimum: 0}
+        reportingRelationCount: {type: integer, minimum: 0}
+        organizationCandidates: {type: array, items: {$ref: "#/components/schemas/LifecycleCandidate"}}
+        positionCandidates: {type: array, items: {$ref: "#/components/schemas/LifecycleCandidate"}}
+        managerCandidates: {type: array, items: {$ref: "#/components/schemas/LifecycleCandidate"}}
+        managerRequired: {type: boolean, description: 普通员工固定为 true；仅目标组织为根公司且员工就是根公司负责人时为 false。}
+        managerOptionalReason: {type: string, nullable: true}
+        handoverCandidates: {type: array, items: {$ref: "#/components/schemas/LifecycleCandidate"}}
+        allowedActions: {type: array, items: {$ref: "#/components/schemas/UserLifecycleAction"}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+        statusTransitions: {type: array, items: {$ref: "#/components/schemas/UserLifecycleTransition"}}
+    AssignmentCommandFields:
+      type: object
+      required: [employeeVersion, organizationUnitId, positionId, managerEmployeeId, effectiveFrom, reason]
+      properties: {employeeVersion: {type: integer, minimum: 0}, organizationUnitId: {type: integer}, positionId: {type: integer}, managerEmployeeId: {type: integer, nullable: true}, effectiveFrom: {type: string, format: date-time}, reason: {type: string, minLength: 1, maxLength: 500}}
+    TransferEmployeeRequest:
+      type: object
+      additionalProperties: false
+      required: [employeeVersion, organizationUnitId, positionId, managerEmployeeId, effectiveFrom, reason]
+      properties: {employeeVersion: {type: integer, minimum: 0}, organizationUnitId: {type: integer}, positionId: {type: integer}, managerEmployeeId: {type: integer, nullable: true}, effectiveFrom: {type: string, format: date-time}, reason: {type: string, minLength: 1, maxLength: 500}}
+    DeparturePrecheckRequest:
+      type: object
+      additionalProperties: false
+      required: [employeeVersion, reason]
+      properties: {employeeVersion: {type: integer, minimum: 0}, reason: {type: string, minLength: 1, maxLength: 500}}
+    LifecycleSnapshotCommand:
+      type: object
+      required: [employeeVersion, snapshotToken, reason]
+      properties: {employeeVersion: {type: integer, minimum: 0}, snapshotToken: {type: string, minLength: 1}, reason: {type: string, minLength: 1, maxLength: 500}}
+    StartDepartureRequest:
+      type: object
+      additionalProperties: false
+      required: [employeeVersion, snapshotToken, reason]
+      properties: {employeeVersion: {type: integer, minimum: 0}, snapshotToken: {type: string, minLength: 1}, reason: {type: string, minLength: 1, maxLength: 500}}
+    CompleteDepartureRequest:
+      type: object
+      additionalProperties: false
+      required: [employeeVersion, snapshotToken, reason]
+      properties: {employeeVersion: {type: integer, minimum: 0}, snapshotToken: {type: string, minLength: 1}, reason: {type: string, minLength: 1, maxLength: 500}}
+    HandoverTransferSelection:
+      type: object
+      additionalProperties: false
+      required: [resourceType, targetEmployeeId]
+      properties: {resourceType: {type: string, enum: [ACTIVITY, CLUE, CUSTOMER, OPPORTUNITY, FOLLOW_TASK, TEST_DRIVE]}, targetEmployeeId: {type: integer}}
+    ConfirmHandoverRequest:
+      type: object
+      additionalProperties: false
+      required: [employeeVersion, snapshotToken, transfers, reason]
+      properties: {employeeVersion: {type: integer, minimum: 0}, snapshotToken: {type: string, minLength: 1}, transfers: {type: array, minItems: 1, maxItems: 6, uniqueItems: true, description: 每个当前责任数量大于零的直接责任域必须且只能提交一项；禁止零责任域、重复域、QUOTE 和 TRAN。, items: {$ref: "#/components/schemas/HandoverTransferSelection"}}, reason: {type: string, minLength: 1, maxLength: 500}}
+    RehireEmployeeRequest:
+      type: object
+      additionalProperties: false
+      required: [employeeVersion, organizationUnitId, positionId, managerEmployeeId, effectiveFrom, reason, accountActivationMode]
+      properties: {employeeVersion: {type: integer, minimum: 0}, organizationUnitId: {type: integer}, positionId: {type: integer}, managerEmployeeId: {type: integer, nullable: true}, effectiveFrom: {type: string, format: date-time}, reason: {type: string, minLength: 1, maxLength: 500}, accountActivationMode: {type: string, enum: [INVITE, RECOVER], description: INVITE 签发全新单次邀请并替换过期旧凭证；RECOVER 仅恢复仍有效的现有凭证。}}
+    DepartureResponsibilityConflict:
+      type: object
+      required: [conflictCode, conflictName, count, reason]
+      properties: {conflictCode: {type: string}, conflictName: {type: string}, count: {type: integer, minimum: 0}, reason: {type: string}}
+    DepartureResponsibilitySummary:
+      type: object
+      required: [resourceType, resourceName, transferMode, count, transferableCount, blockedCount, statusCode, statusName, blocking, blockingReasons, targetCandidates, conflicts]
+      properties:
+        resourceType: {type: string, enum: [ACTIVITY, CLUE, CUSTOMER, OPPORTUNITY, FOLLOW_TASK, TEST_DRIVE, QUOTE, TRAN]}
+        resourceName: {type: string}
+        transferMode: {type: string, enum: [DIRECT_OWNER, DERIVED_IMPACT]}
+        count: {type: integer, minimum: 0}
+        transferableCount: {type: integer, minimum: 0}
+        blockedCount: {type: integer, minimum: 0}
+        statusCode: {type: string}
+        statusName: {type: string}
+        blocking: {type: boolean}
+        blockingReasons: {type: array, items: {type: string}}
+        targetCandidates: {type: array, items: {$ref: "#/components/schemas/HandoverCandidate"}}
+        conflicts: {type: array, items: {$ref: "#/components/schemas/DepartureResponsibilityConflict"}}
+    DeparturePrecheck:
+      type: object
+      required: [snapshotToken, generatedAt, expiresAt, userId, employmentStatus, employeeVersion, responsibilities, activeRoleCount, activePersonalPermissionCount, activeSessionCount, activeAssignmentCount, activeReportingCount, handoverRequired, handoverCompleted, readyToComplete, blockingReasons, allowedActions, unavailableReasons, statusTransitions]
+      properties:
+        snapshotToken: {type: string}
+        generatedAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time}
+        userId: {type: integer}
+        employmentStatus: {type: string, enum: [ACTIVE, HANDOVER]}
+        employeeVersion: {type: integer, minimum: 0}
+        responsibilities: {type: array, minItems: 8, maxItems: 8, items: {$ref: "#/components/schemas/DepartureResponsibilitySummary"}}
+        activeRoleCount: {type: integer, minimum: 0}
+        activePersonalPermissionCount: {type: integer, minimum: 0}
+        activeSessionCount: {type: integer, minimum: 0}
+        activeAssignmentCount: {type: integer, minimum: 0}
+        activeReportingCount: {type: integer, minimum: 0}
+        handoverRequired: {type: boolean}
+        handoverCompleted: {type: boolean}
+        readyToComplete: {type: boolean}
+        blockingReasons: {type: array, items: {type: string}}
+        allowedActions: {type: array, items: {$ref: "#/components/schemas/UserLifecycleAction"}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+        statusTransitions: {type: array, items: {$ref: "#/components/schemas/UserLifecycleTransition"}}
+    HandoverDomainResult:
+      type: object
+      required: [domainCode, domainName, expectedCount, transferredCount, resultCode, resultName]
+      properties: {domainCode: {type: string, enum: [ACTIVITY, CLUE, CUSTOMER, OPPORTUNITY, FOLLOW_TASK, TEST_DRIVE]}, domainName: {type: string}, expectedCount: {type: integer, minimum: 0}, transferredCount: {type: integer, minimum: 0}, resultCode: {type: string, enum: [SUCCESS]}, resultName: {type: string}}
+    HandoverResult:
+      type: object
+      required: [operationId, success, resultCode, resultName, employeeVersion, domainResults]
+      properties: {operationId: {type: string}, success: {type: boolean}, resultCode: {type: string, enum: [SUCCESS]}, resultName: {type: string}, employeeVersion: {type: integer, minimum: 0}, domainResults: {type: array, minItems: 6, maxItems: 6, items: {$ref: "#/components/schemas/HandoverDomainResult"}}}
+    RehireResult:
+      type: object
+      required: [context, restoredLegacyAuthorizationCount, credentialDeliveryStatus]
+      properties: {context: {$ref: "#/components/schemas/UserLifecycleContext"}, restoredLegacyAuthorizationCount: {type: integer, enum: [0]}, credentialDeliveryStatus: {type: string, enum: [NOT_REQUIRED, QUEUED], description: RECOVER 同步完成时为 NOT_REQUIRED；INVITE 返回 202 时为 QUEUED。}}
+    SessionErrorCode:
+      type: integer
+      enum: [631, 632, 633, 634, 635]
+    SessionErrorR:
+      allOf:
+        - $ref: "#/components/schemas/ErrorR"
+        - type: object
+          properties: {code: {$ref: "#/components/schemas/SessionErrorCode"}}
+    CredentialErrorCode:
+      type: integer
+      enum: [620, 621, 622, 623, 624, 625, 626, 628]
+    CredentialErrorR:
+      allOf:
+        - $ref: "#/components/schemas/ErrorR"
+        - type: object
+          properties: {code: {$ref: "#/components/schemas/CredentialErrorCode"}}
+    UserManagementGateErrorCode:
+      type: integer
+      description: 用户管理组合 403；520 为普通授权或管理边界拒绝，641/642 为四态初始化或固定恢复账号用途门禁。
+      enum: [520, 641, 642]
+    UserManagementGateErrorR:
+      allOf:
+        - $ref: "#/components/schemas/ErrorR"
+        - type: object
+          properties: {code: {$ref: "#/components/schemas/UserManagementGateErrorCode"}}
+    ManagedCredentialDeliveryResult:
+      type: object
+      required: [accepted, deliveryStatus]
+      description: 202 仅表示不可消费的预交付承诺与 Outbox 已在同一事务受理，accepted 恒为 true；提交后 Worker 才派生原始凭证，并以 CAS 把承诺绑定为实际不可逆摘要后投递。
+      properties: {accepted: {type: boolean, enum: [true]}, deliveryStatus: {type: string, enum: [QUEUED]}}
+    PasswordResetDeliveryResult:
+      type: object
+      required: [accepted, deliveryStatus, mustChangePassword]
+      properties: {accepted: {type: boolean, enum: [true]}, deliveryStatus: {type: string, enum: [QUEUED]}, mustChangePassword: {type: boolean, enum: [true]}}
+    ManagedUserDetail:
+      type: object
+      required: [id, loginAct, name, employmentStatus, accountStatus, lockStatus, accountExpired, credentialExpired, profileVersion, accountVersion, employeeVersion, authorizationVersion, sessionRevision, roleNames, statusCommands, allowedActions, unavailableReasons]
+      properties:
+        id: {type: integer}
+        employeeId: {type: integer, nullable: true}
+        employeeNo: {type: string, nullable: true}
+        loginAct: {type: string}
+        name: {type: string, maxLength: 50}
+        phone: {type: string, nullable: true}
+        email: {type: string, nullable: true}
+        organizationName: {type: string, nullable: true}
+        positionName: {type: string, nullable: true}
+        managerName: {type: string, nullable: true}
+        employmentStatus: {type: string, enum: [PENDING, ACTIVE, HANDOVER, LEFT, NOT_APPLICABLE]}
+        accountStatus: {type: string, enum: [INVITED, ACTIVE, DISABLED]}
+        lockStatus: {type: string, enum: [UNLOCKED, AUTO_LOCKED, MANUAL_LOCKED]}
+        lockReason: {type: string, nullable: true}
+        accountExpired: {type: boolean, description: account_no_expired 与 accountExpiresAt 动态计算后的只读结果。}
+        accountExpiresAt: {type: string, format: date-time, nullable: true}
+        credentialExpired: {type: boolean}
+        credentialExpiresAt: {type: string, format: date-time, nullable: true}
+        lastLoginTime: {type: string, format: date-time, nullable: true}
+        profileVersion: {type: integer}
+        accountVersion: {type: integer}
+        employeeVersion: {type: integer}
+        authorizationVersion: {type: integer, minimum: 0}
+        sessionRevision: {type: integer, format: int64, minimum: 0}
+        roleNames: {type: array, items: {type: string}}
+        statusCommands: {type: array, items: {$ref: "#/components/schemas/ManagedUserStatusCommandOption"}}
+        allowedActions: {type: array, items: {type: string}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+    ManagedUserStatusCommandOption:
+      type: object
+      required: [command, label, destructive]
+      properties:
+        command: {type: string, enum: [ENABLE, DISABLE, LOCK, UNLOCK]}
+        label: {type: string}
+        destructive: {type: boolean}
+        disabledReason: {type: string, nullable: true}
+    ManagedUserSummary:
+      type: object
+      required: [id, name, loginAct, roleNames, employmentStatus, accountStatus, lockStatus, allowedActions, unavailableReasons]
+      properties:
+        id: {type: integer}
+        employeeId: {type: integer, nullable: true}
+        employeeNo: {type: string, nullable: true}
+        name: {type: string}
+        loginAct: {type: string}
+        organizationName: {type: string, nullable: true}
+        positionName: {type: string, nullable: true}
+        managerName: {type: string, nullable: true}
+        roleNames: {type: array, items: {type: string}}
+        employmentStatus: {type: string, enum: [PENDING, ACTIVE, HANDOVER, LEFT, NOT_APPLICABLE]}
+        accountStatus: {type: string, enum: [INVITED, ACTIVE, DISABLED]}
+        lockStatus: {type: string, enum: [UNLOCKED, AUTO_LOCKED, MANUAL_LOCKED]}
+        lastLoginTime: {type: string, format: date-time, nullable: true}
+        allowedActions: {type: array, items: {type: string}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+    ManagedUserFilterOption:
+      type: object
+      required: [id, label]
+      properties:
+        id: {oneOf: [{type: integer}, {type: string}]}
+        label: {type: string}
+    ManagedUserFilterOptions:
+      type: object
+      required: [organizations, positions, managers, roles, assignableRoles, employmentStatuses, accountStatuses, lockStatuses, bootstrapRequired, bootstrapAllowed]
+      properties:
+        organizations: {type: array, items: {$ref: "#/components/schemas/ManagedUserFilterOption"}}
+        positions: {type: array, items: {$ref: "#/components/schemas/ManagedUserFilterOption"}}
+        managers: {type: array, items: {$ref: "#/components/schemas/ManagedUserFilterOption"}}
+        roles: {type: array, items: {$ref: "#/components/schemas/ManagedUserFilterOption"}}
+        assignableRoles: {type: array, items: {$ref: "#/components/schemas/ManagedUserFilterOption"}, description: 创建用户时可实际委派的角色候选；与列表筛选 roles 的已存在事实集合分离。}
+        employmentStatuses: {type: array, items: {$ref: "#/components/schemas/ManagedUserFilterOption"}}
+        accountStatuses: {type: array, items: {$ref: "#/components/schemas/ManagedUserFilterOption"}}
+        lockStatuses: {type: array, items: {$ref: "#/components/schemas/ManagedUserFilterOption"}}
+        bootstrapRequired: {type: boolean, description: 是否尚无可用普通管理员并进入首次初始化门禁。}
+        bootstrapAllowed: {type: boolean, description: 当前操作者和唯一根公司是否满足首次负责人初始化条件。}
+        bootstrapRootOrganizationId: {type: integer, nullable: true}
+        bootstrapRootOrganizationVersion: {type: integer, minimum: 0, nullable: true, description: 首次初始化根公司负责人时必须原样回传的并发版本。}
+    CreateManagedUserResult:
+      type: object
+      required: [user, credentialDelivery]
+      properties:
+        user: {$ref: "#/components/schemas/ManagedUserDetail"}
+        credentialDelivery: {$ref: "#/components/schemas/ManagedCredentialDeliveryResult"}
+    LoginInfo:
+      type: object
+      required: [id, loginAct, name, avatarUrl, mustChangePassword, protectedRecoveryAccount, userManagementGateState, roleList, permissionList, menuPermissionList]
+      properties:
+        id: {type: integer}
+        loginAct: {type: string}
+        name: {type: string}
+        phone: {type: string, nullable: true}
+        email: {type: string, nullable: true}
+        avatarUrl: {type: string, format: uri, nullable: true}
+        mustChangePassword: {type: boolean}
+        protectedRecoveryAccount: {type: boolean, description: 是否为只能执行初始化或独立恢复流程的固定受保护恢复账号。}
+        userManagementGateState: {type: string, enum: [UNINITIALIZED, PENDING_FIRST_CHANGE, READY, DEGRADED], description: 当前用户管理门禁状态；前端据此限制恢复账号菜单和路由。}
+        roleList: {type: array, items: {type: string}}
+        permissionList: {type: array, items: {type: string}}
+        menuPermissionList: {type: array, items: {type: object, additionalProperties: true}}
+    RevokeSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [sessionRevision, reason]
+      properties: {sessionRevision: {type: integer, format: int64, minimum: 0}, reason: {type: string, minLength: 1, maxLength: 500}}
+    UserSessionItem:
+      type: object
+      required: [id, deviceSummary, loginTime, lastActivityTime, expiresAt, current, rememberMe, allowedActions, unavailableReasons]
+      properties:
+        id: {type: string}
+        deviceSummary: {type: string}
+        clientSummary: {type: string, nullable: true}
+        networkSummary: {type: string, nullable: true}
+        loginTime: {type: string, format: date-time}
+        lastActivityTime: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time}
+        current: {type: boolean}
+        rememberMe: {type: boolean}
+        allowedActions: {type: array, items: {type: string, enum: [REVOKE]}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+    UserSessionCollection:
+      type: object
+      required: [targetUserId, sessionRevision, allowedActions, unavailableReasons, sessions]
+      properties:
+        targetUserId: {type: integer}
+        sessionRevision: {type: integer, format: int64}
+        allowedActions: {type: array, items: {type: string, enum: [REVOKE_OTHERS, REVOKE_ALL]}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+        sessions: {type: array, items: {$ref: "#/components/schemas/UserSessionItem"}}
+    UserHistoryActionOption:
+      type: object
+      additionalProperties: false
+      required: [code, label]
+      properties:
+        code: {type: string}
+        label: {type: string}
+    UserHistoryOperatorSummary:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        id: {type: integer, nullable: true}
+        name: {type: string}
+        employeeNo: {type: string, nullable: true}
+    UserHistoryTargetSummary:
+      type: object
+      additionalProperties: false
+      required: [typeCode, typeName]
+      properties:
+        typeCode: {type: string}
+        typeName: {type: string}
+        id: {type: integer, nullable: true}
+        code: {type: string, nullable: true}
+        name: {type: string, nullable: true}
+    UserHistoryValueField:
+      type: object
+      additionalProperties: false
+      required: [code, label]
+      description: 仅允许稳定业务 code、名称和安全展示值；字段名和值均不得包含密码、hash/digest、令牌、Credential、Key、Signature、Salt、Nonce、IP、原始明细或完整联系方式。
+      properties:
+        code: {type: string}
+        label: {type: string}
+        valueCode: {type: string, nullable: true}
+        valueName: {type: string, nullable: true}
+        displayValue: {type: string, nullable: true}
+    UserHistoryBatchSummary:
+      type: object
+      additionalProperties: false
+      required: [batchId, totalCount, successCount, failureCount, targetResultCode, targetResultName]
+      properties:
+        batchId: {type: string}
+        totalCount: {type: integer, minimum: 0}
+        successCount: {type: integer, minimum: 0}
+        failureCount: {type: integer, minimum: 0}
+        targetResultCode: {type: string}
+        targetResultName: {type: string}
+    UserHistoryItem:
+      type: object
+      additionalProperties: false
+      required: [eventId, sourceKey, actionCode, actionName, categoryCode, categoryName, target, operator, beforeValues, afterValues, resultCode, resultName, occurredAt]
+      properties:
+        eventId: {type: string}
+        sourceKey: {type: string, enum: [AUTHORIZATION_HISTORY, OPERATION_LOG, USER_LIFECYCLE_EVENT]}
+        actionCode: {type: string}
+        actionName: {type: string}
+        categoryCode: {type: string, enum: [AUTHORIZATION, ORGANIZATION, ACCOUNT, SECURITY]}
+        categoryName: {type: string}
+        target: {$ref: "#/components/schemas/UserHistoryTargetSummary"}
+        operator: {$ref: "#/components/schemas/UserHistoryOperatorSummary"}
+        beforeValues: {type: array, items: {$ref: "#/components/schemas/UserHistoryValueField"}}
+        afterValues: {type: array, items: {$ref: "#/components/schemas/UserHistoryValueField"}}
+        reason: {type: string, nullable: true}
+        effectiveFrom: {type: string, format: date-time, nullable: true}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+        resultCode: {type: string, enum: [SUCCESS, FAILURE]}
+        resultName: {type: string}
+        batchSummary: {allOf: [{$ref: "#/components/schemas/UserHistoryBatchSummary"}], nullable: true}
+        occurredAt: {type: string, format: date-time}
+    UserHistoryCollection:
+      type: object
+      additionalProperties: false
+      required: [list, total, pageSize, pageNum, pages, size, actionOptions, allowedActions, unavailableReasons]
+      properties:
+        list: {type: array, items: {$ref: "#/components/schemas/UserHistoryItem"}}
+        total: {type: integer, format: int64, minimum: 0}
+        pageSize: {type: integer, minimum: 1, maximum: 100}
+        pageNum: {type: integer, minimum: 1}
+        pages: {type: integer, minimum: 0}
+        size: {type: integer, minimum: 0}
+        actionOptions: {type: array, items: {$ref: "#/components/schemas/UserHistoryActionOption"}}
+        allowedActions: {type: array, items: {type: string, enum: [VIEW]}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+    ActivateAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [credential, newPassword]
+      properties: {credential: {type: string}, newPassword: {type: string, minLength: 6, maxLength: 16}}
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [loginAct]
+      properties: {loginAct: {type: string, maxLength: 64}}
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [credential, newPassword]
+      properties: {credential: {type: string}, newPassword: {type: string, minLength: 6, maxLength: 16}}
+    VerifyContactRequest:
+      type: object
+      additionalProperties: false
+      required: [credential]
+      properties: {credential: {type: string}}
+    ContactVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [channel]
+      properties: {channel: {type: string, enum: [PHONE, EMAIL]}}
+    BreakGlassRequest:
+      type: object
+      additionalProperties: false
+      required: [loginAct, recoveryKey]
+      properties:
+        loginAct: {type: string, maxLength: 64}
+        recoveryKey: {type: string, minLength: 32, maxLength: 512, writeOnly: true}
+    BreakGlassCompleteRequest:
+      type: object
+      additionalProperties: false
+      required: [credential, newPassword]
+      properties: {credential: {type: string, writeOnly: true}, newPassword: {type: string, minLength: 6, maxLength: 16, writeOnly: true}}
+    ChangeOwnPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties: {currentPassword: {type: string}, newPassword: {type: string, minLength: 6, maxLength: 16}}
+    CredentialCommandResult:
+      type: object
+      required: [completed]
+      properties: {completed: {type: boolean}}
+    CredentialRequestAccepted:
+      type: object
+      required: [accepted, deliveryStatus]
+      properties: {accepted: {type: boolean, enum: [true]}, deliveryStatus: {type: string, enum: [QUEUED]}}
+    AdminAccessRecoveryRequest:
+      type: object
+      additionalProperties: false
+      required: [recoveryKey, reason]
+      properties:
+        recoveryKey: {type: string, minLength: 32, maxLength: 512, writeOnly: true}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    AdminAccessRecoveryResult:
+      type: object
+      required: [recoveredUserId, loginAct, accountStatus, accepted, deliveryStatus]
+      properties:
+        recoveredUserId: {type: integer}
+        loginAct: {type: string}
+        accountStatus: {type: string, enum: [INVITED, ACTIVE]}
+        accepted: {type: boolean, enum: [true]}
+        deliveryStatus: {type: string, enum: [QUEUED]}
+    CreateManagedUserRequest:
+      type: object
+      additionalProperties: false
+      required: [loginAct, name, employeeNo, organizationUnitId, positionId, roleIds]
+      properties:
+        loginAct: {type: string, maxLength: 32}
+        name: {type: string, maxLength: 50}
+        phone: {type: string, nullable: true, maxLength: 18}
+        email: {type: string, format: email, nullable: true, maxLength: 64}
+        employeeNo: {type: string, maxLength: 32}
+        organizationUnitId: {type: integer}
+        positionId: {type: integer}
+        managerEmployeeId: {type: integer, nullable: true}
+        roleIds: {type: array, uniqueItems: true, items: {type: integer}}
+        bootstrapRootLeader: {type: boolean, default: false, description: 仅固定受保护恢复账号在无可用普通管理员时可显式设为 true；普通创建不得使用。}
+        expectedRootOrganizationVersion: {type: integer, minimum: 0, nullable: true, description: bootstrapRootLeader=true 时必填；用于根公司负责人 CAS。}
+    ManagedCredentialRequest:
+      type: object
+      additionalProperties: false
+      required: [accountVersion, reason]
+      properties: {accountVersion: {type: integer, minimum: 0}, reason: {type: string, minLength: 1, maxLength: 500}}
+    ManagedUserStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [accountVersion, command, reason]
+      properties:
+        accountVersion: {type: integer, minimum: 0}
+        command: {type: string, enum: [ENABLE, DISABLE, LOCK, UNLOCK]}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    ManagedUserLoginAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [accountVersion, loginAct, reason]
+      properties:
+        accountVersion: {type: integer, minimum: 0}
+        loginAct: {type: string, minLength: 3, maxLength: 32, pattern: "^[A-Za-z0-9._@-]+$"}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    ManagedUserSecurityExpirationRequest:
+      type: object
+      additionalProperties: false
+      required: [accountVersion, reason]
+      properties:
+        accountVersion: {type: integer, minimum: 0}
+        accountExpiresAt: {type: string, format: date-time, nullable: true, description: null 表示清除账号到期时间；过去或当前时间会立即使账号到期。}
+        credentialExpiresAt: {type: string, format: date-time, nullable: true, description: null 表示清除凭证到期时间；过去时间会立即使凭证到期。}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    UpdateManagedUserProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [profileVersion, name, phone, email]
+      properties:
+        profileVersion: {type: integer, minimum: 0}
+        name: {type: string, minLength: 1, maxLength: 50}
+        phone: {type: string, nullable: true, maxLength: 18}
+        email: {type: string, format: email, nullable: true, maxLength: 64}
+    UserProfileRole:
+      type: object
+      required: [id, code, name]
+      properties: {id: {type: integer}, code: {type: string}, name: {type: string}, sourceDescription: {type: string, nullable: true}}
+    UserProfilePermissionSource:
+      type: object
+      required: [permissionCode, permissionName, sourceNames, sources]
+      properties:
+        permissionCode: {type: string}
+        permissionName: {type: string}
+        sourceNames: {type: array, deprecated: true, description: 兼容旧客户端的来源名称平铺结果；新客户端必须使用 sources。, items: {type: string}}
+        dataScopeLabel: {type: string, nullable: true, deprecated: true, description: 兼容旧客户端的范围平铺结果；无法表达来源与范围的对应关系。}
+        sources: {type: array, items: {$ref: "#/components/schemas/UserProfilePermissionSourceDetail"}}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+    UserProfilePermissionSourceDetail:
+      type: object
+      required: [sourceType, sourceName, organizations]
+      properties:
+        sourceType: {type: string, enum: [ROLE, PERSONAL_GRANT, SYSTEM_EFFECTIVE]}
+        sourceName: {type: string}
+        dataScopeCode: {type: string, nullable: true, enum: [SELF, DIRECT_REPORTS, REPORTING_TREE, PRIMARY_ORG, ORG_TREE, CUSTOM_ORGS, GLOBAL]}
+        dataScopeLabel: {type: string, nullable: true}
+        effectiveFrom: {type: string, format: date-time, nullable: true}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+        organizations: {type: array, description: 非 CUSTOM_ORGS 恒为空数组；CUSTOM_ORGS 返回该来源覆盖的每个具体组织。, items: {$ref: "#/components/schemas/UserProfilePermissionOrganization"}}
+    UserProfilePermissionOrganization:
+      type: object
+      required: [id, code, name]
+      properties: {id: {type: integer}, code: {type: string}, name: {type: string}}
+    UserProfile:
+      type: object
+      required: [id, loginAct, name, phoneVerified, emailVerified, roles, effectivePermissions, profileVersion]
+      properties:
+        id: {type: integer}
+        loginAct: {type: string}
+        name: {type: string}
+        phone: {type: string, nullable: true}
+        email: {type: string, nullable: true}
+        phoneVerified: {type: boolean}
+        emailVerified: {type: boolean}
+        avatarUrl: {type: string, nullable: true}
+        employeeNo: {type: string, nullable: true}
+        employmentStatus: {type: string, nullable: true}
+        organizationName: {type: string, nullable: true}
+        positionName: {type: string, nullable: true}
+        managerName: {type: string, nullable: true}
+        roles: {type: array, items: {$ref: "#/components/schemas/UserProfileRole"}}
+        effectivePermissions: {type: array, items: {$ref: "#/components/schemas/UserProfilePermissionSource"}}
+        profileVersion: {type: integer}
+    UpdateOwnProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [profileVersion, name, phone, email, avatarUrl]
+      properties:
+        profileVersion: {type: integer, minimum: 0}
+        name: {type: string, maxLength: 50}
+        phone: {type: string, nullable: true, maxLength: 18}
+        email: {type: string, format: email, nullable: true, maxLength: 64}
+        avatarUrl: {type: string, nullable: true, maxLength: 500}
+    RoleScopeType: {type: string, enum: [GLOBAL, ORGANIZATION]}
+    AccessOrganizationOption:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        pathName: {type: string, nullable: true}
+    RoleResponse:
+      type: object
+      required: [id, code, name, protectedRole, authorizationLevel, defaultDataScope, scopeType, applicableOrganizations, memberCount, enabled, version, editable, allowedActions, unavailableReasons]
+      properties:
+        id: {type: integer}
+        code: {type: string}
+        name: {type: string}
+        description: {type: string, nullable: true}
+        protectedRole: {type: boolean}
+        protectedReason: {type: string, nullable: true}
+        authorizationLevel: {type: integer}
+        defaultDataScope: {$ref: "#/components/schemas/DataScopeCode"}
+        scopeType: {$ref: "#/components/schemas/RoleScopeType"}
+        applicableOrganizations: {type: array, items: {$ref: "#/components/schemas/AccessOrganizationOption"}}
+        memberCount: {type: integer}
+        enabled: {type: boolean}
+        version: {type: integer}
+        editable: {type: boolean}
+        disabledReason: {type: string, nullable: true}
+        allowedActions: {type: array, items: {type: string, enum: [EDIT, COPY, STATUS_CHANGE]}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+    PermissionCatalogItem:
+      type: object
+      required: [id, name, code, module, type, sensitivityLevel, delegable, enabled, assignable, children]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        code: {type: string}
+        module: {type: string}
+        type: {type: string, enum: [menu, button]}
+        description: {type: string, nullable: true}
+        sensitivityLevel: {type: string, enum: [NORMAL, SENSITIVE, PROTECTED]}
+        delegable: {type: boolean}
+        enabled: {type: boolean}
+        orderNo: {type: integer, nullable: true}
+        parentId: {type: integer, nullable: true}
+        assignable: {type: boolean}
+        restrictionReason: {type: string, nullable: true}
+        children: {type: array, items: {$ref: "#/components/schemas/PermissionCatalogItem"}}
+    PermissionScopeAssignment:
+      type: object
+      required: [permissionId, dataScopeCode, organizationUnitIds]
+      properties:
+        permissionId: {type: integer}
+        dataScopeCode: {$ref: "#/components/schemas/DataScopeCode"}
+        organizationUnitIds: {type: array, uniqueItems: true, items: {type: integer}}
+    RolePermissionMatrix:
+      type: object
+      required: [roleId, roleName, expectedVersion, selectedPermissionIds, permissionScopes, permissionScopeOptions, editable]
+      properties:
+        roleId: {type: integer}
+        roleName: {type: string}
+        expectedVersion: {type: integer}
+        selectedPermissionIds: {type: array, uniqueItems: true, items: {type: integer}}
+        permissionScopes: {type: array, items: {$ref: "#/components/schemas/PermissionScopeAssignment"}}
+        permissionScopeOptions: {type: array, items: {$ref: "#/components/schemas/PermissionScopeOption"}}
+        editable: {type: boolean}
+        disabledReason: {type: string, nullable: true}
+    PermissionDataScopeCandidate:
+      type: object
+      required: [code, label, organizationOptions]
+      properties:
+        code: {$ref: "#/components/schemas/DataScopeCode"}
+        label: {type: string}
+        organizationOptions: {type: array, items: {$ref: "#/components/schemas/AccessOrganizationOption"}}
+    PermissionScopeOption:
+      type: object
+      required: [permissionId, editable, dataScopeCandidates]
+      properties:
+        permissionId: {type: integer}
+        editable: {type: boolean}
+        unavailableReason: {type: string, nullable: true}
+        dataScopeCandidates: {type: array, items: {$ref: "#/components/schemas/PermissionDataScopeCandidate"}}
+    PermissionDifferenceItem:
+      type: object
+      required: [permissionId, code, name, sensitivityLevel]
+      properties:
+        permissionId: {type: integer}
+        code: {type: string}
+        name: {type: string}
+        sensitivityLevel: {type: string, enum: [NORMAL, SENSITIVE, PROTECTED]}
+    PermissionScopeDifference:
+      type: object
+      required: [permissionId, permissionCode, permissionName, beforeDataScopeCode, afterDataScopeCode, beforeOrganizationNames, afterOrganizationNames]
+      properties:
+        permissionId: {type: integer}
+        permissionCode: {type: string}
+        permissionName: {type: string}
+        beforeDataScopeCode: {allOf: [{$ref: "#/components/schemas/DataScopeCode"}], nullable: true}
+        afterDataScopeCode: {allOf: [{$ref: "#/components/schemas/DataScopeCode"}], nullable: true}
+        beforeOrganizationNames: {type: array, items: {type: string}}
+        afterOrganizationNames: {type: array, items: {type: string}}
+    RolePermissionPreview:
+      type: object
+      required: [roleId, expectedVersion, addedPermissions, removedPermissions, affectedUserCount, affectedOrganizationCount, sessionRevocationCount, warnings, scopeDifferences]
+      properties:
+        roleId: {type: integer}
+        expectedVersion: {type: integer}
+        addedPermissions: {type: array, items: {$ref: "#/components/schemas/PermissionDifferenceItem"}}
+        removedPermissions: {type: array, items: {$ref: "#/components/schemas/PermissionDifferenceItem"}}
+        affectedUserCount: {type: integer}
+        affectedOrganizationCount: {type: integer}
+        sessionRevocationCount: {type: integer}
+        warnings: {type: array, items: {type: string}}
+        scopeDifferences: {type: array, items: {$ref: "#/components/schemas/PermissionScopeDifference"}}
+    UpdateRolePermissionResponse:
+      type: object
+      required: [roleId, version, permissionIds, permissionScopes, affectedUserCount, securityVersionUpdatedCount]
+      properties:
+        roleId: {type: integer}
+        version: {type: integer}
+        permissionIds: {type: array, uniqueItems: true, items: {type: integer}}
+        permissionScopes: {type: array, items: {$ref: "#/components/schemas/PermissionScopeAssignment"}}
+        affectedUserCount: {type: integer}
+        securityVersionUpdatedCount: {type: integer}
+        sessionCleanupWarningCount: {type: integer, nullable: true}
+    CreateRoleRequest:
+      type: object
+      required: [code, name, authorizationLevel, defaultDataScope, scopeType, organizationUnitIds]
+      properties:
+        code: {type: string, pattern: "^[A-Za-z][A-Za-z0-9_-]*$", maxLength: 64}
+        name: {type: string, maxLength: 64}
+        description: {type: string, maxLength: 255}
+        authorizationLevel: {type: integer, minimum: 0}
+        defaultDataScope: {type: string, enum: [SELF, DIRECT_REPORTS, REPORTING_TREE, PRIMARY_ORG, ORG_TREE, CUSTOM_ORGS, GLOBAL]}
+        scopeType: {$ref: "#/components/schemas/RoleScopeType"}
+        organizationUnitIds: {type: array, items: {type: integer}}
+    UpdateRoleRequest:
+      type: object
+      required: [expectedVersion, name, authorizationLevel, defaultDataScope, scopeType, organizationUnitIds]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        name: {type: string, maxLength: 64}
+        description: {type: string, maxLength: 255}
+        authorizationLevel: {type: integer, minimum: 0}
+        defaultDataScope: {type: string, enum: [SELF, DIRECT_REPORTS, REPORTING_TREE, PRIMARY_ORG, ORG_TREE, CUSTOM_ORGS, GLOBAL]}
+        scopeType: {$ref: "#/components/schemas/RoleScopeType"}
+        organizationUnitIds: {type: array, items: {type: integer}}
+      description: 不接收 code；角色 code 创建后不可变。
+    CopyRoleRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateRoleRequest"
+        - type: object
+          required: [reason]
+          properties: {reason: {type: string, minLength: 1, maxLength: 500}}
+    ChangeRoleStatusRequest:
+      type: object
+      required: [expectedVersion, reason]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    PreviewRolePermissionMatrixRequest:
+      type: object
+      required: [expectedVersion, permissionIds, permissionScopes]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        permissionIds: {type: array, uniqueItems: true, items: {type: integer}}
+        permissionScopes:
+          type: array
+          description: 与 permissionIds 一一对应；CUSTOM_ORGS 的组织集合是该权限来源的独立事实，不是角色适用组织。
+          items: {$ref: "#/components/schemas/PermissionScopeAssignment"}
+    UpdateRolePermissionMatrixRequest:
+      allOf:
+        - $ref: "#/components/schemas/PreviewRolePermissionMatrixRequest"
+        - type: object
+          required: [reason]
+          properties: {reason: {type: string, minLength: 1, maxLength: 500}}
+    UpdateUserRoleAssignmentsRequest:
+      type: object
+      required: [authorizationVersion, roleIds, reason]
+      properties:
+        authorizationVersion: {type: integer, minimum: 0, description: 用户授权配置版本，不是用户基本资料版本}
+        roleIds: {type: array, maxItems: 100, uniqueItems: true, items: {type: integer}}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    DataScopeCode:
+      type: string
+      enum: [SELF, DIRECT_REPORTS, REPORTING_TREE, PRIMARY_ORG, ORG_TREE, CUSTOM_ORGS, GLOBAL]
+    UserPermissionChangeInput:
+      type: object
+      required: [permissionId, state]
+      properties:
+        permissionId: {type: integer}
+        state: {type: string, enum: [INHERIT, GRANT, DENY]}
+        dataScopeCandidateKey: {type: string, nullable: true}
+        customOrganizationUnitIds: {type: array, uniqueItems: true, items: {type: integer}, description: 仅 dataScopeCandidateKey 为 CUSTOM_ORGS 时允许且必须非空}
+        effectiveFrom: {type: string, format: date-time, nullable: true, description: GRANT/DENY 为空表示按服务端当前时间立即生效；显式时间不得早于当前时间且最多预约一年。INHERIT 不得携带此字段。}
+        effectiveTo: {type: string, format: date-time, nullable: true, description: 必须严格晚于本次实际生效时间；INHERIT 不得携带此字段。}
+    UpdateUserPermissionsRequest:
+      type: object
+      required: [authorizationVersion, changes, reason]
+      properties:
+        authorizationVersion: {type: integer, minimum: 0, description: 用户授权配置版本，不是用户基本资料版本}
+        changes: {type: array, maxItems: 200, items: {$ref: "#/components/schemas/UserPermissionChangeInput"}}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    UserAuthorizationBatchTarget:
+      type: object
+      required: [userId, authorizationVersion]
+      properties:
+        userId: {type: integer}
+        authorizationVersion: {type: integer, minimum: 0, description: 该目标用户当前授权配置版本}
+    BatchUpdateUserRolesRequest:
+      type: object
+      required: [targets, operation, roleIds, reason]
+      properties:
+        targets: {type: array, minItems: 1, maxItems: 50, items: {$ref: "#/components/schemas/UserAuthorizationBatchTarget"}}
+        operation: {type: string, enum: [ASSIGN, UNASSIGN]}
+        roleIds: {type: array, minItems: 1, maxItems: 100, uniqueItems: true, items: {type: integer}}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    BatchUpdateUserPermissionsRequest:
+      type: object
+      required: [targets, changes, reason]
+      properties:
+        targets: {type: array, minItems: 1, maxItems: 50, items: {$ref: "#/components/schemas/UserAuthorizationBatchTarget"}}
+        changes: {type: array, minItems: 1, maxItems: 200, items: {$ref: "#/components/schemas/UserPermissionChangeInput"}}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    UserAuthorizationBatchTargetResult:
+      type: object
+      required: [userId, authorizationVersion, changed]
+      properties:
+        userId: {type: integer}
+        authorizationVersion: {type: integer, minimum: 0}
+        changed: {type: boolean}
+    UserAuthorizationBatchResult:
+      type: object
+      required: [targetCount, changedTargetCount, targets]
+      properties:
+        targetCount: {type: integer, minimum: 0}
+        changedTargetCount: {type: integer, minimum: 0}
+        targets: {type: array, items: {$ref: "#/components/schemas/UserAuthorizationBatchTargetResult"}}
+    AuthorizationTargetUser:
+      type: object
+      required: [id, loginAct, name, accountEnabled, protectedAccount]
+      properties:
+        id: {type: integer}
+        loginAct: {type: string}
+        name: {type: string}
+        employeeNo: {type: string, nullable: true}
+        organizationName: {type: string, nullable: true}
+        positionName: {type: string, nullable: true}
+        accountEnabled: {type: boolean}
+        protectedAccount: {type: boolean}
+    UserRoleAssignmentItem:
+      type: object
+      required: [roleId, roleCode, roleName, source]
+      properties:
+        roleId: {type: integer}
+        roleCode: {type: string}
+        roleName: {type: string}
+        source: {type: string, enum: [DIRECT, SYSTEM, PROTECTED]}
+        sourceDescription: {type: string, nullable: true}
+        effectiveFrom: {type: string, format: date-time, nullable: true}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+    UserRoleCandidate:
+      type: object
+      required: [roleId, roleCode, roleName, authorizationLevel, defaultDataScope, selected, editable]
+      properties:
+        roleId: {type: integer}
+        roleCode: {type: string}
+        roleName: {type: string}
+        authorizationLevel: {type: integer}
+        defaultDataScope: {$ref: "#/components/schemas/DataScopeCode"}
+        selected: {type: boolean}
+        editable: {type: boolean}
+        unavailableReason: {type: string, nullable: true}
+    UserPermissionSource:
+      type: object
+      required: [type, sourceName, active]
+      properties:
+        type: {type: string, enum: [ROLE, PERSONAL_GRANT, PERSONAL_DENY]}
+        sourceId: {type: integer, nullable: true}
+        sourceName: {type: string}
+        dataScopeLabel: {type: string, nullable: true}
+        organizationIds: {type: array, items: {type: integer}}
+        organizationNames: {type: array, items: {type: string}}
+        effectiveFrom: {type: string, format: date-time, nullable: true}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+        active: {type: boolean, description: 当前时刻是否已生效；false 且 effectiveFrom 晚于当前时间表示待生效计划。}
+    DelegableDataScopeCandidate:
+      type: object
+      required: [candidateKey, code, label]
+      properties:
+        candidateKey: {type: string}
+        code: {$ref: "#/components/schemas/DataScopeCode"}
+        label: {type: string}
+        description: {type: string, nullable: true}
+        organizationIds: {type: array, items: {type: integer}}
+        organizationNames: {type: array, items: {type: string}}
+    UserPermissionAuthorizationItem:
+      type: object
+      required: [permissionId, code, name, module, sensitivityLevel, delegable, effective, personalState, editable, sources, dataScopeCandidates]
+      properties:
+        permissionId: {type: integer}
+        code: {type: string}
+        name: {type: string}
+        module: {type: string}
+        description: {type: string, nullable: true}
+        sensitivityLevel: {type: string, enum: [NORMAL, SENSITIVE, PROTECTED]}
+        delegable: {type: boolean}
+        effective: {type: boolean}
+        personalState: {type: string, enum: [INHERIT, GRANT, DENY]}
+        personalDataScopeCandidateKey: {type: string, nullable: true}
+        personalOrganizationIds: {type: array, items: {type: integer}}
+        personalEffectiveFrom: {type: string, format: date-time, nullable: true}
+        personalEffectiveTo: {type: string, format: date-time, nullable: true}
+        editable: {type: boolean}
+        unavailableReason: {type: string, nullable: true}
+        sources: {type: array, items: {$ref: "#/components/schemas/UserPermissionSource"}}
+        dataScopeCandidates: {type: array, items: {$ref: "#/components/schemas/DelegableDataScopeCandidate"}}
+    UserAuthorizationDetail:
+      type: object
+      required: [user, authorizationVersion, allowedActions, unavailableReasons, roleAssignments, roleCandidates, permissions]
+      properties:
+        user: {$ref: "#/components/schemas/AuthorizationTargetUser"}
+        authorizationVersion: {type: integer, description: 用户授权配置版本，不是用户基本资料版本}
+        allowedActions: {type: array, items: {type: string, enum: [ROLE_UPDATE, PERMISSION_UPDATE, SESSION_VIEW, SESSION_REVOKE]}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+        roleAssignments: {type: array, items: {$ref: "#/components/schemas/UserRoleAssignmentItem"}}
+        roleCandidates: {type: array, items: {$ref: "#/components/schemas/UserRoleCandidate"}}
+        permissions: {type: array, items: {$ref: "#/components/schemas/UserPermissionAuthorizationItem"}}
+    OwnerCandidate:
+      type: object
+      required: [userId, name]
+      properties:
+        userId: {type: integer}
+        name: {type: string}
+        employeeId: {type: integer, nullable: true}
+        employeeNo: {type: string, nullable: true}
+        organizationUnitId: {type: integer, nullable: true}
+        organizationName: {type: string, nullable: true}
+        positionId: {type: integer, nullable: true}
+        positionName: {type: string, nullable: true}
+    OrganizationUnitType:
+      type: string
+      enum: [COMPANY, STORE, DEPARTMENT, TEAM]
+    CreateOrganizationUnitRequest:
+      type: object
+      required: [code, name, type, orderNo]
+      properties:
+        code: {type: string, pattern: "^[A-Za-z][A-Za-z0-9_-]*$", maxLength: 64}
+        name: {type: string, maxLength: 64}
+        type: {$ref: "#/components/schemas/OrganizationUnitType"}
+        parentId: {type: integer, nullable: true}
+        leaderEmployeeId: {type: integer, nullable: true}
+        orderNo: {type: integer, minimum: 0}
+    UpdateOrganizationUnitRequest:
+      type: object
+      required: [expectedVersion, name, type, orderNo]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        name: {type: string, maxLength: 64}
+        type: {$ref: "#/components/schemas/OrganizationUnitType"}
+        parentId: {type: integer, nullable: true}
+        leaderEmployeeId: {type: integer, nullable: true}
+        orderNo: {type: integer, minimum: 0}
+    ChangeEntityStatusRequest:
+      type: object
+      required: [expectedVersion, reason]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    CreatePositionRequest:
+      type: object
+      required: [code, name, positionLevel]
+      properties:
+        code: {type: string, pattern: "^[A-Za-z][A-Za-z0-9_-]*$", maxLength: 64}
+        name: {type: string, maxLength: 64}
+        description: {type: string, maxLength: 255}
+        positionLevel: {type: integer, minimum: 0}
+    UpdatePositionRequest:
+      type: object
+      required: [expectedVersion, name, positionLevel]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        name: {type: string, maxLength: 64}
+        description: {type: string, maxLength: 255}
+        positionLevel: {type: integer, minimum: 0}
+    EmployeeAssignmentInput:
+      type: object
+      required: [organizationUnitId, positionId, assignmentType, effectiveFrom]
+      properties:
+        organizationUnitId: {type: integer}
+        positionId: {type: integer}
+        assignmentType: {type: string, enum: [PRIMARY, SECONDARY, ACTING]}
+        effectiveFrom: {type: string, format: date-time}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+      description: SECONDARY 和 ACTING 必须设置 effectiveTo；本阶段不接受未来生效时间。
+    EmployeeReportingInput:
+      type: object
+      required: [managerEmployeeId, relationType, effectiveFrom]
+      properties:
+        managerEmployeeId: {type: integer}
+        relationType: {type: string, enum: [DIRECT]}
+        effectiveFrom: {type: string, format: date-time}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+      description: 本字段只表示当前唯一 DIRECT 直属管理者，effectiveTo 必须为空；服务端拒绝本人、当前或未来会形成循环的管理关系。ACTING 临时汇报不复用本字段。
+    UpdateEmployeeOrganizationRequest:
+      type: object
+      required: [expectedVersion, primaryAssignment, additionalAssignments, reason]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        primaryAssignment: {$ref: "#/components/schemas/EmployeeAssignmentInput"}
+        additionalAssignments:
+          type: array
+          items: {$ref: "#/components/schemas/EmployeeAssignmentInput"}
+        reporting:
+          allOf: [{$ref: "#/components/schemas/EmployeeReportingInput"}]
+          nullable: true
+        reason: {type: string, minLength: 1, maxLength: 500}
+    OrganizationUnitResponse:
+      type: object
+      required: [id, code, name, type, orderNo, enabled, version, employeeCount, children]
+      properties:
+        id: {type: integer}
+        code: {type: string}
+        name: {type: string}
+        type: {$ref: "#/components/schemas/OrganizationUnitType"}
+        parentId: {type: integer, nullable: true}
+        leaderEmployeeId: {type: integer, nullable: true}
+        leaderEmployeeName: {type: string, nullable: true}
+        orderNo: {type: integer}
+        enabled: {type: boolean}
+        version: {type: integer}
+        employeeCount: {type: integer}
+        children: {type: array, items: {$ref: "#/components/schemas/OrganizationUnitResponse"}}
+    PositionResponse:
+      type: object
+      required: [id, code, name, positionLevel, builtIn, enabled, version]
+      properties:
+        id: {type: integer}
+        code: {type: string}
+        name: {type: string}
+        description: {type: string, nullable: true}
+        positionLevel: {type: integer}
+        builtIn: {type: boolean}
+        enabled: {type: boolean}
+        version: {type: integer}
+    EmployeeSummaryResponse:
+      type: object
+      required: [id, employeeNo, name, employmentStatus, version, allowedActions, unavailableReasons]
+      properties:
+        id: {type: integer}
+        userId: {type: integer, nullable: true}
+        employeeNo: {type: string}
+        name: {type: string}
+        employmentStatus: {type: string, enum: [PENDING, ACTIVE, HANDOVER, LEFT]}
+        organizationUnitId: {type: integer, nullable: true}
+        organizationUnitName: {type: string, nullable: true}
+        positionId: {type: integer, nullable: true}
+        positionName: {type: string, nullable: true}
+        managerEmployeeId: {type: integer, nullable: true}
+        managerEmployeeName: {type: string, nullable: true}
+        version: {type: integer}
+        allowedActions: {type: array, items: {type: string}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+    EmployeeAssignmentResponse:
+      type: object
+      required: [id, organizationUnitId, organizationUnitName, positionId, positionName, assignmentType, effectiveFrom]
+      properties:
+        id: {type: integer}
+        organizationUnitId: {type: integer}
+        organizationUnitName: {type: string}
+        positionId: {type: integer}
+        positionName: {type: string}
+        assignmentType: {type: string, enum: [PRIMARY, SECONDARY, ACTING]}
+        effectiveFrom: {type: string, format: date-time}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+    EmployeeReportingResponse:
+      type: object
+      required: [managerEmployeeId, managerEmployeeName, relationType, effectiveFrom]
+      properties:
+        managerEmployeeId: {type: integer}
+        managerEmployeeName: {type: string}
+        relationType: {type: string, enum: [DIRECT]}
+        effectiveFrom: {type: string, format: date-time}
+        effectiveTo: {type: string, format: date-time, nullable: true}
+    EmployeeOrganizationMembershipResponse:
+      type: object
+      required: [employee, primaryAssignment, additionalAssignments, version, allowedActions, unavailableReasons]
+      properties:
+        employee: {$ref: "#/components/schemas/EmployeeSummaryResponse"}
+        primaryAssignment: {allOf: [{$ref: "#/components/schemas/EmployeeAssignmentResponse"}], nullable: true}
+        additionalAssignments: {type: array, items: {$ref: "#/components/schemas/EmployeeAssignmentResponse"}}
+        reporting: {allOf: [{$ref: "#/components/schemas/EmployeeReportingResponse"}], nullable: true}
+        version: {type: integer}
+        allowedActions: {type: array, items: {type: string}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+    ActingReportingInput:
+      type: object
+      additionalProperties: false
+      required: [managerEmployeeId, effectiveTo]
+      properties:
+        managerEmployeeId: {type: integer}
+        effectiveTo: {type: string, format: date-time}
+    ReplaceActingReportingsRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedEmployeeVersion, relations, reason]
+      properties:
+        expectedEmployeeVersion: {type: integer, minimum: 0}
+        relations: {type: array, maxItems: 20, items: {$ref: "#/components/schemas/ActingReportingInput"}}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    ActingReportingRelationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, version, managerEmployeeId, status, effectiveFrom, effectiveTo]
+      properties:
+        id: {type: integer}
+        version: {type: integer, minimum: 0}
+        managerEmployeeId: {type: integer}
+        managerEmployeeNo: {type: string, nullable: true}
+        managerEmployeeName: {type: string, nullable: true}
+        status: {type: string, enum: [PLANNED, ACTIVE]}
+        effectiveFrom: {type: string, format: date-time}
+        effectiveTo: {type: string, format: date-time}
+    ActingReportingCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [employeeId, employeeVersion, relations, allowedActions, unavailableReasons]
+      properties:
+        employeeId: {type: integer}
+        employeeVersion: {type: integer, minimum: 0}
+        relations: {type: array, items: {$ref: "#/components/schemas/ActingReportingRelationResponse"}}
+        allowedActions: {type: array, items: {type: string, enum: [UPDATE]}}
+        unavailableReasons: {type: object, additionalProperties: {type: string}}
+    ManagerCandidateResponse:
+      type: object
+      required: [employeeId, employeeNo, name, organizationUnitName, positionName]
+      properties:
+        employeeId: {type: integer}
+        employeeNo: {type: string}
+        name: {type: string}
+        organizationUnitName: {type: string}
+        positionName: {type: string}
+    OrganizationChangeHistoryResponse:
+      type: object
+      required: [id, changeType, reason, operatorName, createTime]
+      properties:
+        id: {type: integer, format: int64}
+        changeType: {type: string}
+        beforeSummary: {type: string, nullable: true}
+        afterSummary: {type: string, nullable: true}
+        reason: {type: string}
+        operatorName: {type: string}
+        createTime: {type: string, format: date-time}
     R:
       type: object
       required: [code, msg]

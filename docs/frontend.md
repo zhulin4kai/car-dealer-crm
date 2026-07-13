@@ -124,7 +124,12 @@ token 存储策略：
 
 - `/`
 - `/dashboard`
+- `/dashboard/profile`
 - `/dashboard/user`
+- `/dashboard/user/:id`
+- `/dashboard/organization`
+- `/dashboard/role`
+- `/dashboard/permission`
 - `/dashboard/activity`
 - `/dashboard/activity/:id`
 - `/dashboard/clue`
@@ -149,9 +154,19 @@ token 存储策略：
 - `/dashboard/audit/operation`
 - `/dashboard/ai`
 
-`DashboardLayout.vue` 只负责主框架布局、菜单、用户入口和退出登录。
+`DashboardLayout.vue` 只负责主框架布局、菜单和用户入口。左下角头像打开个人菜单，提供个人中心、修改密码和退出登录；不能把点击头像直接等同于退出。受保护恢复账号不显示个人中心和修改密码；初始化门禁未完成时只显示用户初始化入口，其他状态不进入常规工作台。
 
-`/dashboard/user` 使用 `modules/user/api/user-api.ts` 查询、新增、编辑、启禁用和交接用户责任。责任交接通过 `handoverUserResponsibilities` 提交目标负责人和交接原因，目标负责人列表来自同模块 `fetchOwnerList`；页面只按 `user.status` 权限控制按钮展示，提交期间禁用重复点击，失败按接口错误处理，不匹配中文 `msg`。
+`/user-management-gate` 是登录后的用户治理门禁引导页。路由守卫根据 `/api/login/info` 的 `protectedRecoveryAccount` 和 `userManagementGateState` 限制路由；业务请求返回 `641/642` 时保留登录态、刷新服务端门禁事实并跳转该页，不能把门禁拒绝当成会话失效。只有受保护恢复账号处于 `UNINITIALIZED` 时可以从引导页进入 `/dashboard/user` 创建首个普通管理员。
+
+`/dashboard/profile` 使用 `modules/user/api/user-profile-api.ts` 和凭证、会话模块维护本人姓名、联系方式、头像、密码和会话。页面不得提交登录账号、员工编号、组织、岗位、管理者、角色、权限、数据范围或账号状态；本人有效权限及来源只读展示，授权变化只能由有权管理该用户的其他操作者完成。
+
+`/dashboard/user` 是用户管理工作台，使用 `modules/user/api/user-api.ts` 查询筛选项、稳定分页列表、创建邀请账号和打开目标用户详情。账号状态、任职状态、组织、岗位、直属管理者、角色和锁定状态由后端返回；页面只使用 `allowedActions` 与 `unavailableReasons` 决定目标级按钮展示，不根据角色名或单一状态字段猜测权限。
+
+`/dashboard/user/:id` 聚合受管账号资料、任职、授权来源、会话、历史和生命周期动作。角色成员关系使用可委派角色候选，个人权限使用 `INHERIT/GRANT/DENY` 三态并显示角色与个人来源；本人详情只读并引导个人中心。调岗、离职预检、六域交接、完成离职和返聘都使用独立命令、版本和原因，Quote/Tran 只展示客户派生影响。
+
+`/dashboard/organization` 维护公司、门店、部门、团队、岗位、主要任职、直属汇报和独立 ACTING 代理管理关系；ACTING 使用有限期多关系集合、员工版本和专用候选接口，不覆盖 DIRECT 展示。组织移动、负责人、停用、任职和汇报候选全部使用后端范围裁剪结果，前端不能自行拼接全量组织树；版本冲突后必须重载服务端关系与候选事实。
+
+`/dashboard/role` 维护角色目录、适用组织、影响预览和权限矩阵；`/dashboard/permission` 只读展示权限目录、敏感级别、可委派属性和业务含义。受保护角色、授权级别、数据范围和版本冲突均由后端最终校验；预览或保存发生 CAS 冲突后页面重载角色与矩阵，不继续沿用本地旧版本。
 
 `/dashboard/clue` 使用 `modules/clue/api/clue-api.ts` 查询、创建、编辑、导入和删除线索。线索新增表单在提交前把手机号中的空格、横杠和括号归一化为 11 位规范手机号，异步查重也使用归一化值；导入错误、删除阻断等业务分支必须按稳定 code 和 HTTP 状态处理，不能匹配中文 `msg`。
 

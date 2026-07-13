@@ -4,6 +4,20 @@
 
 ---
 
+## 账号凭证与个人资料边界
+
+- `t_account_credential` 只保存 HMAC 摘要、用途、状态、到期和 CAS 版本；原始凭证只进入 `CredentialDeliveryPort`。
+- 生产适配器只把原始凭证投递给通过 `CREDENTIAL_DELIVERY_WEBHOOK_URL` 和至少 32 字节 `CREDENTIAL_DELIVERY_BEARER_TOKEN` 显式配置的受信 HTTPS 通知服务；未配置、无联系方式或通知服务未接受时撤销本次凭证并以 625/HTTP 503 使管理命令整体回滚，不以 `accepted=false` 提交半完成状态。明文 HTTP 只在显式开启 `CREDENTIAL_DELIVERY_ALLOW_INSECURE_LOOPBACK` 且目标解析为回环地址时用于人工联调；`dev/test` 捕获器仅存在于对应 Profile，且没有 HTTP 读取入口。
+- 忘记密码、联系方式验证、邀请重签、凭证消费和 break-glass 使用 Redis 事务计数器按账号或凭证摘要与来源地址分层限流。Redis 不可用时安全命令 fail-close；忘记密码仍返回同形 `QUEUED`，其他命令使用稳定错误码 `628`/HTTP 429，审计只保存限流范围和不可逆资源摘要。
+- `t_password_history` 是不可变历史；激活、找回、本人改密、首次改密和管理员重置共用同一密码策略与近期历史检查。
+- `t_login_identifier` 保存登录账号的永久归属事实；账号改名只退休旧标识，旧标识不得转给其他用户，但原用户可以按版本重新启用自己的退休标识。邀请创建和账号改名都必须先锁定 `LOGIN_IDENTIFIER_GUARD`，再检查当前表和历史表，避免并发 check-then-insert。
+- `t_user.account_expires_at` 表达账号到期时间，`password_expires_at` 表达凭证到期时间；二者独立参与认证、普通管理员可用性和生命周期资格判断，不能再用一个时间字段同时表示两种语义。
+- 人工锁定与登录失败自动锁定是两个独立事实；自动到期不得清除人工锁定。
+- `t_employee` 是姓名、电话、邮箱和头像的资料权威；`t_user` 同事务维护兼容投影，`profile_version` 与员工生命周期 `version` 分离。
+- `/api/profile` 只接受资料白名单，当前用户 ID 只能来自服务端登录态，不能提交授权字段。
+- `/api/users/{id}/profile` 只允许有管理链和组织范围的上级修改姓名、电话、邮箱；目标 ID 来自路径，DTO 拒绝角色、权限、组织、岗位、账号状态等未知字段，并使用同一 `profile_version` CAS。
+- 激活、重置和自动锁定等匿名安全流程通过匿名审计入口写入操作日志，不读取不存在的当前登录用户，也不保存原始凭证。
+
 ## 目录
 
 - [1. 项目架构总览](#1-项目架构总览)
@@ -87,10 +101,10 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 | Handler | `config/handler/MyLogoutSuccessHandler.java` |
 | Handler | `config/handler/MyAccessDeniedHandler.java` |
 | Handler | `config/handler/GlobalExceptionHandler.java` |
-| Model | `model/TUser.java`, `model/TRole.java`, `model/TPermission.java`, `model/TUserRole.java`, `model/TRolePermission.java` |
-| Service | `service/UserService.java` → `service/impl/UserServiceImpl.java` |
-| Mapper | `mapper/TUserMapper.java`, `mapper/TRoleMapper.java`, `mapper/TPermissionMapper.java`, `mapper/TUserRoleMapper.java`, `mapper/TRolePermissionMapper.java` |
-| XML | `resources/mapper/TUserMapper.xml`, `resources/mapper/TRoleMapper.xml`, `resources/mapper/TPermissionMapper.xml`, `resources/mapper/TUserRoleMapper.xml`, `resources/mapper/TRolePermissionMapper.xml` |
+| Model | `model/TUser.java`, `model/TLoginIdentifier.java`, `model/TUserSession.java`, `model/TRole.java`, `model/TPermission.java`, `model/TUserRole.java`, `model/TRolePermission.java` |
+| Service | `service/UserService.java`, `service/UserSessionService.java` |
+| Mapper | `mapper/TUserMapper.java`, `mapper/TLoginIdentifierMapper.java`, `mapper/TUserSessionMapper.java`, `mapper/TRoleMapper.java`, `mapper/TPermissionMapper.java`, `mapper/TUserRoleMapper.java`, `mapper/TRolePermissionMapper.java` |
+| XML | `resources/mapper/TUserMapper.xml`, `resources/mapper/TLoginIdentifierMapper.xml`, `resources/mapper/TRoleMapper.xml`, `resources/mapper/TPermissionMapper.xml`, `resources/mapper/TUserRoleMapper.xml`, `resources/mapper/TRolePermissionMapper.xml` |
 
 ### 2.3 认证流程
 
@@ -105,13 +119,13 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
    → TPermissionMapper.selectButtonPermissionByUserId() 查询按钮权限
 4. 密码校验（BCryptPasswordEncoder）
 5. 登录成功 → MyAuthenticationSuccessHandler
-   → JWTUtils.createJWT() 生成 JWT
-   → RedisManager.set() 存储 JWT 到 Redis（key: cdrm:user:login:{userId}）
-   → 设置过期时间：rememberMe=true → 7天，否则 4小时
-   → Redis 写入成功后写入 t_login_log 成功登录记录
-   → 登录审计写入成功后返回 JWT 给前端
-6. Redis 写入失败 → 返回 HTTP 500 和 SYSTEM_ERROR，不返回 JWT
-7. 登录审计写入失败 → 删除已写 Redis 会话，返回 HTTP 500 和 SYSTEM_ERROR，不返回 JWT
+   → UserSessionService 生成不可猜测 sessionId，并在 t_user_session 写入独立会话事实
+   → JWTUtils.createSessionJWT() 只生成 userId、sessionId、authVersion、iat、exp 声明
+   → RedisManager.set() 按 `cdrm:session:{sessionId}` 存储 JWT 的 HMAC 摘要，并维护 `cdrm:user:sessions:{userId}` 索引
+   → rememberMe=true 使用 7 天绝对期限/24 小时空闲期限，否则使用 4 小时绝对期限/30 分钟空闲期限
+   → 数据库、Redis 和登录审计全部成功后返回 JWT；每用户最多保留 5 个活动会话，超限确定性撤销最旧会话
+6. 会话事实或 Redis 写入失败 → 返回系统错误且不返回 JWT
+7. 登录审计写入失败 → 撤销刚创建的会话，不返回 JWT
 8. 登录失败 → MyAuthenticationFailureHandler → 写入失败登录记录，返回 HTTP 401 和稳定错误码
 ```
 
@@ -122,20 +136,22 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 3. 从 `Authorization: Bearer <token>` 请求头读取 JWT，不接受 URL 参数或裸 token
 4. 请求头缺失或 Bearer 后 token 为空 → 返回 HTTP 401 和 TOKEN_IS_EMPTY
 5. JWTUtils.verifyJWT() 验证签名失败 → 返回 HTTP 401 和 TOKEN_IS_ERROR
-6. JWTUtils.parseUserFromJWT() 解析用户信息
-7. Redis 查询 token → 不存在返回 HTTP 401 和 TOKEN_IS_EXPIRED
-8. Redis token 与请求 token 不匹配 → 返回 HTTP 401 和 TOKEN_IS_NONE_MATCH
-9. 验证通过 → 设置 SecurityContext
-10. 用户已被停用、锁定或删除时，必须删除 Redis 会话；删除失败返回 HTTP 500 和 SYSTEM_ERROR
+6. JWTUtils 解析 userId、sessionId、authVersion 和签发时间；缺少 sessionId 的旧 JWT 只有在显式兼容截止时间前才走旧精确键校验，默认禁用
+7. `cdrm:session:{sessionId}` 中的摘要必须与请求 Token 的 HMAC 摘要一致
+8. t_user_session 必须属于该用户、未撤销、未超过空闲/绝对期限且签发版本一致
+9. 根据 userId 重新加载数据库用户，分别校验 `account_expires_at` 账号期限与 `password_expires_at` 凭证期限，并校验启用和锁定状态
+10. JWT authVersion 必须与数据库权威版本一致
+11. 校验通过后按节流窗口更新最后活动时间和 Redis TTL；任一基础设施校验异常按 401 失败关闭
+12. 全部通过后设置 SecurityContext，并把当前 sessionId 放入认证详情
 ```
 
 #### 退出流程
 ```
 1. 前端 POST /api/logout
 2. MyLogoutSuccessHandler
-   → 删除 Redis 中的 JWT
-   → 删除成功后返回退出成功信息
-   → 删除失败返回 HTTP 500 和 SYSTEM_ERROR
+   → 只撤销当前认证详情中的 sessionId，不递增 authVersion
+   → 数据库撤销事实提交后精确删除该会话 Redis Key 和用户会话索引
+   → 其他设备会话保持有效；Redis 清理失败返回稳定会话缓存错误，数据库撤销事实仍保证当前 Token 失效
 ```
 
 ### 2.4 权限控制
@@ -156,17 +172,16 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 | DELETE /api/clue/{id} | `clue:delete` |
 | POST /api/clue/batch | `clue:delete` |
 | GET /api/users | `user:list` |
-| GET /api/user/{id} | `user:view` |
-| POST /api/user | `user:add` |
-| PUT /api/user | `user:edit` |
-| PUT /api/user/{id}/disable | `user:status` |
-| PUT /api/user/{id}/enable | `user:status` |
-| PUT /api/user/{id}/lock | `user:status` |
-| PUT /api/user/{id}/unlock | `user:status` |
-| PUT /api/users/batch-disable | `user:status` |
-| PUT /api/user/{id}/roles | `user:role` |
-| PUT /api/user/{id}/password | `user:password` |
-| PUT /api/user/{id}/handover | `user:status` |
+| GET /api/users/{id} | `user:view` + 目标管理范围 |
+| POST /api/users | `user:add` + 委派上限 |
+| PUT /api/users/{id}/profile | `user:edit` + 目标管理范围 |
+| POST /api/users/{id}/status | `user:status` + 目标管理范围 |
+| GET /api/users/{id}/authorization | `user:view` + 目标管理范围 |
+| PUT /api/users/{id}/authorization/roles | `user:role` + 管理链与委派上限 |
+| PUT /api/users/{id}/authorization/permissions | `user:permission` + 管理链与委派上限 |
+| GET /api/users/{id}/history | `audit:operation:detail` + 目标管理范围 |
+| POST /api/users/{id}/lifecycle/* | `user:status`，调岗/返聘另需任职权限及各责任域动作权限 |
+| POST /api/users/{id}/password-reset | `user:password` + 目标管理范围 |
 | GET /api/audit/login-logs | `audit:login:list` |
 | GET /api/audit/login-logs/{id} | `audit:login:detail` |
 | GET /api/audit/login-logs/export | `audit:login:export` |
@@ -203,77 +218,80 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/UserController.java` |
-| Service | `service/UserService.java` → `service/impl/UserServiceImpl.java` |
-| Mapper | `mapper/TUserMapper.java` |
-| XML | `resources/mapper/TUserMapper.xml` |
-| Model | `model/TUser.java` |
-| Query | `query/UserQuery.java` |
+| Controller | `web/UserController.java`, `web/UserAuthorizationController.java`, `web/OrganizationController.java`, `web/RoleAccessController.java`, `web/ProfileController.java`, `web/CredentialController.java`, `web/UserSessionController.java`, `web/UserHistoryController.java`, `web/UserLifecycleController.java` |
+| 受管账号 | `service/ManagedUserAccountService.java` → `service/impl/ManagedUserAccountServiceImpl.java`, `service/ManagedUserInvitationService.java` → `service/impl/ManagedUserInvitationServiceImpl.java` |
+| 授权与角色 | `service/AuthorizationService.java` → `service/impl/AuthorizationServiceImpl.java`, `service/RoleAccessService.java` → `service/impl/RoleAccessServiceImpl.java`, `service/impl/UserAuthorizationPolicy.java` |
+| 组织与生命周期 | `service/OrganizationService.java` → `service/impl/OrganizationServiceImpl.java`, `service/UserLifecycleService.java` → `service/impl/UserLifecycleServiceImpl.java` |
+| 个人资料、凭证、会话与历史 | `service/ProfileService.java`, `service/CredentialService.java`, `service/UserSessionService.java`, `service/UserHistoryService.java` 及其 `impl` 实现 |
+| 认证兼容 Service | `service/UserService.java` → `service/impl/UserServiceImpl.java`；保留登录读取和负责人候选能力，缺少版本、原因、管理边界的旧写入口统一 fail-close |
+| Mapper | `TUserMapper`, `TLoginIdentifierMapper`, `TEmployeeMapper`, `TEmployeeAssignmentMapper`, `TEmployeeReportingMapper`, `TOrganizationUnitMapper`, `TPositionMapper`, `TRoleMapper`, `TRolePermissionMapper`, `TRoleOrganizationMapper`, `TUserRoleMapper`, `TUserPermissionMapper`, `TUserSessionMapper`, `TAccountCredentialMapper`, `TAuthorizationHistoryMapper`, `TUserLifecycleMapper` |
+| Model/DTO | `TUser`, `TLoginIdentifier`, `TEmployee`, `TEmployeeAssignment`, `TEmployeeReporting`, `TOrganizationUnit`, `TPosition`, `TRole`, `TPermission`, `TUserRole`, `TUserPermission`, `TUserSession`, `TAccountCredential` 及 `dto/user/`, `dto/access/`, `dto/organization/`, `dto/profile/`, `dto/credential/` |
 
 ### 3.2 接口方法及业务流程
 
 #### 获取登录人信息
 - **接口**: `GET /api/login/info`
-- **流程**: 从 SecurityContext 获取当前用户信息
+- **流程**: 从 SecurityContext 取得当前账号，再聚合个人资料、角色和当前有效权限；本人普通资料通过 `ProfileService` 维护，不能提交组织、任职、角色或权限字段。
 
 #### 免登录检测
 - **接口**: `GET /api/login/free`
-- **流程**: 验证 token 是否有效，返回 OK
+- **流程**: 该路径仍受认证过滤链保护，只用于确认当前 Token 和数据库会话事实仍有效。
 
-#### 用户列表分页查询
+#### 用户管理工作台
 - **接口**: `GET /api/users?page=1&size=10`
 - **权限**: `@PreAuthorize("hasAuthority('user:list')")`
-- **流程**: `UserController.userPage()` → `UserServiceImpl.getUserByPage()` → `TUserMapper.selectUserByPage()`
-- **事务**: 无
+- **流程**: `UserController.userPage()` → `ManagedUserAccountServiceImpl.list()` → `DataScopeResolver` → `TUserMapper.selectManagedUserPage()`。
+- **规则**: 关键词、组织、岗位、直属管理者、角色、任职状态、账号状态和锁定状态均在 SQL 前确定范围；排序字段使用服务端白名单并追加用户主键。摘要不返回密码、凭证、手机号或邮箱。
+- **辅助接口**: `GET /api/users/filter-options` 返回当前操作者可见筛选事实和创建用户时的可委派角色候选，两者不得混用。
 
 #### 用户详情
-- **接口**: `GET /api/user/{id}`
+- **接口**: `GET /api/users/{id}`；`GET /api/user/{id}` 仅作 deprecated 只读兼容
 - **权限**: `@PreAuthorize("hasAuthority('user:view')")`
-- **流程**: `UserController.userDetail()` → `UserServiceImpl.getUserById()` → `TUserMapper.selectDetailById()`
+- **流程**: `ManagedUserAccountServiceImpl.getDetail()` 聚合账号、资料、员工、主要任职、直属管理者、角色摘要和对象级可执行动作。
+- **版本**: 响应分别返回账号、资料、员工、授权和会话版本；联系方式及锁定原因还要求 `user:sensitive:view` 与目标管理关系。
 
-#### 新增用户
-- **接口**: `POST /api/user`
-- **权限**: `@PreAuthorize("hasAuthority('user:add')")`
-- **流程**: `UserController.addUser()` → `UserServiceImpl.saveUser()`
-  - `BCryptPasswordEncoder` 密码加密
-  - `JWTUtils.parseUserFromJWT()` 解析创建人
-  - `TUserMapper.insertSelective()` 插入
-- **事务**: `@Transactional(rollbackFor = Exception.class)`
+#### 邀请创建与受管资料
+- **接口**: `POST /api/users`、`PUT /api/users/{id}/profile`
+- **权限**: 邀请创建使用 `user:add`，受管资料更新使用 `user:edit`；二者都继续执行目标对象级管理范围校验。
+- **流程**: `ManagedUserInvitationServiceImpl.create()` 先锁定 `LOGIN_IDENTIFIER_GUARD` 并排除当前及历史账号冲突，再在同一事务创建账号、永久登录标识、员工、主任职、直属汇报、初始角色、授权历史、操作审计和单次邀请凭证；响应不返回密码、Token 或摘要。受管资料更新只接受姓名、电话、邮箱白名单和 `profileVersion`，不能改变本人或目标授权。
 
-#### 编辑用户
-- **接口**: `PUT /api/user`
-- **权限**: `@PreAuthorize("hasAuthority('user:edit')")`
-- **流程**: `UserController.editUser()` → `UserServiceImpl.updateUser()`
-  - 密码非空时才加密更新
-  - `TUserMapper.updateByPrimaryKeySelective()` 更新
-- **事务**: `@Transactional(rollbackFor = Exception.class)`
+#### 登录账号与安全到期
+- **接口**: `PUT /api/users/{id}/login-account`、`PUT /api/users/{id}/security-expiration`
+- **权限与版本**: 登录账号使用 `user:edit`，安全到期使用 `user:status`；两者都要求目标管理范围、最新 `accountVersion` 和必填原因，任何用户不能借此修改本人或受保护账号。
+- **永久归属**: 账号改名持有 `LOGIN_IDENTIFIER_GUARD`，按稳定顺序锁定新旧标识；旧标识改为 `RETIRED`，新标识只能新建或由同一用户重新启用。全局唯一约束使退休标识不能转给其他员工。
+- **独立期限**: 请求分别提交 `accountExpiresAt` 与 `credentialExpiresAt`，后者映射数据库 `password_expires_at`。空值表示无对应到期时间；过去或到期时间立即使相应可用状态失效。不能使最后一个有效普通管理员的账号或凭证到期。
+- **会话与审计**: 两类命令成功后都提升账号安全版本、撤销目标全部活动会话并记录前后状态；数据库提交后的旧 Token 不因 Redis 清理失败而恢复。
 
 #### 账号启禁用与锁定
-- **接口**: `PUT /api/user/{id}/disable`、`PUT /api/user/{id}/enable`、`PUT /api/user/{id}/lock`、`PUT /api/user/{id}/unlock`
+- **接口**: `POST /api/users/{id}/status`
 - **权限**: `@PreAuthorize("hasAuthority('user:status')")`
-- **流程**: `UserController` → `UserServiceImpl.disableUser()/enableUser()/lockUser()/unlockUser()`
-  - 禁用和锁定必须保护内置管理员与最后一个有效管理员。
-  - 禁用前检查当前活动、线索和未合并客户责任引用；仍有引用时要求先交接。
-  - 禁用、锁定、角色分配和密码修改会删除 Redis 登录会话，删除失败返回 `SYSTEM_ERROR`。
-- **事务**: `@Transactional(rollbackFor = Exception.class)`
+- **流程**: `ManagedUserAccountServiceImpl.changeStatus()` 只接受 `ENABLE`、`DISABLE`、`LOCK`、`UNLOCK`、账号版本和必填原因。本人、同级、上级、跨范围及受保护目标被对象级策略拒绝。
+- **并发与会话**: 管理员降级操作先锁定 `AVAILABLE_ADMIN_GUARD` 并重新计算可用管理员；成功写入账号安全事实和审计并提升数据库权威版本，提交后清理 Redis。Redis 失败不能让旧 Token 恢复有效。
 
-#### 批量禁用用户
-- **接口**: `PUT /api/users/batch-disable`
-- **权限**: `@PreAuthorize("hasAuthority('user:status')")`
-- **流程**: `UserController.batchDisableUsers()` → `UserServiceImpl.batchDisableUsers()` → `TUserMapper.disableByIds()`
-- **事务**: `@Transactional(rollbackFor = Exception.class)`
+#### 角色矩阵与个人授权
+- **接口**: `/api/roles`、`/api/roles/{id}/permissions`、`/api/users/{id}/authorization/roles`、`/api/users/{id}/authorization/permissions`
+- **流程**: `RoleAccessServiceImpl` 管理角色目录、适用组织、矩阵预览和版本化保存；`AuthorizationServiceImpl` 管理用户角色事实以及个人 `GRANT`/`DENY`、有效期和数据范围。
+- **边界**: 任何人都不能修改自己的授权。普通管理者还必须覆盖目标管理链和组织范围，只能委派自己当前拥有、允许委派且不超过目标范围的角色和权限；有效权限按角色权限与个人 `GRANT` 合并后应用个人 `DENY`。
 
-#### 责任交接
-- **接口**: `PUT /api/user/{id}/handover`
+#### 调岗、离职、交接与返聘
+- **接口**: `/api/users/{userId}/lifecycle` 下的 `transfer`、`departure/precheck`、`departure/start`、`departure/handover`、`departure/complete`、`rehire`
 - **权限**: `@PreAuthorize("hasAuthority('user:status')")`
-- **请求**: `HandoverUserResponsibilitiesRequest{targetUserId, reason}`
-- **流程**: `UserController.handoverResponsibilities()` → `UserServiceImpl.handoverResponsibilities()`
-  - 原负责人来自路径 ID，目标负责人和原因来自请求体。
-  - 目标负责人必须启用、未锁定且具备销售顾问或销售经理角色。
-  - 当前实现整体转移 `t_activity.owner_id`、`t_clue.owner_id`、`t_customer.owner_id`；线索和客户分别写入 `t_clue_owner_history`、`t_customer_owner_history`。
-  - 每类对象更新行数必须等于转移前查询数量，不一致返回业务失败并回滚。
-  - 成功后写 `USER_HANDOVER` 操作审计。
-- **事务**: `@Transactional(rollbackFor = Exception.class)`
+- **流程**: `UserLifecycleServiceImpl` 使用一次性离职预检快照、精确事实指纹、数据库图锁和事务状态机编排任职、汇报、授权、会话及责任交接。
+- **直接责任域**: 只直接转移 Activity、Clue、Customer、Opportunity、FollowTask、TestDrive 六域的当前负责人；每项按预检时相同状态谓词、ID、状态和版本逐项 CAS 更新。
+- **派生与历史**: Quote、Tran 只随 Customer 归属做派生计数和核验，不直接改负责人；待审批队列和 CommunicationRecord 历史负责人不得改写。试驾交接还需持有 `TEST_DRIVE_SCHEDULE_GUARD` 并重新检查接收人排期。
+- **闭环**: 离职先进入 `HANDOVER`，完成全部交接后才能关闭当前及未来任职、汇报、角色和个人权限，禁用账号并提升安全版本；返聘创建新任职事实，不恢复旧授权。
+
+#### 个人资料、凭证与会话
+- **接口**: `/api/profile`、`/api/credentials/*`、`/api/me/sessions`、`/api/users/{userId}/sessions`
+- **规则**: 本人可维护普通资料、修改密码和撤销本人会话，但不能调整自己的角色、权限、数据范围或任职。管理员凭证重置、下属会话管理仍需目标管理范围，单次凭证只保存 HMAC 摘要。
+
+#### 用户历史
+- **接口**: `GET /api/users/{id}/history`
+- **流程**: `UserHistoryServiceImpl` 聚合 `t_authorization_history`、白名单 `t_operation_log` 和 `t_user_lifecycle_event` 三个来源，按发生时间、来源和主键稳定排序后过滤分页；操作白名单包含会话创建、联系方式验证、自动锁阻断和旧责任交接，动作筛选只接受真实可产生的主体/变化组合。
+- **安全投影**: 要求 `audit:operation:detail` 和目标管理范围；响应使用事件时快照，不读取操作日志原始 detail 或 IP，并清理密码、哈希、digest、Token、Credential、Key、Signature、Salt、Nonce、完整联系方式和网络地址。限流主体摘要和恢复账号 break-glass 留在全局高危审计，不伪装成普通用户时间线。
+
+#### 旧写入口
+- `POST /api/user`、`PUT /api/user`、旧单数状态、角色、密码和三域交接路径缺少完整版本、原因、管理链或委派上限，当前统一 fail-close；不得再以 `UserServiceImpl` 作为用户域写入所有者。
 
 #### 获取负责人列表
 - **接口**: `GET /api/owner`
@@ -282,11 +300,12 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
   - 未命中时查询启用、未锁定且具备销售负责人资格的账号；账号状态或角色变化后删除缓存，失败时记录并重试
 
 ### 3.3 涉及数据库表
-- `t_user` - 用户表
-- `t_role` - 角色表
-- `t_user_role` - 用户角色关联表
-- `t_permission` - 权限表
-- `t_role_permission` - 角色权限关联表
+- 账号与员工：`t_user`、`t_login_identifier`、`t_employee`、`t_employee_assignment`、`t_employee_reporting`。
+- 组织与岗位：`t_organization_unit`、`t_position`。
+- 角色与授权：`t_role`、`t_permission`、`t_role_permission`、`t_role_organization`、`t_role_permission_organization`、`t_user_role`、`t_user_permission`、`t_user_permission_organization`、`t_authorization_history`、`t_authorization_graph_lock`。
+- 凭证与会话：`t_account_credential`、`t_password_history`、`t_user_session`；登录标识不属于一次性凭证，永久保存在 `t_login_identifier`。
+- 生命周期与历史：`t_user_lifecycle_snapshot`、`t_user_lifecycle_event`、`t_operation_log`。
+- 迁移治理：`t_user_management_migration`、`t_user_management_migration_step`。
 
 ---
 
@@ -1290,9 +1309,11 @@ public class SecurityConfig {
 **执行逻辑**:
 1. 登录请求放行
 2. 仅从 `Authorization: Bearer <token>` 请求头获取 token
-3. 验证 token 非空、Bearer 格式正确、签名有效、Redis 中存在且匹配
-4. 设置 SecurityContext
-5. 当前用户已停用、锁定或删除时删除 Redis 会话；删除失败返回 HTTP 500
+3. 验证 token 非空、Bearer 格式正确、签名有效，并解析 userId 与 authVersion
+4. 验证 Redis 中存在该 token 且值精确匹配，再从数据库重新加载用户并检查账号状态
+5. 以数据库 authVersion 为权威校验 JWT；无 authVersion 的旧 JWT 仅在数据库版本为 0 时兼容
+6. 账号状态无效或版本不匹配返回 HTTP 401；Redis 清理失败仅重试并告警
+7. 验证通过后设置 SecurityContext
 
 ### 17.3 Handler 处理器
 
@@ -1300,8 +1321,8 @@ public class SecurityConfig {
 |---------|------|------|
 | MyAuthenticationSuccessHandler | `config/handler/MyAuthenticationSuccessHandler.java` | 登录成功：生成 JWT、存入 Redis、写登录审计、返回 token |
 | MyAuthenticationFailureHandler | `config/handler/MyAuthenticationFailureHandler.java` | 登录失败：写失败登录审计并返回 401 |
-| MyLogoutSuccessHandler | `config/handler/MyLogoutSuccessHandler.java` | 退出成功：删除 Redis 中的 JWT |
-| MyAccessDeniedHandler | `config/handler/MyAccessDeniedHandler.java` | 权限不足：返回 ACCESS_DENIED |
+| MyLogoutSuccessHandler | `config/handler/MyLogoutSuccessHandler.java` | 退出登录：先提交 authVersion 递增，再尽力清理 Redis 会话 |
+| MyAccessDeniedHandler | `config/handler/MyAccessDeniedHandler.java` | 已认证但权限不足：返回 HTTP 403 和 ACCESS_DENIED |
 | GlobalExceptionHandler | `config/handler/GlobalExceptionHandler.java` | 全局异常处理：统一返回错误 |
 
 ### 17.4 GlobalExceptionHandler 异常处理
@@ -1379,9 +1400,12 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 
 | 方法 | 功能 |
 |------|------|
-| `createJWT(String userJSON)` | 生成 JWT，负载为用户 JSON，过期时间 24 小时 |
+| `createJWT(Integer userId, String loginAct, Long authVersion, long expirationSeconds)` | 生成只携带 userId、loginAct、authVersion 和过期时间的 JWT |
+| `createJWT(Integer userId, String loginAct, long expirationSeconds)` | 兼容旧调用，生成不含 authVersion 声明的 JWT |
 | `verifyJWT(String jwt)` | 验证 JWT 签名是否有效 |
-| `parseUserFromJWT(String jwt)` | 从 JWT 解析用户信息（TUser 对象） |
+| `parseUserIdFromJWT(String jwt)` | 从 JWT 解析用户 ID |
+| `parseLoginActFromJWT(String jwt)` | 从 JWT 解析登录账号 |
+| `parseAuthVersionFromJWT(String jwt)` | 从 JWT 解析认证版本；旧 JWT 缺少该声明时返回 null |
 
 **密钥**: 从环境变量 `JWT_SECRET` 获取；未配置时应用启动失败，避免使用可预测的默认签名密钥。
 
@@ -1547,23 +1571,45 @@ Excel 导入不再使用启动期全局 `cacheMap` 和 Converter 直接落库。
 | SQL ID | 类型 | 用途 |
 |--------|------|------|
 | `selectByLoginAct` | SELECT | 按登录账号查询（登录用） |
-| `selectUserByPage` | SELECT | 用户分页查询（支持数据权限） |
-| `selectDetailById` | SELECT | 用户详情（关联创建人/编辑人） |
-| `selectByOwner` | SELECT | 查询所有用户（负责人列表） |
+| `selectManagedUserPage` | SELECT | 受管用户工作台分页；使用服务端数据范围、筛选和排序白名单 |
+| `selectRoleNamesByUserIds` | SELECT | 批量加载列表角色摘要，避免逐用户查询 |
+| `selectVisibleOrganizationOptions` / `selectVisiblePositionOptions` / `selectVisibleManagerOptions` / `selectVisibleRoleOptions` | SELECT | 返回当前操作者可见的筛选候选 |
+| `selectAuthUserById` | SELECT | 加载认证和账号安全权威事实 |
+| `selectEligibleOwners` | SELECT | 按账号、任职、权限和业务动作筛选负责人候选 |
 | `selectByPrimaryKey` | SELECT | 按主键查询 |
-| `countBusinessReferences` | SELECT | 禁用前统计当前责任引用 |
-| `selectOwnedActivityIds` | SELECT | 查询待交接活动 ID |
-| `selectOwnedClueIds` | SELECT | 查询待交接线索 ID |
-| `selectOwnedCustomerIds` | SELECT | 查询待交接客户 ID |
-| `transferOwnedActivities` | UPDATE | 批量交接活动负责人 |
-| `transferOwnedClues` | UPDATE | 批量交接线索负责人 |
-| `transferOwnedCustomers` | UPDATE | 批量交接客户负责人 |
+| `incrementAuthVersion` / `incrementAuthorizationVersionsByExpected` | UPDATE | 提升认证安全版本或授权配置版本并校验预期行数 |
+| `incrementSessionRevisionByExpected` | UPDATE | 会话列表命令的独立 CAS 版本 |
+| `updateAccountStatusByExpected` / `updateManualLockByExpected` | UPDATE | 受管账号状态和人工锁定 CAS 更新 |
+| `updateLoginActByExpected` | UPDATE | 按账号版本更新当前登录账号并提升认证安全版本；必须与登录标识历史事务配套 |
+| `updateSecurityExpirationByExpected` | UPDATE | 独立维护账号到期与凭证到期时间并提升认证安全版本 |
+| `updateProfileProjection` / `updateSystemProfileByVersion` | UPDATE | 维护员工资料兼容投影或系统账号资料版本 |
 | `deleteByPrimaryKey` | DELETE | 旧物理删除方法，不用于离职处理 |
 | `deleteByIds` | DELETE | 旧批量物理删除方法，不用于离职处理 |
-| `insert` | INSERT | 插入用户 |
-| `insertSelective` | INSERT | 选择性插入用户 |
-| `updateByPrimaryKeySelective` | UPDATE | 选择性更新用户 |
-| `updateByPrimaryKey` | UPDATE | 全字段更新用户 |
+| 旧 `disableById`、三域 `selectOwned*` / `transferOwned*`、`deleteUserRoles` 等 | LEGACY | 仅供旧兼容实现留存；受控用户写入口和生命周期流程不得调用，旧 Controller 路径 fail-close |
+
+#### TLoginIdentifierMapper.xml（登录账号永久归属）
+
+| SQL ID | 类型 | 用途 |
+|--------|------|------|
+| `selectByLoginActForUpdate` | SELECT FOR UPDATE | 按规范化登录账号锁定当前或退休归属事实 |
+| `selectActiveByUserIdForUpdate` | SELECT FOR UPDATE | 锁定用户唯一当前登录标识 |
+| `insert` | INSERT | 为新账号建立不可转让的 ACTIVE 归属事实 |
+| `retireByExpected` | UPDATE | 按标识版本退休旧账号，保留永久历史 |
+| `reactivateByExpected` | UPDATE | 只允许原用户按标识版本重新启用自己的退休账号 |
+
+#### TUserLifecycleMapper.xml（生命周期与六域交接）
+
+| SQL ID | 类型 | 用途 |
+|--------|------|------|
+| `lockEmployeeByUserId` / `lockUserById` | SELECT FOR UPDATE | 锁定生命周期目标员工和账号事实 |
+| `selectActivities` / `selectClues` / `selectCustomers` | SELECT | 按精确状态谓词加载活动、线索、客户直接责任快照 |
+| `selectOpportunities` / `selectFollowTasks` / `selectTestDrives` | SELECT | 按状态和版本加载商机、跟进任务、试驾直接责任快照 |
+| `transferActivity` / `transferClue` / `transferCustomer` | UPDATE | 按 ID、原负责人和原状态逐项转移无版本直接域 |
+| `transferOpportunity` / `transferFollowTask` / `transferTestDrive` | UPDATE | 按 ID、原负责人、原状态和版本逐项 CAS 转移 |
+| `countActiveQuotesByOwner` / `countActiveTransactionsByOwner` | SELECT | 只核验随 Customer 归属派生的 Quote、Tran 影响，不直接更新 |
+| `selectLifecycleFacts` | SELECT | 生成离职快照的精确责任、任职、汇报、授权、会话事实指纹 |
+| `insertSnapshot` / `lockSnapshotByDigest` / `consumeSnapshot` | INSERT/SELECT/UPDATE | 保存并一次性消费有限期离职预检摘要 |
+| `insertEvent` / `selectHistoryRows` | INSERT/SELECT | 写入不可变生命周期事件并作为用户历史第三来源读取 |
 
 ### 21.5 TActivityMapper.xml (t_activity)
 
@@ -1760,15 +1806,71 @@ Run trace 查询必须恢复 messages、toolCalls、proposals、approvals、work
 
 主动提醒生成在 Spring Boot 内完成，不修改 `dealer-ai`。生成前恢复订阅 owner 的权限和数据范围，重新校验用户启用状态、订阅状态、频率、数量上限、静默时间和重复合并窗口。库存预警复用 `ProductService.getStockAlerts`；能力不足时只能新增只读查询或 AI 主动提醒适配器，不改变普通业务接口、统计口径、事务语义或权限语义。
 
+### 22.5 组织、岗位、任职与汇报关系
+
+组织管理由 `OrganizationController`、`OrganizationServiceImpl` 和组织专用 Mapper 组成。组织、岗位和员工版本字段用于 CAS；组织或岗位 code 创建后保持稳定。停用组织前必须检查有效下级和在职员工，停用岗位前必须检查有效任职。
+
+员工组织更新把任职和汇报关系视为两个独立权限分区：只变更任职时校验 `employee:assignment`，只变更汇报关系时校验 `employee:reporting`，未变化分区不得被关闭重建。直属、代理关系不从角色或组织负责人推导；负责人仅是组织属性。本人、受保护账号、同级、上级和跨组织目标均由 Service 的对象级范围校验拒绝，前端候选列表不能替代后端校验。
+
+全局组织范围包括受保护系统安全管理员和当前有效 `admin` 角色。普通管理者必须同时满足有效直接或间接汇报链与组织祖先范围；调整任职时新组织也必须处于操作者范围。岗位是全局目录，新增、编辑和启停仅允许全局组织管理员。
+
+任职、汇报和组织目录变化在同一事务写入 `t_authorization_history` 与 `t_operation_log`。授权历史的操作者、发生时间和请求标识由统一审计组件从当前认证、可信时钟和请求上下文覆盖，业务调用方传值不受信任。
+
+### 22.6 用户管理工作台
+
+用户工作台由 `ManagedUserAccountService` 聚合账号、员工、当前主任职、直属管理者和有效角色。列表数据范围在 SQL 查询前通过 `DataScopeResolver(user:list)` 解析，Mapper 只接受服务端白名单排序列并始终追加用户主键，摘要不得投影密码、凭证、手机号或邮箱。详情把账号、资料、员工、授权和会话版本分开返回；联系方式和锁定原因还需同时满足 `user:sensitive:view` 与目标管理关系。
+
+状态写命令只接受 `ENABLE`、`DISABLE`、`LOCK`、`UNLOCK`、账号版本和必填原因。人工锁定与登录失败自动锁定是独立事实。禁用或锁定管理员前必须先锁定 `AVAILABLE_ADMIN_GUARD` 共享数据库行，锁内重新加载目标、核对版本并重新计算有效管理员数量，防止不同管理员并发降级后系统失去最后管理员。
+
+邀请创建在同一事务创建账号、员工档案、主任职、直属汇报、初始角色、不可变角色授权历史、操作审计、邀请凭证摘要和投递 Outbox。初始角色候选由委派策略按所选组织计算，和列表筛选使用的“可见角色事实”分离；任一角色越级、审计、摘要或 Outbox 写入失败都整体回滚。接口返回 HTTP 202/`QUEUED`，提交后 Worker 才派生和投递原始凭证；响应不返回密码、Token、凭证明文、摘要或派生 nonce。
+
+人员生命周期由 `UserLifecycleServiceImpl` 统一编排调岗、离职预检、进入待交接、确认交接、完成离职和返聘。直接责任域固定为 Activity、Clue、Customer、Opportunity、FollowTask、TestDrive；Quote、Tran 只通过 Customer 归属做派生核验，待审批队列和 CommunicationRecord 历史不得改写。离职预检把责任 ID、状态、版本、任职、汇报、授权和会话事实生成摘要保存到 `t_user_lifecycle_snapshot`，确认时在图锁和业务锁内重新核对并一次性消费。成功动作写入 `t_user_lifecycle_event` 和操作审计。
+
+用户历史由 `UserHistoryService` 只读聚合三个来源：`t_authorization_history`、动作白名单内的 `t_operation_log` 安全投影，以及 `t_user_lifecycle_event`。`GET /api/users/{id}/history` 必须同时具备 `audit:operation:detail` 和目标用户管理范围；本人、跨范围和受保护账号拒绝查询。投影按发生时间、来源和主键稳定排序，支持动作与时间过滤后分页；操作者、角色、权限、组织、岗位、管理者及角色矩阵受影响用户使用事件时快照，不在查询时关联当前成员重建历史。响应不选择操作日志 IP，不返回原始 detail，并在后端统一清理密码、摘要、Token、完整联系方式和网络地址。
+
+审计 `requestId` 由 `AuditRequestIdProvider` 统一生成：外部请求头仅作为经清理的相关性前缀，不能成为最终可信标识；同一 HTTP 请求或同一非 HTTP 事务复用一个可信标识，事务结束后解除线程资源绑定。授权事实和配套操作审计写入失败时必须使业务事务回滚。
+
+### 22.7 用户管理数据库迁移治理
+
+用户管理升级不由应用启动流程自动执行，也不允许直接运行单份业务 SQL。唯一入口是 `scripts/database/user-management-migrate.sh`，迁移顺序、依赖、脚本 SHA-256、发布状态、恢复模式和对象 probe 由 `dealer-server/src/main/resources/migration/manifest.tsv` 管理。
+
+- `plan/status` 只展示计划和账本状态；`apply APPLY` 执行尚无账本事实的迁移；`resume <migration_key> RESUME` 只恢复 `RUNNING/FAILED` 且 checksum 未漂移的同一迁移。
+- `baseline BASELINE` 仅用于已由完整初始化脚本建立的数据库，必须逐项通过 manifest probe 后才能绑定 checksum；不能伪造业务迁移执行事实。
+- 执行器使用数据库命名锁串行化执行，并要求脚本在业务 DDL、约束、种子和回填过程内再次验证当前连接持锁、迁移键、checksum 与 `RUNNING` 账本。Task10 的不可变审计触发器因 MySQL/MariaDB 方言限制保留为过程外唯一例外。
+- `t_user_management_migration` 保存 `RUNNING/SUCCEEDED/FAILED`、checksum、开始/完成/失败时间、最后完成步骤、尝试次数、错误摘要和执行器版本；`t_user_management_migration_step` 保存可恢复步骤。只有脚本成功、对象 probe 通过且成功状态影响一行时才能标记完成。
+- Task15 在受控 context 内新增 `account_expires_at`、登录标识表和 `LOGIN_IDENTIFIER_GUARD`，首次把全部现有 `t_user.login_act` 回填为 ACTIVE 永久归属。空账号或既有归属冲突必须中止；`LOGIN_IDENTIFIER_BACKFILL_READY` 已记录后不得用重放回填虚构丢失的历史。
+- 真实数据库验收使用 `scripts/database/test-user-management-migrations-real.sh`，覆盖旧库首跑、中断恢复、重复执行、完整初始化库 baseline、不可变触发器和 `mysql --force` 防绕过；H2 或静态契约不能替代 MySQL/MariaDB 方言结果。
+
 ## 23. 数据库表汇总
+
+角色权限目录由 `RoleAccessController`/`RoleAccessServiceImpl` 维护。权限目录只读，角色 code 创建后不可修改，角色和权限父对象不提供物理删除。角色矩阵采用版本 CAS 和原子替换；普通管理者只能新增自己当前有效拥有且可委派的权限，并必须覆盖角色全部适用组织和全部有效成员。目录变化与矩阵变化分别写 `ROLE_CATALOG_CHANGE` 和 `ROLE_MATRIX_CHANGE` 审计。影响有效授权的角色、状态、范围或矩阵变化会在事务内递增全部受影响用户 `auth_version`，提交后再清理 Redis 登录缓存。
 
 | 表名 | 说明 | 主要字段 |
 |------|------|---------|
-| `t_user` | 用户表 | id, login_act, login_pwd, name, phone, email, account_enabled |
-| `t_role` | 角色表 | id, role, role_name |
-| `t_user_role` | 用户角色关联表 | id, user_id, role_id |
-| `t_permission` | 权限表 | id, name, code, url, type, parent_id |
-| `t_role_permission` | 角色权限关联表 | id, role_id, permission_id |
+| `t_user` | 当前登录账号、安全状态及兼容资料投影 | id, login_act, login_pwd, account_type, protected_account, account_status, manual_locked, auto_locked_until, account_expires_at, password_expires_at, auth_version, authorization_version, profile_version, session_revision, version |
+| `t_login_identifier` | 当前及退休登录账号的永久归属历史 | id, user_id, login_act, status, active_marker, retired_at, changed_by, reason, version, create_time |
+| `t_role` | 角色目录与委派上限 | id, role, role_name, protected_role, authorization_level, default_data_scope, scope_type, enabled, version |
+| `t_user_role` | 可保留历史的用户角色事实 | id, user_id, role_id, granted_by, reason, effective_from, effective_to, active_marker, version |
+| `t_permission` | 只读权限目录 | id, name, code, type, module, sensitivity_level, delegable, enabled, version |
+| `t_role_permission` | 角色权限动作及运行时数据范围 | role_id, permission_id, delegable, data_scope_code |
+| `t_role_organization` | 组织级角色适用组织 | role_id, organization_unit_id |
+| `t_role_permission_organization` | 角色权限 `CUSTOM_ORGS` 指定组织 | role_id, permission_id, organization_unit_id |
+| `t_organization_unit` | 组织树当前态 | id, code, type, parent_id, leader_employee_id, enabled, version |
+| `t_position` | 岗位目录当前态 | id, code, position_level, built_in, enabled, version |
+| `t_employee` | 员工档案、任职状态与独立资料版本 | id, user_id, employee_no, employment_status, hire_date, leave_date, profile_version, version |
+| `t_employee_assignment` | 主要、兼任和代理任职事实 | id, employee_id, organization_unit_id, position_id, assignment_type, status, active_primary_marker, effective_from, effective_to, version |
+| `t_employee_reporting` | 直属和代理汇报事实 | id, subordinate_employee_id, manager_employee_id, relation_type, status, active_direct_marker, effective_from, effective_to, version |
+| `t_user_permission` | 用户个人 `GRANT/DENY` 当前事实 | id, user_id, permission_id, effect, data_scope_code, effective_from, effective_to, active_marker, version |
+| `t_user_permission_organization` | 个人权限 `CUSTOM_ORGS` 指定组织 | user_permission_id, organization_unit_id |
+| `t_authorization_history` | 不可变授权与组织变化历史 | subject_type, subject_id, change_type, target_user_id, role_id, permission_id, before_value, after_value, operator_id, occurred_time, request_id, affected_user_ids, affected_users_snapshot |
+| `t_authorization_graph_lock` | 组织、汇报、授权成员、管理员保护、登录标识和试驾排期共享锁行 | lock_name |
+| `t_account_credential` | 邀请、找回和管理员重置的单次凭证摘要 | id, user_id, purpose, token_digest, status, active_marker, expires_at, consumed_at, revoked_at, version |
+| `t_password_history` | 不可变密码历史摘要 | id, user_id, password_hash, changed_by, change_reason, changed_at |
+| `t_user_session` | 多设备数据库会话及撤销事实 | id, session_id, user_id, token_digest, issued_auth_version, last_activity_time, idle_expires_at, absolute_expires_at, revoked_at, version |
+| `t_user_lifecycle_snapshot` | 一次性离职预检摘要 | id, token_digest, user_id, employee_id, employee_version, reason_digest, fact_digest, expires_at, consumed_at, version |
+| `t_user_lifecycle_event` | 不可变调岗、离职、交接和返聘事件 | id, operation_id, request_id, action, user_id, employee_id, before_value, after_value, reason, operator_id, occurred_time |
+| `t_user_management_migration` | 用户管理统一迁移账本 | migration_key, status, checksum_sha256, started_at, completed_at, failed_at, last_completed_step, attempt_count, error_summary, executor_version |
+| `t_user_management_migration_step` | 用户管理迁移已完成步骤 | migration_key, step_code, completed_at |
 | `t_clue` | 线索表 | id, owner_id, activity_id, activity_name_snapshot, full_name, phone, state, source |
 | `t_clue_remark` | 线索跟踪记录表 | id, clue_id, note_way, note_content |
 | `t_customer` | 客户主档表 | id, clue_id, owner_id, customer_name, phone, source, original_clue_source, customer_status, product, description |

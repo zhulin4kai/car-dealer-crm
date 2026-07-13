@@ -10,6 +10,19 @@
 
 ---
 
+## 账号邀请、改密与个人中心联调约定
+
+- 激活和密码重置页面只从 URL fragment 读取原始凭证，再提交到 `/api/credentials/*`；服务端响应永不返回凭证、密码或摘要。
+- 找回密码对存在和不存在账号返回相同的 `accepted + deliveryStatus` 结构。
+- 创建、重新邀请、管理端重置和联系方式验证只有在凭证摘要与 Outbox 原子提交后才返回 HTTP `202`；响应固定为 `accepted=true + deliveryStatus=QUEUED`，仅表示已排队，不表示外部通知已经送达。渠道或派生密钥未配置时在写入前返回失败，不得伪装成排队成功。
+- `mustChangePassword=true` 时，服务端只允许登录信息、本人会话查询、退出和首次改密路径，不允许先修改个人资料；前端路由守卫只是体验层。
+- `GET /api/login/info` 返回 `protectedRecoveryAccount` 和 `userManagementGateState`。普通账号只有在门禁为 `READY` 时进入业务路由；受保护恢复账号仅在 `UNINITIALIZED` 时进入首个管理员初始化入口，且始终不能进入个人中心或修改自己的权限。业务请求返回 `641/642` 时前端保留登录态、重新读取门禁事实并跳转 `/user-management-gate`，不得按 401 清理会话。
+- `/api/profile` 使用独立 `profileVersion` 做并发控制；资料更新成功后前端刷新当前用户 store，但不得把它当成授权版本。
+- 管理者修改下属普通资料使用 `/api/users/{id}/profile`，同样携带 `profileVersion`；该入口不能用于调整本人、角色、权限、任职、管理者或账号状态。
+- 管理者修改下属登录账号使用 `/api/users/{id}/login-account`，提交 `accountVersion + loginAct + reason`。旧账号进入永久归属历史，不能分配给其他员工；同一原用户可以再次启用自己的退休账号。
+- 管理者调整安全期限使用 `/api/users/{id}/security-expiration`，分别提交 `accountExpiresAt` 和 `credentialExpiresAt`。两者是独立期限，空值表示对应期限不限制；成功后目标全部旧会话失效。
+- 负责人候选必须提交服务端白名单 `permissionCode + qualificationContext`，响应使用最小 `OwnerCandidate` 投影。
+
 ## AI 业务助手联调约定
 
 - 前端通过 `/api/ai/conversations` 创建、查询、重命名和归档 AI Conversation。Conversation 详情响应中的 `turns` 是会话恢复主契约，前端必须用它恢复每轮消息、业务卡片、Proposal、Workflow 和处理过程。
@@ -23,20 +36,26 @@
 
 ## 1. 接口对接情况
 
-### 1.1 用户管理模块 (user.js)
+### 1.1 用户、组织与授权模块
 
-| 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
-|-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getUserList | GET | /api/users | params: {page, size, ...query} | R\<PageInfo\<TUser\>\> | UserController.userPage | 分页查询用户列表，默认每页10条 |
-| getUserDetail | GET | /api/user/{id} | 路径参数: id | R\<TUser\> | UserController.userDetail | 根据ID获取用户详情 |
-| createUser | POST | /api/user | data: CreateUserRequest (JSON) | R\<UserDetailResponse\> | UserController.createUser | 新增用户，需要 Bearer Token |
-| updateUser | PUT | /api/user | data: UpdateUserRequest (JSON) | R\<UserDetailResponse\> | UserController.updateUser | 编辑用户，需要 Bearer Token |
-| disableUser | PUT | /api/user/{id}/disable | 路径参数: id | R | UserController.disableUser | 禁用账号并撤销 Redis 会话 |
-| enableUser | PUT | /api/user/{id}/enable | 路径参数: id | R | UserController.enableUser | 启用账号并刷新负责人缓存 |
-| batchDisableUsers | PUT | /api/users/batch-disable | data: {ids: List\<Integer\>} (JSON) | R | UserController.batchDisableUsers | 批量禁用账号 |
-| handoverUserResponsibilities | PUT | /api/user/{id}/handover | 路径参数: id, data: {targetUserId, reason} (JSON) | R\<HandoverUserResponsibilitiesResponse\> | UserController.handoverResponsibilities | 交接当前负责的活动、线索和客户并写审计 |
-| getOwnerList | GET | /api/owner | 无 | R\<List\<TUser\>\> | UserController.owner | 获取负责人列表(不分页) |
-| getLoginInfo | GET | /api/login/info | 无 | R\<TUser\> | UserController.loginInfo | 获取当前登录用户信息 |
+| 能力 | HTTP 方法与路径 | 主要契约 | 后端入口 |
+|------|-----------------|----------|----------|
+| 用户工作台 | `GET /api/users`、`GET /api/users/filter-options`、`GET /api/users/{id}` | 稳定分页、白名单排序、目标级 `allowedActions`；本人详情只读 | `UserController` |
+| 邀请创建 | `POST /api/users` | 不接受明文密码；账号、员工、主任职、初始角色、历史和邀请全成功或全回滚 | `UserController` |
+| 受管资料与状态 | `PUT /api/users/{id}/profile`、`POST /api/users/{id}/status` | 分别使用资料版本和账号版本；本人、同级、上级、范围外与恢复账号拒绝 | `UserController` |
+| 登录标识与安全期限 | `PUT /api/users/{id}/login-account`、`PUT /api/users/{id}/security-expiration` | 登录账号永久归属；账号与凭证期限分离；要求账号版本和原因并撤销旧会话 | `UserController` |
+| 本人个人中心 | `GET/PUT /api/profile` | 只允许姓名、联系方式和头像白名单，不得改变账号、任职或授权 | `ProfileController` |
+| 凭证生命周期 | `/api/credentials/*`、`POST /api/users/{id}/invitation`、`POST /api/users/{id}/password-reset` | 单次凭证、过期、重签失效、首次改密、密码历史和会话撤销 | `CredentialController` |
+| 用户授权 | `GET /api/users/{id}/authorization`、`PUT .../roles`、`PUT .../permissions` | 本人可只读查看来源；任何人不能自改；角色与个人 `INHERIT/GRANT/DENY` 按版本原子保存 | `UserAuthorizationController` |
+| 角色与权限目录 | `/api/roles`、`/api/roles/{id}/permissions*`、`GET /api/permissions/tree` | 角色适用组织、影响预览、矩阵版本、委派天花板和不可删除历史 | `RoleAccessController` |
+| 组织、岗位与任职 | `/api/organization-units*`、`/api/positions*`、`/api/employees/{id}/organization-*`、`/api/employees/{id}/acting-reporting-relations*` | 组织树、负责人、主任职、兼岗、直属汇报、独立 ACTING 多关系、候选、版本和历史 | `OrganizationController` |
+| 会话安全 | `/api/me/sessions*`、`/api/users/{id}/sessions*` | 本人撤销其他会话；管理者仅在范围内撤销下属会话 | `UserSessionController` |
+| 历史查询 | `GET /api/users/{id}/history` | 聚合授权历史、操作日志和生命周期事件，稳定分页并安全投影 | `UserHistoryController` |
+
+凭证交付不经过业务 HTTP 响应。生产部署通过 `CREDENTIAL_DELIVERY_WEBHOOK_URL`、`CREDENTIAL_DELIVERY_BEARER_TOKEN` 和独立 `CREDENTIAL_DERIVATION_KEY` 连接受信通知服务，地址必须为 HTTPS；本地人工联调只有在 `CREDENTIAL_DELIVERY_ALLOW_INSECURE_LOOPBACK=true` 时才允许回环 HTTP。创建、重邀和重置只在摘要与 Outbox 原子提交后返回 HTTP 202/`QUEUED`；Worker 提交后使用稳定 messageId 和 `Idempotency-Key` 投递。渠道未配置或无联系方式在入库前拒绝，网络失败进入重试，永久失败撤销凭证并审计。HUMAN 账号只使用员工档案当前联系方式，固定 SYSTEM 恢复账号使用专用账号联系方式。公开凭证流程按主体摘要、联系方式摘要与请求来源执行滑动窗口限流；签发事务以用户行锁和最近签发事实执行用途族冷却。忘记密码在限流、冷却或基础设施不可用时仍返回同形受理响应，不查询或暴露账号事实。
+| 人员生命周期 | `/api/users/{id}/lifecycle*` | 调岗、离职预检、待交接、六域确认、完成离职和返聘；Quote/Tran 只做客户派生核验 | `UserLifecycleController` |
+| 负责人候选 | `GET /api/owner` | 必须提交白名单权限码和资格场景；只返回最小候选投影 | `UserController` |
+| 旧单数写路径 | `/api/user*` 旧创建、更新、状态、角色、密码和交接入口 | deprecated 且始终 fail-close；不得作为兼容写入口继续使用 | `UserController` |
 
 ### 1.2 线索管理模块 (clue.js)
 
@@ -321,7 +340,7 @@
 |-----|-----------|-------|-------------|---------|---------|
 | 用户/线索/活动/字典/交易/系统 | R | code, msg, data | response.data.code/msg/data | 一致 | - |
 | 产品/分类/促销/库存 | Result | code, msg, data | response.data.code/msg/data | 一致 | - |
-| Token错误 | R | code(510-520), msg | response.data.code >= 500 | 前端通过code>=500判断token错误，与后端CodeEnum一致 | - |
+| Token错误 | R | code(510-513), msg | `ApiError.sessionInvalid` | 前端以 HTTP 401 判定会话失效；HTTP 403 只表示权限不足，不清理会话 | - |
 
 ### 2.5 前端调用但后端不存在的接口
 
@@ -369,9 +388,9 @@
                             ▼                   ▼                   ▼
                     ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
                     │ 1.生成JWT    │   │ 2.存入Redis  │   │ 3.设置过期   │
-                    │ (用户信息    │   │ key:         │   │ 记住我:7天   │
-                    │  作为负载)   │   │ cdrm:user:   │   │ 否则:4小时   │
-                    │              │   │ login:{id}   │   │              │
+                    │ userId、     │   │ key:         │   │ 记住我:7天   │
+                    │ loginAct、   │   │ cdrm:user:   │   │ 否则:4小时   │
+                    │ authVersion  │   │ login:{id}   │   │              │
                     └──────────────┘   └──────────────┘   └──────────────┘
                             │
                             ▼
@@ -391,11 +410,12 @@
 | 1 | 用户提交登录表单 | POST /api/login, 参数: loginAct, loginPwd, rememberMe |
 | 2 | Spring Security认证 | 框架自动处理用户名密码验证 |
 | 3 | 认证成功处理器 | MyAuthenticationSuccessHandler.onAuthenticationSuccess() |
-| 4 | 生成JWT | JWTUtils.createJWT(userJSON), 负载为用户信息JSON |
-| 5 | 存储到Redis | key: `cdrm:user:login:{userId}`, value: jwt |
-| 6 | 设置过期时间 | rememberMe=true: 7天, rememberMe=false: 4小时 |
-| 7 | 返回JWT给前端 | 仅 Redis 写入成功后返回 R.OK(jwt) |
-| 8 | Redis 写入失败 | 返回 HTTP 500 和 SYSTEM_ERROR，不返回 JWT |
+| 4 | 创建会话事实 | 生成不可猜测 `sessionId`，写入 `t_user_session` 的设备摘要、空闲期限、绝对期限和当前 `authVersion` |
+| 5 | 生成JWT | `JWTUtils.createSessionJWT(...)`，只写入 `userId`、`sessionId`、`authVersion`、`iat`、`exp` |
+| 6 | 存储到Redis | key: `cdrm:session:{sessionId}`，value 为 JWT HMAC 摘要；同时维护 `cdrm:user:sessions:{userId}` 索引 |
+| 7 | 设置期限 | rememberMe=true: 7天绝对期限、24小时空闲期限；否则 4小时绝对期限、30分钟空闲期限 |
+| 8 | 写入登录审计 | 数据库与 Redis 成功后记录登录；审计失败时撤销刚创建的会话 |
+| 9 | 返回JWT给前端 | 会话事实、Redis 和登录审计全部成功后才返回 R.OK(jwt)；失败不返回 JWT |
 
 ### 3.3 请求携带Token
 
@@ -424,142 +444,51 @@ axios.interceptors.request.use((config) => {
 
 ### 3.4 Token校验流程
 
-```
-┌─────────────┐     请求(带Authorization头)     ┌─────────────────┐
-│   前端请求   │  ──────────────────────────────►  │ TokenVerifyFilter│
-└─────────────┘                                  └─────────────────┘
-                                                        │
-                                                        ▼
-                                                ┌───────────────┐
-                                                │ 是否是登录请求?│
-                                                └───────────────┘
-                                                   │         │
-                                                  是         否
-                                                   │         │
-                                                   ▼         ▼
-                                            ┌──────────┐ ┌──────────────┐
-                                            │ 直接放行 │ │ 获取Token    │
-                                            └──────────┘ └──────────────┘
-                                                              │
-                                                              ▼
-                                                      ┌───────────────┐
-                                                      │ Token是否为空? │
-                                                      └───────────────┘
-                                                         │         │
-                                                        是         否
-                                                         │         │
-                                                         ▼         ▼
-                                                  ┌──────────┐ ┌──────────────┐
-                                                  │返回510   │ │ JWT签名验证  │
-                                                  │token为空 │ └──────────────┘
-                                                  └──────────┘        │
-                                                                      ▼
-                                                              ┌───────────────┐
-                                                              │ 签名是否有效? │
-                                                              └───────────────┘
-                                                                 │         │
-                                                                否         是
-                                                                 │         │
-                                                                 ▼         ▼
-                                                          ┌──────────┐ ┌──────────────┐
-                                                          │返回511   │ │ 从Redis获取  │
-                                                          │token无效 │ │ 存储的token  │
-                                                          └──────────┘ └──────────────┘
-                                                                            │
-                                                                            ▼
-                                                                    ┌───────────────┐
-                                                                    │ Redis有token? │
-                                                                    └───────────────┘
-                                                                       │         │
-                                                                      否         是
-                                                                       │         │
-                                                                       ▼         ▼
-                                                                ┌──────────┐ ┌──────────────┐
-                                                                │返回512   │ │ Token匹配?   │
-                                                                │token过期 │ └──────────────┘
-                                                                └──────────┘    │         │
-                                                                               否         是
-                                                                                │         │
-                                                                                ▼         ▼
-                                                                         ┌──────────┐ ┌──────────────┐
-                                                                         │返回513   │ │ 设置Security │
-                                                                         │token不匹配│ │ 上下文认证   │
-                                                                         └──────────┘ └──────────────┘
-                                                                                          │
-                                                                                          ▼
-                                                                                  ┌──────────────┐
-                                                                                  │ 异步刷新Token│
-                                                                                  │ 过期时间     │
-                                                                                  └──────────────┘
-                                                                                          │
-                                                                                          ▼
-                                                                                  ┌──────────────┐
-                                                                                  │ 继续执行     │
-                                                                                  │ Filter链     │
-                                                                                  └──────────────┘
-```
+1. `TokenVerifyFilter` 只从 `Authorization: Bearer <token>` 读取 JWT；缺失、格式错误或签名无效均返回 HTTP 401。
+2. 解析 JWT 中的 `userId`、`sessionId` 和 `authVersion`；`cdrm:session:{sessionId}` 中的 HMAC 摘要必须与请求 Token 匹配。
+3. 查询 `t_user_session`，校验会话属于该用户、未撤销、未超过空闲/绝对期限且签发版本一致。
+4. 根据 `userId` 重新加载数据库用户，检查账号启用和未锁定，并分别以 `account_expires_at`、`password_expires_at` 动态判断账号与凭证是否过期；兼容布尔字段不能覆盖时间事实。
+5. 将 JWT `authVersion` 与数据库当前版本比较。数据库是认证版本的权威来源；版本不一致返回 HTTP 401。
+6. 缺少 `sessionId` 的旧 JWT 仅在显式兼容截止时间前按旧 Redis 精确键校验；默认禁用，截止后统一返回 HTTP 401。
+7. 全部校验通过后按节流窗口更新最后活动时间和 Redis 空闲 TTL，再设置 `SecurityContext`；会话基础设施异常按 HTTP 401 失败关闭。
 
-### 3.5 Token刷新机制
+### 3.5 Token有效期与认证版本
 
-| 场景 | 触发条件 | 刷新逻辑 | 新过期时间 |
-|-----|---------|---------|-----------|
-| 每次请求 | Token校验通过后 | 异步执行(threadPoolTaskExecutor) | - |
-| 记住我模式 | rememberMe=true | redisService.expire() | 7天 |
-| 普通模式 | rememberMe=false | redisService.expire() | 4小时 |
+| 场景 | 数据库处理 | Redis处理 | 结果 |
+|-----|-----------|-----------|------|
+| 登录且 rememberMe=true | 写入独立会话事实和当前 authVersion | 会话摘要空闲 TTL 24 小时，绝对期限 7 天 | 数据库、Redis 和审计都成功后才返回 JWT |
+| 登录且 rememberMe=false | 写入独立会话事实和当前 authVersion | 会话摘要空闲 TTL 30 分钟，绝对期限 4 小时 | 数据库、Redis 和审计都成功后才返回 JWT |
+| 普通登出 | 只撤销当前 sessionId，不递增 authVersion | 精确删除当前会话 Key 和索引成员 | 其他设备保持登录 |
+| 密码、账号、角色、权限或任职安全事实变化 | 递增 authVersion 并撤销全部活动会话事实 | 提交后按已知 sessionId 精确清理 | 数据库提交后旧 Token 全部失效 |
+| 旧 JWT 无 sessionId | 仅显式兼容截止时间前允许 | 仍要求旧 Redis 精确键匹配 | 默认禁用，截止后即 HTTP 401 |
 
 ### 3.6 Token过期/错误处理
 
-```javascript
-// 前端响应拦截器 (httpRequest.js:67-87)
-axios.interceptors.response.use((response) => {
-    // code >= 500 表示token验证未通过
-    if (response.data.code >= 500) {
-        // 提示用户并询问是否重新登录
-        messageConfirm(response.data.msg + "，是否重新去登录？").then(() => {
-            // 删除本地token
-            removeToken();
-            // 跳转到登录页
-            window.location.href = "/";
-        }).catch(() => {
-            messageTip("取消去登录", "warning");
-        });
-        return Promise.reject(new Error(response.data.msg));
-    }
-    return response;
-});
-```
+前端 `shared/api/http-client.ts` 以 HTTP 状态区分认证与授权：HTTP 401 将 `ApiError.sessionInvalid` 标记为 `true`，由认证流程处理本地会话失效；HTTP 403 明确标记为非会话失效，只提示当前账号权限不足，不清理 Token。不能再用业务码 `>= 500` 同时覆盖认证失败、权限不足和普通系统错误。
 
 ### 3.7 后端Token错误码
 
 | 错误码 | 常量名 | 含义 | 前端处理 |
 |-------|-------|------|---------|
-| 510 | TOKEN_IS_EMPTY | Token为空 | 提示并跳转登录 |
-| 511 | TOKEN_IS_ERROR | Token无效(签名错误) | 提示并跳转登录 |
-| 512 | TOKEN_IS_EXPIRED | Token已过期(Redis中不存在) | 提示并跳转登录 |
-| 513 | TOKEN_IS_NONE_MATCH | Token不匹配(与Redis中不一致) | 提示并跳转登录 |
+| 510 | TOKEN_IS_EMPTY | Token为空 | 按 HTTP 401 处理会话失效 |
+| 511 | TOKEN_IS_ERROR | Token格式、签名、账号状态或认证版本无效 | 按 HTTP 401 处理会话失效 |
+| 512 | TOKEN_IS_EXPIRED | Redis中Token不存在 | 按 HTTP 401 处理会话失效 |
+| 513 | TOKEN_IS_NONE_MATCH | Token与Redis中不一致 | 按 HTTP 401 处理会话失效 |
+| 631 | SESSION_NOT_FOUND | 会话不存在或无权访问 | HTTP 404，不泄露其他用户会话 |
+| 632 | SESSION_REVOKED | 会话已撤销 | HTTP 409，刷新会话列表 |
+| 633 | SESSION_EXPIRED | 会话已过期 | HTTP 410，刷新会话列表 |
+| 634 | SESSION_VERSION_CONFLICT | sessionRevision 冲突 | HTTP 409，刷新后重试 |
+| 635 | SESSION_CACHE_FAILED | 会话缓存精确清理失败 | HTTP 503；数据库撤销事实保持有效 |
 
 ### 3.8 退出登录流程
 
-```
-┌─────────────┐     POST /api/logout     ┌─────────────────┐
-│   前端退出   │  ──────────────────────►  │ Spring Security │
-│              │                           │ 框架处理         │
-└─────────────┘                           └─────────────────┘
-                                                │
-                                                ▼
-                                    ┌───────────────────────┐
-                                    │ MyLogoutSuccessHandler │
-                                    └───────────────────────┘
-                                                │
-                            ┌───────────────────┼───────────────────┐
-                            ▼                   ▼                   ▼
-                    ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-                    │ 1.获取用户   │   │ 2.删除Redis  │   │ 3.返回结果   │
-                    │ 信息         │   │ 中的Token    │   │ 成功或失败   │
-                    └──────────────┘   └──────────────┘   └──────────────┘
-```
+1. 前端携带当前 Bearer Token 调用 `POST /api/logout`。
+2. `MyLogoutSuccessHandler` 从认证详情取得当前 `sessionId`，只撤销这一条数据库会话事实，不递增 `authVersion`。
+3. 数据库提交后精确删除该会话 Redis Key 和用户会话索引成员；不扫描其他 Key。
+4. 删除失败返回 HTTP 503 和 `SESSION_CACHE_FAILED`；数据库撤销事实仍使当前 Token 失效，其他设备会话不受影响。
+5. 前端收到成功响应后清理本地 Token 与权限缓存。
 
-Redis 删除成功后返回退出成功，前端随后清理本地 token 与权限缓存；删除失败或抛出异常时返回 HTTP 500 和 SYSTEM_ERROR，前端保留本地会话并提示失败，不得误认为会话已经失效。
+本人通过 `/api/me/sessions` 查看设备，使用 `/api/me/sessions/{sid}/revoke`、`/revoke-others`、`/revoke-all` 撤销会话；管理者通过 `/api/users/{id}/sessions` 及其撤销子路径操作下属，并同时受管理链、组织范围与 `SESSION_VIEW`/`SESSION_REVOKE` 动作约束。
 
 ---
 
@@ -775,39 +704,12 @@ Token 统一通过 `Authorization: Bearer <token>` 请求头传递，包括文�
 
 ### 6.3 前端错误处理流程
 
-```
-┌─────────────┐     axios响应      ┌─────────────────┐
-│   后端响应   │  ────────────────►  │ 响应拦截器       │
-└─────────────┘                    └─────────────────┘
-                                          │
-                                          ▼
-                                  ┌───────────────┐
-                                  │ code >= 500?  │
-                                  └───────────────┘
-                                     │         │
-                                    是         否
-                                     │         │
-                                     ▼         ▼
-                              ┌──────────┐ ┌──────────────┐
-                              │ Token错误│ │ 正常响应      │
-                              │ 处理     │ │ 返回给调用方  │
-                              └──────────┘ └──────────────┘
-                                     │
-                                     ▼
-                              ┌──────────────┐
-                              │ 弹出确认框   │
-                              │ "xxx，是否   │
-                              │  重新去登录？"│
-                              └──────────────┘
-                                     │
-                        ┌────────────┴────────────┐
-                        ▼                         ▼
-                ┌──────────────┐          ┌──────────────┐
-                │ 点击"确定"   │          │ 点击"取消"   │
-                │ 删除Token    │          │ 提示"取消    │
-                │ 跳转登录页   │          │  去登录"     │
-                └──────────────┘          └──────────────┘
-```
+`shared/api/http-client.ts` 先读取 HTTP 状态，再生成统一 `ApiError`：
+
+1. HTTP 401 表示未认证或当前 Token 已失效，通常设置 `sessionInvalid=true`，由认证状态流程清理本地会话并引导重新登录；登录请求自身的凭证失败只显示登录错误，不按“已有会话失效”处理，也不写入任何 Token。
+2. HTTP 403 表示当前会话有效但功能权限或数据权限不足，设置 `sessionInvalid=false`，保留 Token 并提示无权限。
+3. HTTP 500 表示系统错误，不能据此推断 Token 失效；调用方只显示失败信息并保留当前会话。
+4. 其他业务错误按响应中的稳定业务码和消息处理，不使用 `code >= 500` 作为统一认证判断。
 
 ### 6.4 前端业务层错误处理
 
@@ -831,18 +733,20 @@ apiFunction(params).then(response => {
 
 | 场景 | 后端返回 | 前端处理 | 用户体验 |
 |-----|---------|---------|---------|
-| 登录失败 | R.FAIL(exception.getMessage()) | 显示错误消息 | 提示具体失败原因 |
-| 权限不足 | MyAccessDeniedHandler | 返回403 | 提示无权限 |
-| Token为空 | code:510 | 弹窗询问是否登录 | 可选择重新登录 |
-| Token无效 | code:511 | 弹窗询问是否登录 | 可选择重新登录 |
-| Token过期 | code:512 | 弹窗询问是否登录 | 可选择重新登录 |
-| Token不匹配 | code:513 | 弹窗询问是否登录 | 可选择重新登录 |
+| 登录失败 | HTTP 401 和稳定登录错误码 | 不写入 Token、不触发已有会话失效流程，只显示错误消息 | 提示登录失败 |
+| 权限不足 | HTTP 403 和 ACCESS_DENIED | 保留会话并提示无权限 | 当前账号可继续访问已有权限功能 |
+| Token为空 | HTTP 401、code:510 | 按会话失效处理 | 引导重新登录 |
+| Token无效 | HTTP 401、code:511 | 按会话失效处理 | 引导重新登录 |
+| Token过期 | HTTP 401、code:512 | 按会话失效处理 | 引导重新登录 |
+| Token不匹配 | HTTP 401、code:513 | 按会话失效处理 | 引导重新登录 |
 | 业务操作失败 | R.FAIL() 或 R.FAIL("具体消息") | 显示失败消息 | 提示操作失败 |
 | 参数校验失败 | R.FAIL(CodeEnum.PARAM_ERROR) | 显示参数错误 | 提示参数有误 |
 
 ---
 
-## 附录：接口统计汇总
+## 附录：历史接口统计汇总
+
+以下数量是旧版联调盘点快照，不作为当前接口契约或验收计数。当前用户管理接口以 `docs/api/openapi.yaml`、对应 Controller 和本文件 1.1 节为准；Task 21 验收必须重新由当前代码生成或统计，不得沿用下表数字。
 
 | 统计项 | 数量 |
 |-------|------|
@@ -860,6 +764,122 @@ apiFunction(params).then(response => {
 ## 7. 数据库初始化契约
 
 `CarDealerCRM.sql` 是生产空库初始化入口。系统配置与系统监控能力已下线，初始化脚本不再包含 `t_system_info`。
+
+### 7.1 用户管理基础模型升级
+
+已有数据库禁止重新执行完整初始化脚本，也禁止直接执行 `dealer-server/src/main/resources/migration/*.sql`。用户管理迁移的唯一入口是：
+
+```bash
+scripts/database/user-management-migrate.sh plan
+scripts/database/user-management-migrate.sh status
+scripts/database/user-management-migrate.sh apply APPLY
+scripts/database/user-management-migrate.sh resume <migration_key> RESUME
+scripts/database/user-management-migrate.sh verify
+```
+
+完整初始化库使用 `CarDealerCRM.sql` 建库后，不重复执行历史回填，而是逐项核验现有对象并绑定 baseline：
+
+```bash
+scripts/database/user-management-migrate.sh baseline BASELINE
+scripts/database/user-management-migrate.sh verify
+```
+
+执行前必须停止写入流量、完成数据库备份，并设置 `CRM_MIGRATION_DB_HOST`、`CRM_MIGRATION_DB_PORT`、`CRM_MIGRATION_DB_NAME`、`CRM_MIGRATION_DB_USERNAME`、`CRM_MIGRATION_DB_PASSWORD`。可通过 `CRM_MIGRATION_MYSQL_BIN=mysql` 或 `mariadb` 选择兼容客户端。必须记录当前应用版本、`t_user`、`t_user_role`、`t_role_permission` 行数、每个用户的 `id + login_act` 映射和各用户当前有效权限 code 集合。
+
+`dealer-server/src/main/resources/migration/manifest.tsv` 是 Task 03、09、10、11、12、13、15、16、17、18、19、20 的唯一顺序、依赖、脚本 checksum、恢复模式和对象探针清单。执行器遵守以下边界：
+
+- 获取 `car_dealer_crm:user_management_migration` 数据库命名锁后才允许建立或恢复迁移尝试。
+- `t_user_management_migration` 记录 `RUNNING/SUCCEEDED/FAILED`、checksum、执行次数、错误摘要和最后完成步骤；`t_user_management_migration_step` 保存可恢复步骤。
+- `apply APPLY` 只执行没有账本记录的迁移；`RUNNING/FAILED` 必须使用指定 migration key 的 `resume ... RESUME`，不得删除或伪造账本后重放。
+- 每个建表、改表、索引、约束、种子或回填过程都在首个变更前再次校验命名锁、连接、migration key、checksum 和 `RUNNING` 状态；即使直接使用 `mysql --force` 执行 SQL，也不得改变业务 Schema 或回填数据。
+- 授权历史和生命周期事件的不可变触发器是过程外方言定义，但只增加审计保护；其余业务对象仍必须在受控过程内完成。
+- 只有脚本执行、步骤账本和 manifest 对象探针全部成功，执行器才把迁移标记为 `SUCCEEDED`；对象已存在但账本缺失不能视为成功。
+- baseline 逐项执行与 manifest 相同的对象探针并绑定当前 checksum，不执行兼容回填，不得改变核心业务行数。
+- Task15 在迁移 context 内新增 `account_expires_at`、`t_login_identifier` 和 `LOGIN_IDENTIFIER_GUARD`，并把所有现有非空 `t_user.login_act` 幂等回填为 ACTIVE 永久归属。账号为空、标识已归属其他用户或用户已有冲突当前标识时必须失败，不能使用 `IGNORE`、覆盖更新或手工删历史继续迁移。
+
+迁移占位组织不是真实门店或团队。管理范围、负责人资格、接收人资格和业务数据范围必须排除 `migration_placeholder=1`；补录真实组织和岗位前不得把占位任职作为授权依据。
+
+故障恢复时先运行 `status`，核对失败 key、checksum 和 `last_completed_step`，修复明确原因后只对该 key 执行 `resume`。禁止从 SQL 文件开头手工重跑、删除字段、清空角色关系、修改 checksum 或伪造成功账本。成功后必须运行 `verify`，并重新核对账号状态、账号/凭证期限、登录标识永久归属、密码摘要、用户角色、角色权限、有效权限集合、孤儿关系、主任职、迁移占位和历史触发器。
+
+H2 只用于 Mapper、约束近似和事务测试，不能证明 MySQL/MariaDB 方言。发布验收必须在受支持的 MySQL 和 MariaDB 实例上分别执行：旧库首次升级、Task 10/12/13/15 故障注入与恢复、登录账号永久不可转让、重复 `apply`、逐脚本 `mysql --force` 防绕过、完整库 baseline，以及授权历史和生命周期事件拒绝 `UPDATE/DELETE`。真实验证入口为 `scripts/database/test-user-management-migrations-real.sh`；该脚本一次验证当前环境变量指定的一种数据库，双库验收必须分别运行并保存厂商、版本和输出证据。
+
+Task15 成功或 baseline 绑定前，至少执行以下只读核对；任一结果不符合预期都不能发布：
+
+```sql
+-- 应为 0：每个现有用户都有与当前 login_act 完全匹配的 ACTIVE 归属。
+SELECT COUNT(*) AS missing_login_identifier
+FROM t_user u
+LEFT JOIN t_login_identifier li
+  ON li.user_id=u.id AND li.login_act=u.login_act
+ AND li.status='ACTIVE' AND li.active_marker=1 AND li.retired_at IS NULL
+WHERE u.login_act IS NULL OR li.id IS NULL;
+
+-- 应为空：登录标识不得跨用户重复，每个用户最多一个 ACTIVE 标识。
+SELECT login_act, COUNT(DISTINCT user_id) AS owners
+FROM t_login_identifier GROUP BY login_act HAVING owners <> 1;
+SELECT user_id, COUNT(*) AS active_identifiers
+FROM t_login_identifier WHERE active_marker=1
+GROUP BY user_id HAVING active_identifiers <> 1;
+
+-- 应返回 1；两个到期列都应存在且允许 NULL。
+SELECT COUNT(*) FROM t_authorization_graph_lock WHERE lock_name='LOGIN_IDENTIFIER_GUARD';
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema=DATABASE() AND table_name='t_user'
+  AND column_name IN ('account_expires_at','password_expires_at');
+```
+
+### 7.2 组织管理联调契约
+
+- 组织树和组织员工列表均由后端按当前操作者组织范围裁剪；前端不得缓存全量 ID 后自行判断范围。
+- 组织上级、负责人和直属管理者使用专用候选接口，写接口仍会重新校验候选资格、汇报环和对象范围。
+- 组织、岗位状态请求必须携带 `expectedVersion` 和 `reason`；任职更新必须携带员工 `expectedVersion`、完整主任职、完整兼任集合、当前汇报分区和原因。
+- 任职与汇报权限按实际差异分别校验。客户端为保持完整表单而回传未变化分区时，不会触发额外权限要求，也不会重写该分区。
+- DIRECT 仍是唯一直属管理者；ACTING 通过 `/api/employees/{id}/acting-reporting-relations` 读取和按员工版本整体替换有限期多关系集合，并使用专用 `/manager-candidates` 候选。空集合只结束 ACTING，不得覆盖 DIRECT。
+- 用户不能通过组织管理入口读取或调整本人；个人资料入口由后续个人中心契约提供。本人权限始终只能由有权管理其账号的上级或安全管理员调整。
+- `403` 表示缺少权限、本人操作、受保护目标或对象超范围；组织环、汇报环、停用阻断和 CAS 冲突返回 `409` 及稳定业务 code。
+- ACTING 保存返回 `409` 或员工版本冲突 code 时，前端必须重载关系集合与候选，不能保留旧 `employeeVersion` 继续提交。
+- 任职和汇报响应只返回员工号、姓名、组织、岗位、管理者和可操作提示，不返回手机号、邮箱或持久化实体。
+
+### 7.3 角色权限矩阵联调契约
+
+- 权限目录仅允许 GET；客户端不能创建、修改或删除权限 code。
+- 角色 code 创建后不可修改，受保护恢复角色不可通过普通目录或矩阵接口削弱，角色不物理删除。
+- `GLOBAL` 角色仅由安全管理员维护；`ORGANIZATION` 角色必须提交适用组织，服务端重新校验操作者覆盖全部组织和全部有效成员。
+- 矩阵预览和保存都校验 `expectedVersion`、未知/停用权限、操作者实际拥有的权限、可委派标记和授权级别；保存理由必填。
+- 预览或保存返回角色版本冲突时，前端必须重载角色详情、权限目录和矩阵，丢弃基于旧版本的本地预览。
+- 无差异矩阵请求不删除重插、不递增角色版本、不撤销会话。实际变化在事务内写历史、审计并精确递增受影响用户 `auth_version`；任一行缺失即整体回滚。
+- Redis 登录缓存只在提交后清理。响应 `sessionCleanupWarningCount=null` 表示提交后动作尚不能在同步响应中证明；数据库安全版本已经使旧 Token 失效。
+
+### 7.4 用户管理工作台联调契约
+
+- `GET /api/users` 支持关键词、组织、岗位、直属管理者、角色、任职状态、账号状态和锁定状态组合筛选；分页、白名单排序和唯一主键次序全部由后端完成。
+- `GET /api/users/filter-options` 的 `roles` 是列表筛选使用的可见角色事实；`assignableRoles` 是创建用户时不超过操作者委派上限的候选。已选择组织时应携带 `organizationUnitId` 重新查询候选，前端不得把两者混用。
+- `GET /api/users/{id}` 返回独立的 `profileVersion`、`accountVersion`、`employeeVersion`、`authorizationVersion` 和 `sessionRevision`。`allowedActions` 与 `unavailableReasons` 是目标对象级判断结果，前端不得根据角色名或岗位名推断。
+- 批量角色或个人权限命令发生 `409`/授权版本冲突时，前端必须逐个重载所选用户授权详情和列表，重置旧编辑内容；再次提交只能使用新的 `authorizationVersion`。
+- 本人管理详情只读并引导到个人中心；本人、同级、上级、跨范围和受保护账号的写操作由后端拒绝。不存在资源返回 `404`，存在但超范围返回 `403`。
+- `POST /api/users` 不接受密码、userId、授权状态等额外字段；创建结果不包含密码、Token 或凭证摘要。初始角色、授权历史、凭证和账号员工事实全成功或全回滚。
+- 账号状态请求必须携带最新 `accountVersion` 和原因；版本过期返回 `627/409`。人工解锁只清除人工锁定，不清除仍有效的自动锁定。
+- 登录账号修改同样携带 `accountVersion` 和原因。服务端持有 `LOGIN_IDENTIFIER_GUARD` 后同时检查 `t_user` 当前账号与 `t_login_identifier` 历史；旧标识只能由原用户重新启用，不能转给其他员工。
+- 安全期限修改分别使用 `accountExpiresAt` 与 `credentialExpiresAt`；前端不得根据一个值推导另一个值。设置、清空或改动任一安全期限都会提升认证版本并撤销旧会话，且不能使最后一个有效普通管理员失效。
+- 旧 `/api/user` 万能创建/更新、单数状态、角色、密码和交接写路径已停用并 fail-close；只读 `GET /api/user/{id}` 仅作 deprecated 兼容。
+- Task 18 由 manifest 在 Task 17 后调度；索引过程在内部二次校验迁移上下文，步骤完成后写入步骤账本，最终由统一对象探针和 checksum 决定是否标记 `SUCCEEDED`。
+
+#### 7.4.1 登录标识与安全期限手工验收
+
+1. 创建普通员工 A，记录账号版本和活动会话；把账号从 `employee_a` 改为 `employee_a_new`，确认旧会话立即返回 401，`t_login_identifier` 同时保留一条 RETIRED 旧标识和一条 ACTIVE 新标识。
+2. 创建普通员工 B 时尝试使用 `employee_a`，应返回重复冲突且整笔邀请事务无账号、员工、任职、角色或凭证残留；再由员工 A 改回 `employee_a` 应成功，并把该用户自己的历史标识重新启用。
+3. 分别只设置 `accountExpiresAt`、只设置 `credentialExpiresAt`，确认响应和数据库两个时间字段互不覆盖；到期后登录及已有 Token 均失败，清空对应字段后只恢复该维度的期限状态。
+4. 对普通管理员设置未来或已到期时间时，确认可用管理员重新计算包含当前时间判断；尝试使最后一个有效普通管理员的账号或凭证到期必须返回 403，且版本、期限、会话和审计均不得部分变化。
+5. 并发发起相同登录账号的邀请或改名，只允许一个事务成功；失败请求返回稳定重复/冲突响应，不得泄露数据库唯一约束异常或产生两个 ACTIVE 标识。
+
+### 7.5 用户历史联调契约
+
+- `GET /api/users/{id}/history` 接收 `page`、`size`、`actionCode`、`startTime`、`endTime`；分页从 1 开始，`size` 为 1—100，开始时间晚于结束时间或未知动作返回 `400`。
+- 响应固定包含 `list/total/pageSize/pageNum/pages/size`、`actionOptions`、`allowedActions` 和 `unavailableReasons`。前端只消费结构化 `beforeValues/afterValues`，不得读取或猜测操作日志原始 `detail`。
+- 后端同时校验 `audit:operation:detail` 和目标用户管理范围；本人、无审计权限、跨组织及受保护目标返回 `403`，目标不存在返回 `404`。
+- 同一请求可产生账号、凭证、任职、汇报和角色等多个不同业务子事件；仅真正重复的配套索引可合并，不得按 `requestId` 一刀切吞掉不同语义事件。
+- 服务端响应禁止出现密码、哈希、Token、凭证明文、完整手机号、完整邮箱、IP、原始请求/响应或会话标识。前端遮罩只作为第二道防线。
 
 ## 8. AI 业务助手联调契约
 
