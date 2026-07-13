@@ -1,14 +1,24 @@
 package com.autodealer.crm.integration;
 
+import com.autodealer.crm.enums.DataScopeCode;
+import com.autodealer.crm.enums.PermissionEffect;
+import com.autodealer.crm.enums.PermissionSensitivityLevel;
+import com.autodealer.crm.mapper.TAuthorizationHistoryMapper;
 import com.autodealer.crm.mapper.TPermissionMapper;
+import com.autodealer.crm.mapper.TRoleMapper;
+import com.autodealer.crm.mapper.TUserPermissionMapper;
 import com.autodealer.crm.model.TPermission;
+import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.model.TUser;
+import com.autodealer.crm.model.TUserPermission;
 import com.autodealer.crm.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,6 +35,12 @@ class PermissionMapperIntegrationTest extends BackendIntegrationTestBase {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private TUserPermissionMapper userPermissionMapper;
+
+    @Autowired
+    private TRoleMapper roleMapper;
 
     @Test
     @DisplayName("用户拥有多个角色时按钮权限必须去重")
@@ -88,6 +104,109 @@ class PermissionMapperIntegrationTest extends BackendIntegrationTestBase {
             assertTrue(previousOrder < currentOrder
                     || previousOrder == currentOrder && previous.getId() < current.getId());
         }
+    }
+
+    @Test
+    @DisplayName("个人 GRANT/DENY 当前态按有效期过滤且不改变旧权限查询结果")
+    void personalPermissionCurrentStateMustUseCasAndEffectivePeriodWithoutChangingLegacyResult() {
+        List<String> legacyBefore = permissionMapper.selectButtonPermissionByUserId(2).stream()
+                .map(TPermission::getCode).toList();
+        Integer permissionId = jdbcTemplate.queryForObject(
+                "SELECT id FROM t_permission WHERE code = 'user:role'", Integer.class);
+        LocalDateTime now = LocalDateTime.now();
+
+        TUserPermission current = new TUserPermission();
+        current.setUserId(2);
+        current.setPermissionId(permissionId);
+        current.setEffect(PermissionEffect.GRANT);
+        current.setDataScopeCode(DataScopeCode.SELF);
+        current.setEffectiveFrom(now.minusMinutes(1));
+        current.setEffectiveTo(now.plusMinutes(1));
+        current.setReason("定向测试授权");
+        current.setGrantedBy(1);
+        current.setVersion(0);
+        current.setCreateTime(now);
+        assertEquals(1, userPermissionMapper.insert(current));
+        assertEquals(PermissionEffect.GRANT,
+                userPermissionMapper.selectCurrentEffective(2, permissionId, now).getEffect());
+        assertEquals(null, userPermissionMapper.selectCurrentEffective(2, permissionId, now.plusMinutes(2)));
+
+        current.setEffect(PermissionEffect.DENY);
+        current.setDataScopeCode(null);
+        current.setEffectiveFrom(now.minusSeconds(1));
+        current.setEffectiveTo(null);
+        current.setReason("定向测试拒绝");
+        current.setUpdateTime(now);
+        assertEquals(1, userPermissionMapper.updateCurrentByVersion(current, 0));
+        assertEquals(0, userPermissionMapper.updateCurrentByVersion(current, 0));
+        TUserPermission denied = userPermissionMapper.selectCurrentEffective(2, permissionId, now);
+        assertEquals(PermissionEffect.DENY, denied.getEffect());
+        assertEquals(1, denied.getVersion());
+        assertEquals(null, denied.getDataScopeCode());
+
+        List<String> legacyAfter = permissionMapper.selectButtonPermissionByUserId(2).stream()
+                .map(TPermission::getCode).toList();
+        assertEquals(legacyBefore, legacyAfter);
+    }
+
+    @Test
+    @DisplayName("个人授权数据库约束必须区分 GRANT 数据范围和 DENY 空范围")
+    void personalPermissionScopeConstraintsMustRejectInvalidCombinations() {
+        Integer permissionId = jdbcTemplate.queryForObject(
+                "SELECT id FROM t_permission WHERE code = 'user:status'", Integer.class);
+        assertThrowsRuntime(() -> jdbcTemplate.update("""
+                INSERT INTO t_user_permission
+                    (user_id, permission_id, effect, data_scope_code, effective_from,
+                     reason, granted_by, version, create_time)
+                VALUES (2, ?, 'DENY', 'SELF', CURRENT_TIMESTAMP, '非法拒绝范围', 1, 0, CURRENT_TIMESTAMP)
+                """, permissionId));
+        assertThrowsRuntime(() -> jdbcTemplate.update("""
+                INSERT INTO t_user_permission
+                    (user_id, permission_id, effect, data_scope_code, effective_from,
+                     reason, granted_by, version, create_time)
+                VALUES (2, ?, 'GRANT', NULL, CURRENT_TIMESTAMP, '非法授权范围', 1, 0, CURRENT_TIMESTAMP)
+                """, permissionId));
+    }
+
+    @Test
+    @DisplayName("内置角色权限元数据与稳定枚举一致且目录更新必须 CAS")
+    void seededAuthorizationMetadataAndCatalogCasMustBeStable() {
+        TRole admin = roleMapper.selectByUserId(1).stream()
+                .filter(role -> "admin".equals(role.getRole()))
+                .findFirst().orElseThrow();
+        assertTrue(admin.getProtectedRole());
+        assertEquals(100, admin.getAuthorizationLevel());
+        assertEquals(DataScopeCode.GLOBAL, admin.getDefaultDataScope());
+        admin.setDescription("不得通过普通 CAS 修改受保护角色");
+        assertEquals(0, roleMapper.updateMutableByIdAndVersion(admin, admin.getVersion()));
+
+        Integer permissionId = jdbcTemplate.queryForObject(
+                "SELECT id FROM t_permission WHERE code = 'user:role'", Integer.class);
+        TPermission permission = permissionMapper.selectByPrimaryKey(permissionId);
+        assertEquals(PermissionSensitivityLevel.PROTECTED, permission.getSensitivityLevel());
+        assertFalse(permission.getDelegable());
+        String stableCode = permission.getCode();
+        permission.setCode("must:not:change");
+        permission.setDescription("CAS 更新说明");
+        assertEquals(1, permissionMapper.updateMutableByIdAndVersion(permission, 0));
+        assertEquals(0, permissionMapper.updateMutableByIdAndVersion(permission, 0));
+        TPermission updated = permissionMapper.selectByPrimaryKey(permissionId);
+        assertEquals(stableCode, updated.getCode());
+        assertEquals(1, updated.getVersion());
+    }
+
+    @Test
+    @DisplayName("不可变授权历史 Mapper 不得暴露更新或删除方法")
+    void authorizationHistoryMapperMustExposeOnlyInsertAndQuery() {
+        Set<String> methodNames = Arrays.stream(TAuthorizationHistoryMapper.class.getMethods())
+                .map(method -> method.getName()).collect(java.util.stream.Collectors.toSet());
+        assertTrue(methodNames.contains("insert"));
+        assertTrue(methodNames.stream().anyMatch(name -> name.startsWith("select")));
+        assertFalse(methodNames.stream().anyMatch(name -> name.startsWith("update") || name.startsWith("delete")));
+    }
+
+    private void assertThrowsRuntime(Runnable action) {
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, action::run);
     }
 
     private boolean containsMenuCode(List<TPermission> permissions, String code) {

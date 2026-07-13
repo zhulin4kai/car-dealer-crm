@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OpenApiSpecificSchemaContractTest {
 
@@ -22,10 +23,11 @@ class OpenApiSpecificSchemaContractTest {
     }
 
     @Test
-    void legacyEndpointsAndPaginationParams_shouldNotRemainInOpenApi() throws IOException {
+    void legacyBusinessEndpointsAndPaginationParams_shouldNotRemainInOpenApi() throws IOException {
         String openApi = Files.readString(OPENAPI_FILE);
 
-        assertFalse(openApi.contains("deprecated: true"));
+        assertTrue(openApi.contains("  /api/users/batch-disable:"));
+        assertTrue(openApi.contains("summary: 已停用的旧批量禁用入口"));
         assertFalse(openApi.contains("  /api/activitys:"));
         assertFalse(openApi.contains("  /api/customer/list:"));
         assertFalse(openApi.contains("  /api/tran/create:"));

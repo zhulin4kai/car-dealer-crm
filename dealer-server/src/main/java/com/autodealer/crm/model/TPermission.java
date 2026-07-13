@@ -1,5 +1,6 @@
 package com.autodealer.crm.model;
 
+import com.autodealer.crm.enums.PermissionSensitivityLevel;
 import java.io.Serializable;
 import java.util.List;
 
@@ -51,6 +52,19 @@ public class TPermission implements Serializable {
      * 菜单的图标
      */
     private String icon;
+
+    /**
+     * 所属权限模块。
+     */
+    private String module;
+
+    private String description;
+
+    private PermissionSensitivityLevel sensitivityLevel;
+
+    private Boolean delegable;
+
+    private Integer version;
 
     /**
      * 是否启用（1启用，0停用）

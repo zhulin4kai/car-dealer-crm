@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TUserSessionMapper">
+  <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TUserSession">
+    <id column="id" property="id"/><result column="session_id" property="sessionId"/>
+    <result column="user_id" property="userId"/><result column="token_digest" property="tokenDigest"/>
+    <result column="issued_auth_version" property="issuedAuthVersion"/><result column="remember_me" property="rememberMe"/>
+    <result column="device_summary" property="deviceSummary"/><result column="client_summary" property="clientSummary"/>
+    <result column="network_summary" property="networkSummary"/><result column="login_time" property="loginTime"/>
+    <result column="last_activity_time" property="lastActivityTime"/><result column="idle_expires_at" property="idleExpiresAt"/>
+    <result column="absolute_expires_at" property="absoluteExpiresAt"/><result column="revoked_at" property="revokedAt"/>
+    <result column="revoked_by" property="revokedBy"/><result column="revoke_reason" property="revokeReason"/>
+    <result column="revoke_type" property="revokeType"/><result column="version" property="version"/>
+    <result column="create_time" property="createTime"/>
+  </resultMap>
+  <sql id="Columns">id,session_id,user_id,token_digest,issued_auth_version,remember_me,device_summary,client_summary,network_summary,login_time,last_activity_time,idle_expires_at,absolute_expires_at,revoked_at,revoked_by,revoke_reason,revoke_type,version,create_time</sql>
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO t_user_session(session_id,user_id,token_digest,issued_auth_version,remember_me,
+      device_summary,client_summary,network_summary,login_time,last_activity_time,idle_expires_at,
+      absolute_expires_at,revoked_at,revoked_by,revoke_reason,revoke_type,version,create_time)
+    VALUES(#{sessionId},#{userId},#{tokenDigest},#{issuedAuthVersion},#{rememberMe},#{deviceSummary},
+      #{clientSummary},#{networkSummary},#{loginTime},#{lastActivityTime},#{idleExpiresAt},#{absoluteExpiresAt},
+      #{revokedAt},#{revokedBy},#{revokeReason},#{revokeType},#{version},#{createTime})
+  </insert>
+  <select id="selectBySessionId" resultMap="BaseResultMap">SELECT <include refid="Columns"/> FROM t_user_session WHERE session_id=#{sessionId}</select>
+  <select id="selectActiveByUserId" resultMap="BaseResultMap">
+    SELECT <include refid="Columns"/> FROM t_user_session WHERE user_id=#{userId} AND revoked_at IS NULL
+      AND idle_expires_at&gt;#{now} AND absolute_expires_at&gt;#{now} ORDER BY login_time DESC,session_id DESC
+  </select>
+  <select id="selectAllActiveSessionIdsByUserId" resultType="string">
+    SELECT session_id FROM t_user_session WHERE user_id=#{userId} AND revoked_at IS NULL
+      AND idle_expires_at&gt;#{now} AND absolute_expires_at&gt;#{now} ORDER BY login_time ASC,session_id ASC
+  </select>
+  <update id="touchBySessionIdAndVersion">UPDATE t_user_session SET last_activity_time=#{lastActivityTime},idle_expires_at=#{idleExpiresAt},version=version+1 WHERE session_id=#{sessionId} AND version=#{expectedVersion} AND revoked_at IS NULL</update>
+  <update id="revokeOne">UPDATE t_user_session SET revoked_at=#{revokedAt},revoked_by=#{revokedBy},revoke_reason=#{reason},revoke_type=#{revokeType},version=version+1 WHERE session_id=#{sessionId} AND user_id=#{userId} AND revoked_at IS NULL</update>
+  <update id="revokeOthers">UPDATE t_user_session SET revoked_at=#{revokedAt},revoked_by=#{revokedBy},revoke_reason=#{reason},revoke_type=#{revokeType},version=version+1 WHERE user_id=#{userId} AND session_id&lt;&gt;#{excludedSessionId} AND revoked_at IS NULL</update>
+  <update id="revokeAll">UPDATE t_user_session SET revoked_at=#{revokedAt},revoked_by=#{revokedBy},revoke_reason=#{reason},revoke_type=#{revokeType},version=version+1 WHERE user_id=#{userId} AND revoked_at IS NULL</update>
+  <update id="revokeExpired">UPDATE t_user_session SET revoked_at=#{now},revoke_reason='会话过期',revoke_type='EXPIRED',version=version+1 WHERE revoked_at IS NULL AND (idle_expires_at&lt;=#{now} OR absolute_expires_at&lt;=#{now})</update>
+  <delete id="deleteRetainedBefore">DELETE FROM t_user_session WHERE revoked_at IS NOT NULL AND revoked_at&lt;#{retainedBefore}</delete>
+</mapper>

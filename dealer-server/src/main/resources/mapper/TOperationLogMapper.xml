@@ -17,6 +17,21 @@
         <result column="create_time" property="createTime" />
     </resultMap>
 
+    <resultMap id="UserHistoryOperationRowMap" type="com.autodealer.crm.dto.user.UserHistoryRows$OperationRow">
+        <id column="id" property="id"/>
+        <result column="operator_id" property="operatorId"/>
+        <result column="operator_name" property="operatorName"/>
+        <result column="operator_employee_no" property="operatorEmployeeNo"/>
+        <result column="action_code" property="actionCode"/>
+        <result column="module_name" property="moduleName"/>
+        <result column="object_type" property="objectType"/>
+        <result column="resource_id" property="resourceId"/>
+        <result column="result" property="result"/>
+        <result column="detail" property="detail"/>
+        <result column="request_id" property="requestId"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
     <sql id="Base_Column_List">
         id, user_id, user_name, action_code, module_name, object_type, resource_id,
         result, detail, ip, request_id, create_time
@@ -60,6 +75,23 @@
         SELECT <include refid="Base_Column_List" />
         FROM t_operation_log
         WHERE id = #{id}
+    </select>
+
+    <select id="selectUserHistoryRows" resultMap="UserHistoryOperationRowMap">
+        SELECT l.id, l.user_id AS operator_id,
+               COALESCE(NULLIF(l.user_name, ''), '系统') AS operator_name,
+               NULL AS operator_employee_no,
+               l.action_code, l.module_name, l.object_type, l.resource_id,
+               l.result, l.detail, l.request_id, l.create_time
+        FROM t_operation_log l
+        WHERE l.resource_id = #{resourceId}
+          AND l.action_code IN
+          <foreach collection="actionCodes" item="actionCode" open="(" separator="," close=")">
+              #{actionCode}
+          </foreach>
+          <if test="startTime != null">AND l.create_time &gt;= #{startTime}</if>
+          <if test="endTime != null">AND l.create_time &lt;= #{endTime}</if>
+        ORDER BY l.create_time DESC, l.id DESC
     </select>
 
     <select id="selectForExport" resultMap="BaseResultMap">

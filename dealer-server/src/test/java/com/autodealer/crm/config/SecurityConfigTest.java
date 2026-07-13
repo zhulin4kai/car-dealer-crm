@@ -1,6 +1,8 @@
 package com.autodealer.crm.config;
 
 import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.constant.RedisKeys;
+import com.autodealer.crm.config.security.SecurityPaths;
 import com.autodealer.crm.integration.BackendIntegrationTestBase;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +18,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.ArgumentMatchers.startsWith;
 
 /**
  * Real auth/authorization/logout tests driven by SecurityConfig + MyAuthenticationSuccessHandler
@@ -40,6 +45,33 @@ class SecurityConfigTest extends BackendIntegrationTestBase {
         mockMvc.perform(get("/api/users"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(510));
+    }
+
+    @Test
+    @DisplayName("匿名联系方式验证请求能够穿过真实安全链并由凭证域判定")
+    void contactVerificationEndpointIsPublicInTheRealFilterChain() throws Exception {
+        mockMvc.perform(post(SecurityPaths.CREDENTIAL_VERIFY_CONTACT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"credential\":\"invalid-credential\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(620));
+    }
+
+    @Test
+    @DisplayName("匿名应急恢复请求能够穿过真实安全链并由默认关闭策略拒绝")
+    void breakGlassEndpointsArePublicButDefaultClosed() throws Exception {
+        String recoveryKey = "A".repeat(32);
+        mockMvc.perform(post(SecurityPaths.BREAK_GLASS_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"loginAct\":\"admin\",\"recoveryKey\":\"" + recoveryKey + "\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(520));
+
+        mockMvc.perform(post(SecurityPaths.BREAK_GLASS_COMPLETE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"credential\":\"invalid-credential\",\"newPassword\":\"Valid1A\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(520));
     }
 
     @Test
@@ -111,6 +143,24 @@ class SecurityConfigTest extends BackendIntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").value("USER_LOGOUT"));
+
+        mockMvc.perform(get("/api/login/info")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(512));
+    }
+
+    @Test
+    @DisplayName("当前会话Redis精确清理失败时返回503且数据库撤销事实仍使Token失效")
+    void logoutRedisCleanupFailureStillInvalidatesOldTokenByDatabaseVersion() throws Exception {
+        String token = loginAsAdmin();
+        doReturn(false).when(redisManager).delete(startsWith("cdrm:session:"));
+
+        mockMvc.perform(post("/api/logout")
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value(635));
 
         mockMvc.perform(get("/api/login/info")
                         .header(HttpHeaders.AUTHORIZATION, token))

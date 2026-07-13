@@ -1,15 +1,14 @@
 package com.autodealer.crm.config.handler;
 
 import com.autodealer.crm.audit.LoginAuditRecorder;
-import com.autodealer.crm.constant.Constants;
-import com.autodealer.crm.constant.RedisKeys;
-import com.autodealer.crm.manager.RedisManager;
+import com.autodealer.crm.config.security.SessionAuthenticationDetails;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.util.JSONUtils;
-import com.autodealer.crm.util.JWTUtils;
 import com.autodealer.crm.util.ResponseUtils;
+import com.autodealer.crm.service.LoginSecurityService;
+import com.autodealer.crm.service.UserSessionService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,49 +16,52 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 @Component
 public class MyAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
-    @Resource
-    private RedisManager redisManager;
+    private static final Logger log = LoggerFactory.getLogger(MyAuthenticationSuccessHandler.class);
 
     @Resource
     private LoginAuditRecorder loginAuditRecorder;
+    @Resource private LoginSecurityService loginSecurityService;
+    @Resource private UserSessionService userSessionService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         // 登录成功，执行该方法，在该方法中返回 json 给前端
         TUser tUser = (TUser) authentication.getPrincipal();
+        try { if (loginSecurityService != null) loginSecurityService.recordSuccess(tUser.getId()); }
+        catch (RuntimeException exception) { log.error("event=login_security_state result=failed userId={}",tUser.getId(),exception); writeSystemFailure(response); return; }
 
-        // 3、设置 jwt 的过期时间(如果选择了记住我，过期时间是 7 天，否则是 30 分钟)
-        String rememberMe = request.getParameter("rememberMe");
-        long expirationSeconds = Boolean.parseBoolean(rememberMe) ? Constants.EXPIRE_TIME : Constants.DEFAULT_EXPIRE_TIME;
-
-        String jwt = JWTUtils.createJWT(tUser.getId(), tUser.getLoginAct(), expirationSeconds);
-
-        boolean stored;
+        com.autodealer.crm.dto.user.UserSessionDtos.Issued issued;
         try {
-            stored = redisManager.set(RedisKeys.userLogin(tUser.getId()), jwt, expirationSeconds);
+            issued=userSessionService.create(tUser,Boolean.parseBoolean(request.getParameter("rememberMe")),request);
         } catch (RuntimeException exception) {
+            log.error("event=login_session_write result=failed userId={}", tUser.getId(), exception);
             writeSystemFailure(response);
             return;
         }
-        if (!stored) {
-            writeSystemFailure(response);
-            return;
-        }
+        ((org.springframework.security.authentication.AbstractAuthenticationToken)authentication)
+                .setDetails(new SessionAuthenticationDetails(issued.sessionId(),false));
 
         try {
             loginAuditRecorder.recordSuccess(tUser, request);
         } catch (RuntimeException exception) {
-            redisManager.delete(RedisKeys.userLogin(tUser.getId()));
+            try {
+                userSessionService.revokeCurrentForLogout(tUser.getId(),issued.sessionId());
+            } catch (RuntimeException cleanupException) {
+                log.warn("event=login_session_cleanup result=failed userId={}",
+                        tUser.getId(), cleanupException);
+            }
             writeSystemFailure(response);
             return;
         }
 
-        R result = R.OK(jwt);
+        R result = R.OK(issued.token());
 
         // 把 R 以 json 返回给前端
         ResponseUtils.write(response, JSONUtils.toJSON(result));

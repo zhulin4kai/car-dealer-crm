@@ -2,14 +2,52 @@
 -- Password for all users: 123456 (BCrypt hash)
 
 -- ==================== Users ====================
-MERGE INTO t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) KEY(id)
-VALUES (1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '管理员', '13700000000', 'admin@test.com', 1, 1, 1, 1, CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP);
+MERGE INTO t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time, account_type, protected_account, version, authorization_version, auth_version) KEY(id)
+VALUES (1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '管理员', '13700000000', 'admin@test.com', 1, 1, 1, 1, CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP, 'SYSTEM', 1, 0, 0, 0);
 
-MERGE INTO t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) KEY(id)
-VALUES (2, 'zhangsan', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '张三', '13800000001', 'zhangsan@test.com', 1, 1, 1, 1, CURRENT_TIMESTAMP, 1, NULL, NULL, NULL);
+MERGE INTO t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time, account_type, protected_account, version, authorization_version, auth_version) KEY(id)
+VALUES (2, 'zhangsan', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '张三', '13800000001', 'zhangsan@test.com', 1, 1, 1, 1, CURRENT_TIMESTAMP, 1, NULL, NULL, NULL, 'HUMAN', 0, 0, 0, 0);
 
-MERGE INTO t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time) KEY(id)
-VALUES (3, 'lisi', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '李四', '13800000002', 'lisi@test.com', 1, 1, 1, 1, CURRENT_TIMESTAMP, 1, NULL, NULL, NULL);
+MERGE INTO t_user (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired, account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time, account_type, protected_account, version, authorization_version, auth_version) KEY(id)
+VALUES (3, 'lisi', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '李四', '13800000002', 'lisi@test.com', 1, 1, 1, 1, CURRENT_TIMESTAMP, 1, NULL, NULL, NULL, 'HUMAN', 0, 0, 0, 0);
+
+MERGE INTO t_login_identifier
+(user_id, login_act, status, active_marker, retired_at, changed_by, reason, version, create_time) KEY(login_act)
+SELECT id, login_act, 'ACTIVE', 1, NULL, create_by, '初始化登录账号永久归属', 0, create_time
+FROM t_user
+WHERE id IN (1, 2, 3);
+
+-- ==================== Organization and employees ====================
+MERGE INTO t_organization_unit
+(id, code, name, type, parent_id, leader_employee_id, order_no, migration_placeholder,
+ enabled, version, create_time, create_by) KEY(id)
+VALUES
+(1, 'DEFAULT_COMPANY', '测试公司', 'COMPANY', NULL, NULL, 0, 0, 1, 0, CURRENT_TIMESTAMP, 1),
+(2, 'UNASSIGNED_ORG', '待分配组织', 'TEAM', 1, NULL, 999, 1, 1, 0, CURRENT_TIMESTAMP, 1);
+
+MERGE INTO t_position
+(id, code, name, description, position_level, built_in, enabled, version, create_time, create_by) KEY(id)
+VALUES
+(1, 'UNASSIGNED_POSITION', '待分配岗位', '兼容迁移占位岗位，完成员工资料补录后应替换。',
+ 0, 1, 1, 0, CURRENT_TIMESTAMP, 1),
+(2, 'TEST_STAFF', '测试员工', 'H2 测试普通员工岗位。',
+ 30, 0, 1, 0, CURRENT_TIMESTAMP, 1),
+(3, 'TEST_MANAGER', '测试主管', 'H2 测试主管岗位。',
+ 60, 0, 1, 0, CURRENT_TIMESTAMP, 1);
+
+MERGE INTO t_employee
+(id, user_id, employee_no, name, phone, email, employment_status, profile_completed,
+ hire_date, version, phone_verified, email_verified, create_time, create_by) KEY(id)
+VALUES
+(1, 2, 'EMP-000002', '张三', '13800000001', 'zhangsan@test.com', 'ACTIVE', 0, CURRENT_DATE, 0, 1, 1, CURRENT_TIMESTAMP, 1),
+(2, 3, 'EMP-000003', '李四', '13800000002', 'lisi@test.com', 'ACTIVE', 0, CURRENT_DATE, 0, 1, 1, CURRENT_TIMESTAMP, 1);
+
+MERGE INTO t_employee_assignment
+(id, employee_id, organization_unit_id, position_id, assignment_type, status,
+ active_primary_marker, effective_from, reason, version, create_time, create_by) KEY(id)
+VALUES
+(1, 1, 1, 2, 'PRIMARY', 'ACTIVE', 1, CURRENT_TIMESTAMP, 'H2 测试完整主要任职', 0, CURRENT_TIMESTAMP, 1),
+(2, 2, 1, 3, 'PRIMARY', 'ACTIVE', 1, CURRENT_TIMESTAMP, 'H2 测试完整主要任职', 0, CURRENT_TIMESTAMP, 1);
 
 -- ==================== Roles ====================
 INSERT INTO `t_role` (`role`, `role_name`, `enabled`) VALUES
@@ -20,6 +58,27 @@ INSERT INTO `t_role` (`role`, `role_name`, `enabled`) VALUES
 ('finance_specialist', '财务专员', 1),
 ('inventory_specialist', '库存专员', 1);
 
+UPDATE t_role
+SET description = role_name,
+    protected_role = CASE WHEN role = 'admin' THEN 1 ELSE 0 END,
+    authorization_level = CASE role
+        WHEN 'admin' THEN 100
+        WHEN 'sales_manager' THEN 60
+        WHEN 'finance_specialist' THEN 50
+        WHEN 'marketing_specialist' THEN 40
+        WHEN 'inventory_specialist' THEN 40
+        WHEN 'sales_consultant' THEN 30
+        ELSE 0
+    END,
+    default_data_scope = CASE role
+        WHEN 'admin' THEN 'GLOBAL'
+        WHEN 'sales_manager' THEN 'REPORTING_TREE'
+        WHEN 'marketing_specialist' THEN 'PRIMARY_ORG'
+        WHEN 'finance_specialist' THEN 'PRIMARY_ORG'
+        WHEN 'inventory_specialist' THEN 'PRIMARY_ORG'
+        ELSE 'SELF'
+    END;
+
 -- ==================== User Roles ====================
 INSERT INTO t_user_role (user_id, role_id)
 SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r WHERE u.login_act = 'admin' AND r.role = 'admin';
@@ -27,6 +86,11 @@ INSERT INTO t_user_role (user_id, role_id)
 SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r WHERE u.login_act = 'zhangsan' AND r.role = 'sales_consultant';
 INSERT INTO t_user_role (user_id, role_id)
 SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r WHERE u.login_act = 'lisi' AND r.role = 'sales_manager';
+
+UPDATE t_user_role
+SET granted_by = 1,
+    reason = '初始化角色关系',
+    effective_from = CURRENT_TIMESTAMP;
 
 -- ==================== Permissions ====================
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`) VALUES
@@ -293,6 +357,8 @@ SELECT '用户管理-角色分配', 'user:role', NULL, 'button', id, NULL, NULL,
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '用户管理-密码重置', 'user:password', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-敏感资料查看', 'user:sensitive:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '统计报表-查看', 'statistic:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:dashboard';
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -347,6 +413,52 @@ INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_n
 SELECT 'AI 策略-查看', 'ai:policy:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT 'AI 策略-管理', 'ai:policy:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
+
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+VALUES ('组织架构', 'menu:organization', NULL, 'menu', NULL, 2, 'Network', 1);
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构', 'page:organization:list', '/dashboard/organization', 'menu', id, 1, 'Network', 1 FROM `t_permission` WHERE code = 'menu:organization';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-列表', 'organization:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-查看', 'organization:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-新增', 'organization:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-编辑', 'organization:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-状态', 'organization:status', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '岗位-列表', 'position:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '岗位-新增', 'position:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '岗位-编辑', 'position:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '岗位-状态', 'position:status', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '员工-任职调整', 'employee:assignment', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '员工-汇报关系', 'employee:reporting', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`order_no`,`icon`,`enabled`)
+VALUES ('权限管理','menu:access',NULL,'menu',NULL,3,'Shield',1);
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`order_no`,`icon`,`enabled`)
+SELECT '角色管理','page:role:list','/dashboard/role','menu',id,1,'Users',1 FROM t_permission WHERE code='menu:access';
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`order_no`,`icon`,`enabled`)
+SELECT '权限目录','page:permission:list','/dashboard/permission','menu',id,2,'KeyRound',1 FROM t_permission WHERE code='menu:access';
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`module`,`description`,`sensitivity_level`,`delegable`,`enabled`)
+SELECT v.name,v.code,NULL,'button',p.id,'access',v.name,
+  CASE WHEN v.code IN ('role:status','role:permission:manage') THEN 'PROTECTED' ELSE 'NORMAL' END,
+  CASE WHEN v.code IN ('role:status','role:permission:manage') THEN 0 ELSE 1 END,1 FROM t_permission p JOIN (
+ SELECT '角色-列表' name,'role:list' code UNION ALL SELECT '角色-查看','role:view' UNION ALL SELECT '角色-新增','role:add'
+ UNION ALL SELECT '角色-编辑','role:edit' UNION ALL SELECT '角色-复制','role:copy' UNION ALL SELECT '角色-状态','role:status'
+ UNION ALL SELECT '角色-权限矩阵','role:permission:manage'
+) v ON p.code='page:role:list';
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`module`,`description`,`sensitivity_level`,`delegable`,`enabled`)
+SELECT '权限目录-列表','permission:list',NULL,'button',id,'access','权限目录-列表','NORMAL',1,1 FROM t_permission WHERE code='page:permission:list';
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`enabled`)
+SELECT '用户管理-个人权限','user:permission',NULL,'button',id,1 FROM t_permission WHERE code='page:user:list';
 
 -- ==================== Role Permissions ====================
 -- 管理员显式拥有当前全部已启用权限；后续新增权限时必须同步补充管理员映射。
@@ -670,3 +782,100 @@ WHERE r.role = 'admin' AND p.code LIKE 'audit:%';
 INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
 WHERE r.role = 'admin' AND p.code IN ('menu:audit', 'page:audit:login', 'page:audit:operation');
+
+-- Task 10：初始化权限元数据和角色权限范围，不改变原有角色权限行集合。
+UPDATE t_permission
+SET module = CASE
+        WHEN code LIKE '%activity%' THEN 'activity'
+        WHEN code LIKE '%clue%' THEN 'clue'
+        WHEN code LIKE '%customer%' THEN 'customer'
+        WHEN code LIKE '%opportunity%' THEN 'opportunity'
+        WHEN code LIKE '%test-drive%' THEN 'test-drive'
+        WHEN code LIKE '%tran%' OR code LIKE '%payment%' OR code LIKE '%refund%' OR code LIKE '%invoice%' THEN 'tran'
+        WHEN code LIKE '%quote%' THEN 'quote'
+        WHEN code LIKE '%delivery%' THEN 'delivery'
+        WHEN code LIKE '%product%' THEN 'product'
+        WHEN code LIKE '%dict%' THEN 'dict'
+        WHEN code LIKE '%user%' THEN 'user'
+        WHEN code LIKE '%follow%' OR code LIKE '%communication-record%' THEN 'follow'
+        WHEN code LIKE '%audit%' THEN 'audit'
+        WHEN code LIKE '%ai%' THEN 'ai'
+        WHEN code LIKE '%dashboard%' OR code LIKE '%statistic%' THEN 'dashboard'
+        ELSE 'system'
+    END,
+    description = name;
+
+UPDATE t_permission
+SET sensitivity_level = 'SENSITIVE'
+WHERE code LIKE '%:delete'
+   OR code LIKE '%:export'
+   OR code LIKE '%:import'
+   OR code LIKE '%:approve'
+   OR code LIKE '%:payment%'
+   OR code LIKE '%:refund%'
+   OR code LIKE '%:invoice%'
+   OR code LIKE '%:sensitive%'
+   OR code LIKE '%:adjust';
+
+UPDATE t_permission
+SET sensitivity_level = 'PROTECTED'
+WHERE code IN ('user:role', 'user:status', 'user:password', 'user:delete',
+               'ai:provider-config:manage', 'ai:provider-config:rotate-key',
+               'organization:edit', 'organization:status', 'position:status',
+               'employee:assignment', 'employee:reporting');
+
+UPDATE t_permission
+SET delegable = CASE WHEN sensitivity_level = 'NORMAL' THEN 1 ELSE 0 END;
+
+-- Task 11 稳定元数据不得被 Task 10 的通用 code 推导覆盖。
+UPDATE t_permission
+SET module = CASE
+        WHEN code LIKE 'organization:%' THEN 'organization'
+        WHEN code LIKE 'position:%' THEN 'position'
+        ELSE 'employee'
+    END,
+    sensitivity_level = CASE
+        WHEN code IN ('organization:list', 'organization:view', 'position:list') THEN 'NORMAL'
+        WHEN code IN ('organization:add', 'position:add', 'position:edit') THEN 'SENSITIVE'
+        ELSE 'PROTECTED'
+    END,
+    delegable = CASE
+        WHEN code IN ('organization:list', 'organization:view', 'position:list') THEN 1
+        ELSE 0
+    END
+WHERE code IN ('organization:list', 'organization:view', 'organization:add', 'organization:edit',
+               'organization:status', 'position:list', 'position:add', 'position:edit',
+               'position:status', 'employee:assignment', 'employee:reporting');
+
+UPDATE t_permission
+SET module=CASE WHEN code='user:permission' THEN 'user' ELSE 'access' END,
+    sensitivity_level=CASE WHEN code IN ('role:status','role:permission:manage','user:permission') THEN 'PROTECTED' ELSE 'NORMAL' END,
+    delegable=CASE WHEN code IN ('role:status','role:permission:manage','user:permission') THEN 0 ELSE 1 END
+WHERE code IN ('role:list','role:view','role:add','role:edit','role:copy','role:status',
+               'role:permission:manage','permission:list','user:permission');
+
+UPDATE t_role_permission
+SET delegable = (SELECT p.delegable FROM t_permission p WHERE p.id = t_role_permission.permission_id),
+    data_scope_code = (SELECT r.default_data_scope FROM t_role r WHERE r.id = t_role_permission.role_id);
+
+-- 当前初始化脚本已内建这些结构和回填，防止后续误跑旧人工迁移覆盖现有配置。
+MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
+VALUES ('20260711_task03_auth_version', CURRENT_TIMESTAMP);
+MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
+VALUES ('20260711_task09_organization_foundation', CURRENT_TIMESTAMP);
+MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
+VALUES ('20260711_task10_authorization_history', CURRENT_TIMESTAMP);
+MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
+VALUES ('20260711_task11_organization_management', CURRENT_TIMESTAMP);
+MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
+VALUES ('20260711_task12_role_permission_matrix', CURRENT_TIMESTAMP);
+MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
+VALUES ('20260711_task13_user_authorization', CURRENT_TIMESTAMP);
+MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('ORGANIZATION_HIERARCHY');
+MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('REPORTING_GRAPH');
+MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('AVAILABLE_ADMIN_GUARD');
+MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('AUTHORIZATION_MEMBERSHIP_GUARD');
+MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('TEST_DRIVE_SCHEDULE_GUARD');
+MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('LOGIN_IDENTIFIER_GUARD');
+MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
+VALUES ('20260712_task20_user_lifecycle', CURRENT_TIMESTAMP);

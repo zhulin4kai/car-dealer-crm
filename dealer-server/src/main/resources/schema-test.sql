@@ -216,10 +216,18 @@ CREATE TABLE IF NOT EXISTS t_permission
     parent_id INTEGER,
     order_no  INTEGER,
     icon      VARCHAR(100),
+    module    VARCHAR(64) NOT NULL DEFAULT 'system',
+    description VARCHAR(255),
+    sensitivity_level VARCHAR(16) NOT NULL DEFAULT 'NORMAL',
+    delegable TINYINT NOT NULL DEFAULT 0,
     enabled   TINYINT NOT NULL DEFAULT 1,
+    version   INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_permission_code UNIQUE (code),
     CONSTRAINT chk_permission_type CHECK (type IN ('menu', 'button')),
+    CONSTRAINT chk_permission_sensitivity CHECK (sensitivity_level IN ('NORMAL', 'SENSITIVE', 'PROTECTED')),
+    CONSTRAINT chk_permission_delegable CHECK (delegable IN (0, 1)),
+    CONSTRAINT chk_permission_version CHECK (version >= 0),
     CONSTRAINT chk_permission_parent_self CHECK (parent_id IS NULL OR parent_id <> id),
     CONSTRAINT fk_permission_parent FOREIGN KEY (parent_id) REFERENCES t_permission(id) ON DELETE RESTRICT
 );
@@ -229,18 +237,34 @@ CREATE TABLE IF NOT EXISTS t_role
     id        INTEGER NOT NULL AUTO_INCREMENT,
     role      VARCHAR(64) NOT NULL,
     role_name VARCHAR(64) NOT NULL,
+    description VARCHAR(255),
+    protected_role TINYINT NOT NULL DEFAULT 0,
+    authorization_level INTEGER NOT NULL DEFAULT 0,
+    default_data_scope VARCHAR(32) NOT NULL DEFAULT 'SELF',
+    scope_type VARCHAR(16) NOT NULL DEFAULT 'GLOBAL',
     enabled   TINYINT NOT NULL DEFAULT 1,
+    version   INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    CONSTRAINT uk_role_code UNIQUE (role)
+    CONSTRAINT uk_role_code UNIQUE (role),
+    CONSTRAINT chk_role_protected CHECK (protected_role IN (0, 1)),
+    CONSTRAINT chk_role_authorization_level CHECK (authorization_level >= 0),
+    CONSTRAINT chk_role_data_scope CHECK (default_data_scope IN ('SELF', 'DIRECT_REPORTS', 'REPORTING_TREE', 'PRIMARY_ORG', 'ORG_TREE', 'CUSTOM_ORGS', 'GLOBAL')),
+    CONSTRAINT chk_role_scope_type CHECK (scope_type IN ('GLOBAL', 'ORGANIZATION')),
+    CONSTRAINT chk_role_enabled CHECK (enabled IN (0, 1)),
+    CONSTRAINT chk_role_version CHECK (version >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS t_role_permission
 (
     role_id       INTEGER NOT NULL,
     permission_id INTEGER NOT NULL,
+    delegable     TINYINT NOT NULL DEFAULT 0,
+    data_scope_code VARCHAR(32) NOT NULL DEFAULT 'SELF',
     PRIMARY KEY (role_id, permission_id),
-    CONSTRAINT fk_role_permission_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE CASCADE,
-    CONSTRAINT fk_role_permission_permission FOREIGN KEY (permission_id) REFERENCES t_permission(id) ON DELETE CASCADE
+    CONSTRAINT fk_role_permission_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_role_permission_permission FOREIGN KEY (permission_id) REFERENCES t_permission(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_role_permission_delegable CHECK (delegable IN (0, 1)),
+    CONSTRAINT chk_role_permission_data_scope CHECK (data_scope_code IN ('SELF', 'DIRECT_REPORTS', 'REPORTING_TREE', 'PRIMARY_ORG', 'ORG_TREE', 'CUSTOM_ORGS', 'GLOBAL'))
 );
 
 CREATE TABLE IF NOT EXISTS t_user
@@ -248,9 +272,11 @@ CREATE TABLE IF NOT EXISTS t_user
     id                     INTEGER NOT NULL AUTO_INCREMENT,
     login_act              VARCHAR(32),
     login_pwd              VARCHAR(64),
-    name                   VARCHAR(32),
+    name                   VARCHAR(64),
     phone                  VARCHAR(18),
     email                  VARCHAR(64),
+    avatar_url             VARCHAR(500),
+    profile_version        INTEGER NOT NULL DEFAULT 0,
     account_no_expired     INTEGER,
     credentials_no_expired INTEGER,
     account_no_locked      INTEGER,
@@ -260,11 +286,375 @@ CREATE TABLE IF NOT EXISTS t_user
     edit_time              TIMESTAMP,
     edit_by                INTEGER,
     last_login_time        TIMESTAMP,
+    account_type           VARCHAR(16) NOT NULL DEFAULT 'HUMAN',
+    protected_account      TINYINT NOT NULL DEFAULT 0,
+    version                INTEGER NOT NULL DEFAULT 0,
+    authorization_version  INTEGER NOT NULL DEFAULT 0,
+    auth_version           BIGINT NOT NULL DEFAULT 0,
+    session_revision       BIGINT NOT NULL DEFAULT 0,
+    account_status         VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    must_change_password   TINYINT NOT NULL DEFAULT 0,
+    failed_login_count     INTEGER NOT NULL DEFAULT 0,
+    auto_locked_until      TIMESTAMP,
+    manual_locked          TINYINT NOT NULL DEFAULT 0,
+    manual_lock_reason     VARCHAR(500),
+    manual_locked_by       INTEGER,
+    manual_locked_at       TIMESTAMP,
+    account_expires_at     TIMESTAMP,
+    password_expires_at    TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT uk_user_login_act UNIQUE (login_act),
     CONSTRAINT uk_user_email UNIQUE (email),
-    CONSTRAINT uk_user_phone UNIQUE (phone)
+    CONSTRAINT uk_user_phone UNIQUE (phone),
+    CONSTRAINT chk_user_account_type CHECK (account_type IN ('SYSTEM', 'HUMAN')),
+    CONSTRAINT chk_user_protected_account CHECK (protected_account IN (0, 1)),
+    CONSTRAINT chk_user_account_protection CHECK (
+        (account_type = 'SYSTEM' AND protected_account = 1)
+        OR (account_type = 'HUMAN' AND protected_account = 0)
+    ),
+    CONSTRAINT chk_user_recovery_login_act CHECK (
+        (protected_account = 1 AND login_act IS NOT NULL AND LOWER(login_act) = 'admin')
+        OR (protected_account = 0 AND (login_act IS NULL OR LOWER(login_act) <> 'admin'))
+    ),
+    CONSTRAINT chk_user_version CHECK (version >= 0),
+    CONSTRAINT chk_user_authorization_version CHECK (authorization_version >= 0),
+    CONSTRAINT chk_user_auth_version CHECK (auth_version >= 0)
+    ,CONSTRAINT chk_user_session_revision CHECK (session_revision >= 0)
+    ,CONSTRAINT chk_user_profile_version CHECK (profile_version >= 0)
+    ,CONSTRAINT chk_user_account_status CHECK (account_status IN ('INVITED','ACTIVE','DISABLED'))
+    ,CONSTRAINT chk_user_must_change_password CHECK (must_change_password IN (0,1))
+    ,CONSTRAINT chk_user_failed_login_count CHECK (failed_login_count >= 0)
+    ,CONSTRAINT chk_user_manual_locked CHECK (manual_locked IN (0,1))
 );
+CREATE INDEX IF NOT EXISTS idx_user_workspace_status
+    ON t_user(account_status, manual_locked, auto_locked_until, id);
+CREATE INDEX IF NOT EXISTS idx_user_workspace_last_login
+    ON t_user(last_login_time, id);
+
+CREATE TABLE IF NOT EXISTS t_user_session
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    session_id VARCHAR(64) NOT NULL,
+    user_id INTEGER NOT NULL,
+    token_digest VARCHAR(64) NOT NULL,
+    issued_auth_version BIGINT NOT NULL,
+    remember_me TINYINT NOT NULL DEFAULT 0,
+    device_summary VARCHAR(128) NOT NULL,
+    client_summary VARCHAR(128),
+    network_summary VARCHAR(128),
+    login_time TIMESTAMP NOT NULL,
+    last_activity_time TIMESTAMP NOT NULL,
+    idle_expires_at TIMESTAMP NOT NULL,
+    absolute_expires_at TIMESTAMP NOT NULL,
+    revoked_at TIMESTAMP,
+    revoked_by INTEGER,
+    revoke_reason VARCHAR(500),
+    revoke_type VARCHAR(32),
+    version INTEGER NOT NULL DEFAULT 0,
+    create_time TIMESTAMP NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_user_session_id UNIQUE(session_id),
+    CONSTRAINT uk_user_session_token_digest UNIQUE(token_digest),
+    CONSTRAINT fk_user_session_user FOREIGN KEY(user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_user_session_remember CHECK(remember_me IN (0,1)),
+    CONSTRAINT chk_user_session_version CHECK(version >= 0),
+    CONSTRAINT chk_user_session_times CHECK(login_time <= last_activity_time AND last_activity_time < idle_expires_at AND idle_expires_at <= absolute_expires_at),
+    CONSTRAINT chk_user_session_revocation CHECK((revoked_at IS NULL AND revoke_reason IS NULL AND revoke_type IS NULL) OR (revoked_at IS NOT NULL AND revoke_reason IS NOT NULL AND revoke_type IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS idx_user_session_user_active ON t_user_session(user_id,revoked_at,login_time,session_id);
+CREATE INDEX IF NOT EXISTS idx_user_session_retention ON t_user_session(revoked_at,id);
+
+CREATE TABLE IF NOT EXISTS t_employee
+(
+    id                INTEGER NOT NULL AUTO_INCREMENT,
+    user_id           INTEGER,
+    employee_no       VARCHAR(32) NOT NULL,
+    name              VARCHAR(64) NOT NULL,
+    phone             VARCHAR(18),
+    email             VARCHAR(64),
+    avatar_url        VARCHAR(500),
+    employment_status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    profile_completed TINYINT NOT NULL DEFAULT 0,
+    hire_date         DATE,
+    leave_date        DATE,
+    version           INTEGER NOT NULL DEFAULT 0,
+    profile_version   INTEGER NOT NULL DEFAULT 0,
+    phone_verified    TINYINT NOT NULL DEFAULT 0,
+    email_verified    TINYINT NOT NULL DEFAULT 0,
+    create_time       TIMESTAMP NOT NULL,
+    create_by         INTEGER,
+    edit_time         TIMESTAMP,
+    edit_by           INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_employee_user UNIQUE (user_id),
+    CONSTRAINT uk_employee_no UNIQUE (employee_no),
+    CONSTRAINT uk_employee_phone UNIQUE (phone),
+    CONSTRAINT uk_employee_email UNIQUE (email),
+    CONSTRAINT fk_employee_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_employee_status CHECK (employment_status IN ('PENDING', 'ACTIVE', 'HANDOVER', 'LEFT')),
+    CONSTRAINT chk_employee_profile_completed CHECK (profile_completed IN (0, 1)),
+    CONSTRAINT chk_employee_dates CHECK (leave_date IS NULL OR hire_date IS NULL OR leave_date >= hire_date),
+    CONSTRAINT chk_employee_version CHECK (version >= 0)
+    ,CONSTRAINT chk_employee_profile_version CHECK (profile_version >= 0)
+    ,CONSTRAINT chk_employee_phone_verified CHECK (phone_verified IN (0,1))
+    ,CONSTRAINT chk_employee_email_verified CHECK (email_verified IN (0,1))
+);
+
+CREATE TABLE IF NOT EXISTS t_account_credential
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id INTEGER NOT NULL,
+    purpose VARCHAR(24) NOT NULL,
+    token_digest VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    active_marker TINYINT,
+    expires_at TIMESTAMP NOT NULL,
+    consumed_at TIMESTAMP,
+    revoked_at TIMESTAMP,
+    issued_by INTEGER,
+    reason VARCHAR(500) NOT NULL,
+    target_value_digest VARCHAR(64),
+    target_profile_version INTEGER,
+    version INTEGER NOT NULL DEFAULT 0,
+    create_time TIMESTAMP NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_account_credential_digest UNIQUE(token_digest),
+    CONSTRAINT uk_account_credential_active UNIQUE(user_id,purpose,active_marker),
+    CONSTRAINT fk_account_credential_user FOREIGN KEY(user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_account_credential_purpose CHECK (purpose IN ('INVITATION','SELF_RESET','ADMIN_RESET','PHONE_VERIFY','EMAIL_VERIFY','BREAK_GLASS')),
+    CONSTRAINT chk_account_credential_status CHECK (status IN ('ISSUED','CONSUMED','REVOKED')),
+    CONSTRAINT chk_account_credential_contact_binding CHECK ((purpose IN ('PHONE_VERIFY','EMAIL_VERIFY') AND (status <> 'ISSUED' OR (target_value_digest IS NOT NULL AND target_profile_version IS NOT NULL))) OR (purpose NOT IN ('PHONE_VERIFY','EMAIL_VERIFY') AND target_value_digest IS NULL AND target_profile_version IS NULL)),
+    CONSTRAINT chk_account_credential_version CHECK (version >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS t_credential_delivery_outbox
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    message_id VARCHAR(36) NOT NULL,
+    credential_id BIGINT NOT NULL,
+    user_id INTEGER NOT NULL,
+    purpose VARCHAR(24) NOT NULL,
+    derivation_nonce VARCHAR(64),
+    phone_digest VARCHAR(64),
+    email_digest VARCHAR(64),
+    status VARCHAR(16) NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at TIMESTAMP NOT NULL,
+    claimed_at TIMESTAMP,
+    delivered_at TIMESTAMP,
+    failed_at TIMESTAMP,
+    last_error_code VARCHAR(64),
+    version INTEGER NOT NULL DEFAULT 0,
+    create_time TIMESTAMP NOT NULL,
+    edit_time TIMESTAMP NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_credential_delivery_message UNIQUE(message_id),
+    CONSTRAINT uk_credential_delivery_credential UNIQUE(credential_id),
+    CONSTRAINT fk_credential_delivery_credential FOREIGN KEY(credential_id) REFERENCES t_account_credential(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_credential_delivery_user FOREIGN KEY(user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_credential_delivery_status CHECK (status IN ('PENDING','PROCESSING','RETRY','DELIVERED','FAILED')),
+    CONSTRAINT chk_credential_delivery_attempt CHECK (attempt_count >= 0 AND version >= 0),
+    CONSTRAINT chk_credential_delivery_contact CHECK (phone_digest IS NOT NULL OR email_digest IS NOT NULL),
+    CONSTRAINT chk_credential_delivery_nonce CHECK ((status IN ('PENDING','PROCESSING','RETRY') AND derivation_nonce IS NOT NULL) OR (status IN ('DELIVERED','FAILED') AND derivation_nonce IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS t_password_history
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id INTEGER NOT NULL,
+    password_hash VARCHAR(64) NOT NULL,
+    changed_by INTEGER,
+    change_reason VARCHAR(64) NOT NULL,
+    changed_at TIMESTAMP NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT fk_password_history_user FOREIGN KEY(user_id) REFERENCES t_user(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_login_identifier
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id INTEGER NOT NULL,
+    login_act VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    active_marker TINYINT,
+    retired_at TIMESTAMP,
+    changed_by INTEGER,
+    reason VARCHAR(500) NOT NULL,
+    version INTEGER NOT NULL DEFAULT 0,
+    create_time TIMESTAMP NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_login_identifier_login_act UNIQUE(login_act),
+    CONSTRAINT uk_login_identifier_active_user UNIQUE(user_id,active_marker),
+    CONSTRAINT fk_login_identifier_user FOREIGN KEY(user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_login_identifier_changed_by FOREIGN KEY(changed_by) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_login_identifier_state CHECK (
+      (status='ACTIVE' AND active_marker=1 AND retired_at IS NULL)
+      OR (status='RETIRED' AND active_marker IS NULL AND retired_at IS NOT NULL)
+    ),
+    CONSTRAINT chk_login_identifier_version CHECK (version >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS t_organization_unit
+(
+    id                 INTEGER NOT NULL AUTO_INCREMENT,
+    code               VARCHAR(64) NOT NULL,
+    name               VARCHAR(64) NOT NULL,
+    type               VARCHAR(16) NOT NULL,
+    parent_id          INTEGER,
+    leader_employee_id INTEGER,
+    order_no           INTEGER NOT NULL DEFAULT 0,
+    migration_placeholder TINYINT NOT NULL DEFAULT 0,
+    enabled            TINYINT NOT NULL DEFAULT 1,
+    active_root_marker TINYINT GENERATED ALWAYS AS (
+      CASE WHEN `type`='COMPANY' AND `parent_id` IS NULL
+        AND `migration_placeholder`=0 AND `enabled`=1 THEN 1 ELSE NULL END
+    ),
+    version            INTEGER NOT NULL DEFAULT 0,
+    create_time        TIMESTAMP NOT NULL,
+    create_by          INTEGER,
+    edit_time          TIMESTAMP,
+    edit_by            INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_organization_unit_code UNIQUE (code),
+    CONSTRAINT uk_organization_unit_active_root UNIQUE (active_root_marker),
+    CONSTRAINT fk_organization_unit_parent FOREIGN KEY (parent_id) REFERENCES t_organization_unit(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_organization_unit_leader FOREIGN KEY (leader_employee_id) REFERENCES t_employee(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_organization_unit_type CHECK (type IN ('COMPANY', 'STORE', 'DEPARTMENT', 'TEAM')),
+    CONSTRAINT chk_organization_unit_migration_placeholder CHECK (migration_placeholder IN (0, 1)),
+    CONSTRAINT chk_organization_unit_enabled CHECK (enabled IN (0, 1)),
+    CONSTRAINT chk_organization_unit_hierarchy CHECK (
+      (type='COMPANY' AND parent_id IS NULL)
+      OR (type<>'COMPANY' AND parent_id IS NOT NULL)
+    ),
+    CONSTRAINT chk_organization_unit_order CHECK (order_no >= 0),
+    CONSTRAINT chk_organization_unit_version CHECK (version >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_organization_unit_parent_order
+    ON t_organization_unit(parent_id, order_no, id);
+CREATE INDEX IF NOT EXISTS idx_organization_unit_leader
+    ON t_organization_unit(leader_employee_id);
+
+CREATE TABLE IF NOT EXISTS t_role_organization
+(
+    role_id INTEGER NOT NULL,
+    organization_unit_id INTEGER NOT NULL,
+    PRIMARY KEY (role_id, organization_unit_id),
+    CONSTRAINT fk_role_organization_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_role_organization_unit FOREIGN KEY (organization_unit_id) REFERENCES t_organization_unit(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_role_permission_organization
+(
+    role_id INTEGER NOT NULL,
+    permission_id INTEGER NOT NULL,
+    organization_unit_id INTEGER NOT NULL,
+    PRIMARY KEY (role_id, permission_id, organization_unit_id),
+    CONSTRAINT fk_role_permission_org_permission FOREIGN KEY (role_id, permission_id)
+        REFERENCES t_role_permission(role_id, permission_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_role_permission_org_unit FOREIGN KEY (organization_unit_id)
+        REFERENCES t_organization_unit(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_position
+(
+    id             INTEGER NOT NULL AUTO_INCREMENT,
+    code           VARCHAR(64) NOT NULL,
+    name           VARCHAR(64) NOT NULL,
+    description    VARCHAR(255),
+    position_level INTEGER NOT NULL DEFAULT 0,
+    built_in       TINYINT NOT NULL DEFAULT 0,
+    enabled        TINYINT NOT NULL DEFAULT 1,
+    version        INTEGER NOT NULL DEFAULT 0,
+    create_time    TIMESTAMP NOT NULL,
+    create_by      INTEGER,
+    edit_time      TIMESTAMP,
+    edit_by        INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_position_code UNIQUE (code),
+    CONSTRAINT chk_position_level CHECK (position_level >= 0),
+    CONSTRAINT chk_position_built_in CHECK (built_in IN (0, 1)),
+    CONSTRAINT chk_position_enabled CHECK (enabled IN (0, 1)),
+    CONSTRAINT chk_position_version CHECK (version >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_position_level_code ON t_position(position_level, code, id);
+
+CREATE TABLE IF NOT EXISTS t_employee_assignment
+(
+    id                    INTEGER NOT NULL AUTO_INCREMENT,
+    employee_id           INTEGER NOT NULL,
+    organization_unit_id  INTEGER NOT NULL,
+    position_id           INTEGER NOT NULL,
+    assignment_type       VARCHAR(16) NOT NULL,
+    status                VARCHAR(16) NOT NULL,
+    active_primary_marker TINYINT,
+    effective_from        TIMESTAMP NOT NULL,
+    effective_to          TIMESTAMP,
+    reason                VARCHAR(500) NOT NULL,
+    version               INTEGER NOT NULL DEFAULT 0,
+    create_time           TIMESTAMP NOT NULL,
+    create_by             INTEGER,
+    edit_time             TIMESTAMP,
+    edit_by               INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_employee_active_primary UNIQUE (employee_id, active_primary_marker),
+    CONSTRAINT fk_employee_assignment_employee FOREIGN KEY (employee_id) REFERENCES t_employee(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_employee_assignment_org FOREIGN KEY (organization_unit_id) REFERENCES t_organization_unit(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_employee_assignment_position FOREIGN KEY (position_id) REFERENCES t_position(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_employee_assignment_type CHECK (assignment_type IN ('PRIMARY', 'SECONDARY', 'ACTING')),
+    CONSTRAINT chk_employee_assignment_status CHECK (status IN ('PLANNED', 'ACTIVE', 'ENDED', 'CANCELLED')),
+    CONSTRAINT chk_employee_assignment_period CHECK (effective_to IS NULL OR effective_to > effective_from),
+    CONSTRAINT chk_employee_assignment_primary_marker CHECK (
+        (assignment_type = 'PRIMARY' AND status = 'ACTIVE' AND active_primary_marker = 1)
+        OR ((assignment_type <> 'PRIMARY' OR status <> 'ACTIVE') AND active_primary_marker IS NULL)
+    ),
+    CONSTRAINT chk_employee_assignment_version CHECK (version >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_employee_assignment_effective
+    ON t_employee_assignment(employee_id, status, effective_from, effective_to, id);
+CREATE INDEX IF NOT EXISTS idx_employee_assignment_org
+    ON t_employee_assignment(organization_unit_id, status, id);
+CREATE INDEX IF NOT EXISTS idx_employee_assignment_position
+    ON t_employee_assignment(position_id, status, id);
+CREATE INDEX IF NOT EXISTS idx_employee_assignment_workspace_org
+    ON t_employee_assignment(organization_unit_id, assignment_type, status, active_primary_marker, employee_id);
+CREATE INDEX IF NOT EXISTS idx_employee_assignment_workspace_position
+    ON t_employee_assignment(position_id, assignment_type, status, active_primary_marker, employee_id);
+
+CREATE TABLE IF NOT EXISTS t_employee_reporting
+(
+    id                      INTEGER NOT NULL AUTO_INCREMENT,
+    subordinate_employee_id INTEGER NOT NULL,
+    manager_employee_id     INTEGER NOT NULL,
+    relation_type           VARCHAR(16) NOT NULL,
+    status                  VARCHAR(16) NOT NULL,
+    active_direct_marker    TINYINT,
+    effective_from          TIMESTAMP NOT NULL,
+    effective_to            TIMESTAMP,
+    reason                  VARCHAR(500) NOT NULL,
+    version                 INTEGER NOT NULL DEFAULT 0,
+    create_time             TIMESTAMP NOT NULL,
+    create_by               INTEGER,
+    edit_time               TIMESTAMP,
+    edit_by                 INTEGER,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_employee_active_direct_manager UNIQUE (subordinate_employee_id, active_direct_marker),
+    CONSTRAINT fk_employee_reporting_subordinate FOREIGN KEY (subordinate_employee_id) REFERENCES t_employee(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_employee_reporting_manager FOREIGN KEY (manager_employee_id) REFERENCES t_employee(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_employee_reporting_not_self CHECK (subordinate_employee_id <> manager_employee_id),
+    CONSTRAINT chk_employee_reporting_type CHECK (relation_type IN ('DIRECT', 'ACTING')),
+    CONSTRAINT chk_employee_reporting_status CHECK (status IN ('PLANNED', 'ACTIVE', 'ENDED', 'CANCELLED')),
+    CONSTRAINT chk_employee_reporting_period CHECK (effective_to IS NULL OR effective_to > effective_from),
+    CONSTRAINT chk_employee_reporting_acting_finite CHECK (relation_type <> 'ACTING' OR effective_to IS NOT NULL),
+    CONSTRAINT chk_employee_reporting_direct_marker CHECK (
+        (relation_type = 'DIRECT' AND status = 'ACTIVE' AND active_direct_marker = 1)
+        OR ((relation_type <> 'DIRECT' OR status <> 'ACTIVE') AND active_direct_marker IS NULL)
+    ),
+    CONSTRAINT chk_employee_reporting_version CHECK (version >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_employee_reporting_manager
+    ON t_employee_reporting(manager_employee_id, status, effective_from, effective_to, id);
+CREATE INDEX IF NOT EXISTS idx_employee_reporting_workspace_manager
+    ON t_employee_reporting(manager_employee_id, relation_type, status, active_direct_marker, subordinate_employee_id);
 
 CREATE TABLE IF NOT EXISTS t_clue_owner_history
 (
@@ -284,12 +674,165 @@ CREATE TABLE IF NOT EXISTS t_clue_owner_history
 
 CREATE TABLE IF NOT EXISTS t_user_role
 (
+    id BIGINT NOT NULL AUTO_INCREMENT,
     user_id INTEGER NOT NULL,
     role_id INTEGER NOT NULL,
-    PRIMARY KEY (user_id, role_id),
-    CONSTRAINT fk_user_role_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE CASCADE,
-    CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE CASCADE
+    granted_by INTEGER,
+    reason VARCHAR(500),
+    effective_from TIMESTAMP,
+    effective_to TIMESTAMP,
+    active_marker BOOLEAN DEFAULT TRUE,
+    version INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_user_role_active UNIQUE (user_id, role_id, active_marker),
+    CONSTRAINT fk_user_role_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_user_role_granted_by FOREIGN KEY (granted_by) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_user_role_period CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to > effective_from)
 );
+
+CREATE TABLE IF NOT EXISTS t_user_permission
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id INTEGER NOT NULL,
+    permission_id INTEGER NOT NULL,
+    effect VARCHAR(16) NOT NULL,
+    data_scope_code VARCHAR(32),
+    effective_from TIMESTAMP NOT NULL,
+    effective_to TIMESTAMP,
+    active_marker BOOLEAN DEFAULT TRUE,
+    reason VARCHAR(500) NOT NULL,
+    granted_by INTEGER NOT NULL,
+    version INTEGER NOT NULL,
+    create_time TIMESTAMP NOT NULL,
+    update_time TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_user_permission_current UNIQUE (user_id, permission_id),
+    CONSTRAINT fk_user_permission_user FOREIGN KEY (user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_user_permission_permission FOREIGN KEY (permission_id) REFERENCES t_permission(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_user_permission_granted_by FOREIGN KEY (granted_by) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_user_permission_effect CHECK (effect IN ('GRANT', 'DENY')),
+    CONSTRAINT chk_user_permission_scope CHECK ((effect = 'GRANT' AND data_scope_code IS NOT NULL AND data_scope_code IN ('SELF', 'DIRECT_REPORTS', 'REPORTING_TREE', 'PRIMARY_ORG', 'ORG_TREE', 'CUSTOM_ORGS', 'GLOBAL')) OR (effect = 'DENY' AND data_scope_code IS NULL)),
+    CONSTRAINT chk_user_permission_period CHECK (effective_to IS NULL OR effective_to > effective_from),
+    CONSTRAINT chk_user_permission_version CHECK (version >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_user_permission_effective
+    ON t_user_permission(user_id, active_marker, effective_from, effective_to, permission_id, version);
+
+CREATE TABLE IF NOT EXISTS t_user_permission_organization
+(
+    user_permission_id BIGINT NOT NULL,
+    organization_unit_id INTEGER NOT NULL,
+    PRIMARY KEY (user_permission_id, organization_unit_id),
+    CONSTRAINT fk_user_permission_org_permission FOREIGN KEY (user_permission_id)
+        REFERENCES t_user_permission(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_user_permission_org_unit FOREIGN KEY (organization_unit_id)
+        REFERENCES t_organization_unit(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS t_authorization_history
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    subject_type VARCHAR(32) NOT NULL,
+    subject_id VARCHAR(64) NOT NULL,
+    change_type VARCHAR(16) NOT NULL,
+    target_user_id INTEGER,
+    role_id INTEGER,
+    permission_id INTEGER,
+    effect VARCHAR(16),
+    data_scope_code VARCHAR(32),
+    effective_from TIMESTAMP,
+    effective_to TIMESTAMP,
+    before_value VARCHAR(2048),
+    after_value VARCHAR(2048),
+    reason VARCHAR(500) NOT NULL,
+    operator_id INTEGER NOT NULL,
+    occurred_time TIMESTAMP NOT NULL,
+    request_id VARCHAR(64),
+    affected_user_ids CLOB,
+    affected_users_snapshot CLOB,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_authorization_history_target_user FOREIGN KEY (target_user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_authorization_history_role FOREIGN KEY (role_id) REFERENCES t_role(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_authorization_history_permission FOREIGN KEY (permission_id) REFERENCES t_permission(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_authorization_history_operator FOREIGN KEY (operator_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_authorization_history_subject CHECK (subject_type IN ('ROLE', 'ROLE_PERMISSION', 'USER_ROLE', 'USER_PERMISSION', 'ORGANIZATION_UNIT', 'POSITION', 'ORGANIZATION_ASSIGNMENT', 'REPORTING_RELATION')),
+    CONSTRAINT chk_authorization_history_change CHECK (change_type IN ('CREATE', 'UPDATE', 'ENABLE', 'DISABLE', 'ASSIGN', 'UNASSIGN', 'GRANT', 'DENY', 'REVOKE', 'EXPIRE')),
+    CONSTRAINT chk_authorization_history_effect CHECK (effect IS NULL OR effect IN ('GRANT', 'DENY')),
+    CONSTRAINT chk_authorization_history_subject_ids CHECK (
+      (subject_type <> 'ROLE' OR role_id IS NOT NULL) AND
+      (subject_type <> 'ROLE_PERMISSION' OR (role_id IS NOT NULL AND permission_id IS NOT NULL)) AND
+      (subject_type <> 'USER_ROLE' OR (target_user_id IS NOT NULL AND role_id IS NOT NULL)) AND
+      (subject_type <> 'USER_PERMISSION' OR (target_user_id IS NOT NULL AND permission_id IS NOT NULL AND effect IS NOT NULL))
+    ),
+    CONSTRAINT chk_authorization_history_user_permission_scope CHECK (
+      subject_type <> 'USER_PERMISSION' OR
+      (effect = 'GRANT' AND data_scope_code IS NOT NULL) OR
+      (effect = 'DENY' AND data_scope_code IS NULL)
+    ),
+    CONSTRAINT chk_authorization_history_period CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to > effective_from)
+);
+CREATE INDEX IF NOT EXISTS idx_authorization_history_subject
+    ON t_authorization_history(subject_type, subject_id, occurred_time, id);
+CREATE INDEX IF NOT EXISTS idx_authorization_history_target
+    ON t_authorization_history(target_user_id, occurred_time, id);
+
+CREATE TABLE IF NOT EXISTS t_user_management_migration
+(
+    migration_key VARCHAR(128) NOT NULL,
+    completed_at TIMESTAMP NOT NULL,
+    PRIMARY KEY (migration_key)
+);
+
+CREATE TABLE IF NOT EXISTS t_authorization_graph_lock
+(
+    lock_name VARCHAR(64) NOT NULL,
+    PRIMARY KEY(lock_name)
+);
+MERGE INTO t_authorization_graph_lock(lock_name) KEY(lock_name)
+VALUES ('LOGIN_IDENTIFIER_GUARD');
+
+CREATE TABLE IF NOT EXISTS t_user_lifecycle_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    operation_id VARCHAR(64) NOT NULL,
+    request_id VARCHAR(64) NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    user_id INTEGER NOT NULL,
+    employee_id INTEGER NOT NULL,
+    before_value CLOB NOT NULL,
+    after_value CLOB NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    operator_id INTEGER NOT NULL,
+    occurred_time TIMESTAMP NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_user_lifecycle_operation UNIQUE(operation_id),
+    CONSTRAINT fk_user_lifecycle_user FOREIGN KEY(user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_user_lifecycle_employee FOREIGN KEY(employee_id) REFERENCES t_employee(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_user_lifecycle_operator FOREIGN KEY(operator_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_user_lifecycle_action CHECK(action IN ('TRANSFER','DEPARTURE_START','HANDOVER_CONFIRM','DEPARTURE_COMPLETE','REHIRE'))
+);
+CREATE INDEX IF NOT EXISTS idx_user_lifecycle_target_time ON t_user_lifecycle_event(user_id,occurred_time,id);
+
+CREATE TABLE IF NOT EXISTS t_user_lifecycle_snapshot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    token_digest VARCHAR(64) NOT NULL,
+    user_id INTEGER NOT NULL,
+    employee_id INTEGER NOT NULL,
+    employee_version INTEGER NOT NULL,
+    reason_digest VARCHAR(64) NOT NULL,
+    fact_digest VARCHAR(64) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    consumed_at TIMESTAMP NULL,
+    version INTEGER NOT NULL DEFAULT 0,
+    create_time TIMESTAMP NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_user_lifecycle_snapshot_token UNIQUE(token_digest),
+    CONSTRAINT fk_user_lifecycle_snapshot_user FOREIGN KEY(user_id) REFERENCES t_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_user_lifecycle_snapshot_employee FOREIGN KEY(employee_id) REFERENCES t_employee(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_user_lifecycle_snapshot_expiry ON t_user_lifecycle_snapshot(expires_at,consumed_at,id);
 
 CREATE TABLE IF NOT EXISTS t_tran
 (
@@ -631,12 +1174,12 @@ CREATE TABLE IF NOT EXISTS t_operation_log
     id          INTEGER NOT NULL AUTO_INCREMENT,
     user_id     INTEGER,
     user_name   VARCHAR(64),
-    action_code VARCHAR(32) NOT NULL,
+    action_code VARCHAR(64) NOT NULL,
     object_type VARCHAR(64),
     module_name VARCHAR(64),
     resource_id VARCHAR(64),
     result      VARCHAR(32),
-    detail      VARCHAR(512),
+    detail      VARCHAR(2048),
     ip          VARCHAR(64),
     request_id  VARCHAR(64),
     create_time TIMESTAMP,

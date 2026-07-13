@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TUserRoleMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TUserRole">
+        <id column="id" property="id"/>
+        <id column="user_id" property="userId"/>
+        <id column="role_id" property="roleId"/>
+        <result column="granted_by" property="grantedBy"/>
+        <result column="reason" property="reason"/>
+        <result column="effective_from" property="effectiveFrom"/>
+        <result column="effective_to" property="effectiveTo"/>
+        <result column="active_marker" property="activeMarker"/>
+        <result column="version" property="version"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TUserRole">
+        INSERT INTO t_user_role
+        (user_id, role_id, granted_by, reason, effective_from, effective_to, active_marker, version)
+        VALUES
+        (#{userId}, #{roleId}, #{grantedBy}, #{reason}, #{effectiveFrom}, #{effectiveTo}, #{activeMarker}, #{version})
+    </insert>
+
+    <select id="selectCurrentAndFutureByUserId" resultMap="BaseResultMap">
+        SELECT id, user_id, role_id, granted_by, reason, effective_from, effective_to, active_marker, version
+        FROM t_user_role WHERE user_id = #{userId} AND active_marker=1
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt}) ORDER BY role_id
+    </select>
+
+    <update id="expireElapsedMarkers">
+        UPDATE t_user_role SET active_marker=NULL,version=version+1
+        WHERE user_id=#{userId} AND active_marker=1 AND effective_to IS NOT NULL AND effective_to &lt;= #{effectiveAt}
+    </update>
+
+    <update id="closeByIdAndVersion">
+        UPDATE t_user_role SET effective_to=CASE WHEN effective_from &gt;= #{effectiveTo} THEN effective_to ELSE #{effectiveTo} END,
+          active_marker=NULL, version=version+1
+        WHERE id=#{id} AND version=#{expectedVersion} AND active_marker=1
+    </update>
+
+    <select id="selectEffectiveByUserId" resultMap="BaseResultMap">
+        SELECT id, user_id, role_id, granted_by, reason, effective_from, effective_to, active_marker, version
+        FROM t_user_role
+        WHERE user_id = #{userId}
+          AND active_marker=1
+          AND (effective_from IS NULL OR effective_from &lt;= #{effectiveAt})
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt})
+        ORDER BY role_id
+    </select>
+    <select id="selectEffectiveUserIdsByRoleId" resultType="int">
+        SELECT user_id FROM t_user_role WHERE role_id = #{roleId} AND active_marker=1
+          AND (effective_from IS NULL OR effective_from &lt;= #{effectiveAt})
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt}) ORDER BY user_id
+    </select>
+    <select id="selectCurrentAndFutureUserIdsByRoleId" resultType="int">
+        SELECT user_id FROM t_user_role WHERE role_id=#{roleId} AND active_marker=1
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt}) ORDER BY user_id
+    </select>
+</mapper>

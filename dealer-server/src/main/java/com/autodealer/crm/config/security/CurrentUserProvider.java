@@ -26,6 +26,14 @@ public class CurrentUserProvider {
         return getCurrentUser().getId();
     }
 
+    public String getCurrentSessionId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getDetails() instanceof SessionAuthenticationDetails details) {
+            return details.sessionId();
+        }
+        throw new IllegalStateException("当前会话不存在");
+    }
+
     public boolean isAdmin() {
         return hasRole(getCurrentUser(), ROLE_ADMIN);
     }

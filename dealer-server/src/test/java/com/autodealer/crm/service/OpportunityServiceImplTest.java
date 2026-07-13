@@ -20,6 +20,7 @@ import com.autodealer.crm.model.TOpportunityStageHistory;
 import com.autodealer.crm.model.TTran;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.OpportunityServiceImpl;
+import com.autodealer.crm.service.impl.EmploymentResponsibilityGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +57,7 @@ class OpportunityServiceImplTest {
     @Mock private TTranMapper tranMapper;
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private OperationAuditRecorder auditRecorder;
+    @Mock private EmploymentResponsibilityGuard responsibilityGuard;
     @InjectMocks private OpportunityServiceImpl opportunityService;
 
     @BeforeEach
@@ -224,6 +226,12 @@ class OpportunityServiceImplTest {
         assertEquals(CodeEnum.PARAM_ERROR, ex.getCodeEnum());
         verify(opportunityMapper, never()).updateStageIfCurrent(anyLong(), anyString(), anyString(),
                 any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test void handoverOwnerCannotReceiveNewOpportunity(){
+        org.mockito.Mockito.doThrow(new BusinessException(CodeEnum.USER_LIFECYCLE_CONFLICT)).when(responsibilityGuard).requireActiveOwner(3);
+        BusinessException error=assertThrows(BusinessException.class,()->opportunityService.createOpportunity(createRequest()));
+        assertEquals(CodeEnum.USER_LIFECYCLE_CONFLICT,error.getCodeEnum());verify(opportunityMapper,never()).insert(any());verify(auditRecorder,never()).record(any(),anyString());
     }
 
     private CreateOpportunityRequest createRequest() {

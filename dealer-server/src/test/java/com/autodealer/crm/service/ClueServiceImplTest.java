@@ -26,6 +26,7 @@ import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.result.ClueExcelRaw;
 import com.autodealer.crm.service.ClueImportValidator.ValidatedClueImport;
 import com.autodealer.crm.service.impl.ClueServiceImpl;
+import com.autodealer.crm.service.impl.EmploymentResponsibilityGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,6 +50,8 @@ class ClueServiceImplTest {
 
     @InjectMocks
     private ClueServiceImpl clueService;
+
+    @Mock private EmploymentResponsibilityGuard responsibilityGuard;
 
     @Mock
     private TClueMapper tClueMapper;
@@ -126,6 +129,19 @@ class ClueServiceImplTest {
     }
 
     // ==================== saveClue ====================
+
+    @Test void handoverOperatorCannotCreateClue(){
+        ClueQuery query=new ClueQuery();query.setPhone("13800138000");when(tClueMapper.selectByCount("13800138000")).thenReturn(0);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(2);doThrow(new BusinessException(CodeEnum.USER_LIFECYCLE_CONFLICT)).when(responsibilityGuard).requireActiveOwner(2);
+        BusinessException error=assertThrows(BusinessException.class,()->clueService.saveClue(query));
+        assertEquals(CodeEnum.USER_LIFECYCLE_CONFLICT,error.getCodeEnum());verify(tClueMapper,never()).insertSelective(any());verifyNoInteractions(auditRecorder);
+    }
+
+    @Test void handoverOperatorCannotImportClues(){
+        when(currentUserProvider.getCurrentUserId()).thenReturn(2);doThrow(new BusinessException(CodeEnum.USER_LIFECYCLE_CONFLICT)).when(responsibilityGuard).requireActiveOwner(2);
+        BusinessException error=assertThrows(BusinessException.class,()->clueService.importExcel(new ByteArrayInputStream(new byte[0])));
+        assertEquals(CodeEnum.USER_LIFECYCLE_CONFLICT,error.getCodeEnum());verify(tClueMapper,never()).saveClue(anyList());verifyNoInteractions(auditRecorder);
+    }
 
     @Test
     void saveClue_phoneAlreadyExists_shouldThrowException() {

@@ -15,12 +15,23 @@ public class SecurityPaths {
     public static final String LOGOUT = "/api/logout";
     public static final String ERROR = "/error";
     public static final String INTERNAL_AI_TOOLS = "/internal/ai/tools/**";
+    public static final String CREDENTIAL_ACTIVATE = "/api/credentials/activate";
+    public static final String CREDENTIAL_FORGOT = "/api/credentials/forgot-password";
+    public static final String CREDENTIAL_RESET = "/api/credentials/reset-password";
+    public static final String CREDENTIAL_VERIFY_CONTACT = "/api/credentials/verify-contact";
+    public static final String BREAK_GLASS_REQUEST = "/api/recovery/break-glass/request";
+    public static final String BREAK_GLASS_COMPLETE = "/api/recovery/break-glass/complete";
 
     private static final Set<String> PUBLIC_PATHS = Set.of(
             LOGIN,
-            LOGIN_FREE,
             ERROR,
-            INTERNAL_AI_TOOLS
+            INTERNAL_AI_TOOLS,
+            CREDENTIAL_ACTIVATE,
+            CREDENTIAL_FORGOT,
+            CREDENTIAL_RESET,
+            CREDENTIAL_VERIFY_CONTACT,
+            BREAK_GLASS_REQUEST,
+            BREAK_GLASS_COMPLETE
     );
 
     private SecurityPaths() {

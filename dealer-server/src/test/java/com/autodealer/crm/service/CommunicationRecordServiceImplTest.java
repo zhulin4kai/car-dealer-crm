@@ -15,6 +15,7 @@ import com.autodealer.crm.model.TCommunicationRecord;
 import com.autodealer.crm.model.TFollowTask;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.CommunicationRecordServiceImpl;
+import com.autodealer.crm.service.impl.EmploymentResponsibilityGuard;
 import com.autodealer.crm.service.impl.FollowRelatedObjectContext;
 import com.autodealer.crm.service.impl.FollowRelatedObjectResolver;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -47,6 +49,7 @@ class CommunicationRecordServiceImplTest {
     @Mock private FollowRelatedObjectResolver relatedObjectResolver;
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private OperationAuditRecorder auditRecorder;
+    @Mock private EmploymentResponsibilityGuard responsibilityGuard;
     @InjectMocks private CommunicationRecordServiceImpl communicationRecordService;
 
     @BeforeEach
@@ -134,6 +137,15 @@ class CommunicationRecordServiceImplTest {
         assertSame(voided, result);
         verify(communicationRecordMapper, never()).insert(any());
         verify(auditRecorder).record(AuditActionEnum.COMMUNICATION_RECORD_VOID, "900");
+    }
+
+    @Test void handoverOwnerCannotReceiveGeneratedNextTask(){
+        when(relatedObjectResolver.requireAccessible("CUSTOMER",10L)).thenReturn(context());when(followTaskMapper.selectById(100L)).thenReturn(task());
+        when(communicationRecordMapper.insert(any())).thenAnswer(invocation->{TCommunicationRecord record=invocation.getArgument(0);record.setId(900L);return 1;});
+        CreateCommunicationRecordRequest request=createRequest();request.setCreateNextTask(true);request.setNextTaskDueTime(COMM_TIME.plusDays(1));
+        org.mockito.Mockito.doThrow(new BusinessException(CodeEnum.USER_LIFECYCLE_CONFLICT)).when(responsibilityGuard).requireActiveOwner(3);
+        BusinessException error=assertThrows(BusinessException.class,()->communicationRecordService.createCommunicationRecord(request));
+        assertEquals(CodeEnum.USER_LIFECYCLE_CONFLICT,error.getCodeEnum());verify(followTaskMapper,never()).insert(any());verify(auditRecorder,never()).record(eq(AuditActionEnum.FOLLOW_TASK_CREATE),anyString());
     }
 
     private CreateCommunicationRecordRequest createRequest() {

@@ -26,6 +26,7 @@ import com.github.pagehelper.PageInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import jakarta.annotation.Resource;
 
 import java.time.LocalDateTime;
 
@@ -39,17 +40,20 @@ public class FollowTaskServiceImpl implements FollowTaskService {
     private final FollowRelatedObjectResolver relatedObjectResolver;
     private final CurrentUserProvider currentUserProvider;
     private final OperationAuditRecorder auditRecorder;
+    private final EmploymentResponsibilityGuard responsibilityGuard;
 
     public FollowTaskServiceImpl(TFollowTaskMapper followTaskMapper,
                                  TCommunicationRecordMapper communicationRecordMapper,
                                  FollowRelatedObjectResolver relatedObjectResolver,
                                  CurrentUserProvider currentUserProvider,
-                                 OperationAuditRecorder auditRecorder) {
+                                 OperationAuditRecorder auditRecorder,
+                                 EmploymentResponsibilityGuard responsibilityGuard) {
         this.followTaskMapper = followTaskMapper;
         this.communicationRecordMapper = communicationRecordMapper;
         this.relatedObjectResolver = relatedObjectResolver;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
+        this.responsibilityGuard = responsibilityGuard;
     }
 
     @Override
@@ -84,6 +88,7 @@ public class FollowTaskServiceImpl implements FollowTaskService {
         FollowRelatedObjectContext relatedObject = relatedObjectResolver.requireAccessible(
                 request.getRelatedObjectType(), request.getRelatedObjectId());
         relatedObjectResolver.validateAssignableOwner(request.getOwnerId());
+        responsibilityGuard.requireActiveOwner(request.getOwnerId());
         TFollowTask task = buildTask(request.getTitle(), request.getTaskType(), relatedObject,
                 request.getOwnerId(), request.getPriority(), request.getDueTime(), request.getRemindTime(),
                 currentUserProvider.getCurrentUserId(), LocalDateTime.now());

@@ -5,6 +5,8 @@ import com.autodealer.crm.query.AuditOperationLogQuery;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.util.List;
+import java.time.LocalDateTime;
+import com.autodealer.crm.dto.user.UserHistoryRows.OperationRow;
 
 @Mapper
 public interface TOperationLogMapper {
@@ -26,4 +28,9 @@ public interface TOperationLogMapper {
 
     List<TOperationLog> selectForExport(@Param("query") AuditOperationLogQuery query,
                                         @Param("limit") Integer limit);
+
+    List<OperationRow> selectUserHistoryRows(@Param("resourceId") String resourceId,
+                                             @Param("actionCodes") List<String> actionCodes,
+                                             @Param("startTime") LocalDateTime startTime,
+                                             @Param("endTime") LocalDateTime endTime);
 }

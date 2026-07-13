@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TUserPermissionMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TUserPermission">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="permission_id" property="permissionId"/>
+        <result column="effect" property="effect"/>
+        <result column="data_scope_code" property="dataScopeCode"/>
+        <result column="effective_from" property="effectiveFrom"/>
+        <result column="effective_to" property="effectiveTo"/>
+        <result column="active_marker" property="activeMarker"/>
+        <result column="reason" property="reason"/>
+        <result column="granted_by" property="grantedBy"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, permission_id, effect, data_scope_code, effective_from,
+        effective_to, active_marker, reason, granted_by, version, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TUserPermission"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_user_permission
+        (user_id, permission_id, effect, data_scope_code, effective_from,
+         effective_to, active_marker, reason, granted_by, version, create_time, update_time)
+        VALUES
+        (#{userId}, #{permissionId}, #{effect}, #{dataScopeCode}, #{effectiveFrom},
+         #{effectiveTo}, 1, #{reason}, #{grantedBy}, #{version}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="updateCurrentByVersion">
+        UPDATE t_user_permission
+        SET effect = #{userPermission.effect},
+            data_scope_code = #{userPermission.dataScopeCode},
+            effective_from = #{userPermission.effectiveFrom},
+            effective_to = #{userPermission.effectiveTo},
+            active_marker = 1,
+            reason = #{userPermission.reason},
+            granted_by = #{userPermission.grantedBy},
+            version = version + 1,
+            update_time = #{userPermission.updateTime}
+        WHERE user_id = #{userPermission.userId}
+          AND permission_id = #{userPermission.permissionId}
+          AND version = #{expectedVersion}
+    </update>
+
+    <select id="selectCurrentEffective" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_user_permission
+        WHERE user_id = #{userId}
+          AND permission_id = #{permissionId}
+          AND active_marker=1
+          AND effective_from &lt;= #{effectiveAt}
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt})
+    </select>
+
+    <select id="selectCurrent" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM t_user_permission
+        WHERE user_id = #{userId} AND permission_id = #{permissionId}
+    </select>
+
+    <delete id="deleteByUserAndPermission">
+        DELETE FROM t_user_permission WHERE user_id = #{userId} AND permission_id = #{permissionId}
+    </delete>
+
+    <select id="selectEffectiveByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_user_permission
+        WHERE user_id = #{userId}
+          AND active_marker=1
+          AND effective_from &lt;= #{effectiveAt}
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt})
+        ORDER BY permission_id
+    </select>
+
+    <select id="selectCurrentAndFutureByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM t_user_permission
+        WHERE user_id=#{userId} AND active_marker=1 AND (effective_to IS NULL OR effective_to&gt;#{effectiveAt})
+        ORDER BY permission_id,id
+    </select>
+
+    <update id="closeByIdAndVersion">
+        UPDATE t_user_permission
+        SET effective_to=CASE WHEN effective_from&gt;=#{effectiveTo} THEN effective_to ELSE #{effectiveTo} END,
+          active_marker=NULL,version=version+1,update_time=#{effectiveTo}
+        WHERE id=#{id} AND version=#{expectedVersion} AND active_marker=1
+    </update>
+
+</mapper>

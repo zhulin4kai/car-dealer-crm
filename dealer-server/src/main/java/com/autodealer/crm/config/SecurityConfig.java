@@ -54,9 +54,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests((authorize) -> {
                     authorize.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                             .requestMatchers(HttpMethod.POST, SecurityPaths.LOGIN).permitAll()
-                            .requestMatchers(SecurityPaths.LOGIN_FREE).permitAll()
                             .requestMatchers(SecurityPaths.ERROR).permitAll()
                             .requestMatchers(SecurityPaths.INTERNAL_AI_TOOLS).permitAll()
+                            .requestMatchers(HttpMethod.POST, SecurityPaths.CREDENTIAL_ACTIVATE,
+                                    SecurityPaths.CREDENTIAL_FORGOT, SecurityPaths.CREDENTIAL_RESET,
+                                    SecurityPaths.CREDENTIAL_VERIFY_CONTACT,
+                                    SecurityPaths.BREAK_GLASS_REQUEST,
+                                    SecurityPaths.BREAK_GLASS_COMPLETE).permitAll()
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .anyRequest().authenticated(); // 其它任何请求都需要登录后才能访问
                 })

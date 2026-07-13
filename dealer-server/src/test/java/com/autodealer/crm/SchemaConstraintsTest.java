@@ -52,7 +52,12 @@ class SchemaConstraintsTest {
             "t_test_drive", "t_test_drive_vehicle_hold", "t_test_drive_status_history",
             "t_delivery", "t_delivery_check_item",
             "t_payment", "t_refund_request",
-            "t_user", "t_user_role", "t_clue_owner_history",
+            "t_user", "t_login_identifier", "t_user_session", "t_user_role", "t_user_permission", "t_authorization_history", "t_credential_delivery_outbox",
+            "t_user_management_migration",
+            "t_authorization_graph_lock", "t_role_organization",
+            "t_clue_owner_history",
+            "t_organization_unit", "t_position", "t_employee",
+            "t_employee_assignment", "t_employee_reporting",
             "t_ai_run", "t_ai_message", "t_ai_tool_call", "t_ai_action_proposal",
             "t_ai_approval", "t_ai_execution_event"
         };
@@ -61,6 +66,23 @@ class SchemaConstraintsTest {
                 "SELECT COUNT(*) FROM " + table, Integer.class);
             assertNotNull(count, table + " 表应可查询");
         }
+    }
+
+    @Test
+    @Order(1)
+    @DisplayName("账号到期时间与密码到期时间是独立数据库事实")
+    void testIndependentAccountAndPasswordExpirationColumns() {
+        assertEquals(1, jdbcTemplate.update("""
+            UPDATE t_user
+            SET account_expires_at=DATEADD('DAY',1,CURRENT_TIMESTAMP),
+                password_expires_at=DATEADD('DAY',2,CURRENT_TIMESTAMP)
+            WHERE id=1
+            """));
+        assertEquals(1, jdbcTemplate.queryForObject("""
+            SELECT COUNT(*) FROM t_user
+            WHERE id=1 AND account_expires_at IS NOT NULL AND password_expires_at IS NOT NULL
+              AND account_expires_at < password_expires_at
+            """, Integer.class));
     }
 
     @Test
@@ -143,6 +165,56 @@ class SchemaConstraintsTest {
     }
 
     @Test
+    @Order(3)
+    @DisplayName("退休登录账号仍永久归属原用户且不得转让")
+    void testRetiredLoginIdentifierCannotBeReassigned() {
+        Integer seeded = jdbcTemplate.queryForObject("""
+            SELECT COUNT(*) FROM t_user u
+            JOIN t_login_identifier li ON li.user_id=u.id AND li.login_act=u.login_act
+            WHERE li.status='ACTIVE' AND li.active_marker=1 AND li.retired_at IS NULL
+            """, Integer.class);
+        Integer users = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM t_user", Integer.class);
+        assertEquals(users, seeded, "每个当前用户必须有且只有一个匹配的 ACTIVE 登录账号归属");
+
+        jdbcTemplate.update("""
+            INSERT INTO t_user (id, login_act, login_pwd, name, phone, email,
+              account_no_expired, credentials_no_expired, account_no_locked, account_enabled)
+            VALUES (199, 'identifier_new_owner', 'pwd', '标识归属测试', '13900139999',
+              'identifier-owner@test.com', 1, 1, 1, 1)
+            """);
+        jdbcTemplate.update("""
+            UPDATE t_login_identifier
+            SET status='RETIRED',active_marker=NULL,retired_at=CURRENT_TIMESTAMP,version=version+1
+            WHERE login_act='admin'
+            """);
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_login_identifier
+              (user_id,login_act,status,active_marker,retired_at,changed_by,reason,version,create_time)
+            VALUES (199,'admin','ACTIVE',1,NULL,1,'不得接收他人退休账号',0,CURRENT_TIMESTAMP)
+            """));
+    }
+
+    @Test
+    @Order(3)
+    @DisplayName("每个用户最多一个当前登录账号且状态事实必须自洽")
+    void testLoginIdentifierActiveAndStateConstraints() {
+        assertEquals("LOGIN_IDENTIFIER_GUARD", jdbcTemplate.queryForObject("""
+            SELECT lock_name FROM t_authorization_graph_lock
+            WHERE lock_name='LOGIN_IDENTIFIER_GUARD'
+            """, String.class));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_login_identifier
+              (user_id,login_act,status,active_marker,retired_at,changed_by,reason,version,create_time)
+            VALUES (1,'admin_second','ACTIVE',1,NULL,1,'第二个当前账号',0,CURRENT_TIMESTAMP)
+            """));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_login_identifier
+              (user_id,login_act,status,active_marker,retired_at,changed_by,reason,version,create_time)
+            VALUES (2,'invalid_retired','RETIRED',NULL,NULL,1,'无退休时间',0,CURRENT_TIMESTAMP)
+            """));
+    }
+
+    @Test
     @Order(4)
     @DisplayName("重复 phone 插入失败")
     void testDuplicatePhoneFails() {
@@ -170,6 +242,46 @@ class SchemaConstraintsTest {
                 "INSERT INTO t_user (id, login_act, login_pwd, name, phone, email, " +
                 "account_no_expired, credentials_no_expired, account_no_locked, account_enabled) " +
                 "VALUES (105, 'user_email_2', 'pwd', 'test', '13900139003', 'dup_email@test.com', 1, 1, 1, 1)"));
+    }
+
+    @Test
+    @Order(5)
+    @DisplayName("用户会话标识和令牌摘要必须唯一")
+    void testUserSessionIdentityMustBeUnique() {
+        jdbcTemplate.update("""
+            INSERT INTO t_user_session
+            (session_id,user_id,token_digest,issued_auth_version,device_summary,
+             login_time,last_activity_time,idle_expires_at,absolute_expires_at,create_time)
+            VALUES ('session-unique-1',1,'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',0,'桌面设备',
+             CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,DATEADD('MINUTE',30,CURRENT_TIMESTAMP),DATEADD('HOUR',4,CURRENT_TIMESTAMP),CURRENT_TIMESTAMP)
+            """);
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_user_session
+            (session_id,user_id,token_digest,issued_auth_version,device_summary,
+             login_time,last_activity_time,idle_expires_at,absolute_expires_at,create_time)
+            VALUES ('session-unique-1',1,'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',0,'桌面设备',
+             CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,DATEADD('MINUTE',30,CURRENT_TIMESTAMP),DATEADD('HOUR',4,CURRENT_TIMESTAMP),CURRENT_TIMESTAMP)
+            """));
+    }
+
+    @Test
+    @Order(5)
+    @DisplayName("用户会话时间顺序和撤销事实必须完整")
+    void testUserSessionLifecycleConstraints() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_user_session
+            (session_id,user_id,token_digest,issued_auth_version,device_summary,
+             login_time,last_activity_time,idle_expires_at,absolute_expires_at,create_time)
+            VALUES ('session-invalid-time',1,'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',0,'桌面设备',
+             CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,DATEADD('HOUR',5,CURRENT_TIMESTAMP),DATEADD('HOUR',4,CURRENT_TIMESTAMP),CURRENT_TIMESTAMP)
+            """));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_user_session
+            (session_id,user_id,token_digest,issued_auth_version,device_summary,
+             login_time,last_activity_time,idle_expires_at,absolute_expires_at,revoked_at,create_time)
+            VALUES ('session-incomplete-revoke',1,'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',0,'桌面设备',
+             CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,DATEADD('MINUTE',30,CURRENT_TIMESTAMP),DATEADD('HOUR',4,CURRENT_TIMESTAMP),CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+            """));
     }
 
     @Test
@@ -692,7 +804,7 @@ class SchemaConstraintsTest {
 
     @Test
     @Order(24)
-    @DisplayName("删除用户时级联删除 user_role 关联")
+    @DisplayName("用户仍有关联角色时禁止删除父用户")
     void testCascadeDeleteUserRole() {
         jdbcTemplate.execute(
             "INSERT INTO t_user (id, login_act, login_pwd, name, phone, email, " +
@@ -702,16 +814,17 @@ class SchemaConstraintsTest {
             "INSERT INTO t_user_role (user_id, role_id) " +
             "SELECT 300, id FROM t_role WHERE role = 'admin'");
 
-        jdbcTemplate.execute("DELETE FROM t_user WHERE id = 300");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbcTemplate.execute("DELETE FROM t_user WHERE id = 300"));
 
         Integer count = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM t_user_role WHERE user_id = 300", Integer.class);
-        assertEquals(0, count, "user_role 应随用户级联删除");
+        assertEquals(1, count, "user_role 必须由命名业务用例替换，禁止父对象级联删除");
     }
 
     @Test
     @Order(25)
-    @DisplayName("删除角色时级联删除 role_permission 关联")
+    @DisplayName("角色仍有关联权限时禁止删除父角色")
     void testCascadeDeleteRolePermission() {
         jdbcTemplate.execute(
             "INSERT INTO t_role (id, role, role_name) VALUES (10, 'test_role', 'test')");
@@ -719,11 +832,12 @@ class SchemaConstraintsTest {
             "INSERT INTO t_role_permission (role_id, permission_id) " +
             "SELECT 10, id FROM t_permission WHERE code = 'activity:list'");
 
-        jdbcTemplate.execute("DELETE FROM t_role WHERE id = 10");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbcTemplate.execute("DELETE FROM t_role WHERE id = 10"));
 
         Integer count = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM t_role_permission WHERE role_id = 10", Integer.class);
-        assertEquals(0, count, "role_permission 应随角色级联删除");
+        assertEquals(1, count, "role_permission 必须由命名矩阵替换，禁止父对象级联删除");
     }
 
     @Test
@@ -1027,5 +1141,146 @@ class SchemaConstraintsTest {
             "INSERT INTO t_user_role (user_id, role_id) " +
             "SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r " +
             "WHERE u.login_act = 'admin' AND r.role = 'admin'"));
+    }
+
+    @Test
+    @Order(36)
+    @DisplayName("组织、岗位和员工稳定编码拒绝重复")
+    void organizationFoundationBusinessKeysRejectDuplicates() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_organization_unit
+            (code, name, type, order_no, migration_placeholder, enabled, version, create_time)
+            VALUES ('DEFAULT_COMPANY', '重复公司', 'COMPANY', 0, 0, 1, 0, CURRENT_TIMESTAMP)
+            """));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_position
+            (code, name, position_level, built_in, enabled, version, create_time)
+            VALUES ('UNASSIGNED_POSITION', '重复岗位', 0, 0, 1, 0, CURRENT_TIMESTAMP)
+            """));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee
+            (user_id, employee_no, name, employment_status, profile_completed, version, create_time)
+            VALUES (2, 'EMP-DUPLICATE', '重复账号员工', 'ACTIVE', 0, 0, CURRENT_TIMESTAMP)
+            """));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee
+            (employee_no, name, employment_status, profile_completed, version, create_time)
+            VALUES ('EMP-000002', '重复员工号', 'ACTIVE', 0, 0, CURRENT_TIMESTAMP)
+            """));
+    }
+
+    @Test
+    @Order(37)
+    @DisplayName("每名员工同一时间只能存在一个有效主要任职")
+    void employeeCanOnlyHaveOneActivePrimaryAssignment() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee_assignment
+            (employee_id, organization_unit_id, position_id, assignment_type, status,
+             active_primary_marker, effective_from, reason, version, create_time)
+            VALUES (1, 2, 1, 'PRIMARY', 'ACTIVE', 1, CURRENT_TIMESTAMP,
+                    '重复有效主要任职', 0, CURRENT_TIMESTAMP)
+            """));
+    }
+
+    @Test
+    @Order(38)
+    @DisplayName("任职和汇报关系拒绝非法有效期及标记组合")
+    void employmentRelationsRejectInvalidPeriodsAndMarkers() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee_assignment
+            (employee_id, organization_unit_id, position_id, assignment_type, status,
+             active_primary_marker, effective_from, effective_to, reason, version, create_time)
+            VALUES (1, 2, 1, 'SECONDARY', 'ACTIVE', NULL, CURRENT_TIMESTAMP,
+                    DATEADD('DAY', -1, CURRENT_TIMESTAMP), '非法有效期', 0, CURRENT_TIMESTAMP)
+            """));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee_assignment
+            (employee_id, organization_unit_id, position_id, assignment_type, status,
+             active_primary_marker, effective_from, reason, version, create_time)
+            VALUES (1, 2, 1, 'SECONDARY', 'ACTIVE', 1, CURRENT_TIMESTAMP,
+                    '兼岗不能占用主任职标记', 0, CURRENT_TIMESTAMP)
+            """));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee_reporting
+            (subordinate_employee_id, manager_employee_id, relation_type, status,
+             active_direct_marker, effective_from, effective_to, reason, version, create_time)
+            VALUES (1, 2, 'ACTING', 'ACTIVE', NULL, CURRENT_TIMESTAMP,
+                    DATEADD('DAY', -1, CURRENT_TIMESTAMP), '非法有效期', 0, CURRENT_TIMESTAMP)
+            """));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee_reporting
+            (subordinate_employee_id, manager_employee_id, relation_type, status,
+             active_direct_marker, effective_from, effective_to, reason, version, create_time)
+            VALUES (1, 2, 'ACTING', 'ACTIVE', NULL, CURRENT_TIMESTAMP,
+                    NULL, '代理关系必须有限期', 0, CURRENT_TIMESTAMP)
+            """));
+    }
+
+    @Test
+    @Order(39)
+    @DisplayName("直属汇报关系拒绝本人管理和重复当前直属管理者")
+    void directReportingRejectsSelfAndDuplicateCurrentManager() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee_reporting
+            (subordinate_employee_id, manager_employee_id, relation_type, status,
+             active_direct_marker, effective_from, reason, version, create_time)
+            VALUES (1, 1, 'DIRECT', 'ACTIVE', 1, CURRENT_TIMESTAMP,
+                    '本人管理非法', 0, CURRENT_TIMESTAMP)
+            """));
+
+        jdbcTemplate.update("""
+            INSERT INTO t_employee_reporting
+            (subordinate_employee_id, manager_employee_id, relation_type, status,
+             active_direct_marker, effective_from, reason, version, create_time)
+            VALUES (1, 2, 'DIRECT', 'ACTIVE', 1, CURRENT_TIMESTAMP,
+                    '约束测试直属关系', 0, CURRENT_TIMESTAMP)
+            """);
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
+            INSERT INTO t_employee_reporting
+            (subordinate_employee_id, manager_employee_id, relation_type, status,
+             active_direct_marker, effective_from, reason, version, create_time)
+            VALUES (1, 2, 'DIRECT', 'ACTIVE', 1, CURRENT_TIMESTAMP,
+                    '重复当前直属关系', 0, CURRENT_TIMESTAMP)
+            """));
+    }
+
+    @Test
+    @Order(40)
+    @DisplayName("认证安全版本拒绝负数")
+    void authVersionRejectsNegativeValues() {
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update("UPDATE t_user SET auth_version = -1 WHERE id = 2"));
+    }
+
+    @Test
+    @Order(41)
+    @DisplayName("系统账号与受保护标记必须保持合法组合")
+    void accountProtectionCombinationRejectsInvalidValues() {
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update(
+                        "UPDATE t_user SET account_type = 'SYSTEM', protected_account = 0 WHERE id = 2"));
+        assertThrows(DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update(
+                        "UPDATE t_user SET account_type = 'HUMAN', protected_account = 1 WHERE id = 2"));
+    }
+
+    @Test
+    @Order(42)
+    @DisplayName("凭证投递 Outbox 终态必须清除派生 nonce")
+    void credentialDeliveryTerminalStateRejectsRetainedNonce() {
+        jdbcTemplate.update("""
+            INSERT INTO t_account_credential
+            (id,user_id,purpose,token_digest,status,active_marker,expires_at,reason,version,create_time)
+            VALUES (99999,2,'BREAK_GLASS','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                    'ISSUED',1,DATEADD('HOUR',1,CURRENT_TIMESTAMP),'约束测试',0,CURRENT_TIMESTAMP)
+            """);
+        assertThrows(DataIntegrityViolationException.class,()->jdbcTemplate.update("""
+            INSERT INTO t_credential_delivery_outbox
+            (message_id,credential_id,user_id,purpose,derivation_nonce,phone_digest,status,attempt_count,
+             next_attempt_at,delivered_at,version,create_time,edit_time)
+            VALUES ('constraint-message',99999,2,'BREAK_GLASS','nonce-must-be-cleared',
+                    'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+                    'DELIVERED',1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+            """));
     }
 }

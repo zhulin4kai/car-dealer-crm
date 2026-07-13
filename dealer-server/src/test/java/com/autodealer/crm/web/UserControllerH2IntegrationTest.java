@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +47,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
 
     @BeforeEach
     void setup() throws Exception {
-        adminToken = super.loginAsAdmin();
+        adminToken = super.loginAsQualifiedAdmin();
         zhangsanToken = loginAs("zhangsan", "123456", 2);
     }
 
@@ -58,6 +59,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
         // Use JDBC DELETE for cleanup since the DELETE /api/user endpoint
         // has been replaced by PUT disable (which only sets accountEnabled=0).
         for (int id : createdTestIds) {
+            jdbcTemplate.update("DELETE FROM t_user_role WHERE user_id = ?", id);
             jdbcTemplate.update("DELETE FROM t_user WHERE id = ?", id);
         }
         createdTestIds.clear();
@@ -66,7 +68,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     // ==================== Auth ====================
 
     @Test
-    @DisplayName("admin can list users and the result includes the seeded admin row")
+    @DisplayName("合格 HUMAN 管理员可以列出可管理的普通用户")
     void adminListUsers_seesSeedData() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/users")
                         .header(HttpHeaders.AUTHORIZATION, adminToken)
@@ -78,16 +80,15 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
 
         JsonNode list = objectMapper.readTree(result.getResponse().getContentAsString())
                 .path("data").path("list");
-        // Admin row (id=1, loginAct=admin) must be present in H2.
-        boolean foundAdmin = false;
+        boolean foundOrdinaryUser = false;
         for (JsonNode node : list) {
-            if ("admin".equals(node.path("loginAct").asText())) {
-                foundAdmin = true;
-                assertEquals(1, node.path("id").asInt());
+            if ("zhangsan".equals(node.path("loginAct").asText())) {
+                foundOrdinaryUser = true;
+                assertEquals(2, node.path("id").asInt());
                 break;
             }
         }
-        assertTrue(foundAdmin, "Seeded admin user must appear in the list");
+        assertTrue(foundOrdinaryUser, "普通受管用户必须出现在列表中");
     }
 
     @Test
@@ -111,29 +112,39 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     // ==================== Single-row CRUD via JSON body ====================
 
     @Test
-    @DisplayName("admin can GET /api/user/{id} for the seeded admin and see the real H2 row")
+    @DisplayName("合格 HUMAN 管理员可以读取下属的真实 H2 记录")
     void adminGetUserById_returnsRealRow() throws Exception {
-        mockMvc.perform(get("/api/user/1")
+        mockMvc.perform(get("/api/user/2")
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.id").value(1))
-                .andExpect(jsonPath("$.data.loginAct").value("admin"));
+                .andExpect(jsonPath("$.data.id").value(2))
+                .andExpect(jsonPath("$.data.loginAct").value("zhangsan"));
     }
 
     @Test
-    @DisplayName("GET /api/user/{id} for a non-existent id returns 200 with $.data null (real service)")
-    void adminGetUserById_nonExistent_returnsNullData() throws Exception {
+    @DisplayName("普通用户无需 user:view 权限也可以读取自己的受管详情")
+    void ordinaryUserCanReadOwnManagedDetail() throws Exception {
+        mockMvc.perform(get("/api/users/2")
+                        .header(HttpHeaders.AUTHORIZATION, zhangsanToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.id").value(2))
+                .andExpect(jsonPath("$.data.loginAct").value("zhangsan"));
+    }
+
+    @Test
+    @DisplayName("GET /api/user/{id} for a non-existent id returns the managed-resource 404 contract")
+    void adminGetUserById_nonExistent_returnsNotFound() throws Exception {
         mockMvc.perform(get("/api/user/9999")
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data").isEmpty());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404));
     }
 
     @Test
-    @DisplayName("admin can POST /api/user with a JSON body: real H2 INSERT, then GET shows the new row")
-    void adminCreateUser_withJsonBody_persistsToH2() throws Exception {
+    @DisplayName("旧 POST /api/user 在专用邀请命令完成前必须 fail-close")
+    void legacyCreateUser_isForbiddenWithoutWritingH2() throws Exception {
         String loginAct = "test_user_" + System.nanoTime();
         // JSON body is what the frontend sends via the user module API. With @RequestBody
         // on addUser, the JSON reaches UserQuery, passwordEncoder succeeds,
@@ -154,62 +165,18 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
                 }
                 """.formatted(loginAct);
 
-        MvcResult create = mockMvc.perform(post("/api/user")
-                        .header(HttpHeaders.AUTHORIZATION, adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andReturn();
-        assertEquals(200, objectMapper.readTree(create.getResponse().getContentAsString())
-                        .path("code").asInt(-1),
-                "POST /api/user JSON body must return 200; body was: "
-                        + create.getResponse().getContentAsString());
-
-        Integer newId = findUserIdByLoginAct(adminToken, loginAct);
-        assertNotNull(newId, "POST /api/user JSON body must create a row in H2 (loginAct=" + loginAct + ")");
-        createdTestIds.add(newId);
-
-        // The created user must be visible to a direct GET.
-        mockMvc.perform(get("/api/user/" + newId)
-                        .header(HttpHeaders.AUTHORIZATION, adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.loginAct").value(loginAct))
-                .andExpect(jsonPath("$.data.name").value("测试用户"));
-    }
-
-    @Test
-    @DisplayName("admin can PUT /api/user with a JSON body: real H2 UPDATE, then GET reflects the new name")
-    void adminUpdateUser_withJsonBody_persistsToH2() throws Exception {
-        // First create a row to update. The create goes through the real
-        // JSON POST path; the update goes through the real JSON PUT path.
-        String loginAct = "test_user_update_" + System.nanoTime();
-        String createBody = """
-                {
-                  "loginAct": "%s",
-                  "loginPwd": "test-password",
-                  "name": "原始名",
-                  "phone": "13800138000",
-                  "email": "test@example.com",
-                  "accountNoExpired": 1,
-                  "accountNoLocked": 1,
-                  "credentialsNoExpired": 1,
-                  "accountEnabled": 1
-                }
-                """.formatted(loginAct);
         mockMvc.perform(post("/api/user")
                         .header(HttpHeaders.AUTHORIZATION, adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+                        .content(body))
+                .andExpect(status().isForbidden());
+        assertEquals(0,jdbcTemplate.queryForObject("SELECT COUNT(*) FROM t_user WHERE login_act=?",Integer.class,loginAct));
+    }
 
-        Integer newId = findUserIdByLoginAct(adminToken, loginAct);
-        assertNotNull(newId, "Pre-condition: POST /api/user JSON body must create a row");
-        createdTestIds.add(newId);
-
-        // Now update via JSON PUT.
+    @Test
+    @DisplayName("旧 PUT /api/user 在专用资料命令完成前必须 fail-close")
+    void legacyUpdateUser_isForbiddenWithoutWritingH2() throws Exception {
+        int newId=nextTestId();String loginAct="test_user_update_"+newId;insertTestUser(newId,loginAct,"原始名");
         String updateBody = """
                 {
                   "id": %d,
@@ -228,40 +195,72 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
-
-        mockMvc.perform(get("/api/user/" + newId)
-                        .header(HttpHeaders.AUTHORIZATION, adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.name").value("更新后姓名"))
-                .andExpect(jsonPath("$.data.loginAct").value(loginAct));
+                .andExpect(status().isForbidden());
+        assertEquals("原始名",jdbcTemplate.queryForObject("SELECT name FROM t_user WHERE id=?",String.class,newId));
     }
 
     @Test
-    @DisplayName("admin can PUT /api/user/{id}/disable -> real H2 UPDATE -> GET returns accountEnabled=0")
-    void adminDisableUser_setsAccountEnabledZero() throws Exception {
+    @Transactional
+    @DisplayName("管理员可通过专用命令修改下属白名单资料")
+    void managedProfileUpdate_changesEmployeeAndProjectionTogether() throws Exception {
+        Integer profileVersion = jdbcTemplate.queryForObject(
+                "SELECT profile_version FROM t_employee WHERE user_id=2", Integer.class);
+        String body = """
+                {"profileVersion":%d,"name":"张三更新","phone":"13900000001","email":"zhangsan.updated@example.com"}
+                """.formatted(profileVersion);
+
+        mockMvc.perform(put("/api/users/2/profile")
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("张三更新"))
+                .andExpect(jsonPath("$.data.profileVersion").value(profileVersion + 1));
+
+        assertEquals("张三更新", jdbcTemplate.queryForObject(
+                "SELECT name FROM t_employee WHERE user_id=2", String.class));
+        assertEquals("张三更新", jdbcTemplate.queryForObject(
+                "SELECT name FROM t_user WHERE id=2", String.class));
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("受管资料命令拒绝角色和组织等越权字段")
+    void managedProfileUpdate_rejectsAuthorizationFields() throws Exception {
+        Integer profileVersion = jdbcTemplate.queryForObject(
+                "SELECT profile_version FROM t_employee WHERE user_id=2", Integer.class);
+        String originalName = jdbcTemplate.queryForObject(
+                "SELECT name FROM t_employee WHERE user_id=2", String.class);
+        String body = """
+                {"profileVersion":%d,"name":"越权更新","phone":null,"email":null,"roleIds":[1],"organizationUnitId":1}
+                """.formatted(profileVersion);
+
+        mockMvc.perform(put("/api/users/2/profile")
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+        assertEquals(originalName, jdbcTemplate.queryForObject(
+                "SELECT name FROM t_employee WHERE user_id=2", String.class));
+    }
+
+    @Test
+    @DisplayName("旧禁用入口必须 fail-close")
+    void legacyDisableUser_isForbiddenWithoutWritingH2() throws Exception {
         int newId = nextTestId();
         insertTestUser(newId, "test_user_" + newId, "待禁用");
 
         mockMvc.perform(put("/api/user/" + newId + "/disable")
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
-
-        mockMvc.perform(get("/api/user/" + newId)
-                        .header(HttpHeaders.AUTHORIZATION, adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.accountEnabled").value(0));
+                .andExpect(status().isForbidden());
+        assertEquals(1,jdbcTemplate.queryForObject("SELECT account_enabled FROM t_user WHERE id=?",Integer.class,newId));
     }
 
     // ==================== Batch ====================
 
     @Test
-    @DisplayName("admin can PUT /api/users/batch-disable with JSON body; the real SQL disables both users (accountEnabled=0)")
-    void adminBatchDisable_persistsToH2() throws Exception {
+    @DisplayName("旧批量禁用入口必须 fail-close")
+    void legacyBatchDisable_isForbiddenWithoutWritingH2() throws Exception {
         int idA = nextTestId();
         int idB = nextTestId();
         insertTestUser(idA, "test_user_" + idA, "批量A");
@@ -272,18 +271,8 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
-
-        mockMvc.perform(get("/api/user/" + idA)
-                        .header(HttpHeaders.AUTHORIZATION, adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.accountEnabled").value(0));
-
-        mockMvc.perform(get("/api/user/" + idB)
-                        .header(HttpHeaders.AUTHORIZATION, adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.accountEnabled").value(0));
+                .andExpect(status().isForbidden());
+        assertEquals(2,jdbcTemplate.queryForObject("SELECT COUNT(*) FROM t_user WHERE id IN (?,?) AND account_enabled=1",Integer.class,idA,idB));
     }
 
     @Test
@@ -309,20 +298,76 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.loginAct").value("admin"));
+                .andExpect(jsonPath("$.data.loginAct").value(QUALIFIED_ADMIN_LOGIN_ACT))
+                .andExpect(jsonPath("$.data.protectedRecoveryAccount").value(false))
+                .andExpect(jsonPath("$.data.userManagementGateState").value("UNINITIALIZED"));
     }
 
     @Test
-    @DisplayName("GET /api/login/free is publicly accessible")
-    void freeLogin_isPublic() throws Exception {
-        mockMvc.perform(get("/api/login/free"))
+    @Transactional
+    @DisplayName("SYSTEM 管理员无需员工档案也能维护普通个人资料")
+    void systemAdminProfile_usesIndependentUserProfileVersion() throws Exception {
+        String recoveryToken=super.loginAsAdmin();
+        mockMvc.perform(get("/api/profile").header(HttpHeaders.AUTHORIZATION,recoveryToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.profileVersion").value(0));
+        String body="{\"profileVersion\":0,\"name\":\"安全管理员\",\"phone\":\"13700000000\",\"email\":\"admin@test.com\",\"avatarUrl\":\"https://example.com/avatar.png\"}";
+        mockMvc.perform(put("/api/profile").header(HttpHeaders.AUTHORIZATION,recoveryToken)
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.name").value("安全管理员"))
+                .andExpect(jsonPath("$.data.profileVersion").value(1));
+        assertEquals(1,jdbcTemplate.queryForObject("SELECT profile_version FROM t_user WHERE id=1",Integer.class));
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("本人资料拒绝授权字段且不发生部分写入")
+    void ownProfile_rejectsAuthorizationFields() throws Exception {
+        String recoveryToken=super.loginAsAdmin();
+        String original=jdbcTemplate.queryForObject("SELECT name FROM t_user WHERE id=1",String.class);
+        String body="{\"profileVersion\":0,\"name\":\"越权\",\"phone\":null,\"email\":null,\"avatarUrl\":null,\"roleIds\":[1]}";
+        mockMvc.perform(put("/api/profile").header(HttpHeaders.AUTHORIZATION,recoveryToken)
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
+        assertEquals(original,jdbcTemplate.queryForObject("SELECT name FROM t_user WHERE id=1",String.class));
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("最后一个可恢复普通管理员不能替换唯一已验证联系方式")
+    void lastRecoverableAdminCannotReplaceOnlyVerifiedContact() throws Exception {
+        Integer profileVersion=jdbcTemplate.queryForObject("SELECT profile_version FROM t_employee WHERE user_id=?",Integer.class,QUALIFIED_ADMIN_USER_ID);
+        String originalPhone=jdbcTemplate.queryForObject("SELECT phone FROM t_employee WHERE user_id=?",String.class,QUALIFIED_ADMIN_USER_ID);
+        String body="{\"profileVersion\":"+profileVersion+",\"name\":\"合格测试管理员\",\"phone\":\"13900009001\",\"email\":null,\"avatarUrl\":null}";
+
+        mockMvc.perform(put("/api/profile").header(HttpHeaders.AUTHORIZATION,adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value(605));
+
+        assertEquals(originalPhone,jdbcTemplate.queryForObject("SELECT phone FROM t_employee WHERE user_id=?",String.class,QUALIFIED_ADMIN_USER_ID));
+        assertEquals(1,jdbcTemplate.queryForObject("SELECT phone_verified FROM t_employee WHERE user_id=?",Integer.class,QUALIFIED_ADMIN_USER_ID));
+    }
+
+    @Test
+    @DisplayName("GET /api/login/free requires and verifies the current token")
+    void freeLogin_requiresVerifiedToken() throws Exception {
+        mockMvc.perform(get("/api/login/free").header(HttpHeaders.AUTHORIZATION,adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+        mockMvc.perform(get("/api/login/free").header(HttpHeaders.AUTHORIZATION,"Bearer expired-or-invalid"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("GET /api/owner returns only enabled unlocked sales owners")
+    @Transactional
+    @DisplayName("GET /api/owner respects recovery-account isolation and the caller's effective data scope")
     void owner_returnsOnlyEnabledUnlockedSalesUsers() throws Exception {
+        String recoveryToken=super.loginAsAdmin();
+        String orgCode="OWNER_VALID_ORG_"+System.nanoTime();
+        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) VALUES(?,?,'STORE',1,1,0,1,0,CURRENT_TIMESTAMP,1)",orgCode,orgCode);
+        int organizationId=jdbcTemplate.queryForObject("SELECT id FROM t_organization_unit WHERE code=?",Integer.class,orgCode);
+        String positionCode="OWNER_VALID_POSITION_"+System.nanoTime();
+        jdbcTemplate.update("INSERT INTO t_position(code,name,position_level,built_in,enabled,version,create_time,create_by) VALUES(?,?,10,0,1,0,CURRENT_TIMESTAMP,1)",positionCode,positionCode);
+        int positionId=jdbcTemplate.queryForObject("SELECT id FROM t_position WHERE code=?",Integer.class,positionCode);
+        jdbcTemplate.update("UPDATE t_employee_assignment SET organization_unit_id=?,position_id=? WHERE employee_id IN (1,2) AND active_primary_marker=1",organizationId,positionId);
         int financeId = nextTestId();
         insertTestUser(financeId, "owner_finance_" + financeId, "测试财务");
         assignTestRole(financeId, "finance_specialist");
@@ -337,12 +382,21 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
         assignTestRole(lockedSalesId, "sales_consultant");
 
         mockMvc.perform(get("/api/owner")
-                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                        .param("permissionCode", "clue:add")
+                        .param("qualificationContext", "CLUE_OWNER")
+                        .header(HttpHeaders.AUTHORIZATION, recoveryToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(520));
+
+        mockMvc.perform(get("/api/owner")
+                        .param("permissionCode", "clue:add")
+                        .param("qualificationContext", "CLUE_OWNER")
+                        .header(HttpHeaders.AUTHORIZATION, zhangsanToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.data[?(@.name == '张三')]").exists())
-                .andExpect(jsonPath("$.data[?(@.name == '李四')]").exists())
+                .andExpect(jsonPath("$.data[?(@.name == '李四')]").doesNotExist())
                 .andExpect(jsonPath("$.data[?(@.name == '管理员')]").doesNotExist())
                 .andExpect(jsonPath("$.data[?(@.name == '测试财务')]").doesNotExist())
                 .andExpect(jsonPath("$.data[?(@.name == '测试库存')]").doesNotExist())

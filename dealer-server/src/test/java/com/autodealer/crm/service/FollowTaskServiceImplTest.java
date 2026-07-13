@@ -18,6 +18,7 @@ import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.FollowRelatedObjectContext;
 import com.autodealer.crm.service.impl.FollowRelatedObjectResolver;
 import com.autodealer.crm.service.impl.FollowTaskServiceImpl;
+import com.autodealer.crm.service.impl.EmploymentResponsibilityGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -50,6 +52,7 @@ class FollowTaskServiceImplTest {
     @Mock private FollowRelatedObjectResolver relatedObjectResolver;
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private OperationAuditRecorder auditRecorder;
+    @Mock private EmploymentResponsibilityGuard responsibilityGuard;
     @InjectMocks private FollowTaskServiceImpl followTaskService;
 
     @BeforeEach
@@ -181,6 +184,13 @@ class FollowTaskServiceImplTest {
 
         assertEquals(CodeEnum.TRAN_STATE_CONFLICT, ex.getCodeEnum());
         verify(followTaskMapper, never()).postponeIfCurrent(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test void handoverOwnerCannotReceiveNewFollowTask(){
+        when(relatedObjectResolver.requireAccessible("CUSTOMER",10L)).thenReturn(new FollowRelatedObjectContext(FollowRelatedObjectType.CUSTOMER,10L,3,"王先生"));
+        org.mockito.Mockito.doThrow(new BusinessException(CodeEnum.USER_LIFECYCLE_CONFLICT)).when(responsibilityGuard).requireActiveOwner(3);
+        BusinessException error=assertThrows(BusinessException.class,()->followTaskService.createFollowTask(createRequest()));
+        assertEquals(CodeEnum.USER_LIFECYCLE_CONFLICT,error.getCodeEnum());verify(followTaskMapper,never()).insert(any());verify(auditRecorder,never()).record(any(),anyString());
     }
 
     private CreateFollowTaskRequest createRequest() {

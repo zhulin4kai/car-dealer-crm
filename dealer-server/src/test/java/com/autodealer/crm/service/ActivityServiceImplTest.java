@@ -14,6 +14,7 @@ import com.autodealer.crm.query.ActivityQuery;
 import com.autodealer.crm.result.ActivityExportRow;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.ActivityServiceImpl;
+import com.autodealer.crm.service.impl.EmploymentResponsibilityGuard;
 import com.github.pagehelper.PageInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,8 @@ class ActivityServiceImplTest {
 
     @Mock
     private OperationAuditRecorder auditRecorder;
+
+    @Mock private EmploymentResponsibilityGuard responsibilityGuard;
 
     @BeforeEach
     void setUp() {
@@ -190,6 +193,12 @@ class ActivityServiceImplTest {
 
         assertEquals(1, result.size());
         verify(auditRecorder).recordQuietly(any(), eq("export"), eq("SUCCESS"), contains("\"count\":1"));
+    }
+
+    @Test void handoverAccountCannotCreateActivity(){
+        doThrow(new BusinessException(CodeEnum.USER_LIFECYCLE_CONFLICT)).when(responsibilityGuard).requireActiveOwner(10);
+        BusinessException error=assertThrows(BusinessException.class,()->activityService.saveActivity(createRequest()));
+        assertEquals(CodeEnum.USER_LIFECYCLE_CONFLICT,error.getCodeEnum());verify(tActivityMapper,never()).insertSelective(any());verifyNoInteractions(auditRecorder);
     }
 
     private CreateActivityRequest createRequest() {

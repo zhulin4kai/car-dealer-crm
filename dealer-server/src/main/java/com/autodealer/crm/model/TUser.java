@@ -5,7 +5,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.time.LocalDateTime;
 
+import com.autodealer.crm.enums.AccountStatus;
+import com.autodealer.crm.enums.AccountType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
@@ -51,11 +54,15 @@ public class TUser implements UserDetails, Serializable {
      * 用户邮箱
      */
     private String email;
+    private String avatarUrl;
+    @JsonIgnore private Integer profileVersion;
 
     /**
      * 账户是否没有过期，0已过期 1正常
      */
     private Integer accountNoExpired;
+    @JsonIgnore
+    private LocalDateTime accountExpiresAt;
 
     /**
      * 密码是否没有过期，0已过期 1正常
@@ -96,6 +103,58 @@ public class TUser implements UserDetails, Serializable {
      * 最近登录时间
      */
     private Date lastLoginTime;
+
+    /**
+     * 账号类型：普通人员账号或受保护系统账号。
+     */
+    @JsonIgnore
+    private AccountType accountType;
+
+    /**
+     * 是否为受保护恢复账号。
+     */
+    @JsonIgnore
+    private Boolean protectedAccount;
+
+    /**
+     * 并发更新版本。
+     */
+    @JsonIgnore
+    private Integer version;
+
+    /**
+     * 授权配置并发版本；仅角色、个人权限等授权事实变化时递增。
+     */
+    @JsonIgnore
+    private Integer authorizationVersion;
+
+    /**
+     * 认证安全版本；密码、账号状态或授权变化时递增，使旧 Token 立即失效。
+     */
+    @JsonIgnore
+    private Long authVersion;
+
+    /** 会话列表命令的独立 CAS 版本，不等同于认证安全版本。 */
+    @JsonIgnore
+    private Long sessionRevision;
+
+    /** 账号状态、首次改密和锁定事实不得再由四个历史布尔值推断。 */
+    private AccountStatus accountStatus;
+    private Boolean mustChangePassword;
+    @JsonIgnore
+    private Integer failedLoginCount;
+    @JsonIgnore
+    private LocalDateTime autoLockedUntil;
+    @JsonIgnore
+    private Boolean manualLocked;
+    @JsonIgnore
+    private String manualLockReason;
+    @JsonIgnore
+    private Integer manualLockedBy;
+    @JsonIgnore
+    private LocalDateTime manualLockedAt;
+    @JsonIgnore
+    private LocalDateTime passwordExpiresAt;
 
     /**
      * 角色List
@@ -156,24 +215,29 @@ public class TUser implements UserDetails, Serializable {
     @JsonIgnore
     @Override
     public boolean isAccountNonExpired() {
-        return this.getAccountNoExpired() == 1;
+        return Integer.valueOf(1).equals(this.getAccountNoExpired())
+                && (this.getAccountExpiresAt() == null || this.getAccountExpiresAt().isAfter(LocalDateTime.now()));
     }
 
     @JsonIgnore
     @Override
     public boolean isAccountNonLocked() {
-        return this.getAccountNoLocked() == 1;
+        return Integer.valueOf(1).equals(this.getAccountNoLocked())
+                && !Boolean.TRUE.equals(this.getManualLocked())
+                && (this.getAutoLockedUntil() == null || !this.getAutoLockedUntil().isAfter(LocalDateTime.now()));
     }
 
     @JsonIgnore
     @Override
     public boolean isCredentialsNonExpired() {
-        return this.getCredentialsNoExpired() == 1;
+        return Integer.valueOf(1).equals(this.getCredentialsNoExpired())
+                && (this.getPasswordExpiresAt() == null || this.getPasswordExpiresAt().isAfter(LocalDateTime.now()));
     }
 
     @JsonIgnore
     @Override
     public boolean isEnabled() {
-        return this.getAccountEnabled() == 1;
+        return Integer.valueOf(1).equals(this.getAccountEnabled())
+                && (this.getAccountStatus() == null || this.getAccountStatus() == AccountStatus.ACTIVE);
     }
 }

@@ -58,3 +58,18 @@ ai:
     base-url: ${DEALER_AI_BASE_URL:http://localhost:8091}
     internal-token: ${DEALER_AI_INTERNAL_TOKEN:dev-internal-token}
     tool-token: ${DEALER_AI_TOOL_TOKEN:${DEALER_AI_INTERNAL_TOKEN:dev-internal-token}}
+
+security:
+  credential-rate-limit:
+    enabled: ${CREDENTIAL_RATE_LIMIT_ENABLED:true}
+  credential-delivery:
+    # 业务事务只写凭证摘要与 Outbox；提交后才向受信通知服务投递。
+    webhook-url: ${CREDENTIAL_DELIVERY_WEBHOOK_URL:}
+    bearer-token: ${CREDENTIAL_DELIVERY_BEARER_TOKEN:}
+    derivation-key: ${CREDENTIAL_DERIVATION_KEY:}
+    allow-insecure-loopback: ${CREDENTIAL_DELIVERY_ALLOW_INSECURE_LOOPBACK:false}
+    outbox:
+      poll-delay-ms: ${CREDENTIAL_DELIVERY_POLL_DELAY_MS:1000}
+      batch-size: ${CREDENTIAL_DELIVERY_BATCH_SIZE:20}
+      max-attempts: ${CREDENTIAL_DELIVERY_MAX_ATTEMPTS:8}
+      lease-seconds: ${CREDENTIAL_DELIVERY_LEASE_SECONDS:120}

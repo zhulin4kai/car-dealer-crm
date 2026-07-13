@@ -46,7 +46,7 @@ class ProductControllerH2IntegrationTest extends BackendIntegrationTestBase {
 
     @BeforeEach
     void setupAdminToken() throws Exception {
-        adminToken = super.loginAsAdmin();
+        adminToken = super.loginAsQualifiedAdmin();
     }
 
     @AfterEach

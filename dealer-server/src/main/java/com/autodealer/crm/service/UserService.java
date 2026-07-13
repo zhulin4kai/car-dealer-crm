@@ -17,8 +17,10 @@ public interface UserService extends UserDetailsService {
     void batchDisableUsers(List<Integer> ids);
     void assignRoles(AssignUserRolesRequest request);
     void changePassword(ChangePasswordRequest request);
+    void revokeAuthentication(Integer userId);
     HandoverUserResponsibilitiesResponse handoverResponsibilities(Integer sourceUserId,
                                                                   HandoverUserResponsibilitiesRequest request);
     List<TUser> getOwnerList();
+    List<OwnerCandidate> getOwnerCandidates(String permissionCode, String qualificationContext);
     UserDetailResponse toDetailResponse(TUser tUser);
 }

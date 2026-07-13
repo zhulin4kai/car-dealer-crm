@@ -143,11 +143,11 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
                 "Cross-layer /api/logout method mismatch. Pick one HTTP method and update all three layers. " + msg);
     }
 
-    // ==================== Batch disable parameter shape ====================
+    // ==================== Legacy batch disable fail-close ====================
 
     @Test
-    @DisplayName("PUT /api/users/batch-disable MUST accept a BatchDisableUsersRequest JSON object body with ids array")
-    void batchDisableUserAcceptsJsonObject() throws Exception {
+    @DisplayName("旧批量禁用入口对对象和数组请求都 fail-close 且不产生部分写入")
+    void legacyBatchDisableAlwaysFailsClosed() throws Exception {
         String token = loginAsAdmin();
 
         // Insert temporary test users with non-seed IDs so we can verify the
@@ -166,13 +166,13 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
                 "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", "_test_cross_1000");
 
         try {
-            // Spec is {"ids":[...]}. The endpoint should return code 200 on success.
+            // 旧入口即使收到历史对象格式也只能固定拒绝，不能绕过单用户版本命令。
             mockMvc.perform(put("/api/users/batch-disable")
                             .header(HttpHeaders.AUTHORIZATION, token)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"ids\":[999,1000]}"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value(200));
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"ids\":[999,1000]}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value(520));
 
             // Sanity: send a raw JSON array (old format) and ensure the server rejects it.
             MvcResult bad = mockMvc.perform(put("/api/users/batch-disable")
@@ -183,6 +183,8 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
             JsonNode body = objectMapper.readTree(bad.getResponse().getContentAsString());
             assertFalse(body.path("code").asInt(0) == 200,
                     "Backend must NOT silently accept a raw JSON array [999,1000] for PUT /api/users/batch-disable");
+            assertEquals(2, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM t_user WHERE id IN (999,1000) AND account_enabled=1", Integer.class));
         } finally {
             jdbcTemplate.update("DELETE FROM t_user WHERE id IN (999, 1000)");
         }

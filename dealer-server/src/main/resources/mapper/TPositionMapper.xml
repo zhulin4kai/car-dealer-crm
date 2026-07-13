@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TPositionMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TPosition">
+        <id column="id" property="id"/>
+        <result column="code" property="code"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="position_level" property="positionLevel"/>
+        <result column="built_in" property="builtIn"/>
+        <result column="enabled" property="enabled"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="edit_time" property="editTime"/>
+        <result column="edit_by" property="editBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, code, name, description, position_level, built_in, enabled, version,
+        create_time, create_by, edit_time, edit_by
+    </sql>
+
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_position
+        WHERE id = #{positionId}
+    </select>
+
+    <select id="selectByCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_position
+        WHERE code = #{code}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_position
+        ORDER BY position_level DESC, code ASC, id ASC
+    </select>
+
+    <select id="selectManageable" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_position
+        WHERE code &lt;&gt; 'UNASSIGNED_POSITION'
+        ORDER BY position_level DESC, code ASC, id ASC
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TPosition"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_position
+        (code, name, description, position_level, built_in, enabled, version,
+         create_time, create_by, edit_time, edit_by)
+        VALUES
+        (#{code}, #{name}, #{description}, #{positionLevel}, #{builtIn}, #{enabled}, #{version},
+         #{createTime}, #{createBy}, #{editTime}, #{editBy})
+    </insert>
+
+    <update id="updateByIdAndVersion">
+        UPDATE t_position
+        SET name = #{position.name},
+            description = #{position.description},
+            position_level = #{position.positionLevel},
+            enabled = #{position.enabled},
+            version = version + 1,
+            edit_time = #{position.editTime},
+            edit_by = #{position.editBy}
+        WHERE id = #{position.id}
+          AND version = #{expectedVersion}
+          AND built_in = 0
+    </update>
+
+    <select id="countEffectiveAssignments" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_employee_assignment
+        WHERE position_id = #{positionId}
+          AND status = 'ACTIVE'
+          AND effective_from &lt;= #{effectiveAt}
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt})
+    </select>
+</mapper>

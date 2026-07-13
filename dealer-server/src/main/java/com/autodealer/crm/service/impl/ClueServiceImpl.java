@@ -100,6 +100,9 @@ public class ClueServiceImpl implements ClueService {
     @Resource
     private OperationAuditRecorder auditRecorder;
 
+    @Resource
+    private EmploymentResponsibilityGuard responsibilityGuard;
+
     @Override
     public PageInfo<TClue> getClueByPage(Integer current, Integer pageSize) {
         // 参数校验
@@ -126,6 +129,7 @@ public class ClueServiceImpl implements ClueService {
     @Transactional(rollbackFor = Exception.class)
     public ImportResult importExcel(InputStream inputStream) {
         Integer operatorId = currentUserProvider.getCurrentUserId();
+        responsibilityGuard.requireActiveOwner(operatorId);
 
         // 1. 构造 ImportContext
         ImportContext context = buildImportContext();
@@ -148,6 +152,7 @@ public class ClueServiceImpl implements ClueService {
         ValidatedClueImport validated = clueImportValidator.validateAndTransform(rawList, context, operatorId);
         ImportResult result = validated.getResult();
         List<TClue> validClues = validated.getClues();
+        for (TClue clue : validClues) responsibilityGuard.requireActiveOwner(clue.getOwnerId());
 
         // 空工作表明确标记为失败
         if (result.getTotalRows() == 0 && result.getFailedRows() == 0 && !result.getErrors().isEmpty()) {
@@ -284,6 +289,7 @@ public class ClueServiceImpl implements ClueService {
             tClue.setActivityNameSnapshot(resolveActivitySnapshot(tClue.getActivityId()));
 
             Integer operatorId = currentUserProvider.getCurrentUserId();
+            responsibilityGuard.requireActiveOwner(operatorId);
             tClue.setOwnerId(operatorId);
             tClue.setCreateTime(new Date()); //创建时间
             tClue.setCreateBy(operatorId); //创建人id

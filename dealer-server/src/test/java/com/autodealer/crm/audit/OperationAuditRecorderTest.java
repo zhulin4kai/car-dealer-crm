@@ -4,6 +4,8 @@ import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.mapper.TOperationLogMapper;
 import com.autodealer.crm.model.TOperationLog;
 import com.autodealer.crm.model.TUser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -92,6 +94,24 @@ class OperationAuditRecorderTest {
     }
 
     @Test
+    @DisplayName("匿名凭证审计不应读取当前登录用户")
+    void recordAnonymous_shouldNotDependOnCurrentUser() {
+        CurrentUserProvider unavailableCurrentUser = mock(CurrentUserProvider.class);
+        OperationAuditRecorder anonymousRecorder =
+                new OperationAuditRecorder(unavailableCurrentUser, tOperationLogMapper);
+        when(tOperationLogMapper.insert(any(TOperationLog.class))).thenReturn(1);
+
+        anonymousRecorder.recordAnonymous(AuditActionEnum.USER_CREDENTIAL_CONSUME,
+                "100", "SUCCESS", "{\"purpose\":\"SELF_RESET\"}");
+
+        ArgumentCaptor<TOperationLog> captor = ArgumentCaptor.forClass(TOperationLog.class);
+        verify(tOperationLogMapper).insert(captor.capture());
+        assertNull(captor.getValue().getUserId());
+        assertEquals("ANONYMOUS_CREDENTIAL_FLOW", captor.getValue().getUserName());
+        verifyNoInteractions(unavailableCurrentUser);
+    }
+
+    @Test
     @DisplayName("record 无摘要时应只包含 result")
     void record_withoutSummary_shouldContainOnlyResult() {
         when(tOperationLogMapper.insert(any(TOperationLog.class))).thenReturn(1);
@@ -147,6 +167,63 @@ class OperationAuditRecorderTest {
         assertFalse(detail.contains("password"));
         assertFalse(detail.contains("loginPwd"));
         assertFalse(detail.contains("$2a$"));
+    }
+
+    @Test
+    @DisplayName("审计记录器必须主动清理密码哈希令牌和完整联系方式")
+    void detail_shouldSanitizeSensitiveValuesEvenWhenCallerPassesThem() {
+        when(tOperationLogMapper.insert(any(TOperationLog.class))).thenReturn(1);
+        String hash = "$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi";
+        String jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature";
+
+        recorder.record(AuditActionEnum.USER_PASSWORD_CHANGE, "100", "SUCCESS",
+                "{\"loginPwd\":\"plain-secret\",\"hash\":\"" + hash
+                        + "\",\"authorization\":\"Bearer " + jwt
+                        + "\",\"phone\":\"13812345678\",\"email\":\"admin@example.com\"}");
+
+        ArgumentCaptor<TOperationLog> captor = ArgumentCaptor.forClass(TOperationLog.class);
+        verify(tOperationLogMapper).insert(captor.capture());
+        String detail = captor.getValue().getDetail();
+        assertFalse(detail.contains("plain-secret"));
+        assertFalse(detail.contains(hash));
+        assertFalse(detail.contains(jwt));
+        assertFalse(detail.contains("13812345678"));
+        assertFalse(detail.contains("admin@example.com"));
+        assertTrue(detail.length() <= 2048);
+    }
+
+    @Test
+    @DisplayName("扩容后的审计明细仍必须限制为 2048 字符")
+    void detail_shouldUseExpandedButBoundedCapacity() {
+        when(tOperationLogMapper.insert(any(TOperationLog.class))).thenReturn(1);
+        recorder.record(AuditActionEnum.ROLE_MATRIX_CHANGE, "1", "SUCCESS",
+                "{\"changes\":\"" + "x".repeat(3000) + "\"}");
+
+        ArgumentCaptor<TOperationLog> captor = ArgumentCaptor.forClass(TOperationLog.class);
+        verify(tOperationLogMapper).insert(captor.capture());
+        String detail = captor.getValue().getDetail();
+        assertTrue(detail.length() <= 2048);
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(detail));
+        JsonNode parsed = assertDoesNotThrow(() -> new ObjectMapper().readTree(detail));
+        assertEquals("[TRUNCATED]", parsed.path("summary").asText());
+    }
+
+    @Test
+    @DisplayName("审计摘要应清理常见集成凭据字段并保持合法 JSON")
+    void detail_shouldSanitizeIntegrationCredentialsAndRemainValidJson() {
+        when(tOperationLogMapper.insert(any(TOperationLog.class))).thenReturn(1);
+        recorder.record(AuditActionEnum.USER_PASSWORD_CHANGE, "100", "SUCCESS", """
+                {"accessToken":"a","refreshToken":"b","clientSecret":"c",
+                 "apiKey":"d","credentialHash":"e","safeField":"ok"}
+                """);
+
+        ArgumentCaptor<TOperationLog> captor = ArgumentCaptor.forClass(TOperationLog.class);
+        verify(tOperationLogMapper).insert(captor.capture());
+        String detail = captor.getValue().getDetail();
+        assertFalse(detail.contains("\"a\"") || detail.contains("\"b\"")
+                || detail.contains("\"c\"") || detail.contains("\"d\"") || detail.contains("\"e\""));
+        assertTrue(detail.contains("ok"));
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(detail));
     }
 
     @Test

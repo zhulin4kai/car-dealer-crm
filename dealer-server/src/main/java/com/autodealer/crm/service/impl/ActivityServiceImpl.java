@@ -39,6 +39,7 @@ public class ActivityServiceImpl implements ActivityService {
 
     @Resource
     private OperationAuditRecorder auditRecorder;
+    @Resource private EmploymentResponsibilityGuard responsibilityGuard;
 
     @Override
     public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery activityQuery) {
@@ -56,6 +57,7 @@ public class ActivityServiceImpl implements ActivityService {
     public int saveActivity(CreateActivityRequest request) {
         validateTimeRange(request.getStartTime(), request.getEndTime());
         Integer operatorId = currentUserProvider.getCurrentUserId();
+        responsibilityGuard.requireActiveOwner(operatorId);
         TActivity activity = new TActivity();
         activity.setOwnerId(operatorId);
         activity.setName(request.getName().trim());

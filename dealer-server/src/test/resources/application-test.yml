@@ -40,3 +40,11 @@ logging:
 ai:
   provider:
     key-encryption-secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+
+security:
+  credential-delivery:
+    derivation-key: test-only-credential-derivation-key-00000001
+  user-management-bootstrap-gate:
+    enabled: false
+  session:
+    legacy-accept-until: 2099-01-01T00:00:00Z

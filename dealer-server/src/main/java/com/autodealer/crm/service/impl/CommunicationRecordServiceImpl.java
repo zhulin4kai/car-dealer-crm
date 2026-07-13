@@ -25,6 +25,7 @@ import com.github.pagehelper.PageInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import jakarta.annotation.Resource;
 
 import java.time.LocalDateTime;
 
@@ -38,17 +39,20 @@ public class CommunicationRecordServiceImpl implements CommunicationRecordServic
     private final FollowRelatedObjectResolver relatedObjectResolver;
     private final CurrentUserProvider currentUserProvider;
     private final OperationAuditRecorder auditRecorder;
+    private final EmploymentResponsibilityGuard responsibilityGuard;
 
     public CommunicationRecordServiceImpl(TCommunicationRecordMapper communicationRecordMapper,
                                           TFollowTaskMapper followTaskMapper,
                                           FollowRelatedObjectResolver relatedObjectResolver,
                                           CurrentUserProvider currentUserProvider,
-                                          OperationAuditRecorder auditRecorder) {
+                                          OperationAuditRecorder auditRecorder,
+                                          EmploymentResponsibilityGuard responsibilityGuard) {
         this.communicationRecordMapper = communicationRecordMapper;
         this.followTaskMapper = followTaskMapper;
         this.relatedObjectResolver = relatedObjectResolver;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
+        this.responsibilityGuard = responsibilityGuard;
     }
 
     @Override
@@ -240,6 +244,7 @@ public class CommunicationRecordServiceImpl implements CommunicationRecordServic
         if (!Boolean.TRUE.equals(createNextTask)) {
             return;
         }
+        responsibilityGuard.requireActiveOwner(ownerId);
         if (dueTime == null) {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "生成下一步任务时计划时间不能为空");
         }

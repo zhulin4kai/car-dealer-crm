@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.TEmployeeAssignmentMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.model.TEmployeeAssignment">
+        <id column="id" property="id"/>
+        <result column="employee_id" property="employeeId"/>
+        <result column="organization_unit_id" property="organizationUnitId"/>
+        <result column="position_id" property="positionId"/>
+        <result column="assignment_type" property="assignmentType"/>
+        <result column="status" property="status"/>
+        <result column="active_primary_marker" property="activePrimaryMarker"/>
+        <result column="effective_from" property="effectiveFrom"/>
+        <result column="effective_to" property="effectiveTo"/>
+        <result column="reason" property="reason"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="edit_time" property="editTime"/>
+        <result column="edit_by" property="editBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, employee_id, organization_unit_id, position_id, assignment_type, status,
+        active_primary_marker, effective_from, effective_to, reason, version,
+        create_time, create_by, edit_time, edit_by
+    </sql>
+
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_employee_assignment
+        WHERE id = #{assignmentId}
+    </select>
+
+    <select id="selectCurrentPrimaryByEmployeeId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_employee_assignment
+        WHERE employee_id = #{employeeId}
+          AND assignment_type = 'PRIMARY'
+          AND status = 'ACTIVE'
+          AND active_primary_marker = 1
+          AND effective_from &lt;= #{effectiveAt}
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt})
+        ORDER BY effective_from DESC, id DESC
+    </select>
+
+    <select id="selectEffectiveByEmployeeId" resultMap="BaseResultMap">
+        SELECT assignment.id, assignment.employee_id, assignment.organization_unit_id,
+               assignment.position_id, assignment.assignment_type, assignment.status,
+               assignment.active_primary_marker, assignment.effective_from, assignment.effective_to,
+               assignment.reason, assignment.version, assignment.create_time, assignment.create_by,
+               assignment.edit_time, assignment.edit_by
+        FROM t_employee_assignment assignment
+        INNER JOIN t_organization_unit organization_unit
+          ON organization_unit.id = assignment.organization_unit_id
+         AND organization_unit.migration_placeholder = 0
+        INNER JOIN t_position position
+          ON position.id = assignment.position_id
+         AND position.code &lt;&gt; 'UNASSIGNED_POSITION'
+        WHERE assignment.employee_id = #{employeeId}
+          AND assignment.status = 'ACTIVE'
+          AND assignment.effective_from &lt;= #{effectiveAt}
+          AND (assignment.effective_to IS NULL OR assignment.effective_to &gt; #{effectiveAt})
+        ORDER BY CASE assignment.assignment_type WHEN 'PRIMARY' THEN 0 WHEN 'SECONDARY' THEN 1 ELSE 2 END,
+                 assignment.effective_from DESC, assignment.id DESC
+    </select>
+
+    <select id="selectHistoryByEmployeeId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_employee_assignment
+        WHERE employee_id = #{employeeId}
+        ORDER BY effective_from DESC, id DESC
+    </select>
+
+    <select id="selectReplaceableByEmployeeId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_employee_assignment
+        WHERE employee_id = #{employeeId}
+          AND status IN ('PLANNED', 'ACTIVE')
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt})
+        ORDER BY id
+    </select>
+
+    <select id="selectReplaceablePrimaryByEmployeeId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM t_employee_assignment
+        WHERE employee_id=#{employeeId} AND assignment_type='PRIMARY' AND status IN ('PLANNED','ACTIVE')
+          AND (effective_to IS NULL OR effective_to&gt;#{effectiveAt}) ORDER BY id
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.model.TEmployeeAssignment"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_employee_assignment
+        (employee_id, organization_unit_id, position_id, assignment_type, status,
+         active_primary_marker, effective_from, effective_to, reason, version,
+         create_time, create_by, edit_time, edit_by)
+        VALUES
+        (#{employeeId}, #{organizationUnitId}, #{positionId}, #{assignmentType}, #{status},
+         #{activePrimaryMarker}, #{effectiveFrom}, #{effectiveTo}, #{reason}, #{version},
+         #{createTime}, #{createBy}, #{editTime}, #{editBy})
+    </insert>
+
+    <update id="expireElapsedMarkers">
+        UPDATE t_employee_assignment
+        SET status = 'ENDED', active_primary_marker = NULL,
+            version = version + 1, edit_time = #{effectiveAt}, edit_by = #{editBy}
+        WHERE employee_id = #{employeeId}
+          AND status = 'ACTIVE'
+          AND effective_to IS NOT NULL
+          AND effective_to &lt;= #{effectiveAt}
+    </update>
+
+    <!-- 历史事实只允许结束，不提供覆盖组织、岗位、类型、生效时间和原始原因的通用更新。 -->
+    <update id="endByIdAndVersion">
+        UPDATE t_employee_assignment
+        SET status = 'ENDED',
+            active_primary_marker = NULL,
+            effective_to = #{effectiveTo},
+            version = version + 1,
+            edit_time = #{editTime},
+            edit_by = #{editBy}
+        WHERE id = #{assignmentId}
+          AND version = #{expectedVersion}
+          AND status IN ('PLANNED', 'ACTIVE')
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveTo})
+          AND effective_from &lt; #{effectiveTo}
+    </update>
+
+    <update id="cancelFutureByIdAndVersion">
+        UPDATE t_employee_assignment
+        SET status = 'CANCELLED',
+            active_primary_marker = NULL,
+            version = version + 1,
+            edit_time = #{editTime},
+            edit_by = #{editBy}
+        WHERE id = #{assignmentId}
+          AND version = #{expectedVersion}
+          AND status IN ('PLANNED', 'ACTIVE')
+          AND effective_from &gt;= #{effectiveAt}
+    </update>
+</mapper>

@@ -1,7 +1,10 @@
 package com.autodealer.crm.model;
 
-import java.io.Serializable;
+import com.autodealer.crm.enums.DataScopeCode;
+import com.autodealer.crm.enums.RoleScopeType;
 import lombok.Data;
+
+import java.io.Serializable;
 
 /**
  * 角色表
@@ -15,7 +18,19 @@ public class TRole implements Serializable {
 
     private String roleName;
 
+    private String description;
+
+    private Boolean protectedRole;
+
+    private Integer authorizationLevel;
+
+    private DataScopeCode defaultDataScope;
+
+    private RoleScopeType scopeType;
+
     private Integer enabled;
+
+    private Integer version;
 
     private static final long serialVersionUID = 1L;
 }

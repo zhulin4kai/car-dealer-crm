@@ -77,6 +77,20 @@ class PermissionSecurityIntegrationTest extends BackendIntegrationTestBase {
                 "credentials_no_expired, account_no_locked, account_enabled) " +
                 "VALUES (?, ?, 'unused', ?, 1, 1, 1, 1)", id, loginAct, loginAct);
         jdbcTemplate.update(
+                "INSERT INTO t_position (id, code, name, description, position_level, built_in, enabled, version, create_time, create_by) " +
+                "VALUES (?, ?, ?, '权限边界测试岗位', 20, 0, 1, 0, CURRENT_TIMESTAMP, 1)",
+                id, "PERMISSION_TEST_" + id, loginAct + "岗位");
+        jdbcTemplate.update(
+                "INSERT INTO t_employee (id, user_id, employee_no, name, employment_status, profile_completed, " +
+                "hire_date, version, phone_verified, email_verified, create_time, create_by) " +
+                "VALUES (?, ?, ?, ?, 'ACTIVE', 1, CURRENT_DATE, 0, 0, 0, CURRENT_TIMESTAMP, 1)",
+                id, id, "EMP-PERMISSION-" + id, loginAct);
+        jdbcTemplate.update(
+                "INSERT INTO t_employee_assignment (employee_id, organization_unit_id, position_id, assignment_type, " +
+                "status, active_primary_marker, effective_from, reason, version, create_time, create_by) " +
+                "VALUES (?, 1, ?, 'PRIMARY', 'ACTIVE', 1, CURRENT_TIMESTAMP, '权限边界测试完整任职', 0, CURRENT_TIMESTAMP, 1)",
+                id, id);
+        jdbcTemplate.update(
                 "INSERT INTO t_user_role (user_id, role_id) " +
                 "SELECT ?, id FROM t_role WHERE role = ?", id, role);
         TUser user = new TUser();

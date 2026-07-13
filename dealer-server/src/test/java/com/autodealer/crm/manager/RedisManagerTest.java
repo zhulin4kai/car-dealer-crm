@@ -7,12 +7,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -55,6 +58,27 @@ class RedisManagerTest {
         redisManager.delete("testKey");
 
         verify(redisTemplate).delete("testKey");
+    }
+
+    @Test
+    void keyPresenceDistinguishesAbsentFromInfrastructureFailure() {
+        when(redisTemplate.hasKey("present")).thenReturn(true);
+        when(redisTemplate.hasKey("absent")).thenReturn(false);
+        when(redisTemplate.hasKey("failed")).thenThrow(new DataAccessResourceFailureException("redis"));
+
+        assertEquals(RedisManager.KeyPresence.PRESENT, redisManager.keyPresence("present"));
+        assertEquals(RedisManager.KeyPresence.ABSENT, redisManager.keyPresence("absent"));
+        assertEquals(RedisManager.KeyPresence.UNAVAILABLE, redisManager.keyPresence("failed"));
+    }
+
+    @Test
+    void incrementSlidingWindowReturnsTransactionalCounterAndFailsClosed() {
+        when(redisTemplate.execute(any(SessionCallback.class)))
+                .thenReturn(List.of(3L, true))
+                .thenThrow(new DataAccessResourceFailureException("redis"));
+
+        assertEquals(3L, redisManager.incrementSlidingWindow("security-key", 900));
+        assertNull(redisManager.incrementSlidingWindow("security-key", 900));
     }
 
     @Test

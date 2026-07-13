@@ -8,6 +8,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.time.Instant;
 
 /**
  * jwt 工具类
@@ -30,6 +31,39 @@ public class JWTUtils {
      *
      */
     public static String createJWT(Integer userId, String loginAct, long expirationSeconds) {
+        return createJWTBuilder(userId, loginAct, expirationSeconds)
+                .sign(Algorithm.HMAC256(SECRET));
+    }
+
+    /**
+     * 生成携带认证安全版本的 JWT。新登录必须使用该入口。
+     */
+    public static String createJWT(Integer userId, String loginAct, Long authVersion, long expirationSeconds) {
+        if (authVersion == null || authVersion < 0) {
+            throw new IllegalArgumentException("认证安全版本不能为空或为负数");
+        }
+        return createJWTBuilder(userId, loginAct, expirationSeconds)
+                .withClaim("authVersion", authVersion)
+                .sign(Algorithm.HMAC256(SECRET));
+    }
+
+    /** Task17 新会话 JWT：只包含稳定用户ID、会话ID、安全版本、iat、exp。 */
+    public static String createSessionJWT(Integer userId, String sessionId, Long authVersion,
+                                          Instant issuedAt, Instant expiresAt) {
+        if (userId == null || sessionId == null || sessionId.isBlank() || authVersion == null
+                || authVersion < 0 || issuedAt == null || expiresAt == null || !expiresAt.isAfter(issuedAt)) {
+            throw new IllegalArgumentException("会话 JWT 参数不合法");
+        }
+        Map<String, Object> header = new HashMap<>();
+        header.put("alg", "HS256"); header.put("typ", "JWT");
+        return JWT.create().withHeader(header).withClaim("userId", userId)
+                .withClaim("sessionId", sessionId).withClaim("authVersion", authVersion)
+                .withIssuedAt(Date.from(issuedAt)).withExpiresAt(Date.from(expiresAt))
+                .sign(Algorithm.HMAC256(SECRET));
+    }
+
+    private static com.auth0.jwt.JWTCreator.Builder createJWTBuilder(
+            Integer userId, String loginAct, long expirationSeconds) {
         //组装头数据
         Map<String, Object> header = new HashMap<>();
         header.put("alg", "HS256");
@@ -39,8 +73,7 @@ public class JWTUtils {
                 .withHeader(header)
                 .withClaim("userId", userId)
                 .withClaim("loginAct", loginAct)
-                .withExpiresAt(new Date(System.currentTimeMillis() + expirationSeconds * 1000))
-                .sign(Algorithm.HMAC256(SECRET));
+                .withExpiresAt(new Date(System.currentTimeMillis() + expirationSeconds * 1000));
     }
 
     /**
@@ -83,6 +116,23 @@ public class JWTUtils {
     public static String parseLoginActFromJWT(String jwt) {
         DecodedJWT decodedJWT = verifyAndDecode(jwt);
         return decodedJWT.getClaim("loginAct").asString();
+    }
+
+    /**
+     * 解析认证安全版本。兼容期内，旧 Token 没有该 claim 时返回 null。
+     */
+    public static Long parseAuthVersionFromJWT(String jwt) {
+        DecodedJWT decodedJWT = verifyAndDecode(jwt);
+        return decodedJWT.getClaim("authVersion").asLong();
+    }
+
+    public static String parseSessionIdFromJWT(String jwt) {
+        return verifyAndDecode(jwt).getClaim("sessionId").asString();
+    }
+
+    public static Instant parseIssuedAtFromJWT(String jwt) {
+        Date issuedAt = verifyAndDecode(jwt).getIssuedAt();
+        return issuedAt == null ? null : issuedAt.toInstant();
     }
 
     /**

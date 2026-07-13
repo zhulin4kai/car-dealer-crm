@@ -27,6 +27,7 @@ import com.github.pagehelper.PageInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import jakarta.annotation.Resource;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,6 +58,7 @@ public class OpportunityServiceImpl implements OpportunityService {
     private final TTranMapper tranMapper;
     private final CurrentUserProvider currentUserProvider;
     private final OperationAuditRecorder auditRecorder;
+    private final EmploymentResponsibilityGuard responsibilityGuard;
 
     public OpportunityServiceImpl(TOpportunityMapper opportunityMapper,
                                   TOpportunityStageHistoryMapper stageHistoryMapper,
@@ -64,7 +66,8 @@ public class OpportunityServiceImpl implements OpportunityService {
                                   TQuoteMapper quoteMapper,
                                   TTranMapper tranMapper,
                                   CurrentUserProvider currentUserProvider,
-                                  OperationAuditRecorder auditRecorder) {
+                                  OperationAuditRecorder auditRecorder,
+                                  EmploymentResponsibilityGuard responsibilityGuard) {
         this.opportunityMapper = opportunityMapper;
         this.stageHistoryMapper = stageHistoryMapper;
         this.customerMapper = customerMapper;
@@ -72,6 +75,7 @@ public class OpportunityServiceImpl implements OpportunityService {
         this.tranMapper = tranMapper;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
+        this.responsibilityGuard = responsibilityGuard;
     }
 
     @Override
@@ -102,6 +106,7 @@ public class OpportunityServiceImpl implements OpportunityService {
         opportunity.setCustomerId(customer.getId());
         opportunity.setClueId(resolveClueId(request, customer));
         opportunity.setOwnerId(customer.getOwnerId() == null ? operatorId : customer.getOwnerId());
+        responsibilityGuard.requireActiveOwner(opportunity.getOwnerId());
         opportunity.setProductId(request.getProductId());
         opportunity.setSourceType(normalizeNullable(request.getSourceType()));
         opportunity.setStage(OpportunityStage.INITIAL_CONTACT.name());

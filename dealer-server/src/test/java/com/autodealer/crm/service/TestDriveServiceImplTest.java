@@ -13,6 +13,7 @@ import com.autodealer.crm.enums.ProductVehicleStatus;
 import com.autodealer.crm.enums.TestDriveStatus;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TCustomerMapper;
+import com.autodealer.crm.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.mapper.TOpportunityMapper;
 import com.autodealer.crm.mapper.TProductVehicleMapper;
 import com.autodealer.crm.mapper.TTestDriveMapper;
@@ -26,6 +27,7 @@ import com.autodealer.crm.model.TTestDriveStatusHistory;
 import com.autodealer.crm.model.TTestDriveVehicleHold;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.TestDriveServiceImpl;
+import com.autodealer.crm.service.impl.EmploymentResponsibilityGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -65,12 +67,15 @@ class TestDriveServiceImplTest {
     @Mock private TProductVehicleMapper vehicleMapper;
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private OperationAuditRecorder auditRecorder;
+    @Mock private TAuthorizationGraphLockMapper graphLocks;
+    @Mock private EmploymentResponsibilityGuard responsibilityGuard;
     @InjectMocks private TestDriveServiceImpl testDriveService;
 
     @BeforeEach
     void setUp() {
         lenient().when(currentUserProvider.getCurrentUserId()).thenReturn(7);
         lenient().when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+        lenient().when(graphLocks.lockByName("TEST_DRIVE_SCHEDULE_GUARD")).thenReturn("TEST_DRIVE_SCHEDULE_GUARD");
         lenient().when(customerMapper.selectScopedById(eq(10), nullable(Integer.class))).thenReturn(customer());
         lenient().when(vehicleMapper.selectByIdForUpdate(100L)).thenReturn(vehicle(100L, ProductVehicleStatus.AVAILABLE));
         lenient().when(historyMapper.insert(any())).thenReturn(1);
@@ -105,6 +110,14 @@ class TestDriveServiceImplTest {
         assertEquals("ACTIVE", holdCaptor.getValue().getStatus());
         verify(vehicleMapper, never()).reserveIfAvailable(anyLong(), anyString(), anyString(), anyString(), anyLong(), any(), any(), anyInt());
         verify(auditRecorder).record(AuditActionEnum.TEST_DRIVE_CREATE, "300");
+    }
+
+    @Test void handoverOwnerCannotReceiveNewTestDrive(){
+        when(opportunityMapper.selectById(200L)).thenReturn(opportunity());
+        org.mockito.Mockito.doThrow(new BusinessException(CodeEnum.USER_LIFECYCLE_CONFLICT)).when(responsibilityGuard).requireActiveOwner(3);
+        BusinessException error=assertThrows(BusinessException.class,()->testDriveService.createTestDrive(createRequest()));
+        assertEquals(CodeEnum.USER_LIFECYCLE_CONFLICT,error.getCodeEnum());verify(testDriveMapper,never()).insert(any());
+        verify(vehicleHoldMapper,never()).insert(any());verify(historyMapper,never()).insert(any());verify(auditRecorder,never()).record(any(),anyString());
     }
 
     @Test

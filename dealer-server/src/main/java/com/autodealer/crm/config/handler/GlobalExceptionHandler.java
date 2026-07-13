@@ -46,7 +46,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     public ResponseEntity<R> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        log.warn("参数校验失败: {}", e.getMessage());
+        log.warn("参数校验失败 fields={}", e.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField()).distinct().sorted().toList());
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst()
@@ -57,7 +58,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = BindException.class)
     public ResponseEntity<R> handleBindException(BindException e) {
-        log.warn("参数绑定失败: {}", e.getMessage());
+        log.warn("参数绑定失败 fields={}", e.getFieldErrors().stream()
+                .map(error -> error.getField()).distinct().sorted().toList());
         String message = e.getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst()
@@ -68,7 +70,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = ConstraintViolationException.class)
     public ResponseEntity<R> handleConstraintViolationException(ConstraintViolationException e) {
-        log.warn("约束校验失败: {}", e.getMessage());
+        log.warn("约束校验失败 fields={}", e.getConstraintViolations().stream()
+                .map(violation -> violation.getPropertyPath().toString()).distinct().sorted().toList());
         String message = e.getConstraintViolations().stream()
                 .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
                 .findFirst()
@@ -80,7 +83,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = HttpMessageNotReadableException.class)
     public ResponseEntity<R> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
-        log.warn("请求体格式错误: {}", e.getMessage());
+        log.warn("请求体格式错误 type={}", e.getClass().getSimpleName());
         R body = R.FAIL(CodeEnum.PARAM_ERROR.getCode(), "请求体格式错误");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
@@ -157,9 +160,31 @@ public class GlobalExceptionHandler {
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case PARAM_ERROR -> HttpStatus.BAD_REQUEST;
             case OPERATION_FAILED, TRAN_NO_PRODUCTS, RESOURCE_IN_USE -> HttpStatus.UNPROCESSABLE_ENTITY;
-            case DUPLICATE, TRAN_STATE_CONFLICT -> HttpStatus.CONFLICT;
-            case ACCESS_DENIED -> HttpStatus.FORBIDDEN;
-            case UNAUTHORIZED_ERROR, TOKEN_ERROR, TOKEN_EXPIRED,
+            case DUPLICATE, TRAN_STATE_CONFLICT,
+                 ORGANIZATION_VERSION_CONFLICT, ORGANIZATION_PARENT_CYCLE,
+                 REPORTING_CYCLE, INVALID_MANAGER,
+                 ORGANIZATION_HAS_ACTIVE_CHILDREN, ORGANIZATION_HAS_ACTIVE_EMPLOYEES,
+                 POSITION_IN_USE, ASSIGNMENT_CONFLICT, ORGANIZATION_HIERARCHY_INVALID
+                 , ROLE_VERSION_CONFLICT, PROTECTED_ROLE_FORBIDDEN, ROLE_PERMISSION_INVALID,
+                 ROLE_PERMISSION_LIMIT, ROLE_IN_USE, LAST_AVAILABLE_ADMIN_REQUIRED
+                 , CREDENTIAL_ALREADY_USED, PASSWORD_HISTORY_REUSED
+                 , SESSION_VERSION_CONFLICT, SESSION_REVOKED,
+                 PROFILE_VERSION_CONFLICT, ACCOUNT_VERSION_CONFLICT
+                 , USER_LIFECYCLE_CONFLICT, USER_HANDOVER_QUALIFICATION_CHANGED,
+                 USER_HANDOVER_COUNT_MISMATCH, USER_HANDOVER_SCHEDULE_CONFLICT
+                    -> HttpStatus.CONFLICT;
+            case CREDENTIAL_INVALID -> HttpStatus.BAD_REQUEST;
+            case CREDENTIAL_EXPIRED -> HttpStatus.GONE;
+            case PASSWORD_POLICY_VIOLATION -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case CREDENTIAL_DELIVERY_FAILED -> HttpStatus.SERVICE_UNAVAILABLE;
+            case CREDENTIAL_RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
+            case SESSION_CACHE_FAILED -> HttpStatus.SERVICE_UNAVAILABLE;
+            case SESSION_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case SESSION_EXPIRED -> HttpStatus.GONE;
+            case USER_LIFECYCLE_SNAPSHOT_EXPIRED -> HttpStatus.GONE;
+            case ACCESS_DENIED, SELF_MANAGEMENT_FORBIDDEN,
+                 ADMIN_BOOTSTRAP_REQUIRED, RECOVERY_ACCOUNT_BUSINESS_FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case AUTH_LOGIN_FAILED, UNAUTHORIZED_ERROR, TOKEN_ERROR, TOKEN_EXPIRED,
                  TOKEN_IS_EMPTY, TOKEN_IS_ERROR, TOKEN_IS_EXPIRED,
                  TOKEN_IS_NONE_MATCH -> HttpStatus.UNAUTHORIZED;
             case FAIL -> HttpStatus.INTERNAL_SERVER_ERROR;

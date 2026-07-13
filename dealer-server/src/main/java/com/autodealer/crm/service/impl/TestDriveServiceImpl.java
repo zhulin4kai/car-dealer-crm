@@ -13,6 +13,7 @@ import com.autodealer.crm.enums.ProductVehicleStatus;
 import com.autodealer.crm.enums.TestDriveStatus;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.TCustomerMapper;
+import com.autodealer.crm.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.mapper.TOpportunityMapper;
 import com.autodealer.crm.mapper.TProductVehicleMapper;
 import com.autodealer.crm.mapper.TTestDriveMapper;
@@ -32,6 +33,7 @@ import com.github.pagehelper.PageInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import jakarta.annotation.Resource;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -55,6 +57,8 @@ public class TestDriveServiceImpl implements TestDriveService {
     private final TProductVehicleMapper vehicleMapper;
     private final CurrentUserProvider currentUserProvider;
     private final OperationAuditRecorder auditRecorder;
+    private final EmploymentResponsibilityGuard responsibilityGuard;
+    private final TAuthorizationGraphLockMapper graphLocks;
 
     public TestDriveServiceImpl(TTestDriveMapper testDriveMapper,
                                 TTestDriveVehicleHoldMapper vehicleHoldMapper,
@@ -63,7 +67,9 @@ public class TestDriveServiceImpl implements TestDriveService {
                                 TOpportunityMapper opportunityMapper,
                                 TProductVehicleMapper vehicleMapper,
                                 CurrentUserProvider currentUserProvider,
-                                OperationAuditRecorder auditRecorder) {
+                                OperationAuditRecorder auditRecorder,
+                                EmploymentResponsibilityGuard responsibilityGuard,
+                                TAuthorizationGraphLockMapper graphLocks) {
         this.testDriveMapper = testDriveMapper;
         this.vehicleHoldMapper = vehicleHoldMapper;
         this.historyMapper = historyMapper;
@@ -72,6 +78,8 @@ public class TestDriveServiceImpl implements TestDriveService {
         this.vehicleMapper = vehicleMapper;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
+        this.responsibilityGuard = responsibilityGuard;
+        this.graphLocks = graphLocks;
     }
 
     @Override
@@ -94,10 +102,12 @@ public class TestDriveServiceImpl implements TestDriveService {
     @Transactional(rollbackFor = Exception.class)
     public TTestDrive createTestDrive(CreateTestDriveRequest request) {
         validateTimeRange(request.getPlannedStartTime(), request.getPlannedEndTime());
+        lockScheduleGraph();
         TCustomer customer = requireAccessibleCustomer(request.getCustomerId());
         TOpportunity opportunity = requireValidOpportunity(request.getOpportunityId(), customer.getId());
         TProductVehicle vehicle = requireAvailableVehicleForUpdate(request.getVehicleId());
         Integer ownerId = customer.getOwnerId() == null ? currentUserProvider.getCurrentUserId() : customer.getOwnerId();
+        responsibilityGuard.requireActiveOwner(ownerId);
         validateConflicts(request.getVehicleId(), ownerId, request.getPlannedStartTime(), request.getPlannedEndTime(), null);
 
         Integer operatorId = currentUserProvider.getCurrentUserId();
@@ -144,6 +154,7 @@ public class TestDriveServiceImpl implements TestDriveService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TTestDrive reschedule(Long id, RescheduleTestDriveRequest request) {
+        lockScheduleGraph();
         TTestDrive current = requireAccessibleTestDriveForUpdate(id);
         TestDriveStatus status = parseStatus(current.getStatus());
         if (!status.canReschedule()) {
@@ -291,6 +302,13 @@ public class TestDriveServiceImpl implements TestDriveService {
         }
         if (testDriveMapper.countOwnerScheduleConflict(ownerId, startTime, endTime, excludeTestDriveId) > 0) {
             throw new BusinessException(CodeEnum.TRAN_STATE_CONFLICT, "负责销售当前时段已有试驾安排");
+        }
+    }
+
+    private void lockScheduleGraph() {
+        String name = "TEST_DRIVE_SCHEDULE_GUARD";
+        if (!name.equals(graphLocks.lockByName(name))) {
+            throw new IllegalStateException("试驾排期串行化锁缺失");
         }
     }
 

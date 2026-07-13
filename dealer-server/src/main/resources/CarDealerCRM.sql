@@ -584,11 +584,19 @@ CREATE TABLE `t_permission`
     `parent_id` int                                                           NULL DEFAULT NULL,
     `order_no`  int                                                           NULL DEFAULT NULL,
     `icon`      varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+    `module`    varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci  NOT NULL DEFAULT 'system',
+    `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+    `sensitivity_level` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'NORMAL',
+    `delegable` tinyint(1)                                                     NOT NULL DEFAULT 0,
     `enabled`   tinyint(1)                                                    NOT NULL DEFAULT 1,
+    `version`   int                                                           NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE KEY `uk_permission_code` (`code`),
     KEY `idx_permission_parent` (`parent_id`),
     CONSTRAINT `chk_permission_type` CHECK (`type` IN ('menu', 'button')),
+    CONSTRAINT `chk_permission_sensitivity` CHECK (`sensitivity_level` IN ('NORMAL', 'SENSITIVE', 'PROTECTED')),
+    CONSTRAINT `chk_permission_delegable` CHECK (`delegable` IN (0, 1)),
+    CONSTRAINT `chk_permission_version` CHECK (`version` >= 0),
     CONSTRAINT `fk_permission_parent` FOREIGN KEY (`parent_id`) REFERENCES `t_permission` (`id`) ON DELETE RESTRICT
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -881,6 +889,8 @@ SELECT '用户管理-角色分配', 'user:role', NULL, 'button', id, NULL, NULL,
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '用户管理-密码重置', 'user:password', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '用户管理-敏感资料查看', 'user:sensitive:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:user:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT '统计报表-查看', 'statistic:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:dashboard';
 
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
@@ -936,6 +946,111 @@ SELECT 'AI 策略-查看', 'ai:policy:view', NULL, 'button', id, NULL, NULL, 1 F
 INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
 SELECT 'AI 策略-管理', 'ai:policy:manage', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'menu:ai';
 
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+VALUES ('组织架构', 'menu:organization', NULL, 'menu', NULL, 2, 'Network', 1);
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构', 'page:organization:list', '/dashboard/organization', 'menu', id, 1, 'Network', 1
+FROM `t_permission` WHERE code = 'menu:organization';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-列表', 'organization:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-查看', 'organization:view', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-新增', 'organization:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-编辑', 'organization:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '组织架构-状态', 'organization:status', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '岗位-列表', 'position:list', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '岗位-新增', 'position:add', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '岗位-编辑', 'position:edit', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '岗位-状态', 'position:status', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '员工-任职调整', 'employee:assignment', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+INSERT INTO `t_permission` (`name`, `code`, `url`, `type`, `parent_id`, `order_no`, `icon`, `enabled`)
+SELECT '员工-汇报关系', 'employee:reporting', NULL, 'button', id, NULL, NULL, 1 FROM `t_permission` WHERE code = 'page:organization:list';
+
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`order_no`,`icon`,`enabled`)
+VALUES ('权限管理','menu:access',NULL,'menu',NULL,3,'Shield',1);
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`order_no`,`icon`,`enabled`)
+SELECT '角色管理','page:role:list','/dashboard/role','menu',id,1,'Users',1 FROM t_permission WHERE code='menu:access';
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`order_no`,`icon`,`enabled`)
+SELECT '权限目录','page:permission:list','/dashboard/permission','menu',id,2,'KeyRound',1 FROM t_permission WHERE code='menu:access';
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`module`,`description`,`sensitivity_level`,`delegable`,`enabled`)
+SELECT v.name,v.code,NULL,'button',p.id,'access',v.name,
+  CASE WHEN v.code IN ('role:status','role:permission:manage') THEN 'PROTECTED' ELSE 'NORMAL' END,
+  CASE WHEN v.code IN ('role:status','role:permission:manage') THEN 0 ELSE 1 END,1 FROM t_permission p JOIN (
+ SELECT '角色-列表' name,'role:list' code UNION ALL SELECT '角色-查看','role:view' UNION ALL SELECT '角色-新增','role:add'
+ UNION ALL SELECT '角色-编辑','role:edit' UNION ALL SELECT '角色-复制','role:copy' UNION ALL SELECT '角色-状态','role:status'
+ UNION ALL SELECT '角色-权限矩阵','role:permission:manage'
+) v ON p.code='page:role:list';
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`module`,`description`,`sensitivity_level`,`delegable`,`enabled`)
+SELECT '权限目录-列表','permission:list',NULL,'button',id,'access','权限目录-列表','NORMAL',1,1 FROM t_permission WHERE code='page:permission:list';
+INSERT INTO `t_permission` (`name`,`code`,`url`,`type`,`parent_id`,`enabled`)
+SELECT '用户管理-个人权限','user:permission',NULL,'button',id,1 FROM t_permission WHERE code='page:user:list';
+
+-- Task 10：权限目录元数据。模块从稳定 code 推导；高风险授权默认不可委派。
+UPDATE `t_permission`
+SET `module` = CASE
+    WHEN `code` LIKE 'menu:%' THEN SUBSTRING_INDEX(`code`, ':', -1)
+    WHEN `code` LIKE 'page:%' THEN SUBSTRING_INDEX(SUBSTRING_INDEX(`code`, ':', 2), ':', -1)
+    ELSE SUBSTRING_INDEX(`code`, ':', 1)
+END,
+    `description` = `name`;
+
+UPDATE `t_permission`
+SET `sensitivity_level` = 'SENSITIVE'
+WHERE `code` LIKE '%:delete'
+   OR `code` LIKE '%:export'
+   OR `code` LIKE '%:import'
+   OR `code` LIKE '%:approve'
+   OR `code` LIKE '%:payment%'
+   OR `code` LIKE '%:refund%'
+   OR `code` LIKE '%:invoice%'
+   OR `code` LIKE '%:sensitive%'
+   OR `code` LIKE '%:adjust';
+
+UPDATE `t_permission`
+SET `sensitivity_level` = 'PROTECTED'
+WHERE `code` IN ('user:role', 'user:status', 'user:password', 'user:delete',
+                 'ai:provider-config:manage', 'ai:provider-config:rotate-key',
+                 'organization:edit', 'organization:status', 'position:status',
+                 'employee:assignment', 'employee:reporting');
+
+UPDATE `t_permission`
+SET `delegable` = CASE WHEN `sensitivity_level` = 'NORMAL' THEN 1 ELSE 0 END;
+
+-- Task 11 稳定元数据不得被通用 code 推导覆盖。
+UPDATE `t_permission`
+SET `module` = CASE
+        WHEN `code` LIKE 'organization:%' THEN 'organization'
+        WHEN `code` LIKE 'position:%' THEN 'position'
+        ELSE 'employee'
+    END,
+    `sensitivity_level` = CASE
+        WHEN `code` IN ('organization:list', 'organization:view', 'position:list') THEN 'NORMAL'
+        WHEN `code` IN ('organization:add', 'position:add', 'position:edit') THEN 'SENSITIVE'
+        ELSE 'PROTECTED'
+    END,
+    `delegable` = CASE
+        WHEN `code` IN ('organization:list', 'organization:view', 'position:list') THEN 1
+        ELSE 0
+    END
+WHERE `code` IN ('organization:list', 'organization:view', 'organization:add', 'organization:edit',
+                 'organization:status', 'position:list', 'position:add', 'position:edit',
+                 'position:status', 'employee:assignment', 'employee:reporting');
+
+UPDATE `t_permission`
+SET `module`=CASE WHEN `code`='user:permission' THEN 'user' ELSE 'access' END,
+    `sensitivity_level`=CASE WHEN `code` IN ('role:status','role:permission:manage','user:permission') THEN 'PROTECTED' ELSE 'NORMAL' END,
+    `delegable`=CASE WHEN `code` IN ('role:status','role:permission:manage','user:permission') THEN 0 ELSE 1 END
+WHERE `code` IN ('role:list','role:view','role:add','role:edit','role:copy','role:status',
+                 'role:permission:manage','permission:list','user:permission');
+
 -- ----------------------------
 -- Table structure for t_role
 -- ----------------------------
@@ -945,9 +1060,21 @@ CREATE TABLE `t_role`
     `id`        int                                                          NOT NULL AUTO_INCREMENT,
     `role`      varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
     `role_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+    `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+    `protected_role` tinyint(1)                                              NOT NULL DEFAULT 0,
+    `authorization_level` int                                               NOT NULL DEFAULT 0,
+    `default_data_scope` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'SELF',
+    `scope_type` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'GLOBAL',
     `enabled`   tinyint(1)                                                   NOT NULL DEFAULT 1,
+    `version`   int                                                          NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE KEY `uk_role_code` (`role`)
+    UNIQUE KEY `uk_role_code` (`role`),
+    CONSTRAINT `chk_role_protected` CHECK (`protected_role` IN (0, 1)),
+    CONSTRAINT `chk_role_authorization_level` CHECK (`authorization_level` >= 0),
+    CONSTRAINT `chk_role_data_scope` CHECK (`default_data_scope` IN ('SELF', 'DIRECT_REPORTS', 'REPORTING_TREE', 'PRIMARY_ORG', 'ORG_TREE', 'CUSTOM_ORGS', 'GLOBAL')),
+    CONSTRAINT `chk_role_scope_type` CHECK (`scope_type` IN ('GLOBAL', 'ORGANIZATION')),
+    CONSTRAINT `chk_role_enabled` CHECK (`enabled` IN (0, 1)),
+    CONSTRAINT `chk_role_version` CHECK (`version` >= 0)
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_general_ci COMMENT = '角色表'
@@ -964,6 +1091,27 @@ INSERT INTO `t_role` (`role`, `role_name`, `enabled`) VALUES
 ('finance_specialist', '财务专员', 1),
 ('inventory_specialist', '库存专员', 1);
 
+UPDATE `t_role`
+SET `description` = `role_name`,
+    `protected_role` = CASE WHEN `role` = 'admin' THEN 1 ELSE 0 END,
+    `authorization_level` = CASE `role`
+        WHEN 'admin' THEN 100
+        WHEN 'sales_manager' THEN 60
+        WHEN 'finance_specialist' THEN 50
+        WHEN 'marketing_specialist' THEN 40
+        WHEN 'inventory_specialist' THEN 40
+        WHEN 'sales_consultant' THEN 30
+        ELSE 0
+    END,
+    `default_data_scope` = CASE `role`
+        WHEN 'admin' THEN 'GLOBAL'
+        WHEN 'sales_manager' THEN 'REPORTING_TREE'
+        WHEN 'marketing_specialist' THEN 'PRIMARY_ORG'
+        WHEN 'finance_specialist' THEN 'PRIMARY_ORG'
+        WHEN 'inventory_specialist' THEN 'PRIMARY_ORG'
+        ELSE 'SELF'
+    END;
+
 -- ----------------------------
 -- Table structure for t_role_permission
 -- ----------------------------
@@ -972,10 +1120,14 @@ CREATE TABLE `t_role_permission`
 (
     `role_id`       int NOT NULL,
     `permission_id` int NOT NULL,
+    `delegable`     tinyint(1) NOT NULL DEFAULT 0,
+    `data_scope_code` varchar(32) NOT NULL DEFAULT 'SELF',
     PRIMARY KEY (`role_id`, `permission_id`) USING BTREE,
     INDEX `idx_role_permission_permission` (`permission_id` ASC) USING BTREE,
-    CONSTRAINT `fk_role_permission_role` FOREIGN KEY (`role_id`) REFERENCES `t_role` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_role_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `t_permission` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_role_permission_role` FOREIGN KEY (`role_id`) REFERENCES `t_role` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_role_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `t_permission` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_role_permission_delegable` CHECK (`delegable` IN (0, 1)),
+    CONSTRAINT `chk_role_permission_data_scope` CHECK (`data_scope_code` IN ('SELF', 'DIRECT_REPORTS', 'REPORTING_TREE', 'PRIMARY_ORG', 'ORG_TREE', 'CUSTOM_ORGS', 'GLOBAL'))
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_general_ci COMMENT = '角色权限关系表'
@@ -1029,6 +1181,12 @@ INSERT INTO `t_role_permission` (`role_id`, `permission_id`)
 SELECT r.id, p.id FROM `t_role` r CROSS JOIN `t_permission` p
 WHERE r.role IN ('sales_consultant', 'sales_manager', 'marketing_specialist')
   AND p.code IN ('ai:proposal:confirm');
+
+UPDATE `t_role_permission` rp
+INNER JOIN `t_permission` p ON p.id = rp.permission_id
+INNER JOIN `t_role` r ON r.id = rp.role_id
+SET rp.delegable = p.delegable,
+    rp.data_scope_code = r.default_data_scope;
 
 -- ----------------------------
 -- Table structure for t_tran
@@ -1919,7 +2077,17 @@ VALUES
 (3, 3, 1, '客户职业及付款计划明确，同意最终报价。', '2026-06-19 17:10:00', 4, '2026-06-18 16:20:00', 3),
 (4, 6, 0, '客户要求的交付日期无法保证，不建议继续占用车辆资源。', '2026-06-09 16:40:00', 4, '2026-06-09 10:15:00', 8);
 
+DROP TABLE IF EXISTS `t_employee_reporting`;
+DROP TABLE IF EXISTS `t_employee_assignment`;
+DROP TABLE IF EXISTS `t_organization_unit`;
+DROP TABLE IF EXISTS `t_position`;
+DROP TABLE IF EXISTS `t_employee`;
 DROP TABLE IF EXISTS `t_user_role`;
+DROP TABLE IF EXISTS `t_credential_delivery_outbox`;
+DROP TABLE IF EXISTS `t_account_credential`;
+DROP TABLE IF EXISTS `t_password_history`;
+DROP TABLE IF EXISTS `t_login_identifier`;
+DROP TABLE IF EXISTS `t_user_session`;
 DROP TABLE IF EXISTS `t_user`;
 create table t_user
 (
@@ -1927,9 +2095,11 @@ create table t_user
         primary key,
     login_act              varchar(32) null comment '登录账号',
     login_pwd              varchar(64) null comment '登录密码',
-    name                   varchar(32) null comment '用户姓名',
+    name                   varchar(64) null comment '用户姓名',
     phone                  varchar(18) null comment '用户手机',
     email                  varchar(64) null comment '用户邮箱',
+    avatar_url             varchar(500) null comment '系统账号个人头像',
+    profile_version        int not null default 0 comment '系统账号个人资料并发版本',
     account_no_expired     int         null comment '账户是否没有过期，0已过期 1正常',
     credentials_no_expired int         null comment '密码是否没有过期，0已过期 1正常',
     account_no_locked      int         null comment '账号是否没有锁定，0已锁定 1正常',
@@ -1939,17 +2109,89 @@ create table t_user
     edit_time              datetime    null comment '编辑时间',
     edit_by                int         null comment '编辑人',
     last_login_time        datetime    null comment '最近登录时间',
+    account_type           varchar(16) not null default 'HUMAN' comment '账号类型：SYSTEM-系统恢复账号，HUMAN-人员账号',
+    protected_account      tinyint(1)  not null default 0 comment '是否为受保护恢复账号：0否，1是',
+    version                int         not null default 0 comment '并发更新版本',
+    authorization_version  int         not null default 0 comment '授权配置并发版本，仅授权事实变化时递增',
+    auth_version           bigint      not null default 0 comment '认证安全版本，安全变更时递增',
+    session_revision       bigint      not null default 0 comment '会话列表命令独立并发版本',
+    account_status         varchar(16) not null default 'ACTIVE' comment 'INVITED/ACTIVE/DISABLED',
+    must_change_password   tinyint(1) not null default 0 comment '是否必须首次改密',
+    failed_login_count     int not null default 0 comment '连续登录失败次数',
+    auto_locked_until      datetime null comment '自动锁定截止时间',
+    manual_locked          tinyint(1) not null default 0 comment '人工锁定事实',
+    manual_lock_reason     varchar(500) null comment '人工锁定原因',
+    manual_locked_by       int null comment '人工锁定操作者',
+    manual_locked_at       datetime null comment '人工锁定时间',
+    account_expires_at     datetime null comment '账号到期时间',
+    password_expires_at    datetime null comment '密码到期时间',
     constraint email
         unique (email),
     constraint login_act
         unique (login_act),
     constraint phone
-        unique (phone)
+        unique (phone),
+    constraint chk_user_account_type check (account_type in ('SYSTEM', 'HUMAN')),
+    constraint chk_user_protected_account check (protected_account in (0, 1)),
+    constraint chk_user_account_protection check (
+        (account_type = 'SYSTEM' and protected_account = 1)
+        or (account_type = 'HUMAN' and protected_account = 0)
+    ),
+    constraint chk_user_recovery_login_act check (
+        (protected_account = 1 and login_act is not null and lower(login_act) = 'admin')
+        or (protected_account = 0 and (login_act is null or lower(login_act) <> 'admin'))
+    ),
+    constraint chk_user_version check (version >= 0),
+    constraint chk_user_authorization_version check (authorization_version >= 0),
+    constraint chk_user_auth_version check (auth_version >= 0)
+    ,constraint chk_user_session_revision check (session_revision >= 0)
+    ,constraint chk_user_profile_version check (profile_version >= 0)
+    ,constraint chk_user_account_status check (account_status in ('INVITED','ACTIVE','DISABLED'))
+    ,constraint chk_user_must_change_password check (must_change_password in (0,1))
+    ,constraint chk_user_failed_login_count check (failed_login_count >= 0)
+    ,constraint chk_user_manual_locked check (manual_locked in (0,1))
 )ENGINE = InnoDB
  AUTO_INCREMENT = 1
  CHARACTER SET = utf8mb3
  COLLATE = utf8mb3_general_ci COMMENT = '用户表'
  ROW_FORMAT = DYNAMIC;
+
+CREATE INDEX `idx_user_workspace_status`
+  ON `t_user` (`account_status`,`manual_locked`,`auto_locked_until`,`id`);
+CREATE INDEX `idx_user_workspace_last_login`
+  ON `t_user` (`last_login_time`,`id`);
+
+CREATE TABLE `t_user_session` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `session_id` varchar(64) NOT NULL COMMENT '不可猜测会话标识',
+  `user_id` int NOT NULL,
+  `token_digest` varchar(64) NOT NULL COMMENT '原JWT的HMAC摘要',
+  `issued_auth_version` bigint NOT NULL,
+  `remember_me` tinyint(1) NOT NULL DEFAULT 0,
+  `device_summary` varchar(128) NOT NULL,
+  `client_summary` varchar(128) NULL,
+  `network_summary` varchar(128) NULL,
+  `login_time` datetime NOT NULL,
+  `last_activity_time` datetime NOT NULL,
+  `idle_expires_at` datetime NOT NULL,
+  `absolute_expires_at` datetime NOT NULL,
+  `revoked_at` datetime NULL,
+  `revoked_by` int NULL,
+  `revoke_reason` varchar(500) NULL,
+  `revoke_type` varchar(32) NULL,
+  `version` int NOT NULL DEFAULT 0,
+  `create_time` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_session_id` (`session_id`),
+  UNIQUE KEY `uk_user_session_token_digest` (`token_digest`),
+  KEY `idx_user_session_user_active` (`user_id`,`revoked_at`,`login_time`,`session_id`),
+  KEY `idx_user_session_retention` (`revoked_at`,`id`),
+  CONSTRAINT `fk_user_session_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_user_session_remember` CHECK (`remember_me` IN (0,1)),
+  CONSTRAINT `chk_user_session_version` CHECK (`version` >= 0),
+  CONSTRAINT `chk_user_session_times` CHECK (`login_time` <= `last_activity_time` AND `last_activity_time` < `idle_expires_at` AND `idle_expires_at` <= `absolute_expires_at`),
+  CONSTRAINT `chk_user_session_revocation` CHECK ((`revoked_at` IS NULL AND `revoke_reason` IS NULL AND `revoke_type` IS NULL) OR (`revoked_at` IS NOT NULL AND `revoke_reason` IS NOT NULL AND `revoke_type` IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='独立登录会话与撤销事实';
 
 DROP TABLE IF EXISTS `t_clue_owner_history`;
 CREATE TABLE `t_clue_owner_history`
@@ -1979,18 +2221,360 @@ CREATE TABLE `t_clue_owner_history`
 
 INSERT INTO t_user
 (id, login_act, login_pwd, name, phone, email, account_no_expired, credentials_no_expired,
- account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time)
+ account_no_locked, account_enabled, create_time, create_by, edit_time, edit_by, last_login_time,
+ account_type, protected_account, version, authorization_version, auth_version)
 VALUES
-(1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '系统管理员', '13800001001', 'admin@qicheng-auto.example', 1, 1, 1, 1, '2025-01-06 09:00:00', NULL, '2026-06-01 10:30:00', 1, '2026-06-21 08:42:00'),
-(2, 'chenchen', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '陈晨', '13800001002', 'chen.chen@qicheng-auto.example', 1, 1, 1, 1, '2025-02-10 09:15:00', 1, NULL, NULL, '2026-06-21 08:51:00'),
-(3, 'wanglei', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '王磊', '13800001003', 'wang.lei@qicheng-auto.example', 1, 1, 1, 1, '2025-03-03 10:20:00', 1, NULL, NULL, '2026-06-20 18:20:00'),
-(4, 'limin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '李敏', '13800001004', 'li.min@qicheng-auto.example', 1, 1, 1, 1, '2025-01-15 14:00:00', 1, NULL, NULL, '2026-06-21 09:03:00'),
-(5, 'zhouqi', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '周琪', '13800001005', 'zhou.qi@qicheng-auto.example', 1, 1, 1, 1, '2025-04-08 11:30:00', 1, NULL, NULL, '2026-06-20 17:42:00'),
-(6, 'zhaoqian', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '赵倩', '13800001006', 'zhao.qian@qicheng-auto.example', 1, 1, 1, 1, '2025-02-18 09:40:00', 1, NULL, NULL, '2026-06-21 08:58:00'),
-(7, 'sunqiang', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '孙强', '13800001007', 'sun.qiang@qicheng-auto.example', 1, 1, 1, 1, '2025-05-12 13:20:00', 1, NULL, NULL, '2026-06-20 19:05:00'),
-(8, 'wuyue', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '吴悦', '13800001008', 'wu.yue@qicheng-auto.example', 1, 1, 1, 1, '2025-06-09 10:10:00', 4, NULL, NULL, '2026-06-21 08:47:00'),
-(9, 'liujia', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '刘佳', '13800001009', 'liu.jia@qicheng-auto.example', 1, 1, 1, 1, '2025-08-04 15:30:00', 4, NULL, NULL, '2026-06-20 18:36:00'),
-(10, 'hejun', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '何军', '13800001010', 'he.jun@qicheng-auto.example', 1, 1, 0, 0, '2025-09-15 09:00:00', 1, '2026-06-10 18:00:00', 1, '2026-06-10 17:42:00');
+(1, 'admin', '$2y$12$s4SOuAYn1qhEjBjKwvawR.djU.vjb4DIVZbsdZfLi.idWdyGinyCS', '系统管理员', '13800001001', 'admin@qicheng-auto.example', 1, 1, 0, 1, '2025-01-06 09:00:00', NULL, '2026-06-01 10:30:00', 1, NULL, 'SYSTEM', 1, 0, 0, 0),
+(2, 'chenchen', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '陈晨', '13800001002', 'chen.chen@qicheng-auto.example', 1, 1, 1, 1, '2025-02-10 09:15:00', 1, NULL, NULL, '2026-06-21 08:51:00', 'HUMAN', 0, 0, 0, 0),
+(3, 'wanglei', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '王磊', '13800001003', 'wang.lei@qicheng-auto.example', 1, 1, 1, 1, '2025-03-03 10:20:00', 1, NULL, NULL, '2026-06-20 18:20:00', 'HUMAN', 0, 0, 0, 0),
+(4, 'limin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '李敏', '13800001004', 'li.min@qicheng-auto.example', 1, 1, 1, 1, '2025-01-15 14:00:00', 1, NULL, NULL, '2026-06-21 09:03:00', 'HUMAN', 0, 0, 0, 0),
+(5, 'zhouqi', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '周琪', '13800001005', 'zhou.qi@qicheng-auto.example', 1, 1, 1, 1, '2025-04-08 11:30:00', 1, NULL, NULL, '2026-06-20 17:42:00', 'HUMAN', 0, 0, 0, 0),
+(6, 'zhaoqian', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '赵倩', '13800001006', 'zhao.qian@qicheng-auto.example', 1, 1, 1, 1, '2025-02-18 09:40:00', 1, NULL, NULL, '2026-06-21 08:58:00', 'HUMAN', 0, 0, 0, 0),
+(7, 'sunqiang', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '孙强', '13800001007', 'sun.qiang@qicheng-auto.example', 1, 1, 1, 1, '2025-05-12 13:20:00', 1, NULL, NULL, '2026-06-20 19:05:00', 'HUMAN', 0, 0, 0, 0),
+(8, 'wuyue', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '吴悦', '13800001008', 'wu.yue@qicheng-auto.example', 1, 1, 1, 1, '2025-06-09 10:10:00', 4, NULL, NULL, '2026-06-21 08:47:00', 'HUMAN', 0, 0, 0, 0),
+(9, 'liujia', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '刘佳', '13800001009', 'liu.jia@qicheng-auto.example', 1, 1, 1, 1, '2025-08-04 15:30:00', 4, NULL, NULL, '2026-06-20 18:36:00', 'HUMAN', 0, 0, 0, 0),
+(10, 'hejun', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '何军', '13800001010', 'he.jun@qicheng-auto.example', 1, 1, 0, 0, '2025-09-15 09:00:00', 1, '2026-06-10 18:00:00', 1, '2026-06-10 17:42:00', 'HUMAN', 0, 0, 0, 0);
+
+-- 固定恢复账号不随仓库交付任何可用初始密码；必须先通过外部密钥保护的 break-glass 轮换密码并解锁。
+UPDATE t_user
+SET must_change_password=1,
+    manual_locked=1,
+    manual_lock_reason='INITIAL_BREAK_GLASS_REQUIRED',
+    account_no_locked=0,
+    last_login_time=NULL
+WHERE id=1 AND BINARY login_act=BINARY 'admin'
+  AND account_type='SYSTEM' AND protected_account=1;
+
+CREATE TABLE `t_employee`
+(
+    `id`                 int          NOT NULL AUTO_INCREMENT,
+    `user_id`            int          NULL,
+    `employee_no`        varchar(32)  NOT NULL,
+    `name`               varchar(64)  NOT NULL,
+    `phone`              varchar(18)  NULL,
+    `email`              varchar(64)  NULL,
+    `avatar_url`         varchar(500) NULL,
+    `employment_status`  varchar(16)  NOT NULL DEFAULT 'ACTIVE',
+    `profile_completed`  tinyint(1)   NOT NULL DEFAULT 0,
+    `hire_date`          date         NULL,
+    `leave_date`         date         NULL,
+    `version`            int          NOT NULL DEFAULT 0,
+    `profile_version`    int          NOT NULL DEFAULT 0,
+    `phone_verified`     tinyint(1)   NOT NULL DEFAULT 0,
+    `email_verified`     tinyint(1)   NOT NULL DEFAULT 0,
+    `create_time`        datetime     NOT NULL,
+    `create_by`          int          NULL,
+    `edit_time`          datetime     NULL,
+    `edit_by`            int          NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_employee_user` (`user_id`),
+    UNIQUE KEY `uk_employee_no` (`employee_no`),
+    UNIQUE KEY `uk_employee_phone` (`phone`),
+    UNIQUE KEY `uk_employee_email` (`email`),
+    CONSTRAINT `fk_employee_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_employee_status` CHECK (`employment_status` IN ('PENDING', 'ACTIVE', 'HANDOVER', 'LEFT')),
+    CONSTRAINT `chk_employee_profile_completed` CHECK (`profile_completed` IN (0, 1)),
+    CONSTRAINT `chk_employee_dates` CHECK (`leave_date` IS NULL OR `hire_date` IS NULL OR `leave_date` >= `hire_date`),
+    CONSTRAINT `chk_employee_version` CHECK (`version` >= 0)
+    ,CONSTRAINT `chk_employee_profile_version` CHECK (`profile_version` >= 0)
+    ,CONSTRAINT `chk_employee_phone_verified` CHECK (`phone_verified` IN (0,1))
+    ,CONSTRAINT `chk_employee_email_verified` CHECK (`email_verified` IN (0,1))
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '员工档案表';
+
+CREATE TABLE `t_account_credential` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `purpose` varchar(24) NOT NULL,
+  `token_digest` varchar(64) NOT NULL,
+  `status` varchar(16) NOT NULL,
+  `active_marker` tinyint(1) NULL,
+  `expires_at` datetime NOT NULL,
+  `consumed_at` datetime NULL,
+  `revoked_at` datetime NULL,
+  `issued_by` int NULL,
+  `reason` varchar(500) NOT NULL,
+  `target_value_digest` varchar(64) NULL COMMENT '联系方式验证目标的 HMAC 摘要，不保存明文',
+  `target_profile_version` int NULL COMMENT '联系方式验证签发时的员工资料版本',
+  `version` int NOT NULL DEFAULT 0,
+  `create_time` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_account_credential_digest` (`token_digest`),
+  UNIQUE KEY `uk_account_credential_active` (`user_id`,`purpose`,`active_marker`),
+  CONSTRAINT `fk_account_credential_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_account_credential_purpose` CHECK (`purpose` IN ('INVITATION','SELF_RESET','ADMIN_RESET','PHONE_VERIFY','EMAIL_VERIFY','BREAK_GLASS')),
+  CONSTRAINT `chk_account_credential_status` CHECK (`status` IN ('ISSUED','CONSUMED','REVOKED')),
+  CONSTRAINT `chk_account_credential_contact_binding` CHECK (((`purpose` IN ('PHONE_VERIFY','EMAIL_VERIFY')) AND (`status` <> 'ISSUED' OR (`target_value_digest` IS NOT NULL AND `target_profile_version` IS NOT NULL))) OR ((`purpose` NOT IN ('PHONE_VERIFY','EMAIL_VERIFY')) AND `target_value_digest` IS NULL AND `target_profile_version` IS NULL)),
+  CONSTRAINT `chk_account_credential_version` CHECK (`version` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='账号一次性凭证事实';
+
+CREATE TABLE `t_credential_delivery_outbox` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `message_id` varchar(36) NOT NULL,
+  `credential_id` bigint NOT NULL,
+  `user_id` int NOT NULL,
+  `purpose` varchar(24) NOT NULL,
+  `derivation_nonce` varchar(64) NULL COMMENT '使用独立部署密钥派生原始凭证的随机 nonce，终态清除',
+  `phone_digest` varchar(64) NULL,
+  `email_digest` varchar(64) NULL,
+  `status` varchar(16) NOT NULL,
+  `attempt_count` int NOT NULL DEFAULT 0,
+  `next_attempt_at` datetime NOT NULL,
+  `claimed_at` datetime NULL,
+  `delivered_at` datetime NULL,
+  `failed_at` datetime NULL,
+  `last_error_code` varchar(64) NULL,
+  `version` int NOT NULL DEFAULT 0,
+  `create_time` datetime NOT NULL,
+  `edit_time` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_credential_delivery_message` (`message_id`),
+  UNIQUE KEY `uk_credential_delivery_credential` (`credential_id`),
+  KEY `idx_credential_delivery_due` (`status`,`next_attempt_at`,`id`),
+  CONSTRAINT `fk_credential_delivery_credential` FOREIGN KEY (`credential_id`) REFERENCES `t_account_credential` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_credential_delivery_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_credential_delivery_status` CHECK (`status` IN ('PENDING','PROCESSING','RETRY','DELIVERED','FAILED')),
+  CONSTRAINT `chk_credential_delivery_attempt` CHECK (`attempt_count` >= 0 AND `version` >= 0),
+  CONSTRAINT `chk_credential_delivery_contact` CHECK (`phone_digest` IS NOT NULL OR `email_digest` IS NOT NULL),
+  CONSTRAINT `chk_credential_delivery_nonce` CHECK (((`status` IN ('PENDING','PROCESSING','RETRY')) AND `derivation_nonce` IS NOT NULL) OR ((`status` IN ('DELIVERED','FAILED')) AND `derivation_nonce` IS NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提交后一次性凭证投递 Outbox';
+
+CREATE TABLE `t_password_history` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `password_hash` varchar(64) NOT NULL,
+  `changed_by` int NULL,
+  `change_reason` varchar(64) NOT NULL,
+  `changed_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_password_history_user_time` (`user_id`,`changed_at`,`id`),
+  CONSTRAINT `fk_password_history_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='不可变密码历史';
+
+CREATE TABLE `t_login_identifier` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `login_act` varchar(32) NOT NULL,
+  `status` varchar(16) NOT NULL,
+  `active_marker` tinyint(1) NULL,
+  `retired_at` datetime NULL,
+  `changed_by` int NULL,
+  `reason` varchar(500) NOT NULL,
+  `version` int NOT NULL DEFAULT 0,
+  `create_time` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_login_identifier_login_act` (`login_act`),
+  UNIQUE KEY `uk_login_identifier_active_user` (`user_id`,`active_marker`),
+  CONSTRAINT `fk_login_identifier_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_login_identifier_changed_by` FOREIGN KEY (`changed_by`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_login_identifier_state` CHECK (
+    (`status`='ACTIVE' AND `active_marker`=1 AND `retired_at` IS NULL)
+    OR (`status`='RETIRED' AND `active_marker` IS NULL AND `retired_at` IS NOT NULL)
+  ),
+  CONSTRAINT `chk_login_identifier_version` CHECK (`version` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录账号永久归属事实';
+
+INSERT INTO `t_login_identifier`
+  (`user_id`,`login_act`,`status`,`active_marker`,`retired_at`,`changed_by`,`reason`,`version`,`create_time`)
+SELECT `id`,`login_act`,'ACTIVE',1,NULL,`create_by`,'完整初始化登录账号永久归属',0,`create_time`
+FROM `t_user`;
+
+CREATE TABLE `t_organization_unit`
+(
+    `id`                 int          NOT NULL AUTO_INCREMENT,
+    `code`               varchar(64)  NOT NULL,
+    `name`               varchar(64)  NOT NULL,
+    `type`               varchar(16)  NOT NULL,
+    `parent_id`          int          NULL,
+    `leader_employee_id` int          NULL,
+    `order_no`           int          NOT NULL DEFAULT 0,
+    `migration_placeholder` tinyint(1) NOT NULL DEFAULT 0,
+    `enabled`            tinyint(1)   NOT NULL DEFAULT 1,
+    `active_root_marker` tinyint(1) GENERATED ALWAYS AS (
+      CASE WHEN `type`='COMPANY' AND `parent_id` IS NULL
+        AND `migration_placeholder`=0 AND `enabled`=1 THEN 1 ELSE NULL END
+    ) STORED,
+    `version`            int          NOT NULL DEFAULT 0,
+    `create_time`        datetime     NOT NULL,
+    `create_by`          int          NULL,
+    `edit_time`          datetime     NULL,
+    `edit_by`            int          NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_organization_unit_code` (`code`),
+    UNIQUE KEY `uk_organization_unit_active_root` (`active_root_marker`),
+    KEY `idx_organization_unit_parent_order` (`parent_id`, `order_no`, `id`),
+    KEY `idx_organization_unit_leader` (`leader_employee_id`),
+    CONSTRAINT `fk_organization_unit_parent` FOREIGN KEY (`parent_id`) REFERENCES `t_organization_unit` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_organization_unit_leader` FOREIGN KEY (`leader_employee_id`) REFERENCES `t_employee` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_organization_unit_type` CHECK (`type` IN ('COMPANY', 'STORE', 'DEPARTMENT', 'TEAM')),
+    CONSTRAINT `chk_organization_unit_migration_placeholder` CHECK (`migration_placeholder` IN (0, 1)),
+    CONSTRAINT `chk_organization_unit_enabled` CHECK (`enabled` IN (0, 1)),
+    CONSTRAINT `chk_organization_unit_hierarchy` CHECK (
+      (`type`='COMPANY' AND `parent_id` IS NULL)
+      OR (`type`<>'COMPANY' AND `parent_id` IS NOT NULL)
+    ),
+    CONSTRAINT `chk_organization_unit_order` CHECK (`order_no` >= 0),
+    CONSTRAINT `chk_organization_unit_version` CHECK (`version` >= 0)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '组织单元表';
+
+CREATE TABLE `t_role_organization`
+(
+    `role_id` int NOT NULL,
+    `organization_unit_id` int NOT NULL,
+    PRIMARY KEY (`role_id`, `organization_unit_id`),
+    CONSTRAINT `fk_role_organization_role` FOREIGN KEY (`role_id`) REFERENCES `t_role` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_role_organization_unit` FOREIGN KEY (`organization_unit_id`) REFERENCES `t_organization_unit` (`id`) ON DELETE RESTRICT
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '角色适用组织';
+
+CREATE TABLE `t_role_permission_organization`
+(
+    `role_id` int NOT NULL,
+    `permission_id` int NOT NULL,
+    `organization_unit_id` int NOT NULL,
+    PRIMARY KEY (`role_id`, `permission_id`, `organization_unit_id`),
+    CONSTRAINT `fk_role_permission_org_permission` FOREIGN KEY (`role_id`, `permission_id`)
+      REFERENCES `t_role_permission` (`role_id`, `permission_id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_role_permission_org_unit` FOREIGN KEY (`organization_unit_id`)
+      REFERENCES `t_organization_unit` (`id`) ON DELETE RESTRICT
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '角色权限指定组织范围';
+
+CREATE TABLE `t_position`
+(
+    `id`             int          NOT NULL AUTO_INCREMENT,
+    `code`           varchar(64)  NOT NULL,
+    `name`           varchar(64)  NOT NULL,
+    `description`    varchar(255) NULL,
+    `position_level` int          NOT NULL DEFAULT 0,
+    `built_in`       tinyint(1)   NOT NULL DEFAULT 0,
+    `enabled`        tinyint(1)   NOT NULL DEFAULT 1,
+    `version`        int          NOT NULL DEFAULT 0,
+    `create_time`    datetime     NOT NULL,
+    `create_by`      int          NULL,
+    `edit_time`      datetime     NULL,
+    `edit_by`        int          NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_position_code` (`code`),
+    KEY `idx_position_level_code` (`position_level`, `code`, `id`),
+    CONSTRAINT `chk_position_level` CHECK (`position_level` >= 0),
+    CONSTRAINT `chk_position_built_in` CHECK (`built_in` IN (0, 1)),
+    CONSTRAINT `chk_position_enabled` CHECK (`enabled` IN (0, 1)),
+    CONSTRAINT `chk_position_version` CHECK (`version` >= 0)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '岗位目录表';
+
+CREATE TABLE `t_employee_assignment`
+(
+    `id`                    int          NOT NULL AUTO_INCREMENT,
+    `employee_id`           int          NOT NULL,
+    `organization_unit_id`  int          NOT NULL,
+    `position_id`           int          NOT NULL,
+    `assignment_type`       varchar(16)  NOT NULL,
+    `status`                varchar(16)  NOT NULL,
+    `active_primary_marker` tinyint(1)   NULL,
+    `effective_from`        datetime     NOT NULL,
+    `effective_to`          datetime     NULL,
+    `reason`                varchar(500) NOT NULL,
+    `version`               int          NOT NULL DEFAULT 0,
+    `create_time`           datetime     NOT NULL,
+    `create_by`             int          NULL,
+    `edit_time`             datetime     NULL,
+    `edit_by`               int          NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_employee_active_primary` (`employee_id`, `active_primary_marker`),
+    KEY `idx_employee_assignment_effective` (`employee_id`, `status`, `effective_from`, `effective_to`, `id`),
+    KEY `idx_employee_assignment_org` (`organization_unit_id`, `status`, `id`),
+    KEY `idx_employee_assignment_position` (`position_id`, `status`, `id`),
+    KEY `idx_employee_assignment_workspace_org` (`organization_unit_id`, `assignment_type`, `status`, `active_primary_marker`, `employee_id`),
+    KEY `idx_employee_assignment_workspace_position` (`position_id`, `assignment_type`, `status`, `active_primary_marker`, `employee_id`),
+    CONSTRAINT `fk_employee_assignment_employee` FOREIGN KEY (`employee_id`) REFERENCES `t_employee` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_employee_assignment_org` FOREIGN KEY (`organization_unit_id`) REFERENCES `t_organization_unit` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_employee_assignment_position` FOREIGN KEY (`position_id`) REFERENCES `t_position` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_employee_assignment_type` CHECK (`assignment_type` IN ('PRIMARY', 'SECONDARY', 'ACTING')),
+    CONSTRAINT `chk_employee_assignment_status` CHECK (`status` IN ('PLANNED', 'ACTIVE', 'ENDED', 'CANCELLED')),
+    CONSTRAINT `chk_employee_assignment_period` CHECK (`effective_to` IS NULL OR `effective_to` > `effective_from`),
+    CONSTRAINT `chk_employee_assignment_primary_marker` CHECK (
+        (`assignment_type` = 'PRIMARY' AND `status` = 'ACTIVE' AND `active_primary_marker` = 1)
+        OR ((`assignment_type` <> 'PRIMARY' OR `status` <> 'ACTIVE') AND `active_primary_marker` IS NULL)
+    ),
+    CONSTRAINT `chk_employee_assignment_version` CHECK (`version` >= 0)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '员工任职事实表';
+
+CREATE TABLE `t_employee_reporting`
+(
+    `id`                      int          NOT NULL AUTO_INCREMENT,
+    `subordinate_employee_id` int          NOT NULL,
+    `manager_employee_id`     int          NOT NULL,
+    `relation_type`           varchar(16)  NOT NULL,
+    `status`                  varchar(16)  NOT NULL,
+    `active_direct_marker`    tinyint(1)   NULL,
+    `effective_from`          datetime     NOT NULL,
+    `effective_to`            datetime     NULL,
+    `reason`                  varchar(500) NOT NULL,
+    `version`                 int          NOT NULL DEFAULT 0,
+    `create_time`             datetime     NOT NULL,
+    `create_by`               int          NULL,
+    `edit_time`               datetime     NULL,
+    `edit_by`                 int          NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_employee_active_direct_manager` (`subordinate_employee_id`, `active_direct_marker`),
+    KEY `idx_employee_reporting_manager` (`manager_employee_id`, `status`, `effective_from`, `effective_to`, `id`),
+    KEY `idx_employee_reporting_workspace_manager` (`manager_employee_id`, `relation_type`, `status`, `active_direct_marker`, `subordinate_employee_id`),
+    CONSTRAINT `fk_employee_reporting_subordinate` FOREIGN KEY (`subordinate_employee_id`) REFERENCES `t_employee` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_employee_reporting_manager` FOREIGN KEY (`manager_employee_id`) REFERENCES `t_employee` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_employee_reporting_not_self` CHECK (`subordinate_employee_id` <> `manager_employee_id`),
+    CONSTRAINT `chk_employee_reporting_type` CHECK (`relation_type` IN ('DIRECT', 'ACTING')),
+    CONSTRAINT `chk_employee_reporting_status` CHECK (`status` IN ('PLANNED', 'ACTIVE', 'ENDED', 'CANCELLED')),
+    CONSTRAINT `chk_employee_reporting_period` CHECK (`effective_to` IS NULL OR `effective_to` > `effective_from`),
+    CONSTRAINT `chk_employee_reporting_acting_finite` CHECK (`relation_type` <> 'ACTING' OR `effective_to` IS NOT NULL),
+    CONSTRAINT `chk_employee_reporting_direct_marker` CHECK (
+        (`relation_type` = 'DIRECT' AND `status` = 'ACTIVE' AND `active_direct_marker` = 1)
+        OR ((`relation_type` <> 'DIRECT' OR `status` <> 'ACTIVE') AND `active_direct_marker` IS NULL)
+    ),
+    CONSTRAINT `chk_employee_reporting_version` CHECK (`version` >= 0)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '员工汇报关系事实表';
+
+INSERT INTO `t_organization_unit`
+(`id`, `code`, `name`, `type`, `parent_id`, `leader_employee_id`, `order_no`, `migration_placeholder`,
+ `enabled`, `version`, `create_time`, `create_by`)
+VALUES
+(1, 'DEFAULT_COMPANY', '启程汽车', 'COMPANY', NULL, NULL, 0, 0, 1, 0, NOW(), 1),
+(2, 'UNASSIGNED_ORG', '待分配组织', 'TEAM', 1, NULL, 999, 1, 1, 0, NOW(), 1);
+
+INSERT INTO `t_position`
+(`id`, `code`, `name`, `description`, `position_level`, `built_in`, `enabled`, `version`, `create_time`, `create_by`)
+VALUES
+(1, 'UNASSIGNED_POSITION', '待分配岗位', '兼容迁移占位岗位，完成员工资料补录后应替换。', 0, 1, 1, 0, NOW(), 1),
+(2, 'DEMO_STAFF', '演示员工', '完整初始化普通员工岗位。', 30, 0, 1, 0, NOW(), 1),
+(3, 'DEMO_MANAGER', '演示主管', '完整初始化主管岗位。', 60, 0, 1, 0, NOW(), 1),
+(4, 'DEMO_ADMIN', '演示管理员', '完整初始化普通管理员岗位。', 100, 0, 1, 0, NOW(), 1);
+
+INSERT INTO `t_employee`
+(`user_id`, `employee_no`, `name`, `phone`, `email`, `employment_status`, `profile_completed`,
+ `hire_date`, `version`, `phone_verified`, `email_verified`, `create_time`, `create_by`)
+SELECT u.id, CONCAT('EMP-', LPAD(u.id, 6, '0')), u.name, u.phone, u.email, 'ACTIVE', 0,
+       DATE(u.create_time), 0, IF(u.phone IS NULL,0,1), IF(u.email IS NULL,0,1), NOW(), 1
+FROM `t_user` u
+WHERE u.account_type = 'HUMAN';
+
+INSERT INTO `t_employee_assignment`
+(`employee_id`, `organization_unit_id`, `position_id`, `assignment_type`, `status`,
+ `active_primary_marker`, `effective_from`, `reason`, `version`, `create_time`, `create_by`)
+SELECT e.id, 1,
+       CASE WHEN u.login_act='limin' THEN 4 ELSE 2 END,
+       'PRIMARY', 'ACTIVE', 1, COALESCE(u.create_time, NOW()),
+       '完整初始化主要任职', 0, NOW(), 1
+FROM `t_employee` e
+INNER JOIN `t_user` u ON u.id = e.user_id;
+
+-- 根公司负责人必须是具备真实员工事实的 HUMAN 管理员，否则四态门禁会正确判定为 UNINITIALIZED。
+UPDATE `t_organization_unit` organization_unit
+INNER JOIN `t_employee` employee ON employee.user_id = (
+    SELECT id FROM `t_user` WHERE login_act = 'limin' AND account_type = 'HUMAN' LIMIT 1
+)
+SET organization_unit.leader_employee_id = employee.id,
+    organization_unit.edit_time = NOW(),
+    organization_unit.edit_by = 1
+WHERE organization_unit.code = 'DEFAULT_COMPANY'
+  AND organization_unit.type = 'COMPANY'
+  AND organization_unit.parent_id IS NULL;
 
 INSERT INTO `t_clue_owner_history`
 (`clue_id`, `from_owner_id`, `to_owner_id`, `assigned_by`, `reason`, `assigned_time`)
@@ -2001,11 +2585,21 @@ WHERE owner_id IS NOT NULL;
 DROP TABLE IF EXISTS `t_user_role`;
 create table t_user_role
 (
+    id bigint not null auto_increment,
     user_id int not null,
     role_id int not null,
-    primary key (user_id, role_id),
-    constraint fk_user_role_user foreign key (user_id) references t_user (id) on delete cascade,
-    constraint fk_user_role_role foreign key (role_id) references t_role (id) on delete cascade
+    granted_by int null,
+    reason varchar(500) null,
+    effective_from datetime null,
+    effective_to datetime null,
+    active_marker tinyint(1) null default 1,
+    version int not null default 0,
+    primary key (id),
+    unique key uk_user_role_active (user_id, role_id, active_marker),
+    constraint fk_user_role_user foreign key (user_id) references t_user (id) on delete restrict,
+    constraint fk_user_role_role foreign key (role_id) references t_role (id) on delete restrict,
+    constraint fk_user_role_granted_by foreign key (granted_by) references t_user (id) on delete restrict,
+    constraint chk_user_role_period check (effective_to is null or effective_from is null or effective_to > effective_from)
 )ENGINE = InnoDB
  CHARACTER SET = utf8mb3
  COLLATE = utf8mb3_general_ci COMMENT = '用户角色关系表'
@@ -2028,6 +2622,9 @@ SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r
 WHERE u.login_act = 'limin' AND r.role = 'sales_manager';
 INSERT INTO t_user_role (user_id, role_id)
 SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r
+WHERE u.login_act = 'limin' AND r.role = 'admin';
+INSERT INTO t_user_role (user_id, role_id)
+SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r
 WHERE u.login_act = 'zhouqi' AND r.role = 'marketing_specialist';
 INSERT INTO t_user_role (user_id, role_id)
 SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r
@@ -2044,6 +2641,250 @@ WHERE u.login_act = 'liujia' AND r.role = 'marketing_specialist';
 INSERT INTO t_user_role (user_id, role_id)
 SELECT u.id, r.id FROM t_user u CROSS JOIN t_role r
 WHERE u.login_act = 'hejun' AND r.role = 'sales_consultant';
+
+UPDATE t_user_role
+SET granted_by = 1,
+    reason = '初始化角色关系',
+    effective_from = COALESCE((SELECT create_time FROM t_user WHERE t_user.id = t_user_role.user_id), NOW());
+
+-- 完整新库必须至少存在一名可完成安全设置的 HUMAN 管理员；首次登录后强制改密，验证完成前保持 PENDING。
+UPDATE t_user
+SET must_change_password = 1
+WHERE login_act = 'limin' AND account_type = 'HUMAN' AND protected_account = 0;
+
+DROP TABLE IF EXISTS `t_authorization_history`;
+DROP TABLE IF EXISTS `t_user_permission`;
+CREATE TABLE `t_user_permission`
+(
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `user_id` int NOT NULL,
+    `permission_id` int NOT NULL,
+    `effect` varchar(16) NOT NULL,
+    `data_scope_code` varchar(32) NULL,
+    `effective_from` datetime NOT NULL,
+    `effective_to` datetime NULL,
+    `active_marker` tinyint(1) NULL DEFAULT 1,
+    `reason` varchar(500) NOT NULL,
+    `granted_by` int NOT NULL,
+    `version` int NOT NULL,
+    `create_time` datetime NOT NULL,
+    `update_time` datetime NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_permission_current` (`user_id`, `permission_id`),
+    KEY `idx_user_permission_effective` (`user_id`, `active_marker`, `effective_from`, `effective_to`, `permission_id`, `version`),
+    CONSTRAINT `fk_user_permission_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_user_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `t_permission` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_user_permission_granted_by` FOREIGN KEY (`granted_by`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_user_permission_effect` CHECK (`effect` IN ('GRANT', 'DENY')),
+    CONSTRAINT `chk_user_permission_scope` CHECK ((`effect` = 'GRANT' AND `data_scope_code` IS NOT NULL AND `data_scope_code` IN ('SELF', 'DIRECT_REPORTS', 'REPORTING_TREE', 'PRIMARY_ORG', 'ORG_TREE', 'CUSTOM_ORGS', 'GLOBAL')) OR (`effect` = 'DENY' AND `data_scope_code` IS NULL)),
+    CONSTRAINT `chk_user_permission_period` CHECK (`effective_to` IS NULL OR `effective_to` > `effective_from`),
+    CONSTRAINT `chk_user_permission_version` CHECK (`version` >= 0)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '用户个人授权当前态表（version CAS）';
+
+CREATE TABLE `t_user_permission_organization`
+(
+    `user_permission_id` bigint NOT NULL,
+    `organization_unit_id` int NOT NULL,
+    PRIMARY KEY (`user_permission_id`, `organization_unit_id`),
+    CONSTRAINT `fk_user_permission_org_permission` FOREIGN KEY (`user_permission_id`)
+      REFERENCES `t_user_permission` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_user_permission_org_unit` FOREIGN KEY (`organization_unit_id`)
+      REFERENCES `t_organization_unit` (`id`) ON DELETE RESTRICT
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '用户个人权限指定组织范围';
+
+CREATE TABLE `t_authorization_history`
+(
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `subject_type` varchar(32) NOT NULL,
+    `subject_id` varchar(64) NOT NULL,
+    `change_type` varchar(16) NOT NULL,
+    `target_user_id` int NULL,
+    `role_id` int NULL,
+    `permission_id` int NULL,
+    `effect` varchar(16) NULL,
+    `data_scope_code` varchar(32) NULL,
+    `effective_from` datetime NULL,
+    `effective_to` datetime NULL,
+    `before_value` varchar(2048) NULL,
+    `after_value` varchar(2048) NULL,
+    `reason` varchar(500) NOT NULL,
+    `operator_id` int NOT NULL,
+    `occurred_time` datetime NOT NULL,
+    `request_id` varchar(64) NULL,
+    `affected_user_ids` mediumtext NULL,
+    `affected_users_snapshot` mediumtext NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_authorization_history_subject` (`subject_type`, `subject_id`, `occurred_time`, `id`),
+    KEY `idx_authorization_history_target` (`target_user_id`, `occurred_time`, `id`),
+    CONSTRAINT `fk_authorization_history_target_user` FOREIGN KEY (`target_user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_authorization_history_role` FOREIGN KEY (`role_id`) REFERENCES `t_role` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_authorization_history_permission` FOREIGN KEY (`permission_id`) REFERENCES `t_permission` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_authorization_history_operator` FOREIGN KEY (`operator_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_authorization_history_subject` CHECK (`subject_type` IN ('ROLE', 'ROLE_PERMISSION', 'USER_ROLE', 'USER_PERMISSION', 'ORGANIZATION_UNIT', 'POSITION', 'ORGANIZATION_ASSIGNMENT', 'REPORTING_RELATION')),
+    CONSTRAINT `chk_authorization_history_change` CHECK (`change_type` IN ('CREATE', 'UPDATE', 'ENABLE', 'DISABLE', 'ASSIGN', 'UNASSIGN', 'GRANT', 'DENY', 'REVOKE', 'EXPIRE')),
+    CONSTRAINT `chk_authorization_history_effect` CHECK (`effect` IS NULL OR `effect` IN ('GRANT', 'DENY')),
+    CONSTRAINT `chk_authorization_history_subject_ids` CHECK (
+      (`subject_type` <> 'ROLE' OR `role_id` IS NOT NULL) AND
+      (`subject_type` <> 'ROLE_PERMISSION' OR (`role_id` IS NOT NULL AND `permission_id` IS NOT NULL)) AND
+      (`subject_type` <> 'USER_ROLE' OR (`target_user_id` IS NOT NULL AND `role_id` IS NOT NULL)) AND
+      (`subject_type` <> 'USER_PERMISSION' OR (`target_user_id` IS NOT NULL AND `permission_id` IS NOT NULL AND `effect` IS NOT NULL))
+    ),
+    CONSTRAINT `chk_authorization_history_user_permission_scope` CHECK (
+      `subject_type` <> 'USER_PERMISSION' OR
+      (`effect` = 'GRANT' AND `data_scope_code` IS NOT NULL) OR
+      (`effect` = 'DENY' AND `data_scope_code` IS NULL)
+    ),
+    CONSTRAINT `chk_authorization_history_period` CHECK (`effective_to` IS NULL OR `effective_from` IS NULL OR `effective_to` > `effective_from`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '授权变化不可变历史表';
+
+DROP TABLE IF EXISTS `t_user_management_migration`;
+CREATE TABLE `t_user_management_migration`
+(
+    `migration_key` varchar(128) NOT NULL,
+    `completed_at` datetime NOT NULL,
+    PRIMARY KEY (`migration_key`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '用户管理人工迁移完成标记';
+
+CREATE TABLE `t_authorization_graph_lock`
+(
+    `lock_name` varchar(64) NOT NULL,
+    PRIMARY KEY (`lock_name`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '授权关系图串行化锁';
+
+CREATE TABLE `t_user_lifecycle_event`
+(
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `operation_id` varchar(64) NOT NULL,
+    `request_id` varchar(64) NOT NULL,
+    `action` varchar(32) NOT NULL,
+    `user_id` int NOT NULL,
+    `employee_id` int NOT NULL,
+    `before_value` mediumtext NOT NULL,
+    `after_value` mediumtext NOT NULL,
+    `reason` varchar(500) NOT NULL,
+    `operator_id` int NOT NULL,
+    `occurred_time` datetime NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_lifecycle_operation` (`operation_id`),
+    KEY `idx_user_lifecycle_target_time` (`user_id`,`occurred_time`,`id`),
+    CONSTRAINT `fk_user_lifecycle_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_user_lifecycle_employee` FOREIGN KEY (`employee_id`) REFERENCES `t_employee` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_user_lifecycle_operator` FOREIGN KEY (`operator_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `chk_user_lifecycle_action` CHECK (`action` IN ('TRANSFER','DEPARTURE_START','HANDOVER_CONFIRM','DEPARTURE_COMPLETE','REHIRE'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人员生命周期不可变事件历史';
+
+CREATE TABLE `t_user_lifecycle_snapshot`
+(
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `token_digest` varchar(64) NOT NULL,
+    `user_id` int NOT NULL,
+    `employee_id` int NOT NULL,
+    `employee_version` int NOT NULL,
+    `reason_digest` varchar(64) NOT NULL,
+    `fact_digest` varchar(64) NOT NULL,
+    `expires_at` datetime NOT NULL,
+    `consumed_at` datetime NULL,
+    `version` int NOT NULL DEFAULT 0,
+    `create_time` datetime NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_lifecycle_snapshot_token` (`token_digest`),
+    KEY `idx_user_lifecycle_snapshot_expiry` (`expires_at`,`consumed_at`,`id`),
+    CONSTRAINT `fk_user_lifecycle_snapshot_user` FOREIGN KEY (`user_id`) REFERENCES `t_user` (`id`) ON DELETE RESTRICT,
+    CONSTRAINT `fk_user_lifecycle_snapshot_employee` FOREIGN KEY (`employee_id`) REFERENCES `t_employee` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='一次性离职预检快照';
+
+INSERT INTO `t_authorization_graph_lock` (`lock_name`) VALUES ('ORGANIZATION_HIERARCHY'), ('REPORTING_GRAPH'), ('AVAILABLE_ADMIN_GUARD'), ('AUTHORIZATION_MEMBERSHIP_GUARD'), ('TEST_DRIVE_SCHEDULE_GUARD'), ('LOGIN_IDENTIFIER_GUARD');
+
+INSERT INTO `t_user_management_migration` (`migration_key`, `completed_at`) VALUES
+('20260711_task03_auth_version', NOW()),
+('20260711_task09_organization_foundation', NOW()),
+('20260711_task10_authorization_history', NOW()),
+('20260711_task11_organization_management', NOW()),
+('20260711_task12_role_permission_matrix', NOW()),
+('20260711_task13_user_authorization', NOW());
+
+DROP TRIGGER IF EXISTS `trg_authorization_history_no_update`;
+DROP TRIGGER IF EXISTS `trg_authorization_history_no_delete`;
+DROP TRIGGER IF EXISTS `trg_user_lifecycle_event_no_update`;
+DROP TRIGGER IF EXISTS `trg_user_lifecycle_event_no_delete`;
+DROP TRIGGER IF EXISTS `trg_login_identifier_immutable_bu`;
+DROP TRIGGER IF EXISTS `trg_login_identifier_immutable_bd`;
+DROP TRIGGER IF EXISTS `trg_recovery_account_identity_bi`;
+DROP TRIGGER IF EXISTS `trg_recovery_account_identity_bu`;
+DROP TRIGGER IF EXISTS `trg_recovery_account_identity_bd`;
+DELIMITER $$
+CREATE TRIGGER `trg_authorization_history_no_update`
+BEFORE UPDATE ON `t_authorization_history`
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'authorization history is immutable';
+END$$
+CREATE TRIGGER `trg_authorization_history_no_delete`
+BEFORE DELETE ON `t_authorization_history`
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'authorization history is immutable';
+END$$
+CREATE TRIGGER `trg_user_lifecycle_event_no_update`
+BEFORE UPDATE ON `t_user_lifecycle_event`
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'user lifecycle event is immutable';
+END$$
+CREATE TRIGGER `trg_user_lifecycle_event_no_delete`
+BEFORE DELETE ON `t_user_lifecycle_event`
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'user lifecycle event is immutable';
+END$$
+CREATE TRIGGER `trg_login_identifier_immutable_bu`
+BEFORE UPDATE ON `t_login_identifier`
+FOR EACH ROW
+BEGIN
+    IF NOT (NEW.`user_id` <=> OLD.`user_id`)
+       OR NOT (NEW.`login_act` <=> OLD.`login_act`)
+       OR NOT (NEW.`create_time` <=> OLD.`create_time`) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'login identifier ownership is immutable';
+    END IF;
+END$$
+CREATE TRIGGER `trg_login_identifier_immutable_bd`
+BEFORE DELETE ON `t_login_identifier`
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'login identifier ownership is immutable';
+END$$
+CREATE TRIGGER `trg_recovery_account_identity_bi`
+BEFORE INSERT ON `t_user`
+FOR EACH ROW
+BEGIN
+    IF NEW.`id`=1 OR BINARY NEW.`login_act`=BINARY 'admin' OR NEW.`protected_account`=1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fixed recovery account identity cannot be inserted or copied';
+    END IF;
+END$$
+CREATE TRIGGER `trg_recovery_account_identity_bu`
+BEFORE UPDATE ON `t_user`
+FOR EACH ROW
+BEGIN
+    IF OLD.`id`=1 OR NEW.`id`=1
+       OR BINARY OLD.`login_act`=BINARY 'admin' OR BINARY NEW.`login_act`=BINARY 'admin'
+       OR OLD.`protected_account`=1 OR NEW.`protected_account`=1 THEN
+        IF NOT (
+          OLD.`id`=1 AND BINARY OLD.`login_act`=BINARY 'admin' AND OLD.`account_type`='SYSTEM' AND OLD.`protected_account`=1
+          AND NEW.`id`=1 AND BINARY NEW.`login_act`=BINARY 'admin' AND NEW.`account_type`='SYSTEM' AND NEW.`protected_account`=1
+        ) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fixed recovery account identity is immutable';
+        END IF;
+    END IF;
+END$$
+CREATE TRIGGER `trg_recovery_account_identity_bd`
+BEFORE DELETE ON `t_user`
+FOR EACH ROW
+BEGIN
+    IF OLD.`id`=1 OR BINARY OLD.`login_act`=BINARY 'admin' OR OLD.`protected_account`=1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'protected recovery account is immutable';
+    END IF;
+END$$
+DELIMITER ;
 
 DROP TABLE IF EXISTS `t_tran_remark`;
 create table t_tran_remark
@@ -2098,12 +2939,12 @@ CREATE TABLE `t_operation_log`
     `id`          int          NOT NULL AUTO_INCREMENT COMMENT '主键',
     `user_id`     int          NULL DEFAULT NULL COMMENT '操作用户ID',
     `user_name`   varchar(64)  NULL DEFAULT NULL COMMENT '操作用户名',
-    `action_code` varchar(32)  NOT NULL COMMENT '审计动作代码',
+    `action_code` varchar(64)  NOT NULL COMMENT '审计动作代码',
     `object_type` varchar(64)  NULL DEFAULT NULL COMMENT '业务对象类型',
     `module_name` varchar(64)  NULL DEFAULT NULL COMMENT '模块名称',
     `resource_id` varchar(64)  NULL DEFAULT NULL COMMENT '业务资源ID',
     `result`      varchar(32)  NULL DEFAULT NULL COMMENT '操作结果',
-    `detail`      varchar(512) NULL DEFAULT NULL COMMENT '结构化审计摘要JSON',
+    `detail`      varchar(2048) NULL DEFAULT NULL COMMENT '结构化审计摘要JSON',
     `ip`          varchar(64)  NULL DEFAULT NULL COMMENT '操作IP',
     `request_id`  varchar(64)  NULL DEFAULT NULL COMMENT '请求标识',
     `create_time` datetime     NULL DEFAULT NULL COMMENT '创建时间',

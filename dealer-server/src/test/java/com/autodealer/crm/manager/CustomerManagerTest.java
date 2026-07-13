@@ -12,6 +12,7 @@ import com.autodealer.crm.model.TProduct;
 import com.autodealer.crm.model.TCustomer;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.TranService;
+import com.autodealer.crm.service.impl.EmploymentResponsibilityGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,6 +49,8 @@ class CustomerManagerTest {
 
     @Mock
     private OperationAuditRecorder auditRecorder;
+
+    @Mock private EmploymentResponsibilityGuard responsibilityGuard;
 
     @BeforeEach
     void setUp() {
@@ -198,6 +201,14 @@ class CustomerManagerTest {
 
         assertThrows(BusinessException.class, () -> customerManager.convertCustomer(request));
         verify(tranService, never()).createTransaction(any(), anyList());
+    }
+
+    @Test void handoverOwnerCannotReceiveConvertedCustomer(){
+        when(tClueMapper.selectScopedByPrimaryKey(1,10)).thenReturn(buildClue());
+        doThrow(new BusinessException(CodeEnum.USER_LIFECYCLE_CONFLICT)).when(responsibilityGuard).requireActiveOwner(anyInt());
+        ConvertCustomerRequest request=new ConvertCustomerRequest();request.setClueId(1);
+        BusinessException error=assertThrows(BusinessException.class,()->customerManager.convertCustomer(request));
+        assertEquals(CodeEnum.USER_LIFECYCLE_CONFLICT,error.getCodeEnum());verify(tCustomerMapper,never()).insertSelective(any());verify(tClueMapper,never()).updateStateToConverted(anyInt(),anyInt(),any());verifyNoInteractions(auditRecorder);
     }
 
     private TClue buildClue() {

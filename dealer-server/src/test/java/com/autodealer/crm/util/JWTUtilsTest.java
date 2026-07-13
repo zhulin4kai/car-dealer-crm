@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,12 +41,37 @@ class JWTUtilsTest {
 
     @Test
     void testGenerateAndParseToken() {
-        String token = JWTUtils.createJWT(42, "alice", 60);
+        String token = JWTUtils.createJWT(42, "alice", 7L, 60);
         assertNotNull(token);
         assertFalse(token.isEmpty());
 
         assertEquals(42, JWTUtils.parseUserIdFromJWT(token));
         assertEquals("alice", JWTUtils.parseLoginActFromJWT(token));
+        assertEquals(7L, JWTUtils.parseAuthVersionFromJWT(token));
+    }
+
+    @Test
+    void legacyTokenWithoutAuthVersionShouldParseNullClaim() {
+        String token = JWTUtils.createJWT(42, "alice", 60);
+
+        assertNull(JWTUtils.parseAuthVersionFromJWT(token));
+    }
+
+    @Test
+    void sessionTokenContainsOnlyStableSessionClaims() {
+        Instant issuedAt = Instant.now().minusSeconds(1);
+        Instant expiresAt = issuedAt.plusSeconds(900);
+
+        String token = JWTUtils.createSessionJWT(42, "session-opaque-id", 7L, issuedAt, expiresAt);
+        DecodedJWT decoded = JWT.decode(token);
+
+        assertEquals(42, JWTUtils.parseUserIdFromJWT(token));
+        assertEquals("session-opaque-id", JWTUtils.parseSessionIdFromJWT(token));
+        assertEquals(7L, JWTUtils.parseAuthVersionFromJWT(token));
+        assertEquals(issuedAt.getEpochSecond(), JWTUtils.parseIssuedAtFromJWT(token).getEpochSecond());
+        assertEquals(expiresAt.getEpochSecond(), decoded.getExpiresAt().toInstant().getEpochSecond());
+        assertTrue(decoded.getClaim("loginAct").isMissing(), "会话 JWT 不应携带可变登录账号");
+        assertEquals(5, decoded.getClaims().size(), "会话 JWT 只能包含 userId/sessionId/authVersion/iat/exp");
     }
 
     @Test

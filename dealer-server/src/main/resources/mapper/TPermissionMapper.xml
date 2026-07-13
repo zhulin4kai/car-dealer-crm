@@ -10,38 +10,123 @@
     <result column="parent_id" jdbcType="INTEGER" property="parentId" />
     <result column="order_no" jdbcType="INTEGER" property="orderNo" />
     <result column="icon" jdbcType="VARCHAR" property="icon" />
+    <result column="module" jdbcType="VARCHAR" property="module" />
+    <result column="description" jdbcType="VARCHAR" property="description" />
+    <result column="sensitivity_level" jdbcType="VARCHAR" property="sensitivityLevel" />
+    <result column="delegable" jdbcType="TINYINT" property="delegable" />
     <result column="enabled" jdbcType="TINYINT" property="enabled" />
+    <result column="version" jdbcType="INTEGER" property="version" />
   </resultMap>
   
   <sql id="Base_Column_List">
-    id, `name`, code, url, `type`, parent_id, order_no, icon, enabled
+    id, `name`, code, url, `type`, parent_id, order_no, icon,
+    module, description, sensitivity_level, delegable, enabled, version
   </sql>
 
   <select id="selectMenuPermissionByUserId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    WITH RECURSIVE user_org_ancestors(id,parent_id) AS (
+      SELECT organization.id,organization.parent_id
+      FROM t_employee employee
+      INNER JOIN t_employee_assignment assignment ON assignment.employee_id=employee.id
+        AND assignment.assignment_type='PRIMARY' AND assignment.status='ACTIVE'
+        AND assignment.active_primary_marker=1 AND assignment.effective_from &lt;= CURRENT_TIMESTAMP
+        AND (assignment.effective_to IS NULL OR assignment.effective_to &gt; CURRENT_TIMESTAMP)
+      INNER JOIN t_organization_unit organization ON organization.id=assignment.organization_unit_id
+      WHERE employee.user_id=#{userId,jdbcType=INTEGER}
+      UNION ALL
+      SELECT parent.id,parent.parent_id FROM t_organization_unit parent
+      INNER JOIN user_org_ancestors child ON parent.id=child.parent_id
+    )
     SELECT DISTINCT tp.id, tp.name, tp.code, tp.url, tp.type,
                     tp.parent_id, tp.order_no, tp.icon, tp.enabled
     FROM t_permission tp
-      INNER JOIN t_role_permission trp ON tp.id = trp.permission_id
-      INNER JOIN t_role tr ON trp.role_id = tr.id AND tr.enabled = 1
-      INNER JOIN t_user_role tur ON tr.id = tur.role_id
-    WHERE tur.user_id = #{userId, jdbcType=INTEGER}
-      AND tp.type = 'menu'
-      AND tp.enabled = 1
+    WHERE tp.type = 'menu' AND tp.enabled = 1
+      AND (
+        EXISTS (
+          SELECT 1 FROM t_user_role tur
+          INNER JOIN t_role tr ON tr.id = tur.role_id AND tr.enabled = 1
+          INNER JOIN t_role_permission trp ON trp.role_id = tr.id AND trp.permission_id = tp.id
+          WHERE tur.user_id = #{userId,jdbcType=INTEGER}
+            AND tur.active_marker = 1
+            AND (tur.effective_from IS NULL OR tur.effective_from &lt;= CURRENT_TIMESTAMP)
+            AND (tur.effective_to IS NULL OR tur.effective_to &gt; CURRENT_TIMESTAMP)
+            AND (tr.scope_type = 'GLOBAL' OR EXISTS (
+              SELECT 1 FROM t_role_organization tro
+              INNER JOIN t_employee employee ON employee.user_id = tur.user_id
+              INNER JOIN t_employee_assignment assignment ON assignment.employee_id = employee.id
+                AND assignment.assignment_type = 'PRIMARY' AND assignment.status = 'ACTIVE'
+                AND assignment.active_primary_marker = 1
+                AND assignment.effective_from &lt;= CURRENT_TIMESTAMP
+                AND (assignment.effective_to IS NULL OR assignment.effective_to &gt; CURRENT_TIMESTAMP)
+              WHERE tro.role_id = tr.id AND tro.organization_unit_id IN (SELECT id FROM user_org_ancestors)
+            ))
+        ) OR EXISTS (
+          SELECT 1 FROM t_user_permission up WHERE up.user_id = #{userId,jdbcType=INTEGER} AND up.active_marker=1
+            AND up.permission_id = tp.id AND up.effect = 'GRANT'
+            AND up.effective_from &lt;= CURRENT_TIMESTAMP
+            AND (up.effective_to IS NULL OR up.effective_to &gt; CURRENT_TIMESTAMP)
+        )
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM t_user_permission deny WHERE deny.user_id = #{userId,jdbcType=INTEGER} AND deny.active_marker=1
+          AND deny.permission_id = tp.id AND deny.effect = 'DENY'
+          AND deny.effective_from &lt;= CURRENT_TIMESTAMP
+          AND (deny.effective_to IS NULL OR deny.effective_to &gt; CURRENT_TIMESTAMP)
+      )
     ORDER BY tp.order_no ASC, tp.id ASC
   </select>
 
 
   <select id="selectButtonPermissionByUserId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    WITH RECURSIVE user_org_ancestors(id,parent_id) AS (
+      SELECT organization.id,organization.parent_id
+      FROM t_employee employee
+      INNER JOIN t_employee_assignment assignment ON assignment.employee_id=employee.id
+        AND assignment.assignment_type='PRIMARY' AND assignment.status='ACTIVE'
+        AND assignment.active_primary_marker=1 AND assignment.effective_from &lt;= CURRENT_TIMESTAMP
+        AND (assignment.effective_to IS NULL OR assignment.effective_to &gt; CURRENT_TIMESTAMP)
+      INNER JOIN t_organization_unit organization ON organization.id=assignment.organization_unit_id
+      WHERE employee.user_id=#{userId,jdbcType=INTEGER}
+      UNION ALL
+      SELECT parent.id,parent.parent_id FROM t_organization_unit parent
+      INNER JOIN user_org_ancestors child ON parent.id=child.parent_id
+    )
     SELECT DISTINCT tp.id, tp.name, tp.code, tp.url, tp.type,
                     tp.parent_id, tp.order_no, tp.icon, tp.enabled
     FROM t_permission tp
-      INNER JOIN t_role_permission trp ON tp.id = trp.permission_id
-      INNER JOIN t_role tr ON trp.role_id = tr.id AND tr.enabled = 1
-      INNER JOIN t_user_role tur ON tr.id = tur.role_id
-    WHERE tur.user_id = #{userId, jdbcType=INTEGER}
-      AND tp.type = 'button'
-      AND tp.enabled = 1
-      AND tp.code IS NOT NULL
+    WHERE tp.type = 'button' AND tp.enabled = 1 AND tp.code IS NOT NULL
+      AND (
+        EXISTS (
+          SELECT 1 FROM t_user_role tur
+          INNER JOIN t_role tr ON tr.id = tur.role_id AND tr.enabled = 1
+          INNER JOIN t_role_permission trp ON trp.role_id = tr.id AND trp.permission_id = tp.id
+          WHERE tur.user_id = #{userId,jdbcType=INTEGER}
+            AND tur.active_marker = 1
+            AND (tur.effective_from IS NULL OR tur.effective_from &lt;= CURRENT_TIMESTAMP)
+            AND (tur.effective_to IS NULL OR tur.effective_to &gt; CURRENT_TIMESTAMP)
+            AND (tr.scope_type = 'GLOBAL' OR EXISTS (
+              SELECT 1 FROM t_role_organization tro
+              INNER JOIN t_employee employee ON employee.user_id = tur.user_id
+              INNER JOIN t_employee_assignment assignment ON assignment.employee_id = employee.id
+                AND assignment.assignment_type = 'PRIMARY' AND assignment.status = 'ACTIVE'
+                AND assignment.active_primary_marker = 1
+                AND assignment.effective_from &lt;= CURRENT_TIMESTAMP
+                AND (assignment.effective_to IS NULL OR assignment.effective_to &gt; CURRENT_TIMESTAMP)
+              WHERE tro.role_id = tr.id AND tro.organization_unit_id IN (SELECT id FROM user_org_ancestors)
+            ))
+        ) OR EXISTS (
+          SELECT 1 FROM t_user_permission up WHERE up.user_id = #{userId,jdbcType=INTEGER} AND up.active_marker=1
+            AND up.permission_id = tp.id AND up.effect = 'GRANT'
+            AND up.effective_from &lt;= CURRENT_TIMESTAMP
+            AND (up.effective_to IS NULL OR up.effective_to &gt; CURRENT_TIMESTAMP)
+        )
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM t_user_permission deny WHERE deny.user_id = #{userId,jdbcType=INTEGER} AND deny.active_marker=1
+          AND deny.permission_id = tp.id AND deny.effect = 'DENY'
+          AND deny.effective_from &lt;= CURRENT_TIMESTAMP
+          AND (deny.effective_to IS NULL OR deny.effective_to &gt; CURRENT_TIMESTAMP)
+      )
     ORDER BY tp.code ASC
   </select>
 
@@ -51,18 +136,26 @@
     from t_permission
     where id = #{id,jdbcType=INTEGER}
   </select>
+  <select id="selectByCode" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List"/> from t_permission where code = #{code}
+  </select>
+  <select id="selectAll" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List"/> from t_permission order by module, order_no, id
+  </select>
+  <select id="selectByIds" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List"/> from t_permission where id in
+    <foreach collection="list" item="id" open="(" separator="," close=")">#{id}</foreach>
+  </select>
 
-  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
-    delete from t_permission
-    where id = #{id,jdbcType=INTEGER}
-  </delete>
   <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TPermission" useGeneratedKeys="true">
     insert into t_permission (`name`, code, url,
-      `type`, parent_id, order_no,
-      icon, enabled)
+      `type`, parent_id, order_no, icon, module, description,
+      sensitivity_level, delegable, enabled, version)
     values (#{name,jdbcType=VARCHAR}, #{code,jdbcType=VARCHAR}, #{url,jdbcType=VARCHAR}, 
       #{type,jdbcType=VARCHAR}, #{parentId,jdbcType=INTEGER}, #{orderNo,jdbcType=INTEGER}, 
-      #{icon,jdbcType=VARCHAR}, #{enabled,jdbcType=TINYINT})
+      #{icon,jdbcType=VARCHAR}, #{module,jdbcType=VARCHAR}, #{description,jdbcType=VARCHAR},
+      #{sensitivityLevel,jdbcType=VARCHAR}, #{delegable,jdbcType=TINYINT},
+      #{enabled,jdbcType=TINYINT}, #{version,jdbcType=INTEGER})
   </insert>
   <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.autodealer.crm.model.TPermission" useGeneratedKeys="true">
     insert into t_permission
@@ -88,9 +181,14 @@
       <if test="icon != null">
         icon,
       </if>
+      <if test="module != null">module,</if>
+      <if test="description != null">description,</if>
+      <if test="sensitivityLevel != null">sensitivity_level,</if>
+      <if test="delegable != null">delegable,</if>
       <if test="enabled != null">
         enabled,
       </if>
+      <if test="version != null">version,</if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="name != null">
@@ -114,51 +212,32 @@
       <if test="icon != null">
         #{icon,jdbcType=VARCHAR},
       </if>
+      <if test="module != null">#{module,jdbcType=VARCHAR},</if>
+      <if test="description != null">#{description,jdbcType=VARCHAR},</if>
+      <if test="sensitivityLevel != null">#{sensitivityLevel,jdbcType=VARCHAR},</if>
+      <if test="delegable != null">#{delegable,jdbcType=TINYINT},</if>
       <if test="enabled != null">
         #{enabled,jdbcType=TINYINT},
       </if>
+      <if test="version != null">#{version,jdbcType=INTEGER},</if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.model.TPermission">
+  <!-- code 是稳定权限标识，任何目录变化必须通过 version 做 CAS。 -->
+  <update id="updateMutableByIdAndVersion">
     update t_permission
-    <set>
-      <if test="name != null">
-        `name` = #{name,jdbcType=VARCHAR},
-      </if>
-      <if test="code != null">
-        code = #{code,jdbcType=VARCHAR},
-      </if>
-      <if test="url != null">
-        url = #{url,jdbcType=VARCHAR},
-      </if>
-      <if test="type != null">
-        `type` = #{type,jdbcType=VARCHAR},
-      </if>
-      <if test="parentId != null">
-        parent_id = #{parentId,jdbcType=INTEGER},
-      </if>
-      <if test="orderNo != null">
-        order_no = #{orderNo,jdbcType=INTEGER},
-      </if>
-      <if test="icon != null">
-        icon = #{icon,jdbcType=VARCHAR},
-      </if>
-      <if test="enabled != null">
-        enabled = #{enabled,jdbcType=TINYINT},
-      </if>
-    </set>
-    where id = #{id,jdbcType=INTEGER}
-  </update>
-  <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.model.TPermission">
-    update t_permission
-    set `name` = #{name,jdbcType=VARCHAR},
-      code = #{code,jdbcType=VARCHAR},
-      url = #{url,jdbcType=VARCHAR},
-      `type` = #{type,jdbcType=VARCHAR},
-      parent_id = #{parentId,jdbcType=INTEGER},
-      order_no = #{orderNo,jdbcType=INTEGER},
-      icon = #{icon,jdbcType=VARCHAR},
-      enabled = #{enabled,jdbcType=TINYINT}
-    where id = #{id,jdbcType=INTEGER}
+    set `name` = #{permission.name,jdbcType=VARCHAR},
+      url = #{permission.url,jdbcType=VARCHAR},
+      `type` = #{permission.type,jdbcType=VARCHAR},
+      parent_id = #{permission.parentId,jdbcType=INTEGER},
+      order_no = #{permission.orderNo,jdbcType=INTEGER},
+      icon = #{permission.icon,jdbcType=VARCHAR},
+      module = #{permission.module,jdbcType=VARCHAR},
+      description = #{permission.description,jdbcType=VARCHAR},
+      sensitivity_level = #{permission.sensitivityLevel,jdbcType=VARCHAR},
+      delegable = #{permission.delegable,jdbcType=TINYINT},
+      enabled = #{permission.enabled,jdbcType=TINYINT},
+      version = version + 1
+    where id = #{permission.id,jdbcType=INTEGER}
+      and version = #{expectedVersion,jdbcType=INTEGER}
   </update>
 </mapper>

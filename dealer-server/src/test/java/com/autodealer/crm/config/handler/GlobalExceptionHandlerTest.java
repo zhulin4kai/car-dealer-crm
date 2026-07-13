@@ -14,8 +14,14 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -77,10 +83,18 @@ class GlobalExceptionHandlerTest {
             throw new BusinessException(CodeEnum.FAIL, "通用业务失败");
         }
 
+        @GetMapping("/test/credential-rate-limited")
+        String credentialRateLimited() {
+            throw new BusinessException(CodeEnum.CREDENTIAL_RATE_LIMITED);
+        }
+
         @PostMapping("/test/validation")
         String validation(@Valid @RequestBody ValidDto dto) {
             return "ok";
         }
+
+        @PostMapping("/test/sensitive-validation")
+        String sensitiveValidation(@Valid @RequestBody SensitiveDto dto) { return "ok"; }
 
         @GetMapping("/test/runtime")
         String runtime() {
@@ -103,6 +117,12 @@ class GlobalExceptionHandlerTest {
         public void setName(String name) { this.name = name; }
         public Integer getId() { return id; }
         public void setId(Integer id) { this.id = id; }
+    }
+
+    static class SensitiveDto {
+        @Size(min=32,max=256) private String recoveryKey;
+        public String getRecoveryKey(){return recoveryKey;}
+        public void setRecoveryKey(String recoveryKey){this.recoveryKey=recoveryKey;}
     }
 
     // ==================== 业务异常 — HTTP 状态码 + $.code + $.msg ====================
@@ -163,6 +183,13 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.msg").value("通用业务失败"));
     }
 
+    @Test
+    void credentialRateLimited_http429() throws Exception {
+        mockMvc.perform(get("/test/credential-rate-limited"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value(CodeEnum.CREDENTIAL_RATE_LIMITED.getCode()));
+    }
+
     // ==================== 参数校验异常 ====================
 
     @Test
@@ -183,6 +210,20 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(CodeEnum.PARAM_ERROR.getCode()))
                 .andExpect(jsonPath("$.msg").value(containsString("ID不能为空")));
+    }
+
+    @Test
+    void validationLogDoesNotContainRejectedRecoveryKey() throws Exception {
+        String secret="real-recovery-key-must-not-log";
+        Logger logger=(Logger)LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        ListAppender<ILoggingEvent> appender=new ListAppender<>();appender.start();logger.addAppender(appender);
+        try {
+            mockMvc.perform(post("/test/sensitive-validation").contentType(APPLICATION_JSON)
+                            .content("{\"recoveryKey\":\""+secret+"\"}"))
+                    .andExpect(status().isBadRequest());
+            assertFalse(appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+                    .anyMatch(message->message.contains(secret)));
+        } finally {logger.detachAppender(appender);appender.stop();}
     }
 
     // ==================== 未知异常 — 不泄露内部信息 ====================

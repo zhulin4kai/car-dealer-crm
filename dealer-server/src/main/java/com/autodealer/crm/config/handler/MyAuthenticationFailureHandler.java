@@ -3,6 +3,7 @@ package com.autodealer.crm.config.handler;
 import com.autodealer.crm.audit.LoginAuditRecorder;
 import com.autodealer.crm.result.R;
 import com.autodealer.crm.result.CodeEnum;
+import com.autodealer.crm.service.LoginSecurityService;
 import com.autodealer.crm.util.JSONUtils;
 import com.autodealer.crm.util.ResponseUtils;
 import jakarta.annotation.Resource;
@@ -11,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +28,7 @@ public class MyAuthenticationFailureHandler implements AuthenticationFailureHand
 
     @Resource
     private LoginAuditRecorder loginAuditRecorder;
+    @Resource private LoginSecurityService loginSecurityService;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
@@ -40,6 +43,8 @@ public class MyAuthenticationFailureHandler implements AuthenticationFailureHand
         } catch (RuntimeException auditException) {
             log.warn("登录失败审计写入失败 loginAct={}", sanitizeForLog(loginAct), auditException);
         }
+        try { if (loginSecurityService != null && exception instanceof BadCredentialsException) loginSecurityService.recordFailure(loginAct); }
+        catch (RuntimeException securityException) { log.error("登录失败计数写入失败 loginAct={}",sanitizeForLog(loginAct),securityException); }
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         ResponseUtils.write(response, JSONUtils.toJSON(R.FAIL(CodeEnum.AUTH_LOGIN_FAILED)));

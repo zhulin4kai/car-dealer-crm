@@ -1,11 +1,22 @@
 package com.autodealer.crm.integration;
 
 import com.autodealer.crm.audit.AuditActionEnum;
+import com.autodealer.crm.audit.AuthorizationAuditRecorder;
 import com.autodealer.crm.audit.OperationAuditRecorder;
+import com.autodealer.crm.audit.AuditRequestIdProvider;
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.dto.HandoverUserResponsibilitiesRequest;
+import com.autodealer.crm.enums.AuthorizationChangeType;
+import com.autodealer.crm.enums.AuthorizationSubjectType;
+import com.autodealer.crm.enums.DataScopeCode;
+import com.autodealer.crm.enums.PermissionEffect;
+import com.autodealer.crm.exception.BusinessException;
+import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.manager.RedisManager;
+import com.autodealer.crm.mapper.TUserPermissionMapper;
+import com.autodealer.crm.model.TAuthorizationHistory;
+import com.autodealer.crm.model.TUserPermission;
 import com.autodealer.crm.service.UserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,9 +26,19 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.time.LocalDateTime;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -41,6 +62,18 @@ class UserAuditRollbackIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private TUserPermissionMapper userPermissionMapper;
+
+    @Autowired
+    private AuthorizationAuditRecorder authorizationAuditRecorder;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private AuditRequestIdProvider requestIdProvider;
+
     @MockBean
     private OperationAuditRecorder auditRecorder;
 
@@ -52,8 +85,8 @@ class UserAuditRollbackIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        jdbcTemplate.update("DELETE FROM t_user WHERE id IN (?, ?)", LOCK_USER_ID, UNLOCK_USER_ID);
         deleteHandoverFixture();
+        jdbcTemplate.update("DELETE FROM t_user WHERE id IN (?, ?)", LOCK_USER_ID, UNLOCK_USER_ID);
         jdbcTemplate.update("""
                 INSERT INTO t_user
                     (id, login_act, login_pwd, name, account_no_expired,
@@ -74,49 +107,147 @@ class UserAuditRollbackIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        jdbcTemplate.update("DELETE FROM t_user WHERE id IN (?, ?)", LOCK_USER_ID, UNLOCK_USER_ID);
         deleteHandoverFixture();
+        jdbcTemplate.update("DELETE FROM t_user WHERE id IN (?, ?)", LOCK_USER_ID, UNLOCK_USER_ID);
     }
 
     @Test
-    void lockUser_auditFailure_shouldRollbackDatabaseChange() {
-        doThrow(new IllegalStateException("审计写入失败"))
-                .when(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, String.valueOf(LOCK_USER_ID));
+    void legacyLockUserMustFailClosedBeforeDatabaseChange() {
+        BusinessException error=assertThrows(BusinessException.class, () -> userService.lockUser(LOCK_USER_ID));
 
-        assertThrows(IllegalStateException.class, () -> userService.lockUser(LOCK_USER_ID));
-
+        assertEquals(CodeEnum.ACCESS_DENIED,error.getCodeEnum());
         assertEquals(1, accountNoLocked(LOCK_USER_ID));
     }
 
     @Test
-    void unlockUser_auditFailure_shouldRollbackDatabaseChange() {
-        doThrow(new IllegalStateException("审计写入失败"))
-                .when(auditRecorder).record(AuditActionEnum.USER_STATUS_CHANGE, String.valueOf(UNLOCK_USER_ID));
+    void legacyUnlockUserMustFailClosedBeforeDatabaseChange() {
+        BusinessException error=assertThrows(BusinessException.class, () -> userService.unlockUser(UNLOCK_USER_ID));
 
-        assertThrows(IllegalStateException.class, () -> userService.unlockUser(UNLOCK_USER_ID));
-
+        assertEquals(CodeEnum.ACCESS_DENIED,error.getCodeEnum());
         assertEquals(0, accountNoLocked(UNLOCK_USER_ID));
     }
 
     @Test
-    void handoverResponsibilities_auditFailure_shouldRollbackResponsibilityChangesAndHistory() {
+    void legacyHandoverMustFailClosedBeforeResponsibilityChangesAndHistory() {
         insertHandoverFixture();
         when(currentUserProvider.getCurrentUserId()).thenReturn(1);
-        doThrow(new IllegalStateException("审计写入失败"))
-                .when(auditRecorder).record(eq(AuditActionEnum.USER_HANDOVER),
-                        eq(String.valueOf(HANDOVER_SOURCE_USER_ID)), eq("SUCCESS"), anyString());
         HandoverUserResponsibilitiesRequest request = new HandoverUserResponsibilitiesRequest();
         request.setTargetUserId(HANDOVER_TARGET_USER_ID);
         request.setReason("离职交接");
 
-        assertThrows(IllegalStateException.class,
+        BusinessException error=assertThrows(BusinessException.class,
                 () -> userService.handoverResponsibilities(HANDOVER_SOURCE_USER_ID, request));
 
+        assertEquals(CodeEnum.ACCESS_DENIED,error.getCodeEnum());
         assertEquals(HANDOVER_SOURCE_USER_ID, activityOwnerId());
         assertEquals(HANDOVER_SOURCE_USER_ID, clueOwnerId());
         assertEquals(HANDOVER_SOURCE_USER_ID, customerOwnerId());
         assertEquals(0, clueOwnerHistoryCount());
         assertEquals(0, customerOwnerHistoryCount());
+    }
+
+    @Test
+    void userPermissionAuditFailure_shouldRollbackCurrentFactAndImmutableHistory() {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1);
+        Integer permissionId = jdbcTemplate.queryForObject(
+                "SELECT id FROM t_permission WHERE code = 'user:role'", Integer.class);
+        LocalDateTime now = LocalDateTime.now();
+        TUserPermission permission = new TUserPermission();
+        permission.setUserId(LOCK_USER_ID);
+        permission.setPermissionId(permissionId);
+        permission.setEffect(PermissionEffect.GRANT);
+        permission.setDataScopeCode(DataScopeCode.SELF);
+        permission.setEffectiveFrom(now);
+        permission.setReason("审计回滚测试");
+        permission.setGrantedBy(1);
+        permission.setVersion(0);
+        permission.setCreateTime(now);
+
+        TAuthorizationHistory history = new TAuthorizationHistory();
+        history.setSubjectType(AuthorizationSubjectType.USER_PERMISSION);
+        history.setSubjectId(LOCK_USER_ID + ":" + permissionId);
+        history.setChangeType(AuthorizationChangeType.GRANT);
+        history.setTargetUserId(LOCK_USER_ID);
+        history.setPermissionId(permissionId);
+        history.setEffect(PermissionEffect.GRANT);
+        history.setDataScopeCode(DataScopeCode.SELF);
+        history.setEffectiveFrom(now);
+        history.setAfterValue("{\"effect\":\"GRANT\",\"scope\":\"SELF\"}");
+        history.setReason("审计回滚测试");
+        history.setOperatorId(1);
+        history.setOccurredTime(now);
+
+        doThrow(new IllegalStateException("审计写入失败"))
+                .when(auditRecorder).record(AuditActionEnum.USER_PERMISSION_CHANGE,
+                        String.valueOf(LOCK_USER_ID), "SUCCESS", "{\"effect\":\"GRANT\"}");
+
+        assertThrows(IllegalStateException.class, () -> transactionTemplate.executeWithoutResult(status -> {
+            assertEquals(1, userPermissionMapper.insert(permission));
+            authorizationAuditRecorder.record(history, AuditActionEnum.USER_PERMISSION_CHANGE,
+                    String.valueOf(LOCK_USER_ID), "{\"effect\":\"GRANT\"}");
+        }));
+
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM t_user_permission WHERE user_id = ?", Integer.class, LOCK_USER_ID));
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM t_authorization_history WHERE target_user_id = ?",
+                Integer.class, LOCK_USER_ID));
+    }
+
+    @Test
+    void authorizationHistoryRecorder_shouldOverrideCallerControlledAuditIdentityAndRequestFields() {
+        when(currentUserProvider.getCurrentUserId()).thenReturn(1);
+        Integer permissionId = jdbcTemplate.queryForObject(
+                "SELECT id FROM t_permission WHERE code = 'user:role'", Integer.class);
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest();
+        servletRequest.addHeader("X-Request-Id", "trusted-request-id");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(servletRequest));
+        LocalDateTime forgedTime = LocalDateTime.of(2000, 1, 1, 0, 0);
+
+        try {
+            TAuthorizationHistory history = new TAuthorizationHistory();
+            history.setSubjectType(AuthorizationSubjectType.USER_PERMISSION);
+            history.setSubjectId(LOCK_USER_ID + ":" + permissionId);
+            history.setChangeType(AuthorizationChangeType.GRANT);
+            history.setTargetUserId(LOCK_USER_ID);
+            history.setPermissionId(permissionId);
+            history.setEffect(PermissionEffect.GRANT);
+            history.setDataScopeCode(DataScopeCode.SELF);
+            history.setReason("可信字段覆盖测试");
+            history.setOperatorId(LOCK_USER_ID);
+            history.setOccurredTime(forgedTime);
+            history.setRequestId("forged-request-id");
+
+            transactionTemplate.executeWithoutResult(status -> authorizationAuditRecorder.record(
+                    history, AuditActionEnum.USER_PERMISSION_CHANGE, String.valueOf(LOCK_USER_ID), "{}"));
+
+            Map<String, Object> saved = jdbcTemplate.queryForMap("""
+                    SELECT operator_id, occurred_time, request_id
+                    FROM t_authorization_history
+                    WHERE target_user_id = ? ORDER BY id DESC LIMIT 1
+                    """, LOCK_USER_ID);
+            assertEquals(1, ((Number) saved.get("operator_id")).intValue());
+            assertNotEquals(forgedTime, saved.get("occurred_time"));
+            assertTrue(String.valueOf(saved.get("request_id")).startsWith("trusted-request-id-"));
+            Object occurredValue = saved.get("occurred_time");
+            LocalDateTime occurred = occurredValue instanceof java.sql.Timestamp timestamp
+                    ? timestamp.toLocalDateTime() : (LocalDateTime) occurredValue;
+            assertTrue(occurred.isAfter(LocalDateTime.now().minusMinutes(1)));
+        } finally {
+            jdbcTemplate.update("DELETE FROM t_authorization_history WHERE target_user_id = ?", LOCK_USER_ID);
+            RequestContextHolder.resetRequestAttributes();
+        }
+    }
+
+    @Test
+    void auditRequestId_shouldBeStableWithinNonHttpTransactionAndReleasedAfterCompletion() {
+        RequestContextHolder.resetRequestAttributes();
+        String[] ids = transactionTemplate.execute(status -> new String[]{
+                requestIdProvider.currentRequestId(), requestIdProvider.currentRequestId()});
+        assertEquals(ids[0], ids[1]);
+        assertTrue(!TransactionSynchronizationManager.hasResource(
+                AuditRequestIdProvider.class.getName() + ".transactionRequestId"));
+        assertNotEquals(ids[0], requestIdProvider.currentRequestId());
     }
 
     private int accountNoLocked(int userId) {
@@ -158,6 +289,10 @@ class UserAuditRollbackIntegrationTest {
     }
 
     private void deleteHandoverFixture() {
+        jdbcTemplate.update("DELETE FROM t_authorization_history WHERE target_user_id IN (?, ?)",
+                LOCK_USER_ID, UNLOCK_USER_ID);
+        jdbcTemplate.update("DELETE FROM t_user_permission WHERE user_id IN (?, ?)",
+                LOCK_USER_ID, UNLOCK_USER_ID);
         jdbcTemplate.update("DELETE FROM t_customer_owner_history WHERE customer_id = ?", HANDOVER_CUSTOMER_ID);
         jdbcTemplate.update("DELETE FROM t_clue_owner_history WHERE clue_id = ?", HANDOVER_CLUE_ID);
         jdbcTemplate.update("DELETE FROM t_customer WHERE id = ?", HANDOVER_CUSTOMER_ID);

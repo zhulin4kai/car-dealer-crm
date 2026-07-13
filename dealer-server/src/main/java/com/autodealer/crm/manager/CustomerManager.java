@@ -19,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.annotation.Resource;
+import com.autodealer.crm.service.impl.EmploymentResponsibilityGuard;
 
 import java.util.Date;
 import java.util.List;
@@ -32,13 +34,16 @@ public class CustomerManager {
     private final TProductMapper productMapper;
     private final CurrentUserProvider currentUserProvider;
     private final OperationAuditRecorder auditRecorder;
+    private final EmploymentResponsibilityGuard responsibilityGuard;
 
     public CustomerManager(TCustomerMapper tCustomerMapper, TClueMapper tClueMapper,
                            TProductMapper productMapper,
-                           CurrentUserProvider currentUserProvider, OperationAuditRecorder auditRecorder) {
+                           CurrentUserProvider currentUserProvider, OperationAuditRecorder auditRecorder,
+                           EmploymentResponsibilityGuard responsibilityGuard) {
         this.tCustomerMapper = tCustomerMapper; this.tClueMapper = tClueMapper;
         this.productMapper = productMapper;
         this.currentUserProvider = currentUserProvider; this.auditRecorder = auditRecorder;
+        this.responsibilityGuard = responsibilityGuard;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -50,6 +55,7 @@ public class CustomerManager {
         if (clue == null) {
             throw new BusinessException(CodeEnum.FAIL, "线索不存在或您无权限操作");
         }
+        responsibilityGuard.requireActiveOwner(clue.getOwnerId());
         String normalizedPhone = normalizePhone(clue.getPhone());
         checkDuplicateCustomer(clue, normalizedPhone, dataScopeUserId);
         if (request.getProduct() != null) { requireProductExists(request.getProduct()); }

@@ -144,7 +144,29 @@ public final class PermissionCodes {
     public static final String USER_DELETE = "user:delete";
     public static final String USER_STATUS = "user:status";
     public static final String USER_ROLE = "user:role";
+    public static final String USER_PERMISSION = "user:permission";
     public static final String USER_PASSWORD = "user:password";
+    public static final String USER_SENSITIVE_VIEW = "user:sensitive:view";
+
+    public static final String ORGANIZATION_LIST = "organization:list";
+    public static final String ORGANIZATION_VIEW = "organization:view";
+    public static final String ORGANIZATION_ADD = "organization:add";
+    public static final String ORGANIZATION_EDIT = "organization:edit";
+    public static final String ORGANIZATION_STATUS = "organization:status";
+    public static final String POSITION_LIST = "position:list";
+    public static final String POSITION_ADD = "position:add";
+    public static final String POSITION_EDIT = "position:edit";
+    public static final String POSITION_STATUS = "position:status";
+    public static final String EMPLOYEE_ASSIGNMENT = "employee:assignment";
+    public static final String EMPLOYEE_REPORTING = "employee:reporting";
+    public static final String ROLE_LIST = "role:list";
+    public static final String ROLE_VIEW = "role:view";
+    public static final String ROLE_ADD = "role:add";
+    public static final String ROLE_EDIT = "role:edit";
+    public static final String ROLE_COPY = "role:copy";
+    public static final String ROLE_STATUS = "role:status";
+    public static final String ROLE_PERMISSION_MANAGE = "role:permission:manage";
+    public static final String PERMISSION_LIST = "permission:list";
 
     public static final String STATISTIC_VIEW = "statistic:view";
 

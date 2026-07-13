@@ -8,6 +8,8 @@ package com.autodealer.crm.constant;
 public final class RedisKeys {
 
     private static final String USER_LOGIN_PREFIX = "cdrm:user:login:";
+    private static final String USER_SESSION_PREFIX = "cdrm:session:";
+    private static final String USER_SESSION_INDEX_PREFIX = "cdrm:user:sessions:";
     private static final String OWNER_LIST = "cdrm:user:owner";
     private static final String TRAN_PRODUCTS_PREFIX = "cdrm:tran:products:";
     private static final String TRAN_INVOICES_PREFIX = "cdrm:tran:invoices:";
@@ -15,6 +17,7 @@ public final class RedisKeys {
     private static final String DICT_TYPE_CODE_PREFIX = "cdrm:dict:type:code:";
     private static final String DICT_VALUE_PREFIX = "cdrm:dict:value:";
     private static final String DICT_VALUES_TYPE_PREFIX = "cdrm:dict:values:type:";
+    private static final String CREDENTIAL_RATE_LIMIT_PREFIX = "cdrm:security:credential-rate:";
 
     private RedisKeys() {
     }
@@ -23,8 +26,24 @@ public final class RedisKeys {
         return USER_LOGIN_PREFIX + userId;
     }
 
+    public static String userSession(String sessionId) { return USER_SESSION_PREFIX + sessionId; }
+
+    public static String userSessionIndex(Integer userId) { return USER_SESSION_INDEX_PREFIX + userId; }
+
     public static String ownerList() {
         return OWNER_LIST;
+    }
+
+    public static String ownerList(Integer operatorUserId) {
+        return OWNER_LIST + ":" + operatorUserId;
+    }
+
+    public static String ownerList(Integer operatorUserId, String permissionCode, String qualificationContext) {
+        return OWNER_LIST + ":" + operatorUserId + ":" + permissionCode + ":" + qualificationContext;
+    }
+
+    public static String ownerListPattern() {
+        return OWNER_LIST + "*";
     }
 
     public static String transactionProducts(Integer tranId) {
@@ -82,6 +101,12 @@ public final class RedisKeys {
      */
     public static String dictValuePattern() {
         return DICT_VALUE_PREFIX + "*";
+    }
+
+    /** 公开凭证限流只接受不可逆摘要，禁止把账号、联系方式或来源地址明文放入 key。 */
+    public static String credentialRateLimit(String scope, String subjectDigest) {
+        if (scope == null || subjectDigest == null) throw new IllegalArgumentException("限流 key 参数不能为空");
+        return CREDENTIAL_RATE_LIMIT_PREFIX + scope + ":" + subjectDigest;
     }
 
 }
