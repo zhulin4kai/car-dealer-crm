@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.sales.testdrive.persistence.mapper.TTestDriveMapper">
+
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.sales.testdrive.application.api.model.TTestDrive">
+        <id column="id" property="id" />
+        <result column="test_drive_no" property="testDriveNo" />
+        <result column="customer_id" property="customerId" />
+        <result column="customer_name" property="customerName" />
+        <result column="opportunity_id" property="opportunityId" />
+        <result column="opportunity_no" property="opportunityNo" />
+        <result column="vehicle_id" property="vehicleId" />
+        <result column="vin" property="vin" />
+        <result column="vehicle_name" property="vehicleName" />
+        <result column="owner_id" property="ownerId" />
+        <result column="owner_name" property="ownerName" />
+        <result column="planned_start_time" property="plannedStartTime" />
+        <result column="planned_end_time" property="plannedEndTime" />
+        <result column="actual_arrive_time" property="actualArriveTime" />
+        <result column="actual_start_time" property="actualStartTime" />
+        <result column="actual_end_time" property="actualEndTime" />
+        <result column="safety_confirmed_at" property="safetyConfirmedAt" />
+        <result column="safety_confirmed_by" property="safetyConfirmedBy" />
+        <result column="check_in_by" property="checkInBy" />
+        <result column="customer_confirm_method" property="customerConfirmMethod" />
+        <result column="status" property="status" />
+        <result column="contact_name" property="contactName" />
+        <result column="contact_phone" property="contactPhone" />
+        <result column="result" property="result" />
+        <result column="customer_feedback" property="customerFeedback" />
+        <result column="next_action" property="nextAction" />
+        <result column="cancel_type" property="cancelType" />
+        <result column="cancel_reason" property="cancelReason" />
+        <result column="remark" property="remark" />
+        <result column="reschedule_count" property="rescheduleCount" />
+        <result column="version" property="version" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="update_by" property="updateBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        td.id, td.test_drive_no, td.customer_id, c.customer_name,
+        td.opportunity_id, o.opportunity_no,
+        td.vehicle_id, v.vin, p.name AS vehicle_name,
+        td.owner_id, u.name AS owner_name,
+        td.planned_start_time, td.planned_end_time, td.actual_arrive_time,
+        td.actual_start_time, td.actual_end_time, td.safety_confirmed_at,
+        td.safety_confirmed_by, td.check_in_by, td.customer_confirm_method,
+        td.status, td.contact_name, td.contact_phone, td.result,
+        td.customer_feedback, td.next_action, td.cancel_type, td.cancel_reason,
+        td.remark, td.reschedule_count, td.version,
+        td.create_time, td.create_by, td.update_time, td.update_by
+    </sql>
+
+    <sql id="Base_From">
+        FROM t_test_drive td
+        LEFT JOIN t_customer c ON td.customer_id = c.id
+        LEFT JOIN t_opportunity o ON td.opportunity_id = o.id
+        LEFT JOIN t_product_vehicle v ON td.vehicle_id = v.id
+        LEFT JOIN t_product p ON v.product_id = p.id
+        LEFT JOIN t_user u ON td.owner_id = u.id
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        <include refid="Base_From" />
+        WHERE td.id = #{id}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        <include refid="Base_From" />
+        WHERE td.id = #{id}
+        FOR UPDATE
+    </select>
+
+    <select id="selectByQuery" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        <include refid="Base_From" />
+        WHERE 1 = 1
+        <if test="query.dataScopeUserId != null">
+            AND td.owner_id = #{query.dataScopeUserId}
+        </if>
+        <if test="query.customerId != null">
+            AND td.customer_id = #{query.customerId}
+        </if>
+        <if test="query.opportunityId != null">
+            AND td.opportunity_id = #{query.opportunityId}
+        </if>
+        <if test="query.vehicleId != null">
+            AND td.vehicle_id = #{query.vehicleId}
+        </if>
+        <if test="query.ownerId != null">
+            AND td.owner_id = #{query.ownerId}
+        </if>
+        <if test="query.status != null and query.status != ''">
+            AND td.status = #{query.status}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (td.test_drive_no LIKE CONCAT('%', #{query.keyword}, '%')
+                OR c.customer_name LIKE CONCAT('%', #{query.keyword}, '%')
+                OR v.vin LIKE CONCAT('%', #{query.keyword}, '%'))
+        </if>
+        ORDER BY td.planned_start_time DESC, td.id DESC
+    </select>
+
+    <select id="countOwnerScheduleConflict" resultType="int">
+        SELECT COUNT(1)
+        FROM t_test_drive
+        WHERE owner_id = #{ownerId}
+          AND status IN ('PENDING_CONFIRM', 'SCHEDULED', 'RESCHEDULED', 'CHECKED_IN')
+          AND planned_start_time &lt; #{endTime}
+          AND planned_end_time &gt; #{startTime}
+        <if test="excludeId != null">
+          AND id != #{excludeId}
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.sales.testdrive.application.api.model.TTestDrive" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_test_drive (
+            test_drive_no, customer_id, opportunity_id, vehicle_id, owner_id,
+            planned_start_time, planned_end_time, status, contact_name, contact_phone,
+            remark, reschedule_count, version, create_time, create_by, update_time, update_by
+        ) VALUES (
+            #{testDriveNo}, #{customerId}, #{opportunityId}, #{vehicleId}, #{ownerId},
+            #{plannedStartTime}, #{plannedEndTime}, #{status}, #{contactName}, #{contactPhone},
+            #{remark}, #{rescheduleCount}, #{version}, #{createTime}, #{createBy}, #{updateTime}, #{updateBy}
+        )
+    </insert>
+
+    <update id="updateScheduleIfCurrent">
+        UPDATE t_test_drive
+        SET status = #{targetStatus},
+            vehicle_id = #{vehicleId},
+            planned_start_time = #{plannedStartTime},
+            planned_end_time = #{plannedEndTime},
+            reschedule_count = reschedule_count + 1,
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="updateCancelIfCurrent">
+        UPDATE t_test_drive
+        SET status = #{targetStatus},
+            cancel_type = #{cancelType},
+            cancel_reason = #{cancelReason},
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="updateCheckInIfCurrent">
+        UPDATE t_test_drive
+        SET status = 'CHECKED_IN',
+            actual_arrive_time = #{arriveTime},
+            check_in_by = #{updateBy},
+            customer_confirm_method = #{customerConfirmMethod},
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="updateCompleteIfCurrent">
+        UPDATE t_test_drive
+        SET status = 'COMPLETED',
+            actual_start_time = #{actualStartTime},
+            actual_end_time = #{actualEndTime},
+            safety_confirmed_at = #{safetyConfirmedAt},
+            safety_confirmed_by = #{updateBy},
+            result = #{result},
+            customer_feedback = #{customerFeedback},
+            next_action = #{nextAction},
+            update_time = #{updateTime},
+            update_by = #{updateBy},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+</mapper>

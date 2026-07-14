@@ -1,5 +1,6 @@
 package com.autodealer.crm;
 
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 使用 H2 (application-smoke.yml profile) 测试完整 Schema 初始化
  * 每个测试在独立事务中执行，结束后自动回滚，不依赖测试执行顺序。
  */
-@SpringBootTest(properties = {
+@SpringBootTest(classes = DealerCRMApplication.class, properties = {
     "spring.data.redis.port=63790",
     "mybatis-plus.configuration.log-impl=org.apache.ibatis.logging.stdout.StdOutImpl"
 })

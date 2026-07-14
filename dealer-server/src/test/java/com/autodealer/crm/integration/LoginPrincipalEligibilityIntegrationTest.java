@@ -1,6 +1,6 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.service.UserService;
+import com.autodealer.crm.modules.identity.application.api.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

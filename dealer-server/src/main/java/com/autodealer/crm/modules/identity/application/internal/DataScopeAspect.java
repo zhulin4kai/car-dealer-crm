@@ -1,0 +1,42 @@
+package com.autodealer.crm.modules.identity.application.internal;
+
+import com.autodealer.crm.modules.identity.application.api.security.DataScope;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.shared.pagination.BaseQuery;
+import com.autodealer.crm.modules.fulfillment.transaction.application.api.query.TranQuery;
+import jakarta.annotation.Resource;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
+
+@Aspect
+@Component
+public class DataScopeAspect {
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
+
+    @Pointcut("@annotation(com.autodealer.crm.modules.identity.application.api.security.DataScope)")
+    private void pointCut() {
+    }
+
+    @Around("pointCut()")
+    public Object process(ProceedingJoinPoint joinPoint) throws Throwable {
+        BaseQuery query = Arrays.stream(joinPoint.getArgs())
+                .filter(BaseQuery.class::isInstance)
+                .map(BaseQuery.class::cast)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("@DataScope 方法必须包含 BaseQuery 参数"));
+
+        if (query instanceof TranQuery tranQuery) {
+            currentUserProvider.applyTransactionDataScope(tranQuery);
+        } else {
+            query.setDataScopeUserId(currentUserProvider.getDataScopeUserId());
+        }
+        return joinPoint.proceed();
+    }
+}

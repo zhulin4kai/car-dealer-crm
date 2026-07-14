@@ -1,0 +1,80 @@
+package com.autodealer.crm.modules.identity.application.internal;
+
+import com.autodealer.crm.modules.identity.application.api.*;
+
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.shared.pagination.BaseQuery;
+import com.autodealer.crm.modules.fulfillment.transaction.application.api.query.TranQuery;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class DataScopeAspectTest {
+
+    @InjectMocks
+    private DataScopeAspect aspect;
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+    @Mock
+    private ProceedingJoinPoint joinPoint;
+
+    @Test
+    void normalUserShouldInjectScopeIntoQueryAtAnyArgumentPosition() throws Throwable {
+        BaseQuery query = new BaseQuery();
+        when(joinPoint.getArgs()).thenReturn(new Object[]{"prefix", query});
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(7);
+        when(joinPoint.proceed()).thenReturn("result");
+
+        assertEquals("result", aspect.process(joinPoint));
+        assertEquals(7, query.getDataScopeUserId());
+    }
+
+    @Test
+    void adminShouldExplicitlyClearAnyClientSuppliedScope() throws Throwable {
+        BaseQuery query = new BaseQuery();
+        query.setDataScopeUserId(999);
+        when(joinPoint.getArgs()).thenReturn(new Object[]{query});
+        when(currentUserProvider.getDataScopeUserId()).thenReturn(null);
+
+        aspect.process(joinPoint);
+
+        assertNull(query.getDataScopeUserId());
+        verify(joinPoint).proceed();
+    }
+
+    @Test
+    void transactionQueryShouldReceiveTransactionScope() throws Throwable {
+        TranQuery query = new TranQuery();
+        when(joinPoint.getArgs()).thenReturn(new Object[]{query});
+        doAnswer(invocation -> {
+            TranQuery tranQuery = invocation.getArgument(0);
+            tranQuery.setDataScopeUserId(7);
+            tranQuery.setTransactionApprovalScope(true);
+            return null;
+        }).when(currentUserProvider).applyTransactionDataScope(query);
+        when(joinPoint.proceed()).thenReturn("result");
+
+        assertEquals("result", aspect.process(joinPoint));
+        assertEquals(7, query.getDataScopeUserId());
+        assertTrue(query.isTransactionApprovalScope());
+        verify(currentUserProvider, never()).getDataScopeUserId();
+    }
+
+    @Test
+    void missingBaseQueryShouldFailClosed() throws Throwable {
+        when(joinPoint.getArgs()).thenReturn(new Object[]{"not-a-query"});
+
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class, () -> aspect.process(joinPoint));
+
+        assertTrue(error.getMessage().contains("BaseQuery"));
+        verify(joinPoint, never()).proceed();
+    }
+}

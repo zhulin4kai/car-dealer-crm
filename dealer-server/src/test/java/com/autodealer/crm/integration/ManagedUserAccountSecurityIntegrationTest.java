@@ -1,10 +1,10 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.dto.user.ManagedUserDtos.LoginAccountRequest;
-import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.service.ManagedUserAccountService;
-import com.autodealer.crm.service.UserService;
+import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.LoginAccountRequest;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.modules.identity.application.api.ManagedUserAccountService;
+import com.autodealer.crm.modules.identity.application.api.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

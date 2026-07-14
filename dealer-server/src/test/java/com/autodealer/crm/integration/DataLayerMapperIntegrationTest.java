@@ -1,11 +1,11 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.mapper.DicMapper;
-import com.autodealer.crm.mapper.TCustomerMapper;
-import com.autodealer.crm.mapper.TTranProductMapper;
-import com.autodealer.crm.model.TCustomer;
-import com.autodealer.crm.model.TDicValue;
-import com.autodealer.crm.model.TTranProduct;
+import com.autodealer.crm.modules.dictionary.persistence.mapper.DicMapper;
+import com.autodealer.crm.modules.sales.customer.persistence.mapper.TCustomerMapper;
+import com.autodealer.crm.modules.fulfillment.transaction.persistence.mapper.TTranProductMapper;
+import com.autodealer.crm.modules.sales.customer.application.api.model.TCustomer;
+import com.autodealer.crm.modules.dictionary.application.api.model.TDicValue;
+import com.autodealer.crm.modules.fulfillment.transaction.application.api.model.TTranProduct;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

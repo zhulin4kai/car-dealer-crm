@@ -1,6 +1,10 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.constant.Constants;
+import com.autodealer.crm.bootstrap.security.SecurityConfig;
+import com.autodealer.crm.modules.identity.web.UserController;
+import com.autodealer.crm.shared.security.SecurityPaths;
+import com.autodealer.crm.shared.web.Result;
+import com.autodealer.crm.shared.infrastructure.constants.Constants;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Cross-layer contract tests. These tests MUST fail on real inconsistencies
  * between the frontend API/page layers, the backend
- * controllers (dealer-server/src/main/java/.../web), the SecurityConfig and
+ * controllers (dealer-server/src/main/java/com/autodealer/crm 下递归扫描), the SecurityConfig and
  * the docs (docs/api.md, docs/integration.md).
  *
  * They are not allowed to:
@@ -57,8 +61,9 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
     );
     private static final Path FRONTEND_USER_API = PROJECT_ROOT.resolve("dealer-web/src/modules/user/api/user-api.ts");
     private static final Path FRONTEND_DASHBOARD_LAYOUT = PROJECT_ROOT.resolve("dealer-web/src/layouts/DashboardLayout.vue");
-    private static final Path BACKEND_CONTROLLER_DIR = PROJECT_ROOT.resolve("dealer-server/src/main/java/com/autodealer/crm/web");
-    private static final Path BACKEND_SECURITY_CONFIG = PROJECT_ROOT.resolve("dealer-server/src/main/java/com/autodealer/crm/config/SecurityConfig.java");
+    private static final Path BACKEND_JAVA_ROOT = PROJECT_ROOT.resolve("dealer-server/src/main/java/com/autodealer/crm");
+    private static final Path BACKEND_SECURITY_CONFIG = PROJECT_ROOT.resolve(
+            "dealer-server/src/main/java/com/autodealer/crm/bootstrap/security/SecurityConfig.java");
     private static final Path DOCS_INTEGRATION = PROJECT_ROOT.resolve("docs/integration.md");
     private static final Path DOCS_API = PROJECT_ROOT.resolve("docs/api.md");
 
@@ -101,19 +106,17 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
     // ==================== Response wrapper consistency ====================
 
     @Test
-    @DisplayName("every web/*Controller MUST use the R.java response wrapper, never Result.java")
-    void controllersMustUseRNotResult() throws IOException {
+    @DisplayName("every backend *Controller MUST use the shared.web.Result response wrapper")
+    void controllersMustUseSharedWebResult() throws IOException {
         List<String> violations = new ArrayList<>();
-        try (Stream<Path> files = Files.list(BACKEND_CONTROLLER_DIR)) {
-            for (Path file : files.filter(p -> p.toString().endsWith("Controller.java")).collect(Collectors.toList())) {
-                String content = Files.readString(file);
-                if (content.contains("import com.autodealer.crm.result.Result;")) {
-                    violations.add(file.getFileName().toString());
-                }
+        for (Path file : collectBackendControllerFiles()) {
+            String content = Files.readString(file);
+            if (!content.contains("import com.autodealer.crm.shared.web.Result;")) {
+                violations.add(BACKEND_JAVA_ROOT.relativize(file).toString());
             }
         }
         assertTrue(violations.isEmpty(),
-                "These controllers import the retired Result.java wrapper instead of R.java: "
+                "These controllers do not import the shared.web.Result response wrapper: "
                         + String.join(", ", violations));
     }
 
@@ -270,46 +273,56 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
 
     private Set<ApiRef> collectBackendApis() throws IOException {
         Set<ApiRef> out = new HashSet<>();
-        try (Stream<Path> files = Files.list(BACKEND_CONTROLLER_DIR)) {
-            for (Path file : files.filter(p -> p.toString().endsWith("Controller.java")).collect(Collectors.toList())) {
-                String content = Files.readString(file);
+        for (Path file : collectBackendControllerFiles()) {
+            String content = Files.readString(file);
 
-                String classPath = "";
-                Matcher classMatcher = Pattern.compile(
-                        "@RequestMapping\\s*\\(\\s*\\\"([^\\\"]+)\\\"\\s*\\)").matcher(content);
-                if (classMatcher.find()) {
-                    classPath = classMatcher.group(1);
+            String classPath = "";
+            Matcher classMatcher = Pattern.compile(
+                    "@RequestMapping\\s*\\(\\s*\\\"([^\\\"]+)\\\"\\s*\\)").matcher(content);
+            if (classMatcher.find()) {
+                classPath = classMatcher.group(1);
+            }
+
+            for (String verb : new String[]{"GetMapping", "PostMapping", "PutMapping", "DeleteMapping", "PatchMapping"}) {
+                // 1) @VerbMapping with explicit path
+                Pattern p = Pattern.compile(
+                        "@" + verb + "\\s*\\(\\s*(?:value\\s*=\\s*)?\\\"([^\\\"]*)\\\"");
+                Matcher m = p.matcher(content);
+                while (m.find()) {
+                    String methodPath = m.group(1);
+                    if (methodPath.isEmpty() && classPath.isEmpty()) continue;
+                    String fullPath = classPath + methodPath;
+                    fullPath = fullPath.replaceAll("//+", "/");
+                    if (!fullPath.startsWith("/")) fullPath = "/" + fullPath;
+                    out.add(new ApiRef(verb.replace("Mapping", "").toUpperCase(), normalizePath(fullPath)));
                 }
-
-                for (String verb : new String[]{"GetMapping", "PostMapping", "PutMapping", "DeleteMapping", "PatchMapping"}) {
-                    // 1) @VerbMapping with explicit path
-                    Pattern p = Pattern.compile(
-                            "@" + verb + "\\s*\\(\\s*(?:value\\s*=\\s*)?\\\"([^\\\"]*)\\\"");
-                    Matcher m = p.matcher(content);
-                    while (m.find()) {
-                        String methodPath = m.group(1);
-                        if (methodPath.isEmpty() && classPath.isEmpty()) continue;
-                        String fullPath = classPath + methodPath;
-                        fullPath = fullPath.replaceAll("//+", "/");
-                        if (!fullPath.startsWith("/")) fullPath = "/" + fullPath;
-                        out.add(new ApiRef(verb.replace("Mapping", "").toUpperCase(), normalizePath(fullPath)));
+                // 2) @VerbMapping() with no path -> resolves to class path
+                if (!classPath.isEmpty()) {
+                    Pattern emptyParen = Pattern.compile("@" + verb + "\\s*\\(\\s*\\)");
+                    if (emptyParen.matcher(content).find()) {
+                        out.add(new ApiRef(verb.replace("Mapping", "").toUpperCase(), normalizePath(classPath)));
                     }
-                    // 2) @VerbMapping() with no path -> resolves to class path
-                    if (!classPath.isEmpty()) {
-                        Pattern emptyParen = Pattern.compile("@" + verb + "\\s*\\(\\s*\\)");
-                        if (emptyParen.matcher(content).find()) {
-                            out.add(new ApiRef(verb.replace("Mapping", "").toUpperCase(), normalizePath(classPath)));
-                        }
-                        // 3) @VerbMapping with no parens at all -> resolves to class path
-                        Pattern noParen = Pattern.compile("@" + verb + "(?!\\s*[(\\\"'])");
-                        if (noParen.matcher(content).find()) {
-                            out.add(new ApiRef(verb.replace("Mapping", "").toUpperCase(), normalizePath(classPath)));
-                        }
+                    // 3) @VerbMapping with no parens at all -> resolves to class path
+                    Pattern noParen = Pattern.compile("@" + verb + "(?!\\s*[(\\\"'])");
+                    if (noParen.matcher(content).find()) {
+                        out.add(new ApiRef(verb.replace("Mapping", "").toUpperCase(), normalizePath(classPath)));
                     }
                 }
             }
         }
         return out;
+    }
+
+    private static List<Path> collectBackendControllerFiles() throws IOException {
+        if (!Files.exists(BACKEND_JAVA_ROOT)) {
+            fail("Backend Java source root not found: " + BACKEND_JAVA_ROOT);
+        }
+        try (Stream<Path> files = Files.walk(BACKEND_JAVA_ROOT)) {
+            return files
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith("Controller.java"))
+                    .collect(Collectors.toList());
+        }
     }
 
     private static String stripQuery(String path) {

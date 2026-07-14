@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeReportingMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.identity.persistence.model.TEmployeeReporting">
+        <id column="id" property="id"/>
+        <result column="subordinate_employee_id" property="subordinateEmployeeId"/>
+        <result column="manager_employee_id" property="managerEmployeeId"/>
+        <result column="relation_type" property="relationType"/>
+        <result column="status" property="status"/>
+        <result column="active_direct_marker" property="activeDirectMarker"/>
+        <result column="effective_from" property="effectiveFrom"/>
+        <result column="effective_to" property="effectiveTo"/>
+        <result column="reason" property="reason"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="edit_time" property="editTime"/>
+        <result column="edit_by" property="editBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, subordinate_employee_id, manager_employee_id, relation_type, status,
+        active_direct_marker, effective_from, effective_to, reason, version,
+        create_time, create_by, edit_time, edit_by
+    </sql>
+
+    <sql id="Effective_Column_List">
+        reporting.id, reporting.subordinate_employee_id, reporting.manager_employee_id,
+        reporting.relation_type, reporting.status, reporting.active_direct_marker,
+        reporting.effective_from, reporting.effective_to, reporting.reason, reporting.version,
+        reporting.create_time, reporting.create_by, reporting.edit_time, reporting.edit_by
+    </sql>
+
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_employee_reporting
+        WHERE id = #{reportingId}
+    </select>
+
+    <select id="selectCurrentDirectBySubordinateId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_employee_reporting
+        WHERE subordinate_employee_id = #{subordinateEmployeeId}
+          AND relation_type = 'DIRECT'
+          AND status = 'ACTIVE'
+          AND active_direct_marker = 1
+          AND effective_from &lt;= #{effectiveAt}
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt})
+        ORDER BY effective_from DESC, id DESC
+    </select>
+
+    <select id="selectEffectiveManagers" resultMap="BaseResultMap">
+        SELECT <include refid="Effective_Column_List"/>
+        FROM t_employee_reporting reporting
+        INNER JOIN t_employee manager_employee
+                ON manager_employee.id = reporting.manager_employee_id
+               AND manager_employee.employment_status = 'ACTIVE'
+        INNER JOIN t_user manager_account
+                ON manager_account.id = manager_employee.user_id
+               AND manager_account.account_status = 'ACTIVE'
+               AND manager_account.account_enabled = 1
+               AND manager_account.account_no_locked = 1
+               AND manager_account.account_no_expired = 1
+               AND manager_account.credentials_no_expired = 1
+               AND manager_account.manual_locked = 0
+               AND (manager_account.auto_locked_until IS NULL OR manager_account.auto_locked_until &lt;= #{effectiveAt})
+               AND (manager_account.account_expires_at IS NULL OR manager_account.account_expires_at &gt; #{effectiveAt})
+               AND (manager_account.password_expires_at IS NULL OR manager_account.password_expires_at &gt; #{effectiveAt})
+        INNER JOIN t_employee_assignment manager_assignment
+                ON manager_assignment.employee_id = manager_employee.id
+               AND manager_assignment.assignment_type = 'PRIMARY'
+               AND manager_assignment.status = 'ACTIVE'
+               AND manager_assignment.active_primary_marker = 1
+               AND manager_assignment.effective_from &lt;= #{effectiveAt}
+               AND (manager_assignment.effective_to IS NULL OR manager_assignment.effective_to &gt; #{effectiveAt})
+        INNER JOIN t_organization_unit manager_organization
+                ON manager_organization.id = manager_assignment.organization_unit_id
+               AND manager_organization.enabled = 1
+               AND manager_organization.migration_placeholder = 0
+        INNER JOIN t_position manager_position
+                ON manager_position.id = manager_assignment.position_id
+               AND manager_position.enabled = 1
+               AND manager_position.code &lt;&gt; 'UNASSIGNED_POSITION'
+        WHERE reporting.subordinate_employee_id = #{subordinateEmployeeId}
+          AND reporting.status = 'ACTIVE'
+          AND reporting.effective_from &lt;= #{effectiveAt}
+          AND (reporting.effective_to IS NULL OR reporting.effective_to &gt; #{effectiveAt})
+        ORDER BY CASE reporting.relation_type WHEN 'ACTING' THEN 0 ELSE 1 END,
+                 reporting.effective_from DESC, reporting.id DESC
+    </select>
+    <select id="selectEffectiveSubordinates" resultMap="BaseResultMap">
+        SELECT <include refid="Effective_Column_List"/>
+        FROM t_employee_reporting reporting
+        INNER JOIN t_employee manager_employee
+                ON manager_employee.id = reporting.manager_employee_id
+               AND manager_employee.employment_status = 'ACTIVE'
+        INNER JOIN t_user manager_account
+                ON manager_account.id = manager_employee.user_id
+               AND manager_account.account_status = 'ACTIVE'
+               AND manager_account.account_enabled = 1
+               AND manager_account.account_no_locked = 1
+               AND manager_account.account_no_expired = 1
+               AND manager_account.credentials_no_expired = 1
+               AND manager_account.manual_locked = 0
+               AND (manager_account.auto_locked_until IS NULL OR manager_account.auto_locked_until &lt;= #{effectiveAt})
+               AND (manager_account.account_expires_at IS NULL OR manager_account.account_expires_at &gt; #{effectiveAt})
+               AND (manager_account.password_expires_at IS NULL OR manager_account.password_expires_at &gt; #{effectiveAt})
+        INNER JOIN t_employee_assignment manager_assignment
+                ON manager_assignment.employee_id = manager_employee.id
+               AND manager_assignment.assignment_type = 'PRIMARY'
+               AND manager_assignment.status = 'ACTIVE'
+               AND manager_assignment.active_primary_marker = 1
+               AND manager_assignment.effective_from &lt;= #{effectiveAt}
+               AND (manager_assignment.effective_to IS NULL OR manager_assignment.effective_to &gt; #{effectiveAt})
+        INNER JOIN t_organization_unit manager_organization
+                ON manager_organization.id = manager_assignment.organization_unit_id
+               AND manager_organization.enabled = 1
+               AND manager_organization.migration_placeholder = 0
+        INNER JOIN t_position manager_position
+                ON manager_position.id = manager_assignment.position_id
+               AND manager_position.enabled = 1
+               AND manager_position.code &lt;&gt; 'UNASSIGNED_POSITION'
+        WHERE reporting.manager_employee_id = #{managerEmployeeId}
+          AND reporting.status = 'ACTIVE'
+          AND reporting.effective_from &lt;= #{effectiveAt}
+          AND (reporting.effective_to IS NULL OR reporting.effective_to &gt; #{effectiveAt})
+        ORDER BY reporting.subordinate_employee_id,
+                 CASE reporting.relation_type WHEN 'ACTING' THEN 0 ELSE 1 END
+    </select>
+
+    <select id="selectHistoryBySubordinateId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_employee_reporting
+        WHERE subordinate_employee_id = #{subordinateEmployeeId}
+        ORDER BY effective_from DESC, id DESC
+    </select>
+
+    <select id="selectReplaceableBySubordinateId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_employee_reporting
+        WHERE subordinate_employee_id = #{subordinateEmployeeId}
+          AND status IN ('PLANNED', 'ACTIVE')
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveAt})
+        ORDER BY id
+    </select>
+
+    <select id="selectReplaceableDirectBySubordinateId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM t_employee_reporting
+        WHERE subordinate_employee_id=#{subordinateEmployeeId} AND relation_type='DIRECT'
+          AND status IN ('PLANNED','ACTIVE') AND (effective_to IS NULL OR effective_to&gt;#{effectiveAt}) ORDER BY id
+    </select>
+
+    <select id="selectCurrentAndFutureActingBySubordinateId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM t_employee_reporting
+        WHERE subordinate_employee_id=#{subordinateEmployeeId} AND relation_type='ACTING'
+          AND status IN ('PLANNED','ACTIVE') AND effective_to&gt;#{effectiveAt}
+        ORDER BY manager_employee_id,effective_to,id
+    </select>
+
+    <select id="selectOverlappingManagers" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM t_employee_reporting
+        WHERE subordinate_employee_id=#{subordinateEmployeeId}
+          AND status IN ('PLANNED','ACTIVE')
+          AND (effective_to IS NULL OR effective_to&gt;#{effectiveFrom})
+          AND (#{effectiveTo} IS NULL OR effective_from&lt;#{effectiveTo})
+        ORDER BY effective_from,id
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.identity.persistence.model.TEmployeeReporting"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_employee_reporting
+        (subordinate_employee_id, manager_employee_id, relation_type, status,
+         active_direct_marker, effective_from, effective_to, reason, version,
+         create_time, create_by, edit_time, edit_by)
+        VALUES
+        (#{subordinateEmployeeId}, #{managerEmployeeId}, #{relationType}, #{status},
+         #{activeDirectMarker}, #{effectiveFrom}, #{effectiveTo}, #{reason}, #{version},
+         #{createTime}, #{createBy}, #{editTime}, #{editBy})
+    </insert>
+
+    <update id="expireElapsedMarkers">
+        UPDATE t_employee_reporting
+        SET status = 'ENDED', active_direct_marker = NULL,
+            version = version + 1, edit_time = #{effectiveAt}, edit_by = #{editBy}
+        WHERE subordinate_employee_id = #{subordinateEmployeeId}
+          AND status = 'ACTIVE'
+          AND effective_to IS NOT NULL
+          AND effective_to &lt;= #{effectiveAt}
+    </update>
+
+    <update id="expireElapsedActingMarkers">
+        UPDATE t_employee_reporting
+        SET status = 'ENDED', active_direct_marker = NULL,
+            version = version + 1, edit_time = #{effectiveAt}, edit_by = #{editBy}
+        WHERE subordinate_employee_id = #{subordinateEmployeeId}
+          AND relation_type = 'ACTING'
+          AND status = 'ACTIVE'
+          AND effective_to IS NOT NULL
+          AND effective_to &lt;= #{effectiveAt}
+    </update>
+
+    <!-- 历史事实只允许结束，不提供覆盖管理者、关系类型、生效时间和原始原因的通用更新。 -->
+    <update id="endByIdAndVersion">
+        UPDATE t_employee_reporting
+        SET status = 'ENDED',
+            active_direct_marker = NULL,
+            effective_to = #{effectiveTo},
+            version = version + 1,
+            edit_time = #{editTime},
+            edit_by = #{editBy}
+        WHERE id = #{reportingId}
+          AND version = #{expectedVersion}
+          AND status IN ('PLANNED', 'ACTIVE')
+          AND (effective_to IS NULL OR effective_to &gt; #{effectiveTo})
+          AND effective_from &lt; #{effectiveTo}
+    </update>
+
+    <update id="cancelFutureByIdAndVersion">
+        UPDATE t_employee_reporting
+        SET status = 'CANCELLED',
+            active_direct_marker = NULL,
+            version = version + 1,
+            edit_time = #{editTime},
+            edit_by = #{editBy}
+        WHERE id = #{reportingId}
+          AND version = #{expectedVersion}
+          AND status IN ('PLANNED', 'ACTIVE')
+          AND effective_from &gt;= #{effectiveAt}
+    </update>
+</mapper>

@@ -1,6 +1,6 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.manager.RedisManager;
+import com.autodealer.crm.shared.infrastructure.cache.RedisManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;

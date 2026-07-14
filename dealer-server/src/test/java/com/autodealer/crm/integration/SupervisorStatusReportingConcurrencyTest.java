@@ -1,27 +1,28 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.audit.AuthorizationAuditRecorder;
-import com.autodealer.crm.audit.OperationAuditRecorder;
-import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator;
-import com.autodealer.crm.dto.organization.ActingReportingInput;
-import com.autodealer.crm.dto.organization.AssignmentInput;
-import com.autodealer.crm.dto.organization.ReportingInput;
-import com.autodealer.crm.dto.organization.ReplaceActingReportingsRequest;
-import com.autodealer.crm.dto.organization.UpdateEmployeeOrganizationRequest;
-import com.autodealer.crm.dto.user.ManagedUserDtos.StatusRequest;
-import com.autodealer.crm.enums.AssignmentType;
-import com.autodealer.crm.enums.ReportingType;
-import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.manager.RedisManager;
-import com.autodealer.crm.mapper.TEmployeeMapper;
-import com.autodealer.crm.mapper.TEmployeeReportingMapper;
-import com.autodealer.crm.result.CodeEnum;
-import com.autodealer.crm.service.CredentialService;
-import com.autodealer.crm.service.ManagedUserAccountService;
-import com.autodealer.crm.service.OrganizationService;
-import com.autodealer.crm.service.UserSessionService;
-import com.autodealer.crm.service.impl.UserAuthorizationPolicy;
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
+import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.modules.identity.application.internal.OwnerCandidateCacheInvalidator;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.ActingReportingInput;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.AssignmentInput;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.ReportingInput;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.ReplaceActingReportingsRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.UpdateEmployeeOrganizationRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.StatusRequest;
+import com.autodealer.crm.modules.identity.application.api.enums.AssignmentType;
+import com.autodealer.crm.modules.identity.application.api.enums.ReportingType;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.infrastructure.cache.RedisManager;
+import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeMapper;
+import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeReportingMapper;
+import com.autodealer.crm.shared.error.CodeEnum;
+import com.autodealer.crm.modules.identity.application.api.CredentialService;
+import com.autodealer.crm.modules.identity.application.api.ManagedUserAccountService;
+import com.autodealer.crm.modules.identity.application.api.OrganizationService;
+import com.autodealer.crm.modules.identity.application.api.UserSessionService;
+import com.autodealer.crm.modules.identity.application.internal.UserAuthorizationPolicy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @ActiveProfiles("test")
 class SupervisorStatusReportingConcurrencyTest {
     private static final int ORGANIZATION_ID = 9960;

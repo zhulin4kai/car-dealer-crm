@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.commerce.promotion.persistence.mapper.TProductPromotionMapper">
+
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.commerce.promotion.application.api.model.TProductPromotion">
+        <id column="id" property="id" />
+        <result column="product_id" property="productId" />
+        <result column="code" property="code" />
+        <result column="name" property="name" />
+        <result column="type" property="type" />
+        <result column="discount" property="discount" />
+        <result column="rule_summary" property="ruleSummary" />
+        <result column="applicable_store" property="applicableStore" />
+        <result column="customer_type" property="customerType" />
+        <result column="applicable_channel" property="applicableChannel" />
+        <result column="inventory_scope" property="inventoryScope" />
+        <result column="stackable" property="stackable" />
+        <result column="priority" property="priority" />
+        <result column="budget_limit" property="budgetLimit" />
+        <result column="used_budget" property="usedBudget" />
+        <result column="usage_limit" property="usageLimit" />
+        <result column="used_count" property="usedCount" />
+        <result column="start_time" property="startTime" />
+        <result column="end_time" property="endTime" />
+        <result column="status" property="status" />
+        <result column="pause_reason" property="pauseReason" />
+        <result column="end_reason" property="endReason" />
+        <result column="void_reason" property="voidReason" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, product_id, code, name, type, discount, rule_summary, applicable_store,
+        customer_type, applicable_channel, inventory_scope, stackable, priority,
+        budget_limit, used_budget, usage_limit, used_count, start_time, end_time,
+        status, pause_reason, end_reason, void_reason, create_time, update_time
+    </sql>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_product_promotion
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <select id="selectAvailableByProductIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_product_promotion
+        WHERE product_id IN
+        <foreach collection="productIds" item="productId" open="(" close=")" separator=",">
+            #{productId}
+        </foreach>
+          AND status = 'ACTIVE'
+          AND start_time &lt;= #{now}
+          AND end_time &gt;= #{now}
+          AND (budget_limit IS NULL OR COALESCE(used_budget, 0) &lt; budget_limit)
+          AND (usage_limit IS NULL OR COALESCE(used_count, 0) &lt; usage_limit)
+          AND (applicable_store = 'ALL'
+               OR (#{applicableStore} IS NOT NULL AND applicable_store = #{applicableStore}))
+          AND (customer_type = 'ALL'
+               OR (#{customerType} IS NOT NULL AND customer_type = #{customerType}))
+          AND (applicable_channel = 'ALL'
+               OR (#{applicableChannel} IS NOT NULL AND applicable_channel = #{applicableChannel}))
+        ORDER BY priority DESC, start_time DESC, id DESC
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_product_promotion
+    </select>
+
+    <select id="countByProductId" resultType="int">
+        SELECT COUNT(*)
+        FROM t_product_promotion
+        WHERE product_id = #{productId}
+    </select>
+
+    <select id="countPromotionReferences" resultType="int">
+        SELECT
+            (SELECT COUNT(*) FROM t_quote_version_item WHERE promotion_id = #{id})
+            + (SELECT COUNT(*) FROM t_tran WHERE promotion_id = #{id})
+            + (SELECT COUNT(*) FROM t_product_promotion_usage WHERE promotion_id = #{id})
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_product_promotion
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_product_promotion
+        WHERE code = #{code}
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.commerce.promotion.application.api.model.TProductPromotion" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_product_promotion (
+            product_id, code, name, type, discount, rule_summary, applicable_store,
+            customer_type, applicable_channel, inventory_scope, stackable, priority,
+            budget_limit, used_budget, usage_limit, used_count, start_time, end_time,
+            status, pause_reason, end_reason, void_reason, create_time, update_time
+        ) VALUES (
+            #{productId}, #{code}, #{name}, #{type}, #{discount}, #{ruleSummary}, #{applicableStore},
+            #{customerType}, #{applicableChannel}, #{inventoryScope}, #{stackable}, #{priority},
+            #{budgetLimit}, #{usedBudget}, #{usageLimit}, #{usedCount}, #{startTime}, #{endTime},
+            #{status}, #{pauseReason}, #{endReason}, #{voidReason}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.autodealer.crm.modules.commerce.promotion.application.api.model.TProductPromotion">
+        UPDATE t_product_promotion
+        SET product_id = #{productId},
+            code = #{code},
+            name = #{name},
+            type = #{type},
+            discount = #{discount},
+            rule_summary = #{ruleSummary},
+            applicable_store = #{applicableStore},
+            customer_type = #{customerType},
+            applicable_channel = #{applicableChannel},
+            inventory_scope = #{inventoryScope},
+            stackable = #{stackable},
+            priority = #{priority},
+            budget_limit = #{budgetLimit},
+            used_budget = #{usedBudget},
+            usage_limit = #{usageLimit},
+            used_count = #{usedCount},
+            start_time = #{startTime},
+            end_time = #{endTime},
+            status = #{status},
+            pause_reason = #{pauseReason},
+            end_reason = #{endReason},
+            void_reason = #{voidReason},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatusAtomic">
+        UPDATE t_product_promotion
+        SET status = #{newStatus},
+            pause_reason = #{pauseReason},
+            end_reason = #{endReason},
+            void_reason = #{voidReason},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND status IN
+          <foreach collection="expectedStatuses" item="status" open="(" close=")" separator=",">
+              #{status}
+          </foreach>
+    </update>
+
+    <update id="consumeBudgetAtomic">
+        UPDATE t_product_promotion
+        SET used_budget = COALESCE(used_budget, 0) + #{discountAmount},
+            used_count = COALESCE(used_count, 0) + 1,
+            status = CASE
+                WHEN (budget_limit IS NOT NULL AND COALESCE(used_budget, 0) + #{discountAmount} &gt;= budget_limit)
+                  OR (usage_limit IS NOT NULL AND COALESCE(used_count, 0) + 1 &gt;= usage_limit)
+                THEN 'EXHAUSTED'
+                ELSE status
+            END,
+            update_time = #{now}
+        WHERE id = #{id}
+          AND status = 'ACTIVE'
+          AND start_time &lt;= #{now}
+          AND end_time &gt;= #{now}
+          AND (budget_limit IS NULL OR COALESCE(used_budget, 0) + #{discountAmount} &lt;= budget_limit)
+          AND (usage_limit IS NULL OR COALESCE(used_count, 0) + 1 &lt;= usage_limit)
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_product_promotion
+        WHERE id = #{id}
+    </delete>
+</mapper>

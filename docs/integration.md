@@ -61,51 +61,51 @@
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getCurrentClues | GET | /api/clues | params: {page, size} | R\<PageInfo\<TClue\>\> | ClueController.cluePage | 分页查询线索列表 |
-| addClue | POST | /api/clue | data: ClueQuery对象 (FormData) | R | ClueController.addClue | 新增线索；手机号按常见分隔符归一化后查重并落库 |
-| updateClue | PUT | /api/clue | data: ClueQuery对象 (FormData) | R | ClueController.editClue | 编辑线索 |
-| delClueById | DELETE | /api/clue/{id} | 路径参数: id | R | ClueController.delClue | 删除单个线索 |
-| batchDeleteCluesByIds | POST | /api/clue/batch | data: List\<Integer\> (JSON数组) | R | ClueController.batchDelClue | 批量删除线索 |
-| checkPhoneIsExist | GET | /api/clue/{phone} | 路径参数: phone | R | ClueController.checkPhone | 按归一化手机号检查是否存在 |
-| getClueDetail | GET | /api/clue/detail/{id} | 路径参数: id | R\<TClue\> | ClueController.loadClue | 获取线索详情 |
-| transferClueOwner | PUT | /api/clue/{id}/owner | 路径参数: id, data: {newOwnerId, reason} (JSON) | R | ClueController.transferOwner | 转派线索负责人并写责任历史 |
-| getClueOwnerHistory | GET | /api/clue/{id}/owner-history | 路径参数: id | R\<List\<TClueOwnerHistory\>\> | ClueController.getOwnerHistory | 查询线索责任历史 |
-| closeClue | PUT | /api/clue/{id}/close | 路径参数: id, data: {reason} (JSON) | R | ClueController.closeClue | 关闭线索；原因必填并写操作审计 |
-| restoreClue | PUT | /api/clue/{id}/restore | 路径参数: id, data: {reason} (JSON) | R | ClueController.restoreClue | 恢复线索；原因必填并校验重复活跃线索 |
-| importExcelAPI | POST | /api/importExcel | data: MultipartFile (FormData) | R\<ImportResult\> | ClueController.importExcel | Excel导入线索；逐行归一化手机号并返回重复摘要，存在失败行时 HTTP 422 但合法行可部分成功 |
-| addClueRemark | POST | /api/clue/remark | data: {clueId, noteContent, noteWay} (JSON) | R | ClueRemarkController.addActivityRemark | 添加线索备注 |
-| getClueRemarkList | GET | /api/clue/remark | params: {page, size, clueId} | R\<PageInfo\<TClueRemark\>\> | ClueRemarkController.clueRemarkPage | 分页查询线索备注 |
-| convertClueToCustomer | POST | /api/clue/customer | data: {clueId, product, description, nextContactTime} (JSON) | R | CustomerController.convertCustomer | 线索转换为客户 |
+| getCurrentClues | GET | /api/clues | params: {page, size} | Result\<PageInfo\<TClue\>\> | ClueController.cluePage | 分页查询线索列表 |
+| addClue | POST | /api/clue | data: ClueQuery对象 (FormData) | Result | ClueController.addClue | 新增线索；手机号按常见分隔符归一化后查重并落库 |
+| updateClue | PUT | /api/clue | data: ClueQuery对象 (FormData) | Result | ClueController.editClue | 编辑线索 |
+| delClueById | DELETE | /api/clue/{id} | 路径参数: id | Result | ClueController.delClue | 删除单个线索 |
+| batchDeleteCluesByIds | POST | /api/clue/batch | data: List\<Integer\> (JSON数组) | Result | ClueController.batchDelClue | 批量删除线索 |
+| checkPhoneIsExist | GET | /api/clue/{phone} | 路径参数: phone | Result | ClueController.checkPhone | 按归一化手机号检查是否存在 |
+| getClueDetail | GET | /api/clue/detail/{id} | 路径参数: id | Result\<TClue\> | ClueController.loadClue | 获取线索详情 |
+| transferClueOwner | PUT | /api/clue/{id}/owner | 路径参数: id, data: {newOwnerId, reason} (JSON) | Result | ClueController.transferOwner | 转派线索负责人并写责任历史 |
+| getClueOwnerHistory | GET | /api/clue/{id}/owner-history | 路径参数: id | Result\<List\<TClueOwnerHistory\>\> | ClueController.getOwnerHistory | 查询线索责任历史 |
+| closeClue | PUT | /api/clue/{id}/close | 路径参数: id, data: {reason} (JSON) | Result | ClueController.closeClue | 关闭线索；原因必填并写操作审计 |
+| restoreClue | PUT | /api/clue/{id}/restore | 路径参数: id, data: {reason} (JSON) | Result | ClueController.restoreClue | 恢复线索；原因必填并校验重复活跃线索 |
+| importExcelAPI | POST | /api/importExcel | data: MultipartFile (FormData) | Result\<ImportResult\> | ClueController.importExcel | Excel导入线索；逐行归一化手机号并返回重复摘要，存在失败行时 HTTP 422 但合法行可部分成功 |
+| addClueRemark | POST | /api/clue/remark | data: {clueId, noteContent, noteWay} (JSON) | Result | ClueRemarkController.addActivityRemark | 添加线索备注 |
+| getClueRemarkList | GET | /api/clue/remark | params: {page, size, clueId} | Result\<PageInfo\<TClueRemark\>\> | ClueRemarkController.clueRemarkPage | 分页查询线索备注 |
+| convertClueToCustomer | POST | /api/clue/customer | data: {clueId, product, description, nextContactTime} (JSON) | Result | CustomerController.convertCustomer | 线索转换为客户 |
 
 ### 1.3 客户管理模块 (customer.js)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getCustomerList | GET | /api/customers | params: {page, size, ...query} | R\<PageInfo\<TCustomer\>\> | CustomerController.list | 分页查询客户列表 |
-| getCustomerOptions | GET | /api/customer/options | 无 | R\<List\<CustomerOption\>\> | CustomerController.options | 获取客户选项(下拉框用) |
-| fetchCustomerDetail | GET | /api/customer/{id} | 路径参数: id | R\<CustomerDetailResponse\> | CustomerController.detail | 获取客户主档详情，敏感字段由后端按权限脱敏 |
-| transferCustomerOwner | PUT | /api/customer/{id}/owner | data: {newOwnerId, reason} | R | CustomerController.transferOwner | 转移客户负责人并写入归属历史 |
-| mergeCustomer | POST | /api/customer/{id}/merge | data: {sourceCustomerId, reason} | R\<CustomerMergeResponse\> | CustomerController.mergeCustomer | 合并重复客户，迁移跟进、交易和报价引用 |
-| deleteCustomer | DELETE | /api/customer/{id} | 路径参数: id | R | CustomerController.deleteCustomer | 仅允许删除无业务关系客户；存在引用返回 422 RESOURCE_IN_USE |
+| getCustomerList | GET | /api/customers | params: {page, size, ...query} | Result\<PageInfo\<TCustomer\>\> | CustomerController.list | 分页查询客户列表 |
+| getCustomerOptions | GET | /api/customer/options | 无 | Result\<List\<CustomerOption\>\> | CustomerController.options | 获取客户选项(下拉框用) |
+| fetchCustomerDetail | GET | /api/customer/{id} | 路径参数: id | Result\<CustomerDetailResponse\> | CustomerController.detail | 获取客户主档详情，敏感字段由后端按权限脱敏 |
+| transferCustomerOwner | PUT | /api/customer/{id}/owner | data: {newOwnerId, reason} | Result | CustomerController.transferOwner | 转移客户负责人并写入归属历史 |
+| mergeCustomer | POST | /api/customer/{id}/merge | data: {sourceCustomerId, reason} | Result\<CustomerMergeResponse\> | CustomerController.mergeCustomer | 合并重复客户，迁移跟进、交易和报价引用 |
+| deleteCustomer | DELETE | /api/customer/{id} | 路径参数: id | Result | CustomerController.deleteCustomer | 仅允许删除无业务关系客户；存在引用返回 422 RESOURCE_IN_USE |
 
 ### 1.4 市场活动模块 (activity-api.ts)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getActivityList | GET | /api/activities | params: {page, size, ...activityQuery} | R\<PageInfo\<TActivity\>\> | ActivityController.activityPage | 分页查询活动列表 |
-| getActivityById | GET | /api/activity/{id} | 路径参数: id | R\<TActivity\> | ActivityController.loadActivity | 获取活动详情 |
-| fetchActivityRoi | GET | /api/activity/{id}/roi | 路径参数: id | R\<ActivityRoiResponse\> | ActivityController.activityRoi | 查询活动 ROI |
-| createActivity | POST | /api/activity | data: CreateActivityRequest (JSON) | R | ActivityController.addActivity | 新增草稿活动，负责人和状态由后端生成 |
-| updateActivity | PUT | /api/activity | data: UpdateActivityRequest (JSON) | R | ActivityController.editActivity | 编辑未锁定活动核心字段 |
-| publishActivity | PUT | /api/activity/{id}/publish | 路径参数: id | R\<TActivity\> | ActivityController.publishActivity | 草稿发布为待开始 |
-| startActivity | PUT | /api/activity/{id}/start | 路径参数: id | R\<TActivity\> | ActivityController.startActivity | 待开始活动进入进行中 |
-| endActivity | PUT | /api/activity/{id}/end | 路径参数: id | R\<TActivity\> | ActivityController.endActivity | 进行中活动进入已结束 |
-| reviewActivity | PUT | /api/activity/{id}/review | data: ReviewActivityRequest (JSON) | R\<TActivity\> | ActivityController.reviewActivity | 已结束活动复盘并锁定实际成本和结果 |
-| cancelActivity | PUT | /api/activity/{id}/cancel | data: {reason} (JSON) | R\<TActivity\> | ActivityController.cancelActivity | 取消活动，不影响线索或商机状态 |
-| closeActivity | PUT | /api/activity/{id}/close | data: {reason} (JSON) | R\<TActivity\> | ActivityController.closeActivity | 关闭活动，不影响历史归因 |
+| getActivityList | GET | /api/activities | params: {page, size, ...activityQuery} | Result\<PageInfo\<TActivity\>\> | ActivityController.activityPage | 分页查询活动列表 |
+| getActivityById | GET | /api/activity/{id} | 路径参数: id | Result\<TActivity\> | ActivityController.loadActivity | 获取活动详情 |
+| fetchActivityRoi | GET | /api/activity/{id}/roi | 路径参数: id | Result\<ActivityRoiResponse\> | ActivityController.activityRoi | 查询活动 ROI |
+| createActivity | POST | /api/activity | data: CreateActivityRequest (JSON) | Result | ActivityController.addActivity | 新增草稿活动，负责人和状态由后端生成 |
+| updateActivity | PUT | /api/activity | data: UpdateActivityRequest (JSON) | Result | ActivityController.editActivity | 编辑未锁定活动核心字段 |
+| publishActivity | PUT | /api/activity/{id}/publish | 路径参数: id | Result\<TActivity\> | ActivityController.publishActivity | 草稿发布为待开始 |
+| startActivity | PUT | /api/activity/{id}/start | 路径参数: id | Result\<TActivity\> | ActivityController.startActivity | 待开始活动进入进行中 |
+| endActivity | PUT | /api/activity/{id}/end | 路径参数: id | Result\<TActivity\> | ActivityController.endActivity | 进行中活动进入已结束 |
+| reviewActivity | PUT | /api/activity/{id}/review | data: ReviewActivityRequest (JSON) | Result\<TActivity\> | ActivityController.reviewActivity | 已结束活动复盘并锁定实际成本和结果 |
+| cancelActivity | PUT | /api/activity/{id}/cancel | data: {reason} (JSON) | Result\<TActivity\> | ActivityController.cancelActivity | 取消活动，不影响线索或商机状态 |
+| closeActivity | PUT | /api/activity/{id}/close | data: {reason} (JSON) | Result\<TActivity\> | ActivityController.closeActivity | 关闭活动，不影响历史归因 |
 | exportActivities | GET | /api/activity/export | params: activityQuery | Excel Blob | ActivityController.exportActivities | 按权限和数据范围导出活动 ROI |
-| deleteActivity | DELETE | /api/activity/{id} | 路径参数: id | R | ActivityController.deleteActivity | 仅删除无引用草稿活动 |
-| batchDeleteActivities | POST | /api/activity/batch | data: List\<Integer\> (JSON数组) | R | ActivityController.batchDeleteActivities | 批量删除无引用草稿活动 |
+| deleteActivity | DELETE | /api/activity/{id} | 路径参数: id | Result | ActivityController.deleteActivity | 仅删除无引用草稿活动 |
+| batchDeleteActivities | POST | /api/activity/batch | data: List\<Integer\> (JSON数组) | Result | ActivityController.batchDeleteActivities | 批量删除无引用草稿活动 |
 
 ### 1.5 产品管理模块 (product.js)
 
@@ -146,16 +146,16 @@
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| fetchOpportunityPage | GET | /api/opportunities | params: {page, size, customerId?, ownerId?, stage?, keyword?} | R\<PageInfo\<TOpportunity\>\> | OpportunityController.list | 分页查询商机，按服务端当前用户数据范围过滤 |
-| fetchOpportunityDetail | GET | /api/opportunities/{id} | 路径参数: id | R\<TOpportunity\> | OpportunityController.detail | 查询商机详情 |
-| createOpportunity | POST | /api/opportunities | data: CreateOpportunityRequest (JSON) | R\<TOpportunity\> | OpportunityController.create | 创建独立商机，不创建交易、订单、收款或发票 |
-| updateOpportunity | PUT | /api/opportunities/{id} | 路径参数: id, data: UpdateOpportunityRequest (JSON) | R\<TOpportunity\> | OpportunityController.update | 编辑商机自身字段，不提交客户归属、阶段或履约字段 |
-| fetchOpportunityStageHistory | GET | /api/opportunities/{id}/stage-history | 路径参数: id | R\<List\<TOpportunityStageHistory\>\> | OpportunityController.stageHistory | 查询阶段历史 |
-| advanceOpportunityStage | PUT | /api/opportunities/{id}/stage | 路径参数: id, data: {expectedStage, targetStage, reason, nextActionTime?} | R\<TOpportunity\> | OpportunityController.advanceStage | 使用稳定阶段 code 和 CAS 推进销售阶段并写历史 |
-| markOpportunityWon | PUT | /api/opportunities/{id}/won | 路径参数: id, data: {orderTranId, reason, remark?} | R\<TOpportunity\> | OpportunityController.markWon | 赢单必须关联已成立交易，只记录销售结果 |
-| markOpportunityLost | PUT | /api/opportunities/{id}/lost | 路径参数: id, data: {reason, competitor?, remark?} | R\<TOpportunity\> | OpportunityController.markLost | 输单必须填写原因并保留结果事实 |
-| shelveOpportunity | PUT | /api/opportunities/{id}/shelve | 路径参数: id, data: {reason, nextActionTime, remark?} | R\<TOpportunity\> | OpportunityController.shelve | 搁置必须填写原因和下一步日期 |
-| restoreOpportunity | PUT | /api/opportunities/{id}/restore | 路径参数: id, data: {reason, nextActionTime?, remark?} | R\<TOpportunity\> | OpportunityController.restore | 恢复搁置或输单商机，保留原历史事实 |
+| fetchOpportunityPage | GET | /api/opportunities | params: {page, size, customerId?, ownerId?, stage?, keyword?} | Result\<PageInfo\<TOpportunity\>\> | OpportunityController.list | 分页查询商机，按服务端当前用户数据范围过滤 |
+| fetchOpportunityDetail | GET | /api/opportunities/{id} | 路径参数: id | Result\<TOpportunity\> | OpportunityController.detail | 查询商机详情 |
+| createOpportunity | POST | /api/opportunities | data: CreateOpportunityRequest (JSON) | Result\<TOpportunity\> | OpportunityController.create | 创建独立商机，不创建交易、订单、收款或发票 |
+| updateOpportunity | PUT | /api/opportunities/{id} | 路径参数: id, data: UpdateOpportunityRequest (JSON) | Result\<TOpportunity\> | OpportunityController.update | 编辑商机自身字段，不提交客户归属、阶段或履约字段 |
+| fetchOpportunityStageHistory | GET | /api/opportunities/{id}/stage-history | 路径参数: id | Result\<List\<TOpportunityStageHistory\>\> | OpportunityController.stageHistory | 查询阶段历史 |
+| advanceOpportunityStage | PUT | /api/opportunities/{id}/stage | 路径参数: id, data: {expectedStage, targetStage, reason, nextActionTime?} | Result\<TOpportunity\> | OpportunityController.advanceStage | 使用稳定阶段 code 和 CAS 推进销售阶段并写历史 |
+| markOpportunityWon | PUT | /api/opportunities/{id}/won | 路径参数: id, data: {orderTranId, reason, remark?} | Result\<TOpportunity\> | OpportunityController.markWon | 赢单必须关联已成立交易，只记录销售结果 |
+| markOpportunityLost | PUT | /api/opportunities/{id}/lost | 路径参数: id, data: {reason, competitor?, remark?} | Result\<TOpportunity\> | OpportunityController.markLost | 输单必须填写原因并保留结果事实 |
+| shelveOpportunity | PUT | /api/opportunities/{id}/shelve | 路径参数: id, data: {reason, nextActionTime, remark?} | Result\<TOpportunity\> | OpportunityController.shelve | 搁置必须填写原因和下一步日期 |
+| restoreOpportunity | PUT | /api/opportunities/{id}/restore | 路径参数: id, data: {reason, nextActionTime?, remark?} | Result\<TOpportunity\> | OpportunityController.restore | 恢复搁置或输单商机，保留原历史事实 |
 
 商机阶段、报价状态、车辆状态、商品状态等业务状态在接口层统一使用稳定英文编码，前端负责展示中文 label，不匹配中文 msg 或中文状态做业务分支。
 
@@ -163,15 +163,15 @@
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| fetchTestDrivePage | GET | /api/test-drives | params: {page, size, customerId?, opportunityId?, vehicleId?, ownerId?, status?, keyword?} | R\<PageInfo\<TTestDrive\>\> | TestDriveController.list | 分页查询试驾记录，按服务端当前用户数据范围过滤 |
-| fetchTestDriveDetail | GET | /api/test-drives/{id} | 路径参数: id | R\<TTestDrive\> | TestDriveController.detail | 查询试驾详情 |
-| fetchTestDriveHistory | GET | /api/test-drives/{id}/history | 路径参数: id | R\<List\<TTestDriveStatusHistory\>\> | TestDriveController.history | 查询状态历史 |
-| createTestDrive | POST | /api/test-drives | data: CreateTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.create | 创建试驾预约，校验客户、商机、车辆和时间段冲突，写入车辆时间占用 |
-| rescheduleTestDrive | PUT | /api/test-drives/{id}/reschedule | 路径参数: id, data: RescheduleTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.reschedule | 先校验新时段，再释放原占用并创建新占用 |
-| cancelTestDrive | PUT | /api/test-drives/{id}/cancel | 路径参数: id, data: CancelTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.cancel | 取消试驾必须填写原因并释放时间占用 |
-| markTestDriveNoShow | PUT | /api/test-drives/{id}/no-show | 路径参数: id, data: CancelTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.noShow | 标记客户爽约，不伪装为完成 |
-| checkInTestDrive | PUT | /api/test-drives/{id}/check-in | 路径参数: id, data: CheckInTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.checkIn | 记录到店时间、签到人和客户确认方式 |
-| completeTestDrive | PUT | /api/test-drives/{id}/complete | 路径参数: id, data: CompleteTestDriveRequest (JSON) | R\<TTestDrive\> | TestDriveController.complete | 完成试驾必须已签到和安全确认，记录反馈，不自动创建报价或订单 |
+| fetchTestDrivePage | GET | /api/test-drives | params: {page, size, customerId?, opportunityId?, vehicleId?, ownerId?, status?, keyword?} | Result\<PageInfo\<TTestDrive\>\> | TestDriveController.list | 分页查询试驾记录，按服务端当前用户数据范围过滤 |
+| fetchTestDriveDetail | GET | /api/test-drives/{id} | 路径参数: id | Result\<TTestDrive\> | TestDriveController.detail | 查询试驾详情 |
+| fetchTestDriveHistory | GET | /api/test-drives/{id}/history | 路径参数: id | Result\<List\<TTestDriveStatusHistory\>\> | TestDriveController.history | 查询状态历史 |
+| createTestDrive | POST | /api/test-drives | data: CreateTestDriveRequest (JSON) | Result\<TTestDrive\> | TestDriveController.create | 创建试驾预约，校验客户、商机、车辆和时间段冲突，写入车辆时间占用 |
+| rescheduleTestDrive | PUT | /api/test-drives/{id}/reschedule | 路径参数: id, data: RescheduleTestDriveRequest (JSON) | Result\<TTestDrive\> | TestDriveController.reschedule | 先校验新时段，再释放原占用并创建新占用 |
+| cancelTestDrive | PUT | /api/test-drives/{id}/cancel | 路径参数: id, data: CancelTestDriveRequest (JSON) | Result\<TTestDrive\> | TestDriveController.cancel | 取消试驾必须填写原因并释放时间占用 |
+| markTestDriveNoShow | PUT | /api/test-drives/{id}/no-show | 路径参数: id, data: CancelTestDriveRequest (JSON) | Result\<TTestDrive\> | TestDriveController.noShow | 标记客户爽约，不伪装为完成 |
+| checkInTestDrive | PUT | /api/test-drives/{id}/check-in | 路径参数: id, data: CheckInTestDriveRequest (JSON) | Result\<TTestDrive\> | TestDriveController.checkIn | 记录到店时间、签到人和客户确认方式 |
+| completeTestDrive | PUT | /api/test-drives/{id}/complete | 路径参数: id, data: CompleteTestDriveRequest (JSON) | Result\<TTestDrive\> | TestDriveController.complete | 完成试驾必须已签到和安全确认，记录反馈，不自动创建报价或订单 |
 
 试驾状态、商机阶段、报价状态、车辆状态等业务状态在接口层统一使用稳定英文编码，前端负责展示中文 label，不匹配中文 msg 或中文状态做业务分支。
 
@@ -179,17 +179,17 @@
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| fetchFollowTaskPage | GET | /api/follow-tasks | params: {page, size, status?, taskType?, relatedObjectType?, relatedObjectId?, ownerId?, overdueOnly?, keyword?} | R\<PageInfo\<TFollowTask\>\> | FollowTaskController.list | 分页查询跟进任务，按当前用户数据范围过滤并维护逾期状态 |
-| createFollowTask | POST | /api/follow-tasks | data: CreateFollowTaskRequest (JSON) | R\<TFollowTask\> | FollowTaskController.create | 创建独立跟进任务，服务端校验关联对象可见性和负责人有效性 |
-| fetchFollowTaskDetail | GET | /api/follow-tasks/{id} | 路径参数: id | R\<TFollowTask\> | FollowTaskController.detail | 查询跟进任务详情，按服务端数据范围过滤 |
-| startFollowTask | PUT | /api/follow-tasks/{id}/start | 路径参数: id | R\<TFollowTask\> | FollowTaskController.start | 将未终态任务标记为 IN_PROGRESS |
-| postponeFollowTask | PUT | /api/follow-tasks/{id}/postpone | 路径参数: id, data: {newPlanTime, reason} | R\<TFollowTask\> | FollowTaskController.postpone | 延期任务并保留原计划时间和原因 |
-| cancelFollowTask | PUT | /api/follow-tasks/{id}/cancel | 路径参数: id, data: {reason} | R\<TFollowTask\> | FollowTaskController.cancel | 取消非终态任务并保留取消原因 |
-| completeFollowTask | PUT | /api/follow-tasks/{id}/complete | 路径参数: id, data: CompleteFollowTaskRequest (JSON) | R\<TFollowTask\> | FollowTaskController.complete | 完成任务，同事务写沟通记录并回写最近跟进事实 |
-| fetchCommunicationRecordPage | GET | /api/communication-records | params: {page, size, relatedObjectType?, relatedObjectId?, followTaskId?, ownerId?, method?, status?} | R\<PageInfo\<TCommunicationRecord\>\> | CommunicationRecordController.list | 分页查询沟通记录，按当前用户数据范围过滤 |
-| createCommunicationRecord | POST | /api/communication-records | data: CreateCommunicationRecordRequest (JSON) | R\<TCommunicationRecord\> | CommunicationRecordController.create | 创建沟通记录，可关联同一对象下的跟进任务 |
-| correctCommunicationRecord | PUT | /api/communication-records/{id}/correct | 路径参数: id, data: CorrectCommunicationRecordRequest (JSON) | R\<TCommunicationRecord\> | CommunicationRecordController.correct | 原记录置为 CORRECTED 并插入新 ACTIVE 记录 |
-| voidCommunicationRecord | PUT | /api/communication-records/{id}/void | 路径参数: id, data: {reason} | R\<TCommunicationRecord\> | CommunicationRecordController.voidRecord | 沟通记录作废为 VOIDED，不物理删除 |
+| fetchFollowTaskPage | GET | /api/follow-tasks | params: {page, size, status?, taskType?, relatedObjectType?, relatedObjectId?, ownerId?, overdueOnly?, keyword?} | Result\<PageInfo\<TFollowTask\>\> | FollowTaskController.list | 分页查询跟进任务，按当前用户数据范围过滤并维护逾期状态 |
+| createFollowTask | POST | /api/follow-tasks | data: CreateFollowTaskRequest (JSON) | Result\<TFollowTask\> | FollowTaskController.create | 创建独立跟进任务，服务端校验关联对象可见性和负责人有效性 |
+| fetchFollowTaskDetail | GET | /api/follow-tasks/{id} | 路径参数: id | Result\<TFollowTask\> | FollowTaskController.detail | 查询跟进任务详情，按服务端数据范围过滤 |
+| startFollowTask | PUT | /api/follow-tasks/{id}/start | 路径参数: id | Result\<TFollowTask\> | FollowTaskController.start | 将未终态任务标记为 IN_PROGRESS |
+| postponeFollowTask | PUT | /api/follow-tasks/{id}/postpone | 路径参数: id, data: {newPlanTime, reason} | Result\<TFollowTask\> | FollowTaskController.postpone | 延期任务并保留原计划时间和原因 |
+| cancelFollowTask | PUT | /api/follow-tasks/{id}/cancel | 路径参数: id, data: {reason} | Result\<TFollowTask\> | FollowTaskController.cancel | 取消非终态任务并保留取消原因 |
+| completeFollowTask | PUT | /api/follow-tasks/{id}/complete | 路径参数: id, data: CompleteFollowTaskRequest (JSON) | Result\<TFollowTask\> | FollowTaskController.complete | 完成任务，同事务写沟通记录并回写最近跟进事实 |
+| fetchCommunicationRecordPage | GET | /api/communication-records | params: {page, size, relatedObjectType?, relatedObjectId?, followTaskId?, ownerId?, method?, status?} | Result\<PageInfo\<TCommunicationRecord\>\> | CommunicationRecordController.list | 分页查询沟通记录，按当前用户数据范围过滤 |
+| createCommunicationRecord | POST | /api/communication-records | data: CreateCommunicationRecordRequest (JSON) | Result\<TCommunicationRecord\> | CommunicationRecordController.create | 创建沟通记录，可关联同一对象下的跟进任务 |
+| correctCommunicationRecord | PUT | /api/communication-records/{id}/correct | 路径参数: id, data: CorrectCommunicationRecordRequest (JSON) | Result\<TCommunicationRecord\> | CommunicationRecordController.correct | 原记录置为 CORRECTED 并插入新 ACTIVE 记录 |
+| voidCommunicationRecord | PUT | /api/communication-records/{id}/void | 路径参数: id, data: {reason} | Result\<TCommunicationRecord\> | CommunicationRecordController.voidRecord | 沟通记录作废为 VOIDED，不物理删除 |
 
 跟进任务状态、任务类型、沟通方式和沟通记录状态均使用稳定英文编码，前端只做中文展示映射，不匹配中文 msg 做业务分支。
 
@@ -210,72 +210,72 @@
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getTranList | GET | /api/tran/list | params: {page, size, ...query} | R\<PageInfo\<TTran\>\> | TranController.list | 分页查询交易列表 |
-| getTranDetail | GET | /api/tran/{id} | 路径参数: id | R\<TTran\> | TranController.detail | 获取交易详情 |
-| getTranProducts | GET | /api/tran/products/{id} | 路径参数: id | R\<List\<TTranProduct\>\> | TranController.getTransactionProducts | 获取交易产品历史快照列表；商品主档修改后名称、编码、配置和指导价不随之变化 |
-| createTran | POST | /api/transactions | data: CreateTranRequest对象 (JSON) | R\<Integer\> | TranController.create | 创建交易 |
-| updateTran | PUT | /api/tran/update | data: TranCreateRequest对象 (JSON) | R\<Boolean\> | TranController.update | 更新交易 |
-| fetchSettlementPreview | POST | /api/tran/{id}/settlement-preview | 路径参数: id, data: {promotionId?} | R\<SettlementPreviewResponse\> | TranController.settlementPreview | 服务端结算预览 |
-| settleTran | PUT | /api/tran/{id}/settle | 路径参数: id, data: {promotionId?, expectedVersion, pricingFingerprint} | R\<SettlementPreviewResponse\> | TranController.settle | CAS 确认结算 |
-| approveTran | PUT | /api/tran/approve/{id} | 路径参数: id, data: {approved, comment} (JSON) | R\<Boolean\> | TranController.approve | 审批交易 |
-| getTranApprove | GET | /api/tran/approve/info/{tranId} | 路径参数: tranId | R\<TTranApprove\> | TranController.getApproveInfo | 获取审批信息 |
-| createInvoice | POST | /api/tran/invoice | data: CreateTranInvoiceRequest (JSON) | R\<Boolean\> | TranController.createInvoice | 创建待开具发票；支持部分开票和多票；超额返回 409 和 availableAmount |
-| getTranInvoiceList | GET | /api/tran/invoice/{tranId} | 路径参数: tranId | R\<List\<TTranInvoice\>\> | TranController.getInvoiceList | 获取交易发票列表；无敏感权限时后端脱敏 |
-| updateInvoiceStatus | PUT | /api/tran/invoice/{invoiceId}/status | 路径参数: invoiceId, data: {status, reason?} (JSON) | R\<Boolean\> | TranController.updateInvoiceStatus | 标记已开具、失败或作废；失败/作废必须有原因；ISSUED 后触发交易完成聚合 |
-| redReverseInvoice | POST | /api/tran/invoice/{invoiceId}/red-reversal | 路径参数: invoiceId, data: {amount, reason} (JSON) | R\<TTranInvoice\> | TranController.redReverseInvoice | 创建负数红字发票并保留原票；超额返回 409 和 availableAmount |
-| reissueInvoice | POST | /api/tran/invoice/{invoiceId}/reissue | 路径参数: invoiceId, data: ReissueInvoiceRequest (JSON) | R\<TTranInvoice\> | TranController.reissueInvoice | 基于作废或红冲事实重开发票；超额返回 409 和 availableAmount |
-| recordPayment | POST | /api/tran/payment | data: CreatePaymentRequest (JSON) | R\<TPayment\> | TranController.recordPayment | 登记待确认收款；金额由服务端按剩余应收计算 |
-| confirmPayment | PUT | /api/tran/payment/{id}/confirm | 路径参数: id, data: ConfirmPaymentRequest (JSON) | R\<TPayment\> | TranController.confirmPayment | 财务确认或退回待确认收款；确认到账后只触发交易完成聚合，不由收款单独完成交易 |
-| fetchTranPayments | GET | /api/tran/payment/{tranId} | 路径参数: tranId | R\<List\<TPayment\>\> | TranController.getPayments | 查询交易收款和退款流水 |
-| fetchTranRefundRequests | GET | /api/tran/refund-requests/{tranId} | 路径参数: tranId | R\<List\<TRefundRequest\>\> | TranController.getRefundRequests | 查询交易退款申请 |
-| createRefundRequest | POST | /api/tran/payment/{id}/refund-requests | 路径参数: 原收款 id, data: CreateRefundRequest (JSON) | R\<TRefundRequest\> | TranController.createRefundRequest | 基于已确认原收款创建待审批退款申请；支持 PAYMENT、DELIVERY、CANCELLED 交易，超额返回 409 和 availableAmount |
-| approveRefundRequest | PUT | /api/tran/refund-requests/{id}/approve | 路径参数: id, data: ApproveRefundRequest (JSON) | R\<TRefundRequest\> | TranController.approveRefundRequest | 审批通过进入待执行，驳回保留原因 |
-| executeRefundRequest | POST | /api/tran/refund-requests/{id}/execute | 路径参数: id, data: ExecuteRefundRequest (JSON) | R\<TRefundRequest\> | TranController.executeRefundRequest | 记录退款执行成功或失败；成功新增负数退款流水；不直接取消交易或释放库存 |
-| cancelTran | PUT | /api/tran/{id}/cancel | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.cancel | 取消交易；存在收款、发票、退款中、已出库或已签收事实时返回冲突；未出库订单占用会写 RELEASE 流水并恢复车辆/商品可售库存，保留历史事实并写入原因 |
-| closeTran | PUT | /api/tran/{id}/close | 路径参数: id, data: {reason} (JSON) | R\<Boolean\> | TranController.close | 关闭交易；保留历史事实并写入原因 |
+| getTranList | GET | /api/tran/list | params: {page, size, ...query} | Result\<PageInfo\<TTran\>\> | TranController.list | 分页查询交易列表 |
+| getTranDetail | GET | /api/tran/{id} | 路径参数: id | Result\<TTran\> | TranController.detail | 获取交易详情 |
+| getTranProducts | GET | /api/tran/products/{id} | 路径参数: id | Result\<List\<TTranProduct\>\> | TranController.getTransactionProducts | 获取交易产品历史快照列表；商品主档修改后名称、编码、配置和指导价不随之变化 |
+| createTran | POST | /api/transactions | data: CreateTranRequest对象 (JSON) | Result\<Integer\> | TranController.create | 创建交易 |
+| updateTran | PUT | /api/tran/update | data: TranCreateRequest对象 (JSON) | Result\<Boolean\> | TranController.update | 更新交易 |
+| fetchSettlementPreview | POST | /api/tran/{id}/settlement-preview | 路径参数: id, data: {promotionId?} | Result\<SettlementPreviewResponse\> | TranController.settlementPreview | 服务端结算预览 |
+| settleTran | PUT | /api/tran/{id}/settle | 路径参数: id, data: {promotionId?, expectedVersion, pricingFingerprint} | Result\<SettlementPreviewResponse\> | TranController.settle | CAS 确认结算 |
+| approveTran | PUT | /api/tran/approve/{id} | 路径参数: id, data: {approved, comment} (JSON) | Result\<Boolean\> | TranController.approve | 审批交易 |
+| getTranApprove | GET | /api/tran/approve/info/{tranId} | 路径参数: tranId | Result\<TTranApprove\> | TranController.getApproveInfo | 获取审批信息 |
+| createInvoice | POST | /api/tran/invoice | data: CreateTranInvoiceRequest (JSON) | Result\<Boolean\> | TranController.createInvoice | 创建待开具发票；支持部分开票和多票；超额返回 409 和 availableAmount |
+| getTranInvoiceList | GET | /api/tran/invoice/{tranId} | 路径参数: tranId | Result\<List\<TTranInvoice\>\> | TranController.getInvoiceList | 获取交易发票列表；无敏感权限时后端脱敏 |
+| updateInvoiceStatus | PUT | /api/tran/invoice/{invoiceId}/status | 路径参数: invoiceId, data: {status, reason?} (JSON) | Result\<Boolean\> | TranController.updateInvoiceStatus | 标记已开具、失败或作废；失败/作废必须有原因；ISSUED 后触发交易完成聚合 |
+| redReverseInvoice | POST | /api/tran/invoice/{invoiceId}/red-reversal | 路径参数: invoiceId, data: {amount, reason} (JSON) | Result\<TTranInvoice\> | TranController.redReverseInvoice | 创建负数红字发票并保留原票；超额返回 409 和 availableAmount |
+| reissueInvoice | POST | /api/tran/invoice/{invoiceId}/reissue | 路径参数: invoiceId, data: ReissueInvoiceRequest (JSON) | Result\<TTranInvoice\> | TranController.reissueInvoice | 基于作废或红冲事实重开发票；超额返回 409 和 availableAmount |
+| recordPayment | POST | /api/tran/payment | data: CreatePaymentRequest (JSON) | Result\<TPayment\> | TranController.recordPayment | 登记待确认收款；金额由服务端按剩余应收计算 |
+| confirmPayment | PUT | /api/tran/payment/{id}/confirm | 路径参数: id, data: ConfirmPaymentRequest (JSON) | Result\<TPayment\> | TranController.confirmPayment | 财务确认或退回待确认收款；确认到账后只触发交易完成聚合，不由收款单独完成交易 |
+| fetchTranPayments | GET | /api/tran/payment/{tranId} | 路径参数: tranId | Result\<List\<TPayment\>\> | TranController.getPayments | 查询交易收款和退款流水 |
+| fetchTranRefundRequests | GET | /api/tran/refund-requests/{tranId} | 路径参数: tranId | Result\<List\<TRefundRequest\>\> | TranController.getRefundRequests | 查询交易退款申请 |
+| createRefundRequest | POST | /api/tran/payment/{id}/refund-requests | 路径参数: 原收款 id, data: CreateRefundRequest (JSON) | Result\<TRefundRequest\> | TranController.createRefundRequest | 基于已确认原收款创建待审批退款申请；支持 PAYMENT、DELIVERY、CANCELLED 交易，超额返回 409 和 availableAmount |
+| approveRefundRequest | PUT | /api/tran/refund-requests/{id}/approve | 路径参数: id, data: ApproveRefundRequest (JSON) | Result\<TRefundRequest\> | TranController.approveRefundRequest | 审批通过进入待执行，驳回保留原因 |
+| executeRefundRequest | POST | /api/tran/refund-requests/{id}/execute | 路径参数: id, data: ExecuteRefundRequest (JSON) | Result\<TRefundRequest\> | TranController.executeRefundRequest | 记录退款执行成功或失败；成功新增负数退款流水；不直接取消交易或释放库存 |
+| cancelTran | PUT | /api/tran/{id}/cancel | 路径参数: id, data: {reason} (JSON) | Result\<Boolean\> | TranController.cancel | 取消交易；存在收款、发票、退款中、已出库或已签收事实时返回冲突；未出库订单占用会写 RELEASE 流水并恢复车辆/商品可售库存，保留历史事实并写入原因 |
+| closeTran | PUT | /api/tran/{id}/close | 路径参数: id, data: {reason} (JSON) | Result\<Boolean\> | TranController.close | 关闭交易；保留历史事实并写入原因 |
 | getTranStatus | GET | /api/tran/status/{id} | 路径参数: id | - | **后端未实现** | 前端调用但后端无对应接口 |
 
 ### 1.11 交付管理模块 (delivery-api.ts)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| fetchDeliveryPage | GET | /api/deliveries | params: {page, size, tranId?, customerId?, vehicleId?, responsibleUserId?, status?} | R\<PageInfo\<TDelivery\>\> | DeliveryController.list | 分页查询交付记录，按当前用户交易客户数据范围过滤 |
-| createDelivery | POST | /api/deliveries | data: CreateDeliveryRequest (JSON) | R\<TDelivery\> | DeliveryController.create | 创建交付记录和准备清单；交易必须处于 DELIVERY，车辆必须为当前交易 ORDER_RESERVED |
-| fetchDeliveryDetail | GET | /api/deliveries/{id} | 路径参数: id | R\<TDelivery\> | DeliveryController.detail | 查询交付详情 |
-| fetchDeliveryCheckItems | GET | /api/deliveries/{id}/check-items | 路径参数: id | R\<List\<TDeliveryCheckItem\>\> | DeliveryController.checkItems | 查询交付准备清单 |
-| fetchDeliveriesByTranId | GET | /api/deliveries/tran/{tranId} | 路径参数: tranId | R\<List\<TDelivery\>\> | DeliveryController.listByTranId | 查询交易下交付记录 |
-| updateDeliveryCheckItem | PUT | /api/deliveries/check-items/{itemId} | 路径参数: itemId, data: {status, remark?} | R\<TDeliveryCheckItem\> | DeliveryController.updateCheckItem | 更新准备项状态，状态使用稳定编码 PENDING/COMPLETED/BLOCKED |
-| signDelivery | POST | /api/deliveries/{id}/sign | 路径参数: id, data: SignDeliveryRequest (JSON) | R\<TDelivery\> | DeliveryController.sign | 客户签收并联动库存出库；签收后触发交易完成聚合，不由交付单独完成交易 |
-| markDeliveryException | POST | /api/deliveries/{id}/exception | 路径参数: id, data: {exceptionType, reason} | R\<TDelivery\> | DeliveryController.markException | 登记交付异常并保留历史 |
-| cancelDelivery | POST | /api/deliveries/{id}/cancel | 路径参数: id, data: {reason} | R\<TDelivery\> | DeliveryController.cancel | 取消未签收交付并保留历史；同一事务内引用原订单占用流水写 RELEASE 流水、恢复车辆和商品可售库存，重复释放不重复加库存 |
+| fetchDeliveryPage | GET | /api/deliveries | params: {page, size, tranId?, customerId?, vehicleId?, responsibleUserId?, status?} | Result\<PageInfo\<TDelivery\>\> | DeliveryController.list | 分页查询交付记录，按当前用户交易客户数据范围过滤 |
+| createDelivery | POST | /api/deliveries | data: CreateDeliveryRequest (JSON) | Result\<TDelivery\> | DeliveryController.create | 创建交付记录和准备清单；交易必须处于 DELIVERY，车辆必须为当前交易 ORDER_RESERVED |
+| fetchDeliveryDetail | GET | /api/deliveries/{id} | 路径参数: id | Result\<TDelivery\> | DeliveryController.detail | 查询交付详情 |
+| fetchDeliveryCheckItems | GET | /api/deliveries/{id}/check-items | 路径参数: id | Result\<List\<TDeliveryCheckItem\>\> | DeliveryController.checkItems | 查询交付准备清单 |
+| fetchDeliveriesByTranId | GET | /api/deliveries/tran/{tranId} | 路径参数: tranId | Result\<List\<TDelivery\>\> | DeliveryController.listByTranId | 查询交易下交付记录 |
+| updateDeliveryCheckItem | PUT | /api/deliveries/check-items/{itemId} | 路径参数: itemId, data: {status, remark?} | Result\<TDeliveryCheckItem\> | DeliveryController.updateCheckItem | 更新准备项状态，状态使用稳定编码 PENDING/COMPLETED/BLOCKED |
+| signDelivery | POST | /api/deliveries/{id}/sign | 路径参数: id, data: SignDeliveryRequest (JSON) | Result\<TDelivery\> | DeliveryController.sign | 客户签收并联动库存出库；签收后触发交易完成聚合，不由交付单独完成交易 |
+| markDeliveryException | POST | /api/deliveries/{id}/exception | 路径参数: id, data: {exceptionType, reason} | Result\<TDelivery\> | DeliveryController.markException | 登记交付异常并保留历史 |
+| cancelDelivery | POST | /api/deliveries/{id}/cancel | 路径参数: id, data: {reason} | Result\<TDelivery\> | DeliveryController.cancel | 取消未签收交付并保留历史；同一事务内引用原订单占用流水写 RELEASE 流水、恢复车辆和商品可售库存，重复释放不重复加库存 |
 
 ### 1.12 字典管理模块 (dict.js)
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| getDictTypeList | GET | /api/dict/types | params: {page, size, ...query} | R | DicController.getDicTypes | 分页查询字典类型 |
-| getDictTypeDetail | GET | /api/dict/type/get/{id} | 路径参数: id | R | DicController.getDicTypeById | 获取字典类型详情 |
-| createDictType | POST | /api/dict/type/create | data: CreateDicTypeRequest (JSON) | R | DicController.addDicType | 新增字典类型，默认启用且非内置 |
-| updateDictType | PUT | /api/dict/type/update/{id} | 路径参数: id, data: UpdateDicTypeRequest (JSON) | R | DicController.updateDicType | 编辑字典类型，typeCode 不可改，停用需原因 |
-| deleteDictType | DELETE | /api/dict/type/delete/{id} | 路径参数: id | R | DicController.deleteDicType | 删除未被引用且非内置的字典类型；引用返回 422 |
-| batchDeleteDictTypes | DELETE | /api/dict/types/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicTypes | 批量删除未被引用且非内置的字典类型 |
-| getDictValueList | GET | /api/dict/values | params: {page, size, ...query} | R | DicController.getDicValues | 分页查询字典值 |
-| getDictValueDetail | GET | /api/dict/value/get/{id} | 路径参数: id | R | DicController.getDicValueById | 获取字典值详情 |
-| createDictValue | POST | /api/dict/value/create | data: CreateDicValueRequest (JSON) | R | DicController.addDicValue | 新增字典值，默认启用且非内置 |
-| updateDictValue | PUT | /api/dict/value/update/{id} | 路径参数: id, data: UpdateDicValueRequest (JSON) | R | DicController.updateDicValue | 编辑字典值，typeCode/valueCode 不可改，停用需原因 |
-| deleteDictValue | DELETE | /api/dict/value/delete/{id} | 路径参数: id | R | DicController.deleteDicValue | 删除未被引用且非内置的字典值；引用返回 422 |
-| batchDeleteDictValues | DELETE | /api/dict/value/batch | data: List\<Integer\> (JSON数组) | R | DicController.batchDeleteDicValues | 批量删除未被引用且非内置的字典值 |
-| clearCache | GET | /api/dict/clear | params: {forceRefresh: true} | R | DicController.clearCache | 清除字典缓存 |
+| getDictTypeList | GET | /api/dict/types | params: {page, size, ...query} | Result | DicController.getDicTypes | 分页查询字典类型 |
+| getDictTypeDetail | GET | /api/dict/type/get/{id} | 路径参数: id | Result | DicController.getDicTypeById | 获取字典类型详情 |
+| createDictType | POST | /api/dict/type/create | data: CreateDicTypeRequest (JSON) | Result | DicController.addDicType | 新增字典类型，默认启用且非内置 |
+| updateDictType | PUT | /api/dict/type/update/{id} | 路径参数: id, data: UpdateDicTypeRequest (JSON) | Result | DicController.updateDicType | 编辑字典类型，typeCode 不可改，停用需原因 |
+| deleteDictType | DELETE | /api/dict/type/delete/{id} | 路径参数: id | Result | DicController.deleteDicType | 删除未被引用且非内置的字典类型；引用返回 422 |
+| batchDeleteDictTypes | DELETE | /api/dict/types/batch | data: List\<Integer\> (JSON数组) | Result | DicController.batchDeleteDicTypes | 批量删除未被引用且非内置的字典类型 |
+| getDictValueList | GET | /api/dict/values | params: {page, size, ...query} | Result | DicController.getDicValues | 分页查询字典值 |
+| getDictValueDetail | GET | /api/dict/value/get/{id} | 路径参数: id | Result | DicController.getDicValueById | 获取字典值详情 |
+| createDictValue | POST | /api/dict/value/create | data: CreateDicValueRequest (JSON) | Result | DicController.addDicValue | 新增字典值，默认启用且非内置 |
+| updateDictValue | PUT | /api/dict/value/update/{id} | 路径参数: id, data: UpdateDicValueRequest (JSON) | Result | DicController.updateDicValue | 编辑字典值，typeCode/valueCode 不可改，停用需原因 |
+| deleteDictValue | DELETE | /api/dict/value/delete/{id} | 路径参数: id | Result | DicController.deleteDicValue | 删除未被引用且非内置的字典值；引用返回 422 |
+| batchDeleteDictValues | DELETE | /api/dict/value/batch | data: List\<Integer\> (JSON数组) | Result | DicController.batchDeleteDicValues | 批量删除未被引用且非内置的字典值 |
+| clearCache | GET | /api/dict/clear | params: {forceRefresh: true} | Result | DicController.clearCache | 清除字典缓存 |
 
 ### 1.13 审计日志模块
 
 | 前端函数名 | HTTP方法 | 请求路径 | 请求参数格式 | 响应数据格式 | 后端Controller方法 | 处理逻辑概要 |
 |-----------|---------|---------|-------------|-------------|-------------------|-------------|
-| fetchLoginLogPage | GET | /api/audit/login-logs | params: {page, size, loginAct?, userName?, result?, reasonCode?, ip?, requestId?, startTime?, endTime?} | R\<PageInfo\<TLoginLog\>\> | AuditLogController.listLoginLogs | 分页查询登录记录，后端按 `audit:login:list` 校验权限 |
-| fetchLoginLogDetail | GET | /api/audit/login-logs/{id} | 路径参数: id | R\<TLoginLog\> | AuditLogController.getLoginLog | 查询登录记录详情 |
+| fetchLoginLogPage | GET | /api/audit/login-logs | params: {page, size, loginAct?, userName?, result?, reasonCode?, ip?, requestId?, startTime?, endTime?} | Result\<PageInfo\<TLoginLog\>\> | AuditLogController.listLoginLogs | 分页查询登录记录，后端按 `audit:login:list` 校验权限 |
+| fetchLoginLogDetail | GET | /api/audit/login-logs/{id} | 路径参数: id | Result\<TLoginLog\> | AuditLogController.getLoginLog | 查询登录记录详情 |
 | exportLoginLogs | GET | /api/audit/login-logs/export | 同登录记录过滤参数 | text/csv | AuditLogController.exportLoginLogs | 导出 UTF-8 CSV，并写 `AUDIT_LOGIN_EXPORT` 操作审计 |
-| fetchOperationLogPage | GET | /api/audit/operation-logs | params: {page, size, userName?, actionCode?, moduleName?, objectType?, resourceId?, result?, ip?, requestId?, startTime?, endTime?} | R\<PageInfo\<TOperationLog\>\> | AuditLogController.listOperationLogs | 分页查询操作记录，后端按 `audit:operation:list` 校验权限 |
-| fetchOperationLogDetail | GET | /api/audit/operation-logs/{id} | 路径参数: id | R\<TOperationLog\> | AuditLogController.getOperationLog | 查询操作记录详情 |
+| fetchOperationLogPage | GET | /api/audit/operation-logs | params: {page, size, userName?, actionCode?, moduleName?, objectType?, resourceId?, result?, ip?, requestId?, startTime?, endTime?} | Result\<PageInfo\<TOperationLog\>\> | AuditLogController.listOperationLogs | 分页查询操作记录，后端按 `audit:operation:list` 校验权限 |
+| fetchOperationLogDetail | GET | /api/audit/operation-logs/{id} | 路径参数: id | Result\<TOperationLog\> | AuditLogController.getOperationLog | 查询操作记录详情 |
 | exportOperationLogs | GET | /api/audit/operation-logs/export | 同操作记录过滤参数 | text/csv | AuditLogController.exportOperationLogs | 导出 UTF-8 CSV，并写 `AUDIT_OPERATION_EXPORT` 操作审计 |
 
 旧系统配置与系统监控接口已下线，不再提供 `/api/system/*` 和 `/api/monitor/*`。
@@ -284,9 +284,9 @@
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|
-| /api/summary/data | GET | StatisticController.summaryData | R\<SummaryData\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
-| /api/saleFunnel/data | GET | StatisticController.saleFunnelData | R\<List\<NameValue\>\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
-| /api/sourcePie/data | GET | StatisticController.sourcePieData | R\<List\<NameValue\>\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
+| /api/summary/data | GET | StatisticController.summaryData | Result\<SummaryData\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
+| /api/saleFunnel/data | GET | StatisticController.saleFunnelData | Result\<List\<NameValue\>\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
+| /api/sourcePie/data | GET | StatisticController.sourcePieData | Result\<List\<NameValue\>\> | `dealer-web/src/modules/statistic/api/statistic-api.ts` |
 
 统计接口不接收前端范围参数，后端按当前登录用户的数据范围聚合；非管理员统计结果必须能由同范围明细反算。
 
@@ -294,11 +294,11 @@
 
 | 后端接口路径 | HTTP方法 | 后端Controller方法 | 响应数据格式 | 前端调用情况 |
 |-------------|---------|-------------------|-------------|-------------|
-| /api/activity/remark | POST | ActivityRemarkController.addActivityRemark | R | `createActivityRemark` |
-| /api/activity/remark | GET | ActivityRemarkController.activityRemarkPage | R\<PageInfo\<TActivityRemark\>\> | `fetchActivityRemarkPage` |
-| /api/activity/remark/{id} | GET | ActivityRemarkController.activityRemarkPage | R\<TActivityRemark\> | **前端未发现API调用** |
-| /api/activity/remark | PUT | ActivityRemarkController.editActivityRemark | R | **前端未发现API调用** |
-| /api/activity/remark/{id} | DELETE | ActivityRemarkController.delActivityRemark | R | `deleteActivityRemark` |
+| /api/activity/remark | POST | ActivityRemarkController.addActivityRemark | Result | `createActivityRemark` |
+| /api/activity/remark | GET | ActivityRemarkController.activityRemarkPage | Result\<PageInfo\<TActivityRemark\>\> | `fetchActivityRemarkPage` |
+| /api/activity/remark/{id} | GET | ActivityRemarkController.activityRemarkPage | Result\<TActivityRemark\> | **前端未发现API调用** |
+| /api/activity/remark | PUT | ActivityRemarkController.editActivityRemark | Result | **前端未发现API调用** |
+| /api/activity/remark/{id} | DELETE | ActivityRemarkController.delActivityRemark | Result | `deleteActivityRemark` |
 
 ---
 
@@ -338,9 +338,9 @@
 
 | 模块 | 后端响应类 | 字段名 | 前端读取方式 | 问题描述 | 严重程度 |
 |-----|-----------|-------|-------------|---------|---------|
-| 用户/线索/活动/字典/交易/系统 | R | code, msg, data | response.data.code/msg/data | 一致 | - |
+| 用户/线索/活动/字典/交易/系统 | Result | code, msg, data | response.data.code/msg/data | 一致 | - |
 | 产品/分类/促销/库存 | Result | code, msg, data | response.data.code/msg/data | 一致 | - |
-| Token错误 | R | code(510-513), msg | `ApiError.sessionInvalid` | 前端以 HTTP 401 判定会话失效；HTTP 403 只表示权限不足，不清理会话 | - |
+| Token错误 | Result | code(510-513), msg | `ApiError.sessionInvalid` | 前端以 HTTP 401 判定会话失效；HTTP 403 只表示权限不足，不清理会话 | - |
 
 ### 2.5 前端调用但后端不存在的接口
 
@@ -395,7 +395,7 @@
                             │
                             ▼
                     ┌──────────────┐
-                    │ 返回R对象    │
+                    │ 返回Result对象    │
                     │ {code:200,   │
                     │  msg:"操作   │
                     │  成功",      │
@@ -415,7 +415,7 @@
 | 6 | 存储到Redis | key: `cdrm:session:{sessionId}`，value 为 JWT HMAC 摘要；同时维护 `cdrm:user:sessions:{userId}` 索引 |
 | 7 | 设置期限 | rememberMe=true: 7天绝对期限、24小时空闲期限；否则 4小时绝对期限、30分钟空闲期限 |
 | 8 | 写入登录审计 | 数据库与 Redis 成功后记录登录；审计失败时撤销刚创建的会话 |
-| 9 | 返回JWT给前端 | 会话事实、Redis 和登录审计全部成功后才返回 R.OK(jwt)；失败不返回 JWT |
+| 9 | 返回JWT给前端 | 会话事实、Redis 和登录审计全部成功后才返回 Result.OK(jwt)；失败不返回 JWT |
 
 ### 3.3 请求携带Token
 
@@ -424,7 +424,7 @@
 axios.interceptors.request.use((config) => {
     // 1. 优先从sessionStorage获取token
     let token = window.sessionStorage.getItem("dlyk_token");
-    
+
     // 2. 如果sessionStorage没有，从localStorage获取
     if (!token) {
         token = window.localStorage.getItem("dlyk_token");
@@ -432,12 +432,12 @@ axios.interceptors.request.use((config) => {
             config.headers['rememberMe'] = true;  // 标记为记住我
         }
     }
-    
+
     // 3. 将token放入请求头
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return config;
 });
 ```
@@ -659,7 +659,7 @@ Token 统一通过 `Authorization: Bearer <token>` 请求头传递，包括文�
 
 ### 6.2 后端响应格式
 
-#### 使用R类的模块 (用户/线索/活动/字典/交易/系统/统计)
+#### 使用Result类的模块 (用户/线索/活动/字典/交易/系统/统计)
 
 ```java
 // 成功响应
@@ -739,8 +739,8 @@ apiFunction(params).then(response => {
 | Token无效 | HTTP 401、code:511 | 按会话失效处理 | 引导重新登录 |
 | Token过期 | HTTP 401、code:512 | 按会话失效处理 | 引导重新登录 |
 | Token不匹配 | HTTP 401、code:513 | 按会话失效处理 | 引导重新登录 |
-| 业务操作失败 | R.FAIL() 或 R.FAIL("具体消息") | 显示失败消息 | 提示操作失败 |
-| 参数校验失败 | R.FAIL(CodeEnum.PARAM_ERROR) | 显示参数错误 | 提示参数有误 |
+| 业务操作失败 | Result.FAIL() 或 Result.FAIL("具体消息") | 显示失败消息 | 提示操作失败 |
+| 参数校验失败 | Result.FAIL(CodeEnum.PARAM_ERROR) | 显示参数错误 | 提示参数有误 |
 
 ---
 
@@ -756,7 +756,7 @@ apiFunction(params).then(response => {
 | 前端调用但后端未实现 | 1 (getTranStatus) |
 | 后端提供但前端未调用 | 16 |
 | 路径不匹配 | 0 |
-| 使用R类响应的模块 | 用户/线索/活动/字典/交易/统计 |
+| 使用Result类响应的模块 | 用户/线索/活动/字典/交易/统计 |
 | 使用Result类响应的模块 | 产品/分类/促销/库存 |
 
 ---
@@ -885,40 +885,40 @@ WHERE table_schema=DATABASE() AND table_name='t_user'
 
 | 前端 API | 方法 | 路径 | 参数 | 返回 | 后端入口 | 说明 |
 |----------|------|------|------|------|----------|------|
-| createAiRun | POST | /api/ai/runs | data: CreateAiRunRequest | R\<AiRunResponse\> | AiRunController.create | 创建 AI Run，写入用户消息摘要 |
-| fetchAiRun | GET | /api/ai/runs/{runNo} | 路径参数: runNo | R\<AiRunResponse\> | AiRunController.detail | 刷新或断线后恢复 Run 状态 |
-| fetchAiRunTrace | GET | /api/ai/runs/{runNo}/trace | 路径参数: runNo | R\<AiRunTraceResponse\> | AiRunController.trace | 恢复 Run、消息、工具调用、Proposal、工作流和执行事件 |
+| createAiRun | POST | /api/ai/runs | data: CreateAiRunRequest | Result\<AiRunResponse\> | AiRunController.create | 创建 AI Run，写入用户消息摘要 |
+| fetchAiRun | GET | /api/ai/runs/{runNo} | 路径参数: runNo | Result\<AiRunResponse\> | AiRunController.detail | 刷新或断线后恢复 Run 状态 |
+| fetchAiRunTrace | GET | /api/ai/runs/{runNo}/trace | 路径参数: runNo | Result\<AiRunTraceResponse\> | AiRunController.trace | 恢复 Run、消息、工具调用、Proposal、工作流和执行事件 |
 | streamAiRunEvents | GET | /api/ai/runs/{runNo}/events | 路径参数: runNo | text/event-stream | AiRunController.events | 前端只订阅 Spring Boot SSE |
-| editAiMessage | PATCH | /api/ai/conversations/{conversationNo}/messages/{messageNo} | 路径参数 + content、expectedVersion | R\<AiRunResponse\> | AiConversationController.editMessage | 创建替代 Run，旧分支保留审计但退出上下文 |
-| withdrawAiMessage | POST | /api/ai/conversations/{conversationNo}/messages/{messageNo}/withdraw | 路径参数 + expectedVersion | R\<AiConversationDetailResponse\> | AiConversationController.withdrawMessage | 撤回不回滚已执行业务动作 |
-| getAiAssistantPolicy | GET | /api/ai/policy | 无 | R\<AiAssistantPolicyResponse\> | AiAssistantPolicyController.getPolicy | 管理员查看全局工具、安全、联网和上下文策略 |
-| updateAiAssistantPolicy | PUT | /api/ai/policy | data: UpdateAiAssistantPolicyRequest | R\<AiAssistantPolicyResponse\> | AiAssistantPolicyController.updatePolicy | 使用 version 乐观锁更新全局策略 |
-| confirmAiProposal | POST | /api/ai/proposals/{proposalId}/confirm | 路径参数: proposalId | R\<AiProposalConfirmResponse\> | AiProposalController.confirm | 只执行后端保存参数 |
-| rejectAiProposal | POST | /api/ai/proposals/{proposalId}/reject | 路径参数: proposalId | R\<AiProposalConfirmResponse\> | AiProposalController.reject | 拒绝待确认 Proposal |
-| executeInternalAiTool | POST | /internal/ai/tools/{toolName}/execute | header: X-Dealer-AI-Tool-Token, data: ExecuteAiToolRequest | R\<AiToolExecutionResponse\> | AiInternalToolController.execute | 仅供 dealer-ai 内部调用 |
-| createAiWorkflow | POST | /api/ai/workflows | data: CreateAiWorkflowRequest | R\<AiWorkflowResponse\> | AiWorkflowController.create | 启动受控多步骤工作流 |
-| listAiWorkflows | GET | /api/ai/workflows | query: runNo | R\<List\<AiWorkflowResponse\>\> | AiWorkflowController.list | 查询 Run 下工作流 |
-| fetchAiWorkflow | GET | /api/ai/workflows/{workflowNo} | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.detail | 查询工作流步骤和状态 |
-| pauseAiWorkflow | POST | /api/ai/workflows/{workflowNo}/pause | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.pause | 暂停未终态工作流 |
-| resumeAiWorkflow | POST | /api/ai/workflows/{workflowNo}/resume | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.resume | 恢复已暂停工作流 |
-| cancelAiWorkflow | POST | /api/ai/workflows/{workflowNo}/cancel | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.cancel | 取消未终态工作流 |
-| completeAiWorkflow | POST | /api/ai/workflows/{workflowNo}/complete | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.complete | 标记工作流完成 |
-| failAiWorkflow | POST | /api/ai/workflows/{workflowNo}/fail | 路径参数: workflowNo | R\<AiWorkflowResponse\> | AiWorkflowController.fail | 标记工作流失败并记录原因 |
-| createAiProactiveSubscription | POST | /api/ai/proactive/subscriptions | data: CreateAiProactiveSubscriptionRequest | R\<AiProactiveSubscriptionResponse\> | AiProactiveController.createSubscription | 创建当前用户主动提醒订阅 |
-| listAiProactiveSubscriptions | GET | /api/ai/proactive/subscriptions | 无 | R\<List\<AiProactiveSubscriptionResponse\>\> | AiProactiveController.listSubscriptions | 查询当前用户订阅 |
-| pauseAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/pause | 路径参数: subscriptionNo | R\<AiProactiveSubscriptionResponse\> | AiProactiveController.pauseSubscription | 暂停订阅 |
-| resumeAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/resume | 路径参数: subscriptionNo | R\<AiProactiveSubscriptionResponse\> | AiProactiveController.resumeSubscription | 恢复订阅 |
-| cancelAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/cancel | 路径参数: subscriptionNo | R\<AiProactiveSubscriptionResponse\> | AiProactiveController.cancelSubscription | 取消订阅 |
-| listAiProactiveEvents | GET | /api/ai/proactive/events | query: page, size | R\<List\<AiProactiveEventResponse\>\> | AiProactiveController.listEvents | 查询当前用户提醒事件 |
-| fetchAiProactiveEvent | GET | /api/ai/proactive/events/{eventNo} | 路径参数: eventNo | R\<AiProactiveEventResponse\> | AiProactiveController.eventDetail | 查询提醒事件详情 |
-| generateAiProactiveEvents | POST | /api/ai/proactive/events/generate | 无 | R\<List\<AiProactiveEventResponse\>\> | AiProactiveController.generateEvents | 为当前用户生成到期提醒 |
-| listAiProviderConfigs | GET | /api/ai/provider-configs | 无 | R\<List\<AiProviderConfigResponse\>\> | AiProviderConfigController.list | 查询脱敏模型配置列表 |
-| createAiProviderConfig | POST | /api/ai/provider-configs | data: CreateAiProviderConfigRequest | R\<AiProviderConfigResponse\> | AiProviderConfigController.create | 新增 Provider 配置并加密保存 API Key |
-| updateAiProviderConfig | PUT | /api/ai/provider-configs/{configNo} | 路径参数: configNo, data: UpdateAiProviderConfigRequest | R\<AiProviderConfigResponse\> | AiProviderConfigController.update | 编辑非密钥字段 |
-| rotateAiProviderKey | POST | /api/ai/provider-configs/{configNo}/rotate-key | 路径参数: configNo, data: RotateAiProviderKeyRequest | R\<AiProviderConfigResponse\> | AiProviderConfigController.rotateKey | 独立轮换 API Key |
-| testAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/test | 路径参数: configNo | R\<AiProviderConfigTestResponse\> | AiProviderConfigController.test | 限 token、限超时测试连接 |
-| activateAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/activate | 路径参数: configNo | R\<AiProviderConfigResponse\> | AiProviderConfigController.activate | 启用当前配置并停用其他配置 |
-| disableAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/disable | 路径参数: configNo | R\<AiProviderConfigResponse\> | AiProviderConfigController.disable | 停用当前配置 |
+| editAiMessage | PATCH | /api/ai/conversations/{conversationNo}/messages/{messageNo} | 路径参数 + content、expectedVersion | Result\<AiRunResponse\> | AiConversationController.editMessage | 创建替代 Run，旧分支保留审计但退出上下文 |
+| withdrawAiMessage | POST | /api/ai/conversations/{conversationNo}/messages/{messageNo}/withdraw | 路径参数 + expectedVersion | Result\<AiConversationDetailResponse\> | AiConversationController.withdrawMessage | 撤回不回滚已执行业务动作 |
+| getAiAssistantPolicy | GET | /api/ai/policy | 无 | Result\<AiAssistantPolicyResponse\> | AiAssistantPolicyController.getPolicy | 管理员查看全局工具、安全、联网和上下文策略 |
+| updateAiAssistantPolicy | PUT | /api/ai/policy | data: UpdateAiAssistantPolicyRequest | Result\<AiAssistantPolicyResponse\> | AiAssistantPolicyController.updatePolicy | 使用 version 乐观锁更新全局策略 |
+| confirmAiProposal | POST | /api/ai/proposals/{proposalId}/confirm | 路径参数: proposalId | Result\<AiProposalConfirmResponse\> | AiProposalController.confirm | 只执行后端保存参数 |
+| rejectAiProposal | POST | /api/ai/proposals/{proposalId}/reject | 路径参数: proposalId | Result\<AiProposalConfirmResponse\> | AiProposalController.reject | 拒绝待确认 Proposal |
+| executeInternalAiTool | POST | /internal/ai/tools/{toolName}/execute | header: X-Dealer-AI-Tool-Token, data: ExecuteAiToolRequest | Result\<AiToolExecutionResponse\> | AiInternalToolController.execute | 仅供 dealer-ai 内部调用 |
+| createAiWorkflow | POST | /api/ai/workflows | data: CreateAiWorkflowRequest | Result\<AiWorkflowResponse\> | AiWorkflowController.create | 启动受控多步骤工作流 |
+| listAiWorkflows | GET | /api/ai/workflows | query: runNo | Result\<List\<AiWorkflowResponse\>\> | AiWorkflowController.list | 查询 Run 下工作流 |
+| fetchAiWorkflow | GET | /api/ai/workflows/{workflowNo} | 路径参数: workflowNo | Result\<AiWorkflowResponse\> | AiWorkflowController.detail | 查询工作流步骤和状态 |
+| pauseAiWorkflow | POST | /api/ai/workflows/{workflowNo}/pause | 路径参数: workflowNo | Result\<AiWorkflowResponse\> | AiWorkflowController.pause | 暂停未终态工作流 |
+| resumeAiWorkflow | POST | /api/ai/workflows/{workflowNo}/resume | 路径参数: workflowNo | Result\<AiWorkflowResponse\> | AiWorkflowController.resume | 恢复已暂停工作流 |
+| cancelAiWorkflow | POST | /api/ai/workflows/{workflowNo}/cancel | 路径参数: workflowNo | Result\<AiWorkflowResponse\> | AiWorkflowController.cancel | 取消未终态工作流 |
+| completeAiWorkflow | POST | /api/ai/workflows/{workflowNo}/complete | 路径参数: workflowNo | Result\<AiWorkflowResponse\> | AiWorkflowController.complete | 标记工作流完成 |
+| failAiWorkflow | POST | /api/ai/workflows/{workflowNo}/fail | 路径参数: workflowNo | Result\<AiWorkflowResponse\> | AiWorkflowController.fail | 标记工作流失败并记录原因 |
+| createAiProactiveSubscription | POST | /api/ai/proactive/subscriptions | data: CreateAiProactiveSubscriptionRequest | Result\<AiProactiveSubscriptionResponse\> | AiProactiveController.createSubscription | 创建当前用户主动提醒订阅 |
+| listAiProactiveSubscriptions | GET | /api/ai/proactive/subscriptions | 无 | Result\<List\<AiProactiveSubscriptionResponse\>\> | AiProactiveController.listSubscriptions | 查询当前用户订阅 |
+| pauseAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/pause | 路径参数: subscriptionNo | Result\<AiProactiveSubscriptionResponse\> | AiProactiveController.pauseSubscription | 暂停订阅 |
+| resumeAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/resume | 路径参数: subscriptionNo | Result\<AiProactiveSubscriptionResponse\> | AiProactiveController.resumeSubscription | 恢复订阅 |
+| cancelAiProactiveSubscription | POST | /api/ai/proactive/subscriptions/{subscriptionNo}/cancel | 路径参数: subscriptionNo | Result\<AiProactiveSubscriptionResponse\> | AiProactiveController.cancelSubscription | 取消订阅 |
+| listAiProactiveEvents | GET | /api/ai/proactive/events | query: page, size | Result\<List\<AiProactiveEventResponse\>\> | AiProactiveController.listEvents | 查询当前用户提醒事件 |
+| fetchAiProactiveEvent | GET | /api/ai/proactive/events/{eventNo} | 路径参数: eventNo | Result\<AiProactiveEventResponse\> | AiProactiveController.eventDetail | 查询提醒事件详情 |
+| generateAiProactiveEvents | POST | /api/ai/proactive/events/generate | 无 | Result\<List\<AiProactiveEventResponse\>\> | AiProactiveController.generateEvents | 为当前用户生成到期提醒 |
+| listAiProviderConfigs | GET | /api/ai/provider-configs | 无 | Result\<List\<AiProviderConfigResponse\>\> | AiProviderConfigController.list | 查询脱敏模型配置列表 |
+| createAiProviderConfig | POST | /api/ai/provider-configs | data: CreateAiProviderConfigRequest | Result\<AiProviderConfigResponse\> | AiProviderConfigController.create | 新增 Provider 配置并加密保存 API Key |
+| updateAiProviderConfig | PUT | /api/ai/provider-configs/{configNo} | 路径参数: configNo, data: UpdateAiProviderConfigRequest | Result\<AiProviderConfigResponse\> | AiProviderConfigController.update | 编辑非密钥字段 |
+| rotateAiProviderKey | POST | /api/ai/provider-configs/{configNo}/rotate-key | 路径参数: configNo, data: RotateAiProviderKeyRequest | Result\<AiProviderConfigResponse\> | AiProviderConfigController.rotateKey | 独立轮换 API Key |
+| testAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/test | 路径参数: configNo | Result\<AiProviderConfigTestResponse\> | AiProviderConfigController.test | 限 token、限超时测试连接 |
+| activateAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/activate | 路径参数: configNo | Result\<AiProviderConfigResponse\> | AiProviderConfigController.activate | 启用当前配置并停用其他配置 |
+| disableAiProviderConfig | POST | /api/ai/provider-configs/{configNo}/disable | 路径参数: configNo | Result\<AiProviderConfigResponse\> | AiProviderConfigController.disable | 停用当前配置 |
 
 AI SSE 已实现事件：`run_started`、`message_delta`、`message_completed`、`tool_call_started`、`tool_call_completed`、`proposal_created`、`workflow_started`、`workflow_step_started`、`workflow_step_completed`、`workflow_waiting_user_confirmation`、`workflow_paused`、`workflow_resumed`、`workflow_cancelled`、`workflow_expired`、`workflow_failed`、`workflow_completed`、`error`、`run_completed`。
 

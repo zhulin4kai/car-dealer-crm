@@ -24,7 +24,7 @@ globs: "dealer-*/src/**/*"
 
 ## 响应契约
 
-- JSON API 使用统一 `R` envelope；`code`、`msg`、`data` 的类型和缺省行为必须稳定。
+- JSON API 使用统一 `Result` envelope；`code`、`msg`、`data` 的类型和缺省行为必须稳定。
 - HTTP 状态表达协议结果，业务 code 表达可识别业务原因，二者禁止相互矛盾。
 - 成功详情返回稳定 Response DTO；列表返回统一分页结构，空列表返回 `[]` 而不是 `null`。
 - 删除或命令成功必须返回明确结果，不得以 HTTP 200 包装实际失败。

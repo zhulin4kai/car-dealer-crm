@@ -813,7 +813,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -843,7 +843,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -875,7 +875,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -913,7 +913,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -947,7 +947,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -991,7 +991,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1037,7 +1037,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1071,7 +1071,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1103,7 +1103,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1135,7 +1135,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1205,7 +1205,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1233,7 +1233,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1259,7 +1259,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1285,7 +1285,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1388,7 +1388,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1459,7 +1459,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1492,7 +1492,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1536,7 +1536,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1566,7 +1566,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1598,7 +1598,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1632,7 +1632,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1772,7 +1772,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1877,7 +1877,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1909,7 +1909,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -1935,7 +1935,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -2321,7 +2321,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -2629,7 +2629,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -2646,7 +2646,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -5949,7 +5949,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -6006,7 +6006,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/R"
+                  - $ref: "#/components/schemas/Result"
                   - type: object
                     properties:
                       data:
@@ -6731,55 +6731,55 @@ components:
       content: {application/json: {schema: {$ref: "#/components/schemas/UserManagementGateErrorR"}}}
     CredentialCommandOk:
       description: 凭证命令完成，响应不含密码、摘要或原始凭证。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/CredentialCommandResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/CredentialCommandResult"}}}]}}}
     CredentialRequestOk:
       description: 请求已受理并返回 QUEUED；账号是否存在不影响响应形状，网络投递只在提交后执行。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/CredentialRequestAccepted"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/CredentialRequestAccepted"}}}]}}}
     UserProfileOk:
       description: 本人资料及只读任职、角色、权限来源聚合。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserProfile"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserProfile"}}}]}}}
     LoginInfoOk:
       description: 当前登录用户的展示资料与实时权限。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/LoginInfo"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/LoginInfo"}}}]}}}
     ManagedUserDetailOk:
       description: 受管用户最小详情。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedUserDetail"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedUserDetail"}}}]}}}
     ManagedUserFilterOptionsOk:
       description: 当前管理范围内的组织、岗位、管理者、角色和状态筛选选项。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedUserFilterOptions"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedUserFilterOptions"}}}]}}}
     ManagedCredentialDeliveryOk:
       description: 管理端凭证投递状态，不含原始凭证。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedCredentialDeliveryResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/ManagedCredentialDeliveryResult"}}}]}}}
     PasswordResetDeliveryOk:
       description: 管理员密码重置投递状态。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/PasswordResetDeliveryResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/PasswordResetDeliveryResult"}}}]}}}
     CreateManagedUserResultOk:
       description: 待激活用户与凭证投递状态。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/CreateManagedUserResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/CreateManagedUserResult"}}}]}}}
     AdminAccessRecoveryAccepted:
       description: 降级普通管理员恢复已原子受理，凭证处于 QUEUED；不返回恢复密钥、nonce 或原始凭证。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/AdminAccessRecoveryResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/AdminAccessRecoveryResult"}}}]}}}
     UserSessionCollectionOk:
       description: 脱敏会话列表与可执行动作。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserSessionCollection"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserSessionCollection"}}}]}}}
     UserHistoryCollectionOk:
       description: 受审计权限与目标管理范围约束的结构化用户历史投影。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserHistoryCollection"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserHistoryCollection"}}}]}}}
     UserLifecycleContextOk:
       description: 人员生命周期上下文。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserLifecycleContext"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserLifecycleContext"}}}]}}}
     DeparturePrecheckOk:
       description: 离职精确责任预检快照。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/DeparturePrecheck"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/DeparturePrecheck"}}}]}}}
     HandoverResultOk:
       description: 六域完整交接结果。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/HandoverResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/HandoverResult"}}}]}}}
     RehireResultOk:
       description: RECOVER 模式同步返聘结果；restoredLegacyAuthorizationCount 必须为 0，credentialDeliveryStatus 不得为 QUEUED。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RehireResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/RehireResult"}}}]}}}
     RehireInviteAccepted:
       description: INVITE 模式返聘已原子受理，credentialDeliveryStatus 为 QUEUED；只保存预交付承诺，原始凭证在提交后生成并投递。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RehireResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/RehireResult"}}}]}}}
     LifecycleSnapshotGone:
       description: 服务端一次性预检快照已过期；业务错误码 637，HTTP 状态 410。
       content: {application/json: {schema: {$ref: "#/components/schemas/LifecycleErrorR"}}}
@@ -6788,14 +6788,14 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/R"
+            $ref: "#/components/schemas/Result"
     BooleanOk:
       description: 操作成功，data 为布尔结果。
       content:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6806,7 +6806,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6817,7 +6817,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6829,7 +6829,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6840,7 +6840,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6851,7 +6851,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6862,7 +6862,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6873,7 +6873,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6884,7 +6884,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6898,7 +6898,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6911,7 +6911,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6924,7 +6924,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6935,7 +6935,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6953,7 +6953,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6964,7 +6964,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6982,7 +6982,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -6993,7 +6993,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7004,7 +7004,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7022,7 +7022,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7033,7 +7033,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7051,7 +7051,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7062,7 +7062,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7080,7 +7080,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7093,7 +7093,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7104,7 +7104,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7126,7 +7126,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7137,7 +7137,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7148,7 +7148,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7159,7 +7159,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7177,7 +7177,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7190,7 +7190,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7201,7 +7201,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7219,7 +7219,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7230,7 +7230,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7248,7 +7248,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7259,7 +7259,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7277,7 +7277,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7290,7 +7290,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7301,7 +7301,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7312,7 +7312,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7330,7 +7330,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7343,7 +7343,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7354,7 +7354,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7367,7 +7367,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7378,7 +7378,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7389,7 +7389,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7402,7 +7402,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7413,7 +7413,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7426,7 +7426,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7437,7 +7437,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7450,7 +7450,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7461,7 +7461,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7474,7 +7474,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7492,7 +7492,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7510,7 +7510,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7528,7 +7528,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7539,7 +7539,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7550,7 +7550,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7568,7 +7568,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7579,7 +7579,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7597,7 +7597,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7608,7 +7608,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7626,7 +7626,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7637,7 +7637,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7655,7 +7655,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7666,7 +7666,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7684,7 +7684,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7695,7 +7695,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7708,7 +7708,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7726,7 +7726,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7744,7 +7744,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7762,7 +7762,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7780,7 +7780,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7791,7 +7791,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7804,7 +7804,7 @@ components:
         application/json:
           schema:
             allOf:
-              - $ref: "#/components/schemas/R"
+              - $ref: "#/components/schemas/Result"
               - type: object
                 properties:
                   data:
@@ -7813,58 +7813,58 @@ components:
                       $ref: "#/components/schemas/TranProduct"
     OrganizationUnitObjectOk:
       description: 组织操作成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/OrganizationUnitResponse"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/OrganizationUnitResponse"}}}]}}}
     OrganizationUnitArrayOk:
       description: 组织查询成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/OrganizationUnitResponse"}}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/OrganizationUnitResponse"}}}}]}}}
     PositionObjectOk:
       description: 岗位操作成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/PositionResponse"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/PositionResponse"}}}]}}}
     PositionArrayOk:
       description: 岗位查询成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/PositionResponse"}}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/PositionResponse"}}}}]}}}
     EmployeeSummaryArrayOk:
       description: 员工摘要查询成功，不包含手机号和邮箱。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/EmployeeSummaryResponse"}}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/EmployeeSummaryResponse"}}}}]}}}
     EmployeeOrganizationMembershipObjectOk:
       description: 员工任职查询或更新成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/EmployeeOrganizationMembershipResponse"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/EmployeeOrganizationMembershipResponse"}}}]}}}
     ManagerCandidateArrayOk:
       description: 管理者候选查询成功，不包含敏感个人字段。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/ManagerCandidateResponse"}}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/ManagerCandidateResponse"}}}}]}}}
     ActingReportingCollectionOk:
       description: 代理管理关系集合查询或替换成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/ActingReportingCollectionResponse"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/ActingReportingCollectionResponse"}}}]}}}
     OrganizationHistoryArrayOk:
       description: 组织任职与汇报历史查询成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/OrganizationChangeHistoryResponse"}}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/OrganizationChangeHistoryResponse"}}}}]}}}
     UserAuthorizationDetailOk:
       description: 用户有效授权及可编辑边界。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserAuthorizationDetail"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserAuthorizationDetail"}}}]}}}
     UserAuthorizationBatchResultOk:
       description: 批量用户授权更新成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserAuthorizationBatchResult"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/UserAuthorizationBatchResult"}}}]}}}
     RoleObjectOk:
       description: 角色操作成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RoleResponse"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/RoleResponse"}}}]}}}
     RolePageOk:
       description: 角色分页查询成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {allOf: [{$ref: "#/components/schemas/PageInfo"}, {type: object, properties: {list: {type: array, items: {$ref: "#/components/schemas/RoleResponse"}}}}]}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {allOf: [{$ref: "#/components/schemas/PageInfo"}, {type: object, properties: {list: {type: array, items: {$ref: "#/components/schemas/RoleResponse"}}}}]}}}]}}}
     OrganizationOptionArrayOk:
       description: 可覆盖组织选项查询成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/AccessOrganizationOption"}}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/AccessOrganizationOption"}}}}]}}}
     PermissionCatalogArrayOk:
       description: 权限目录树查询成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/PermissionCatalogItem"}}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {type: array, items: {$ref: "#/components/schemas/PermissionCatalogItem"}}}}]}}}
     RolePermissionMatrixOk:
       description: 角色权限矩阵查询成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RolePermissionMatrix"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/RolePermissionMatrix"}}}]}}}
     PreviewRolePermissionMatrixOk:
       description: 角色权限变更预览成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/RolePermissionPreview"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/RolePermissionPreview"}}}]}}}
     UpdateRolePermissionMatrixOk:
       description: 角色权限矩阵保存成功。
-      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/R"}, {type: object, properties: {data: {$ref: "#/components/schemas/UpdateRolePermissionResponse"}}}]}}}
+      content: {application/json: {schema: {allOf: [{$ref: "#/components/schemas/Result"}, {type: object, properties: {data: {$ref: "#/components/schemas/UpdateRolePermissionResponse"}}}]}}}
     BadRequest:
       description: 请求参数错误。
       content:
@@ -9047,7 +9047,7 @@ components:
         reason: {type: string}
         operatorName: {type: string}
         createTime: {type: string, format: date-time}
-    R:
+    Result:
       type: object
       required: [code, msg]
       properties:

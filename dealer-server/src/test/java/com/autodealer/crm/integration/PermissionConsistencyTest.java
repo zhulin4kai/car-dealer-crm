@@ -1,6 +1,6 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.constant.PermissionCodes;
+import com.autodealer.crm.shared.security.PermissionCodes;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

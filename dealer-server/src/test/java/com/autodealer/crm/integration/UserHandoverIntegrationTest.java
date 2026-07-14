@@ -1,19 +1,19 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.dto.user.UserLifecycleDtos.ResponsibilityRow;
-import com.autodealer.crm.dto.user.UserLifecycleDtos.*;
-import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.audit.AuditActionEnum;
-import com.autodealer.crm.audit.OperationAuditRecorder;
-import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.constant.PermissionCodes;
-import com.autodealer.crm.mapper.TUserLifecycleMapper;
-import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.service.AuthorizationDataScope;
-import com.autodealer.crm.service.DataScopeResolver;
-import com.autodealer.crm.service.UserLifecycleService;
-import com.autodealer.crm.service.impl.UserAuthorizationPolicy;
-import com.autodealer.crm.result.CodeEnum;
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.ResponsibilityRow;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.*;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
+import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.shared.security.PermissionCodes;
+import com.autodealer.crm.modules.identity.persistence.mapper.TUserLifecycleMapper;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationDataScope;
+import com.autodealer.crm.modules.identity.application.api.DataScopeResolver;
+import com.autodealer.crm.modules.identity.application.api.UserLifecycleService;
+import com.autodealer.crm.modules.identity.application.internal.UserAuthorizationPolicy;
+import com.autodealer.crm.shared.error.CodeEnum;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @ActiveProfiles("test")
 class UserHandoverIntegrationTest {
     @Autowired JdbcTemplate jdbc; @Autowired TUserLifecycleMapper lifecycle; @Autowired TransactionTemplate transactions;

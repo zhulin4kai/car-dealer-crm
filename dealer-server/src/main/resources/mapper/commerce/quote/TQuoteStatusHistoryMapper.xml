@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.commerce.quote.persistence.mapper.TQuoteStatusHistoryMapper">
+    <insert id="insert" parameterType="com.autodealer.crm.modules.commerce.quote.application.api.model.TQuoteStatusHistory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_quote_status_history (
+            quote_id, from_status, to_status, reason,
+            confirmed_by_name, confirmed_at, confirmation_method, confirmation_evidence, proxy_confirm_reason,
+            create_time, create_by
+        ) VALUES (
+            #{quoteId}, #{fromStatus}, #{toStatus}, #{reason},
+            #{confirmedByName}, #{confirmedAt}, #{confirmationMethod}, #{confirmationEvidence}, #{proxyConfirmReason},
+            #{createTime}, #{createBy}
+        )
+    </insert>
+</mapper>

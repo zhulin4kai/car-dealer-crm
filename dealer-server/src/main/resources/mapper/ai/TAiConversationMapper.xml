@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.ai.persistence.mapper.TAiConversationMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.ai.persistence.model.TAiConversation">
+        <id column="id" property="id" />
+        <result column="conversation_no" property="conversationNo" />
+        <result column="user_id" property="userId" />
+        <result column="title" property="title" />
+        <result column="status" property="status" />
+        <result column="entry_point" property="entryPoint" />
+        <result column="context_object_type" property="contextObjectType" />
+        <result column="context_object_id" property="contextObjectId" />
+        <result column="summary_text" property="summaryText" />
+        <result column="last_run_no" property="lastRunNo" />
+        <result column="last_message_time" property="lastMessageTime" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="edit_time" property="editTime" />
+        <result column="edit_by" property="editBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, conversation_no, user_id, title, status, entry_point, context_object_type,
+        context_object_id, summary_text, last_run_no, last_message_time, create_time,
+        create_by, edit_time, edit_by
+    </sql>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.ai.persistence.model.TAiConversation" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_ai_conversation
+        (conversation_no, user_id, title, status, entry_point, context_object_type,
+         context_object_id, summary_text, last_run_no, last_message_time, create_time,
+         create_by, edit_time, edit_by)
+        VALUES
+        (#{conversationNo}, #{userId}, #{title}, #{status}, #{entryPoint}, #{contextObjectType},
+         #{contextObjectId}, #{summaryText}, #{lastRunNo}, #{lastMessageTime}, #{createTime},
+         #{createBy}, #{editTime}, #{editBy})
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_conversation
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectOwnedByConversationNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_conversation
+        WHERE conversation_no = #{conversationNo}
+          AND user_id = #{userId}
+    </select>
+
+    <select id="selectOwnedByConversationNoForUpdate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_conversation
+        WHERE conversation_no = #{conversationNo}
+          AND user_id = #{userId}
+        FOR UPDATE
+    </select>
+
+    <select id="selectActiveByContext" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_conversation
+        WHERE user_id = #{userId}
+          AND status = 'ACTIVE'
+          AND (
+              (#{contextObjectType} IS NULL AND context_object_type IS NULL)
+              OR context_object_type = #{contextObjectType}
+          )
+          AND (
+              (#{contextObjectId} IS NULL AND context_object_id IS NULL)
+              OR context_object_id = #{contextObjectId}
+          )
+        ORDER BY last_message_time DESC, create_time DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_conversation
+        WHERE user_id = #{userId}
+          AND (#{includeArchived} = TRUE OR status = 'ACTIVE')
+        ORDER BY last_message_time DESC, create_time DESC, id DESC
+    </select>
+
+    <update id="updateTitle">
+        UPDATE t_ai_conversation
+        SET title = #{title},
+            edit_time = #{editTime},
+            edit_by = #{editBy}
+        WHERE id = #{id}
+    </update>
+
+    <update id="archive">
+        UPDATE t_ai_conversation
+        SET status = 'ARCHIVED',
+            edit_time = #{editTime},
+            edit_by = #{editBy}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateAfterRun">
+        UPDATE t_ai_conversation
+        SET last_run_no = #{lastRunNo},
+            summary_text = #{summaryText},
+            last_message_time = #{lastMessageTime},
+            edit_time = #{editTime},
+            edit_by = #{editBy}
+        WHERE id = #{id}
+    </update>
+</mapper>

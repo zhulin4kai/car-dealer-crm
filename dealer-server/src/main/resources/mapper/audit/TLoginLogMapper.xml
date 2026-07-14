@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.audit.persistence.mapper.TLoginLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.audit.persistence.model.TLoginLog">
+        <id column="id" property="id" />
+        <result column="login_act" property="loginAct" />
+        <result column="user_id" property="userId" />
+        <result column="user_name" property="userName" />
+        <result column="result" property="result" />
+        <result column="reason_code" property="reasonCode" />
+        <result column="reason_message" property="reasonMessage" />
+        <result column="ip" property="ip" />
+        <result column="browser" property="browser" />
+        <result column="os" property="os" />
+        <result column="request_id" property="requestId" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, login_act, user_id, user_name, result, reason_code, reason_message,
+        ip, browser, os, request_id, create_time
+    </sql>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.audit.persistence.model.TLoginLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_login_log (login_act, user_id, user_name, result, reason_code, reason_message, ip, browser, os, request_id, create_time)
+        VALUES (#{loginAct}, #{userId}, #{userName}, #{result}, #{reasonCode}, #{reasonMessage}, #{ip}, #{browser}, #{os}, #{requestId}, #{createTime})
+    </insert>
+
+    <select id="selectByQuery" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_login_log
+        <include refid="Query_Where" />
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <select id="selectById" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_login_log
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectForExport" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_login_log
+        <include refid="Export_Query_Where" />
+        ORDER BY create_time DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <sql id="Query_Where">
+        <where>
+            <if test="loginAct != null and loginAct != ''"> login_act like concat('%', #{loginAct}, '%') </if>
+            <if test="userId != null"> and user_id = #{userId} </if>
+            <if test="userName != null and userName != ''"> and user_name like concat('%', #{userName}, '%') </if>
+            <if test="result != null and result != ''"> and result = #{result} </if>
+            <if test="reasonCode != null and reasonCode != ''"> and reason_code = #{reasonCode} </if>
+            <if test="ip != null and ip != ''"> and ip = #{ip} </if>
+            <if test="requestId != null and requestId != ''"> and request_id = #{requestId} </if>
+            <if test="startTime != null"> and create_time &gt;= #{startTime} </if>
+            <if test="endTime != null"> and create_time &lt;= #{endTime} </if>
+        </where>
+    </sql>
+
+    <sql id="Export_Query_Where">
+        <where>
+            <if test="query.loginAct != null and query.loginAct != ''"> login_act like concat('%', #{query.loginAct}, '%') </if>
+            <if test="query.userId != null"> and user_id = #{query.userId} </if>
+            <if test="query.userName != null and query.userName != ''"> and user_name like concat('%', #{query.userName}, '%') </if>
+            <if test="query.result != null and query.result != ''"> and result = #{query.result} </if>
+            <if test="query.reasonCode != null and query.reasonCode != ''"> and reason_code = #{query.reasonCode} </if>
+            <if test="query.ip != null and query.ip != ''"> and ip = #{query.ip} </if>
+            <if test="query.requestId != null and query.requestId != ''"> and request_id = #{query.requestId} </if>
+            <if test="query.startTime != null"> and create_time &gt;= #{query.startTime} </if>
+            <if test="query.endTime != null"> and create_time &lt;= #{query.endTime} </if>
+        </where>
+    </sql>
+</mapper>

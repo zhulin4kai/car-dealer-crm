@@ -1,7 +1,8 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.audit.AuditActionEnum;
-import com.autodealer.crm.audit.SecurityFailureAuditService;
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
+import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
+import com.autodealer.crm.modules.audit.application.api.SecurityFailureAuditService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +17,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @ActiveProfiles("test")
 class SecurityFailureAuditIntegrationTest {
     private static final String RESOURCE = "deadbeefcafebabe";

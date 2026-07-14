@@ -1,5 +1,6 @@
 package com.autodealer.crm.integration;
 
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,7 +12,7 @@ import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @ActiveProfiles("test")
 class AuthorizationMembershipGuardConcurrencyTest {
     @Autowired JdbcTemplate jdbc;

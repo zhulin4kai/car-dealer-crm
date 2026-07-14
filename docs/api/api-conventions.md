@@ -57,7 +57,7 @@
 
 ## 响应格式
 
-当前 JSON API 统一使用 `R` envelope：
+当前 JSON API 统一使用 `Result` envelope：
 
 ```json
 {
@@ -70,7 +70,7 @@
 - `code` 是业务结果码，类型为整数。
 - `msg` 是用户可见提示文案，前端不得用中文文案驱动业务分支。
 - `data` 是业务数据；无数据成功响应可以省略或为 `null`。
-- 文件下载不套 `R` envelope，必须返回正确的 `Content-Type`、`Content-Disposition` 和文件名。
+- 文件下载不套 `Result` envelope，必须返回正确的 `Content-Type`、`Content-Disposition` 和文件名。
 - 新接口不得新增另一套 `message`、`result`、`success` envelope。
 - 发票、税务和票据类响应中的税号、银行账号、地址、电话等敏感字段必须由后端按权限脱敏；前端不得通过隐藏列或本地规则替代后端脱敏。
 - 客户列表、详情、选项和导出必须以客户主档字段为准，不得通过线索联表返回客户姓名、联系方式、来源或负责人。
@@ -114,7 +114,7 @@
 
 ## 错误响应
 
-失败响应仍使用 `R` envelope：
+失败响应仍使用 `Result` envelope：
 
 ```json
 {
@@ -144,7 +144,7 @@
 - AI Conversation 是多轮业务对话容器，AI Run 是一次执行；前端不得把单次 Run trace 当成会话恢复。
 - AI Conversation 查询、新建、重命名和归档统一使用 `/api/ai/conversations/**`。
 - 前端发送问题时应携带 `conversationNo`；未携带时 Spring Boot 按当前用户和业务对象上下文解析或创建默认 Conversation。
-- AI Run 创建、查询和 Proposal 确认接口继续使用 `R` envelope。
+- AI Run 创建、查询和 Proposal 确认接口继续使用 `Result` envelope。
 - AI Run 刷新恢复通过 `GET /api/ai/runs/{runNo}/trace` 查询，返回单次 Run 元数据、消息摘要、工具调用摘要、Proposal、Approval、执行事件和受控工作流。
 - AI Conversation 刷新恢复通过 `GET /api/ai/conversations/{conversationNo}` 查询，返回会话、消息、最近 Run、兼容 Run trace 和按轮次组织的 `turns`。
 - `turns` 是 Conversation 恢复主契约，每个 turn 必须包含对应 Run、用户消息、AI 回答、工具结果、Proposal、Workflow、Approval 和 ExecutionEvent。

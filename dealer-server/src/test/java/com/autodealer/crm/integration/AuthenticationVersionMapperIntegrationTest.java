@@ -1,8 +1,9 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.enums.AccountType;
-import com.autodealer.crm.mapper.TUserMapper;
-import com.autodealer.crm.model.TUser;
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
+import com.autodealer.crm.modules.identity.application.api.enums.AccountType;
+import com.autodealer.crm.modules.identity.persistence.mapper.TUserMapper;
+import com.autodealer.crm.modules.identity.application.api.model.TUser;
 import org.apache.ibatis.session.SqlSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @ActiveProfiles("test")
 @Transactional
 class AuthenticationVersionMapperIntegrationTest {

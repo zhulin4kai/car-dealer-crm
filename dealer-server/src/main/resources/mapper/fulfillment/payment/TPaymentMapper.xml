@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.fulfillment.payment.persistence.mapper.TPaymentMapper">
+
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.fulfillment.payment.application.api.model.TPayment">
+        <id column="id" property="id" />
+        <result column="tran_id" property="tranId" />
+        <result column="payment_no" property="paymentNo" />
+        <result column="amount" property="amount" />
+        <result column="payment_method" property="paymentMethod" />
+        <result column="payment_type" property="paymentType" />
+        <result column="payment_status" property="paymentStatus" />
+        <result column="payment_time" property="paymentTime" />
+        <result column="transaction_ref" property="transactionRef" />
+        <result column="idempotency_key" property="idempotencyKey" />
+        <result column="remark" property="remark" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="edit_time" property="editTime" />
+        <result column="edit_by" property="editBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, tran_id, payment_no, amount, payment_method, payment_type, payment_status,
+        payment_time, transaction_ref, idempotency_key, remark, create_time, create_by, edit_time, edit_by
+    </sql>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_payment
+        WHERE id = #{id,jdbcType=INTEGER}
+    </select>
+
+    <select id="selectByPrimaryKeyForUpdate" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_payment
+        WHERE id = #{id,jdbcType=INTEGER}
+        FOR UPDATE
+    </select>
+
+    <select id="selectByTransactionRef" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_payment
+        WHERE transaction_ref = #{transactionRef,jdbcType=VARCHAR}
+        LIMIT 1
+    </select>
+
+    <select id="selectByIdempotencyKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_payment
+        WHERE idempotency_key = #{idempotencyKey,jdbcType=VARCHAR}
+        LIMIT 1
+    </select>
+
+    <select id="selectByTranId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_payment
+        WHERE tran_id = #{tranId,jdbcType=INTEGER}
+        ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.fulfillment.payment.application.api.model.TPayment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_payment (tran_id, payment_no, amount, payment_method, payment_type, payment_status,
+            payment_time, transaction_ref, idempotency_key, remark, create_time, create_by, edit_time, edit_by)
+        VALUES (#{tranId}, #{paymentNo}, #{amount}, #{paymentMethod}, #{paymentType}, #{paymentStatus},
+            #{paymentTime}, #{transactionRef}, #{idempotencyKey}, #{remark}, #{createTime}, #{createBy}, #{editTime}, #{editBy})
+    </insert>
+
+    <insert id="insertSelective" parameterType="com.autodealer.crm.modules.fulfillment.payment.application.api.model.TPayment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_payment
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="tranId != null">tran_id,</if>
+            <if test="paymentNo != null">payment_no,</if>
+            <if test="amount != null">amount,</if>
+            <if test="paymentMethod != null">payment_method,</if>
+            <if test="paymentType != null">payment_type,</if>
+            <if test="paymentStatus != null">payment_status,</if>
+            <if test="paymentTime != null">payment_time,</if>
+            <if test="transactionRef != null">transaction_ref,</if>
+            <if test="idempotencyKey != null">idempotency_key,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="editTime != null">edit_time,</if>
+            <if test="editBy != null">edit_by,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="tranId != null">#{tranId},</if>
+            <if test="paymentNo != null">#{paymentNo},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="paymentMethod != null">#{paymentMethod},</if>
+            <if test="paymentType != null">#{paymentType},</if>
+            <if test="paymentStatus != null">#{paymentStatus},</if>
+            <if test="paymentTime != null">#{paymentTime},</if>
+            <if test="transactionRef != null">#{transactionRef},</if>
+            <if test="idempotencyKey != null">#{idempotencyKey},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="editTime != null">#{editTime},</if>
+            <if test="editBy != null">#{editBy},</if>
+        </trim>
+    </insert>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.modules.fulfillment.payment.application.api.model.TPayment">
+        UPDATE t_payment
+        <set>
+            <if test="paymentStatus != null">payment_status = #{paymentStatus},</if>
+            <if test="paymentTime != null">payment_time = #{paymentTime},</if>
+            <if test="transactionRef != null">transaction_ref = #{transactionRef},</if>
+            <if test="idempotencyKey != null">idempotency_key = #{idempotencyKey},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="editTime != null">edit_time = #{editTime},</if>
+            <if test="editBy != null">edit_by = #{editBy},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatusIfCurrent">
+        UPDATE t_payment
+        SET payment_status = #{newStatus,jdbcType=VARCHAR},
+            payment_time = #{paymentTime,jdbcType=TIMESTAMP},
+            remark = #{remark,jdbcType=VARCHAR},
+            edit_time = #{editTime,jdbcType=TIMESTAMP},
+            edit_by = #{editBy,jdbcType=INTEGER}
+        WHERE id = #{id,jdbcType=INTEGER}
+          AND payment_status = #{expectedStatus,jdbcType=VARCHAR}
+    </update>
+
+    <delete id="deleteByPrimaryKey">
+        DELETE FROM t_payment WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByTranId">
+        DELETE FROM t_payment WHERE tran_id = #{tranId}
+    </delete>
+
+</mapper>

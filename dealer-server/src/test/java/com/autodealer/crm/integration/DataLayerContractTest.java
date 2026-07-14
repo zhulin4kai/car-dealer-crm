@@ -1,7 +1,11 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.model.TCustomer;
-import com.autodealer.crm.model.TTranProduct;
+import com.autodealer.crm.modules.fulfillment.transaction.persistence.mapper.TTranMapper;
+import com.autodealer.crm.modules.fulfillment.transaction.persistence.mapper.TTranProductMapper;
+import com.autodealer.crm.modules.sales.activity.persistence.mapper.TActivityMapper;
+import com.autodealer.crm.modules.sales.lead.persistence.mapper.TClueMapper;
+import com.autodealer.crm.modules.sales.customer.application.api.model.TCustomer;
+import com.autodealer.crm.modules.fulfillment.transaction.application.api.model.TTranProduct;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -36,13 +40,13 @@ class DataLayerContractTest {
     private static final Path TASK10_MIGRATION = PROJECT_ROOT.resolve(
             "dealer-server/src/main/resources/migration/20260711_task10_authorization_history.sql");
     private static final Path TRAN_PRODUCT_MAPPER = PROJECT_ROOT.resolve(
-            "dealer-server/src/main/resources/mapper/TTranProductMapper.xml");
+            "dealer-server/src/main/resources/mapper/fulfillment/transaction/TTranProductMapper.xml");
     private static final Path TRAN_MAPPER = PROJECT_ROOT.resolve(
-            "dealer-server/src/main/resources/mapper/TTranMapper.xml");
+            "dealer-server/src/main/resources/mapper/fulfillment/transaction/TTranMapper.xml");
     private static final Path CLUE_MAPPER = PROJECT_ROOT.resolve(
-            "dealer-server/src/main/resources/mapper/TClueMapper.xml");
+            "dealer-server/src/main/resources/mapper/sales/lead/TClueMapper.xml");
     private static final Path ACTIVITY_MAPPER = PROJECT_ROOT.resolve(
-            "dealer-server/src/main/resources/mapper/TActivityMapper.xml");
+            "dealer-server/src/main/resources/mapper/sales/activity/TActivityMapper.xml");
     private static final Path MAPPER_DIR = PROJECT_ROOT.resolve(
             "dealer-server/src/main/resources/mapper");
     private static final Pattern CREATE_TABLE = Pattern.compile(

@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.fulfillment.transaction.persistence.mapper.TTranProductMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.fulfillment.transaction.application.api.model.TTranProduct">
+        <id column="id" jdbcType="INTEGER" property="id" />
+        <result column="tran_id" jdbcType="INTEGER" property="tranId" />
+        <result column="product_id" jdbcType="BIGINT" property="productId" />
+        <result column="quantity" jdbcType="INTEGER" property="quantity" />
+        <result column="price" jdbcType="DECIMAL" property="price" />
+        <result column="product_sku" jdbcType="VARCHAR" property="productSku" />
+        <result column="product_name" jdbcType="VARCHAR" property="productName" />
+        <result column="product_specification" jdbcType="VARCHAR" property="productSpecification" />
+        <result column="guide_price" jdbcType="DECIMAL" property="guidePrice" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="create_by" jdbcType="INTEGER" property="createBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, tran_id, product_id, quantity, price, product_sku, product_name,
+        product_specification, guide_price, create_time, create_by
+    </sql>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_tran_product
+        where id = #{id,jdbcType=INTEGER}
+    </select>
+
+    <select id="selectByTranId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_tran_product
+        where tran_id = #{tranId,jdbcType=INTEGER}
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+        delete from t_tran_product
+        where id = #{id,jdbcType=INTEGER}
+    </delete>
+
+    <delete id="deleteByTranId" parameterType="java.lang.Integer">
+        delete from t_tran_product
+        where tran_id = #{tranId,jdbcType=INTEGER}
+    </delete>
+
+    <select id="countByProductId" parameterType="java.lang.Long" resultType="int">
+        select count(*)
+        from t_tran_product
+        where product_id = #{productId,jdbcType=BIGINT}
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.fulfillment.transaction.application.api.model.TTranProduct">
+        insert into t_tran_product (id, tran_id, product_id,
+            quantity, price, product_sku, product_name,
+            product_specification, guide_price, create_time,
+            create_by)
+        values (#{id,jdbcType=INTEGER}, #{tranId,jdbcType=INTEGER}, #{productId,jdbcType=BIGINT},
+            #{quantity,jdbcType=INTEGER}, #{price,jdbcType=DECIMAL}, #{productSku,jdbcType=VARCHAR},
+            #{productName,jdbcType=VARCHAR}, #{productSpecification,jdbcType=VARCHAR},
+            #{guidePrice,jdbcType=DECIMAL}, #{createTime,jdbcType=TIMESTAMP},
+            #{createBy,jdbcType=INTEGER})
+    </insert>
+
+    <insert id="insertSelective" parameterType="com.autodealer.crm.modules.fulfillment.transaction.application.api.model.TTranProduct">
+        insert into t_tran_product
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="tranId != null">
+                tran_id,
+            </if>
+            <if test="productId != null">
+                product_id,
+            </if>
+            <if test="quantity != null">
+                quantity,
+            </if>
+            <if test="price != null">
+                price,
+            </if>
+            <if test="productSku != null">
+                product_sku,
+            </if>
+            <if test="productName != null">
+                product_name,
+            </if>
+            <if test="productSpecification != null">
+                product_specification,
+            </if>
+            <if test="guidePrice != null">
+                guide_price,
+            </if>
+            <if test="createTime != null">
+                create_time,
+            </if>
+            <if test="createBy != null">
+                create_by,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                #{id,jdbcType=INTEGER},
+            </if>
+            <if test="tranId != null">
+                #{tranId,jdbcType=INTEGER},
+            </if>
+            <if test="productId != null">
+                #{productId,jdbcType=BIGINT},
+            </if>
+            <if test="quantity != null">
+                #{quantity,jdbcType=INTEGER},
+            </if>
+            <if test="price != null">
+                #{price,jdbcType=DECIMAL},
+            </if>
+            <if test="productSku != null">
+                #{productSku,jdbcType=VARCHAR},
+            </if>
+            <if test="productName != null">
+                #{productName,jdbcType=VARCHAR},
+            </if>
+            <if test="productSpecification != null">
+                #{productSpecification,jdbcType=VARCHAR},
+            </if>
+            <if test="guidePrice != null">
+                #{guidePrice,jdbcType=DECIMAL},
+            </if>
+            <if test="createTime != null">
+                #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="createBy != null">
+                #{createBy,jdbcType=INTEGER},
+            </if>
+        </trim>
+    </insert>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.autodealer.crm.modules.fulfillment.transaction.application.api.model.TTranProduct">
+        update t_tran_product
+        <set>
+            <if test="tranId != null">
+                tran_id = #{tranId,jdbcType=INTEGER},
+            </if>
+            <if test="productId != null">
+                product_id = #{productId,jdbcType=BIGINT},
+            </if>
+            <if test="quantity != null">
+                quantity = #{quantity,jdbcType=INTEGER},
+            </if>
+            <if test="price != null">
+                price = #{price,jdbcType=DECIMAL},
+            </if>
+            <if test="productSku != null">
+                product_sku = #{productSku,jdbcType=VARCHAR},
+            </if>
+            <if test="productName != null">
+                product_name = #{productName,jdbcType=VARCHAR},
+            </if>
+            <if test="productSpecification != null">
+                product_specification = #{productSpecification,jdbcType=VARCHAR},
+            </if>
+            <if test="guidePrice != null">
+                guide_price = #{guidePrice,jdbcType=DECIMAL},
+            </if>
+            <if test="createTime != null">
+                create_time = #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="createBy != null">
+                create_by = #{createBy,jdbcType=INTEGER},
+            </if>
+        </set>
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <update id="updateByPrimaryKey" parameterType="com.autodealer.crm.modules.fulfillment.transaction.application.api.model.TTranProduct">
+        update t_tran_product
+        set tran_id = #{tranId,jdbcType=INTEGER},
+            product_id = #{productId,jdbcType=BIGINT},
+            quantity = #{quantity,jdbcType=INTEGER},
+            price = #{price,jdbcType=DECIMAL},
+            product_sku = #{productSku,jdbcType=VARCHAR},
+            product_name = #{productName,jdbcType=VARCHAR},
+            product_specification = #{productSpecification,jdbcType=VARCHAR},
+            guide_price = #{guidePrice,jdbcType=DECIMAL},
+            create_time = #{createTime,jdbcType=TIMESTAMP},
+            create_by = #{createBy,jdbcType=INTEGER}
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+</mapper>

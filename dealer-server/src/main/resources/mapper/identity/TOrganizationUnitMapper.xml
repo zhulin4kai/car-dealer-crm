@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.identity.persistence.mapper.TOrganizationUnitMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit">
+        <id column="id" property="id"/>
+        <result column="code" property="code"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="leader_employee_id" property="leaderEmployeeId"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="migration_placeholder" property="migrationPlaceholder"/>
+        <result column="enabled" property="enabled"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="edit_time" property="editTime"/>
+        <result column="edit_by" property="editBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, code, name, type, parent_id, leader_employee_id, order_no, migration_placeholder,
+        enabled, version,
+        create_time, create_by, edit_time, edit_by
+    </sql>
+
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_organization_unit
+        WHERE id = #{organizationUnitId}
+    </select>
+
+    <select id="selectByCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_organization_unit
+        WHERE code = #{code}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_organization_unit
+        WHERE migration_placeholder = 0
+        ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, parent_id ASC, order_no ASC, id ASC
+    </select>
+
+    <select id="selectAllIncludingPlaceholders" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_organization_unit
+        ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, parent_id ASC, order_no ASC, id ASC
+    </select>
+
+    <select id="selectRoots" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_organization_unit
+        WHERE parent_id IS NULL
+          AND migration_placeholder = 0
+          AND enabled = 1
+        ORDER BY order_no ASC, id ASC
+    </select>
+    <select id="countInitializedRootOrganizations" resultType="int">
+        SELECT COUNT(*) FROM t_organization_unit
+        WHERE enabled=1 AND migration_placeholder=0 AND type='COMPANY'
+          AND parent_id IS NULL AND leader_employee_id IS NOT NULL
+    </select>
+
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_organization_unit
+        WHERE parent_id = #{parentId}
+          AND migration_placeholder = 0
+        ORDER BY order_no ASC, id ASC
+    </select>
+
+    <select id="selectDescendantIds" resultType="int">
+        WITH RECURSIVE organization_tree(id) AS (
+          SELECT id FROM t_organization_unit
+          WHERE id=#{organizationUnitId} AND migration_placeholder=0 AND enabled=1
+          UNION ALL
+          SELECT child.id FROM t_organization_unit child
+          INNER JOIN organization_tree parent ON child.parent_id=parent.id
+          WHERE child.migration_placeholder=0 AND child.enabled=1
+        )
+        SELECT id FROM organization_tree ORDER BY id
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_organization_unit
+        WHERE migration_placeholder=0 AND id IN
+        <foreach collection="organizationUnitIds" item="organizationUnitId" open="(" separator="," close=")">
+            #{organizationUnitId}
+        </foreach>
+        ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, parent_id, order_no, id
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_organization_unit
+        (code, name, type, parent_id, leader_employee_id, order_no, migration_placeholder,
+         enabled, version,
+         create_time, create_by, edit_time, edit_by)
+        VALUES
+        (#{code}, #{name}, #{type}, #{parentId}, #{leaderEmployeeId}, #{orderNo},
+         #{migrationPlaceholder}, #{enabled}, #{version},
+         #{createTime}, #{createBy}, #{editTime}, #{editBy})
+    </insert>
+
+    <update id="updateByIdAndVersion">
+        UPDATE t_organization_unit
+        SET name = #{organizationUnit.name},
+            type = #{organizationUnit.type},
+            parent_id = #{organizationUnit.parentId},
+            leader_employee_id = #{organizationUnit.leaderEmployeeId},
+            order_no = #{organizationUnit.orderNo},
+            enabled = #{organizationUnit.enabled},
+            version = version + 1,
+            edit_time = #{organizationUnit.editTime},
+            edit_by = #{organizationUnit.editBy}
+        WHERE id = #{organizationUnit.id}
+          AND version = #{expectedVersion}
+          AND migration_placeholder = 0
+    </update>
+
+    <update id="assignInitialRootLeader">
+        UPDATE t_organization_unit
+        SET leader_employee_id=#{leaderEmployeeId},version=version+1,
+            edit_by=#{operatorId},edit_time=#{editTime}
+        WHERE id=#{organizationUnitId} AND version=#{expectedVersion}
+          AND type='COMPANY' AND parent_id IS NULL
+          AND leader_employee_id IS NULL AND migration_placeholder=0 AND enabled=1
+    </update>
+
+    <select id="countEffectiveEmployees" resultType="java.lang.Integer">
+        SELECT COUNT(DISTINCT assignment.employee_id)
+        FROM t_employee_assignment assignment
+        INNER JOIN t_employee employee ON employee.id = assignment.employee_id
+        WHERE assignment.organization_unit_id = #{organizationUnitId}
+          AND assignment.status = 'ACTIVE'
+          AND assignment.effective_from &lt;= #{effectiveAt}
+          AND (assignment.effective_to IS NULL OR assignment.effective_to &gt; #{effectiveAt})
+          AND employee.employment_status IN ('ACTIVE', 'HANDOVER')
+    </select>
+</mapper>

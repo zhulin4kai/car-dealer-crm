@@ -1,16 +1,17 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.audit.AuditActionEnum;
-import com.autodealer.crm.audit.OperationAuditRecorder;
-import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.dto.organization.OrganizationChangeHistoryResponse;
-import com.autodealer.crm.dto.user.UserLifecycleDtos.*;
-import com.autodealer.crm.service.AuthorizationDataScope;
-import com.autodealer.crm.service.DataScopeResolver;
-import com.autodealer.crm.service.OrganizationService;
-import com.autodealer.crm.service.UserLifecycleService;
-import com.autodealer.crm.service.UserSessionService;
-import com.autodealer.crm.service.impl.UserAuthorizationPolicy;
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
+import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
+import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.OrganizationChangeHistoryResponse;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.*;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationDataScope;
+import com.autodealer.crm.modules.identity.application.api.DataScopeResolver;
+import com.autodealer.crm.modules.identity.application.api.OrganizationService;
+import com.autodealer.crm.modules.identity.application.api.UserLifecycleService;
+import com.autodealer.crm.modules.identity.application.api.UserSessionService;
+import com.autodealer.crm.modules.identity.application.internal.UserAuthorizationPolicy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @ActiveProfiles("test")
 class UserLifecycleIntegrationTest {
     private static final int USER_ID=97,MANAGER_USER_ID=98,EMPLOYEE_ID=97,MANAGER_EMPLOYEE_ID=98;

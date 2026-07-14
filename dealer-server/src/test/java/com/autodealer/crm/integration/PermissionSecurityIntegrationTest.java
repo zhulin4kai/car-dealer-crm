@@ -1,6 +1,6 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.model.TUser;
+import com.autodealer.crm.modules.identity.application.api.model.TUser;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;

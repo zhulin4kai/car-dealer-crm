@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.ai.persistence.mapper.TAiToolCallMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.ai.persistence.model.TAiToolCall">
+        <id column="id" property="id" />
+        <result column="run_id" property="runId" />
+        <result column="tool_name" property="toolName" />
+        <result column="permission_code" property="permissionCode" />
+        <result column="risk_level" property="riskLevel" />
+        <result column="input_summary" property="inputSummary" />
+        <result column="output_summary" property="outputSummary" />
+        <result column="object_refs" property="objectRefs" />
+        <result column="display_payload_json" property="displayPayloadJson" />
+        <result column="result_status" property="resultStatus" />
+        <result column="error_code" property="errorCode" />
+        <result column="duration_ms" property="durationMs" />
+        <result column="started_time" property="startedTime" />
+        <result column="completed_time" property="completedTime" />
+        <result column="create_by" property="createBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, run_id, tool_name, permission_code, risk_level, input_summary, output_summary,
+        object_refs, display_payload_json, result_status, error_code, duration_ms, started_time, completed_time, create_by
+    </sql>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.ai.persistence.model.TAiToolCall" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_ai_tool_call
+        (run_id, tool_name, permission_code, risk_level, input_summary, output_summary, object_refs,
+         display_payload_json, result_status, error_code, duration_ms, started_time, completed_time, create_by)
+        VALUES
+        (#{runId}, #{toolName}, #{permissionCode}, #{riskLevel}, #{inputSummary}, #{outputSummary},
+         #{objectRefs}, #{displayPayloadJson}, #{resultStatus}, #{errorCode}, #{durationMs}, #{startedTime}, #{completedTime}, #{createBy})
+    </insert>
+
+    <select id="selectByRunId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_ai_tool_call
+        WHERE run_id = #{runId}
+        ORDER BY started_time ASC, id ASC
+    </select>
+
+    <select id="countByRunId" resultType="int">
+        SELECT COUNT(1)
+        FROM t_ai_tool_call
+        WHERE run_id = #{runId}
+    </select>
+</mapper>

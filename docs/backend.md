@@ -49,26 +49,43 @@
 
 ```
 dealer-server/src/main/java/com/autodealer/crm/
-├── web/                    # Controller 层（REST API 入口）
-├── service/                # Service 接口
-│   └── impl/               # Service 实现
-├── mapper/                 # MyBatis Mapper 接口
-├── model/                  # 实体类
-├── manager/                # Manager 层（复杂业务编排）
-├── query/                  # 查询参数对象
-├── result/                 # 返回结果对象
-├── dto/                    # 数据传输对象
-├── config/                 # 配置类
-│   ├── aop/                # 轻量命令上下文切面
-│   ├── handler/            # Security Handler
-│   ├── filter/             # Security Filter
-│   ├── converter/          # Excel 转换器
-│   └── listener/           # Excel 监听器
-├── aspect/                 # AOP 切面
-├── commons/                # 自定义注解
-├── constant/               # 常量
-└── util/                   # 工具类
+├── bootstrap/                       # 应用入口、Spring 装配与 Security 组合根
+├── shared/                          # 不依赖业务模块的稳定通用能力
+│   ├── error/
+│   ├── web/
+│   ├── security/
+│   ├── pagination/
+│   └── infrastructure/
+└── modules/
+    ├── identity/
+    ├── sales/
+    │   ├── activity/
+    │   ├── lead/
+    │   ├── customer/
+    │   ├── opportunity/
+    │   ├── followup/
+    │   └── testdrive/
+    ├── commerce/
+    │   ├── catalog/
+    │   ├── promotion/
+    │   ├── inventory/
+    │   └── quote/
+    ├── fulfillment/
+    │   ├── transaction/
+    │   ├── payment/
+    │   ├── invoice/
+    │   └── delivery/
+    ├── analytics/
+    ├── dictionary/
+    ├── audit/
+    └── ai/
 ```
+
+每个业务模块按实际需要创建 `web`、`application.api`、`application.internal`、
+`domain` 和 `persistence`。跨模块只能依赖目标模块的 `application.api`；公开数据模型和
+数据端口分别位于 `application.api.model` 与 `application.api.port`，MyBatis Mapper
+保留在所属模块的 `persistence.mapper` 并实现对应端口。`shared` 禁止反向依赖业务模块。
+Mapper XML 按模块递归放置在 `src/main/resources/mapper/**`。
 
 ---
 
@@ -95,17 +112,17 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 
 | 层级 | 文件路径 |
 |------|----------|
-| Config | `config/SecurityConfig.java` |
-| Filter | `config/filter/TokenVerifyFilter.java` |
-| Handler | `config/handler/MyAuthenticationSuccessHandler.java` |
-| Handler | `config/handler/MyAuthenticationFailureHandler.java` |
-| Handler | `config/handler/MyLogoutSuccessHandler.java` |
-| Handler | `config/handler/MyAccessDeniedHandler.java` |
-| Handler | `config/handler/GlobalExceptionHandler.java` |
-| Model | `model/TUser.java`, `model/TLoginIdentifier.java`, `model/TUserSession.java`, `model/TRole.java`, `model/TPermission.java`, `model/TUserRole.java`, `model/TRolePermission.java` |
-| Service | `service/UserService.java`, `service/UserSessionService.java` |
-| Mapper | `mapper/TUserMapper.java`, `mapper/TLoginIdentifierMapper.java`, `mapper/TUserSessionMapper.java`, `mapper/TRoleMapper.java`, `mapper/TPermissionMapper.java`, `mapper/TUserRoleMapper.java`, `mapper/TRolePermissionMapper.java` |
-| XML | `resources/mapper/TUserMapper.xml`, `resources/mapper/TLoginIdentifierMapper.xml`, `resources/mapper/TRoleMapper.xml`, `resources/mapper/TPermissionMapper.xml`, `resources/mapper/TUserRoleMapper.xml`, `resources/mapper/TRolePermissionMapper.xml` |
+| Config | `bootstrap/security/SecurityConfig.java` |
+| Filter | `bootstrap/security/TokenVerifyFilter.java` |
+| Handler | `bootstrap/security/MyAuthenticationSuccessHandler.java` |
+| Handler | `bootstrap/security/MyAuthenticationFailureHandler.java` |
+| Handler | `bootstrap/security/MyLogoutSuccessHandler.java` |
+| Handler | `bootstrap/security/MyAccessDeniedHandler.java` |
+| Handler | `shared/web/GlobalExceptionHandler.java` |
+| Model | `modules/identity/application/api/model/TUser.java`, `modules/identity/persistence/model/TLoginIdentifier.java`, `modules/identity/persistence/model/TUserSession.java`, `modules/identity/persistence/model/TRole.java`, `modules/identity/persistence/model/TPermission.java`, `modules/identity/persistence/model/TUserRole.java`, `modules/identity/persistence/model/TRolePermission.java` |
+| Service | `modules/identity/application/api/UserService.java`, `modules/identity/application/api/UserSessionService.java` |
+| Mapper | `modules/identity/persistence/mapper/TUserMapper.java`, `modules/identity/persistence/mapper/TLoginIdentifierMapper.java`, `modules/identity/persistence/mapper/TUserSessionMapper.java`, `modules/identity/persistence/mapper/TRoleMapper.java`, `modules/identity/persistence/mapper/TPermissionMapper.java`, `modules/identity/persistence/mapper/TUserRoleMapper.java`, `modules/identity/persistence/mapper/TRolePermissionMapper.java` |
+| XML | `resources/mapper/identity/TUserMapper.xml`, `resources/mapper/identity/TLoginIdentifierMapper.xml`, `resources/mapper/identity/TRoleMapper.xml`, `resources/mapper/identity/TPermissionMapper.xml`, `resources/mapper/identity/TUserRoleMapper.xml`, `resources/mapper/identity/TRolePermissionMapper.xml` |
 
 ### 2.3 认证流程
 
@@ -219,14 +236,14 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/UserController.java`, `web/UserAuthorizationController.java`, `web/OrganizationController.java`, `web/RoleAccessController.java`, `web/ProfileController.java`, `web/CredentialController.java`, `web/UserSessionController.java`, `web/UserHistoryController.java`, `web/UserLifecycleController.java` |
-| 受管账号 | `service/ManagedUserAccountService.java` → `service/impl/ManagedUserAccountServiceImpl.java`, `service/ManagedUserInvitationService.java` → `service/impl/ManagedUserInvitationServiceImpl.java` |
-| 授权与角色 | `service/AuthorizationService.java` → `service/impl/AuthorizationServiceImpl.java`, `service/RoleAccessService.java` → `service/impl/RoleAccessServiceImpl.java`, `service/impl/UserAuthorizationPolicy.java` |
-| 组织与生命周期 | `service/OrganizationService.java` → `service/impl/OrganizationServiceImpl.java`, `service/UserLifecycleService.java` → `service/impl/UserLifecycleServiceImpl.java` |
-| 个人资料、凭证、会话与历史 | `service/ProfileService.java`, `service/CredentialService.java`, `service/UserSessionService.java`, `service/UserHistoryService.java` 及其 `impl` 实现 |
-| 根命令观测 | `service/command/UserManagementCommand.java`, `config/aop/UserManagementCommandAspect.java` |
-| 安全副作用 | `service/impl/UserSecurityMutationCoordinator.java`, `config/security/OwnerCandidateCacheInvalidator.java` |
-| 认证兼容 Service | `service/UserService.java` → `service/impl/UserServiceImpl.java`；保留登录读取和负责人候选能力，缺少版本、原因、管理边界的旧写入口统一 fail-close |
+| Controller | `modules/identity/web/UserController.java`, `modules/identity/web/UserAuthorizationController.java`, `modules/identity/web/OrganizationController.java`, `modules/identity/web/RoleAccessController.java`, `modules/identity/web/ProfileController.java`, `modules/identity/web/CredentialController.java`, `modules/identity/web/UserSessionController.java`, `modules/identity/web/UserHistoryController.java`, `modules/identity/web/UserLifecycleController.java` |
+| 受管账号 | `modules/identity/application/api/ManagedUserAccountService.java` → `modules/identity/application/internal/ManagedUserAccountServiceImpl.java`, `modules/identity/application/api/ManagedUserInvitationService.java` → `modules/identity/application/internal/ManagedUserInvitationServiceImpl.java` |
+| 授权与角色 | `modules/identity/application/api/AuthorizationService.java` → `modules/identity/application/internal/AuthorizationServiceImpl.java`, `modules/identity/application/api/RoleAccessService.java` → `modules/identity/application/internal/RoleAccessServiceImpl.java`, `modules/identity/application/internal/UserAuthorizationPolicy.java` |
+| 组织与生命周期 | `modules/identity/application/api/OrganizationService.java` → `modules/identity/application/internal/OrganizationServiceImpl.java`, `modules/identity/application/api/UserLifecycleService.java` → `modules/identity/application/internal/UserLifecycleServiceImpl.java` |
+| 个人资料、凭证、会话与历史 | `modules/identity/application/api/ProfileService.java`, `modules/identity/application/api/CredentialService.java`, `modules/identity/application/api/UserSessionService.java`, `modules/identity/application/api/UserHistoryService.java` 及其 `impl` 实现 |
+| 根命令观测 | `modules/identity/application/api/command/UserManagementCommand.java`, `modules/identity/application/internal/UserManagementCommandAspect.java` |
+| 安全副作用 | `modules/identity/application/internal/UserSecurityMutationCoordinator.java`, `modules/identity/application/internal/OwnerCandidateCacheInvalidator.java` |
+| 认证兼容 Service | `modules/identity/application/api/UserService.java` → `modules/identity/application/internal/UserServiceImpl.java`；保留登录读取和负责人候选能力，缺少版本、原因、管理边界的旧写入口统一 fail-close |
 | Mapper | `TUserMapper`, `TLoginIdentifierMapper`, `TEmployeeMapper`, `TEmployeeAssignmentMapper`, `TEmployeeReportingMapper`, `TOrganizationUnitMapper`, `TPositionMapper`, `TRoleMapper`, `TRolePermissionMapper`, `TRoleOrganizationMapper`, `TUserRoleMapper`, `TUserPermissionMapper`, `TUserSessionMapper`, `TAccountCredentialMapper`, `TAuthorizationHistoryMapper`, `TUserLifecycleMapper` |
 | Model/DTO | `TUser`, `TLoginIdentifier`, `TEmployee`, `TEmployeeAssignment`, `TEmployeeReporting`, `TOrganizationUnit`, `TPosition`, `TRole`, `TPermission`, `TUserRole`, `TUserPermission`, `TUserSession`, `TAccountCredential` 及 `dto/user/`, `dto/access/`, `dto/organization/`, `dto/profile/`, `dto/credential/` |
 
@@ -324,14 +341,14 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/ClueController.java`, `web/ClueRemarkController.java` |
-| Service | `service/ClueService.java` → `service/impl/ClueServiceImpl.java`, `service/ClueRemarkService.java` → `service/impl/ClueRemarkServiceImpl.java` |
-| Manager | `manager/CustomerManager.java`（线索转客户） |
-| Mapper | `mapper/TClueMapper.java`, `mapper/TClueRemarkMapper.java`, `mapper/TClueOwnerHistoryMapper.java` |
-| XML | `resources/mapper/TClueMapper.xml`, `resources/mapper/TClueRemarkMapper.xml`, `resources/mapper/TClueOwnerHistoryMapper.xml` |
-| Model | `model/TClue.java`, `model/TClueRemark.java`, `model/TClueOwnerHistory.java` |
-| Query | `query/ClueQuery.java`, `query/ClueRemarkQuery.java` |
-| Excel | `result/ClueExcelRaw.java`, `service/ClueImportValidator.java`, `dto/ImportResult.java` |
+| Controller | `modules/sales/lead/web/ClueController.java`, `modules/sales/lead/web/ClueRemarkController.java` |
+| Service | `modules/sales/lead/application/api/ClueService.java` → `modules/sales/lead/application/internal/ClueServiceImpl.java`, `modules/sales/lead/application/api/ClueRemarkService.java` → `modules/sales/lead/application/internal/ClueRemarkServiceImpl.java` |
+| Manager | `modules/sales/customer/application/internal/CustomerManager.java`（线索转客户） |
+| Mapper | `modules/sales/lead/persistence/mapper/TClueMapper.java`, `modules/sales/lead/persistence/mapper/TClueRemarkMapper.java`, `modules/sales/lead/persistence/mapper/TClueOwnerHistoryMapper.java` |
+| XML | `resources/mapper/sales/lead/TClueMapper.xml`, `resources/mapper/sales/lead/TClueRemarkMapper.xml`, `resources/mapper/sales/lead/TClueOwnerHistoryMapper.xml` |
+| Model | `modules/sales/lead/application/api/model/TClue.java`, `modules/sales/lead/application/api/model/TClueRemark.java`, `modules/sales/lead/application/api/model/TClueOwnerHistory.java` |
+| Query | `modules/sales/lead/application/api/query/ClueQuery.java`, `modules/sales/lead/application/api/query/ClueRemarkQuery.java` |
+| Excel | `modules/sales/lead/application/api/result/ClueExcelRaw.java`, `modules/sales/lead/application/internal/ClueImportValidator.java`, `modules/sales/lead/application/api/dto/ImportResult.java` |
 
 ### 4.2 接口方法及业务流程
 
@@ -459,14 +476,14 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/CustomerController.java` |
-| Service | `service/CustomerService.java` → `service/impl/CustomerServiceImpl.java` |
-| Manager | `manager/CustomerManager.java` |
-| Mapper | `mapper/TCustomerMapper.java`, `mapper/TCustomerOwnerHistoryMapper.java`, `mapper/TClueMapper.java` |
-| XML | `resources/mapper/TCustomerMapper.xml`, `resources/mapper/TCustomerOwnerHistoryMapper.xml` |
-| Model | `model/TCustomer.java`, `model/TCustomerOwnerHistory.java` |
-| Query | `query/CustomerQuery.java` |
-| Excel | `result/CustomerExcel.java` |
+| Controller | `modules/sales/customer/web/CustomerController.java` |
+| Service | `modules/sales/customer/application/api/CustomerService.java` → `modules/sales/customer/application/internal/CustomerServiceImpl.java` |
+| Manager | `modules/sales/customer/application/internal/CustomerManager.java` |
+| Mapper | `modules/sales/customer/persistence/mapper/TCustomerMapper.java`, `modules/sales/customer/persistence/mapper/TCustomerOwnerHistoryMapper.java`, `modules/sales/lead/persistence/mapper/TClueMapper.java` |
+| XML | `resources/mapper/sales/customer/TCustomerMapper.xml`, `resources/mapper/sales/customer/TCustomerOwnerHistoryMapper.xml` |
+| Model | `modules/sales/customer/application/api/model/TCustomer.java`, `modules/sales/customer/application/api/model/TCustomerOwnerHistory.java` |
+| Query | `modules/sales/customer/application/api/query/CustomerQuery.java` |
+| Excel | `modules/sales/customer/application/api/result/CustomerExcel.java` |
 
 ### 5.2 接口方法及业务流程
 
@@ -531,12 +548,12 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/TranController.java` |
-| Service | `service/TranService.java` → `service/impl/TranServiceImpl.java`, `service/TransactionCompletionService.java` → `service/impl/TransactionCompletionServiceImpl.java` |
-| Mapper | `mapper/TTranMapper.java`, `mapper/TTranProductMapper.java`, `mapper/TTranInvoiceMapper.java`, `mapper/TTranApproveMapper.java`, `mapper/TTranRemarkMapper.java`, `mapper/TPaymentMapper.java`, `mapper/TRefundRequestMapper.java`, `mapper/TDeliveryMapper.java`, `mapper/TProductStockRecordMapper.java`, `mapper/ProductMapper.java` |
-| XML | `resources/mapper/TTranMapper.xml`, `resources/mapper/TTranProductMapper.xml`, `resources/mapper/TTranInvoiceMapper.xml`, `resources/mapper/TTranApproveMapper.xml`, `resources/mapper/TTranRemarkMapper.xml`, `resources/mapper/TPaymentMapper.xml`, `resources/mapper/TRefundRequestMapper.xml`, `resources/mapper/TDeliveryMapper.xml`, `resources/mapper/TProductStockRecordMapper.xml` |
-| Model | `model/TTran.java`, `model/TTranProduct.java`, `model/TTranInvoice.java`, `model/TTranApprove.java`, `model/TTranRemark.java`, `model/TranCreateRequest.java` |
-| Query | `query/TranQuery.java`, `query/TranProductQuery.java` |
+| Controller | `modules/fulfillment/transaction/web/TranController.java` |
+| Service | `modules/fulfillment/transaction/application/api/TranService.java` → `modules/fulfillment/transaction/application/internal/TranServiceImpl.java`, `modules/fulfillment/transaction/application/api/TransactionCompletionService.java` → `modules/fulfillment/transaction/application/internal/TransactionCompletionServiceImpl.java` |
+| Mapper | `modules/fulfillment/transaction/persistence/mapper/TTranMapper.java`, `modules/fulfillment/transaction/persistence/mapper/TTranProductMapper.java`, `modules/fulfillment/invoice/persistence/mapper/TTranInvoiceMapper.java`, `modules/fulfillment/transaction/persistence/mapper/TTranApproveMapper.java`, `modules/fulfillment/transaction/persistence/mapper/TTranRemarkMapper.java`, `modules/fulfillment/payment/persistence/mapper/TPaymentMapper.java`, `modules/fulfillment/payment/persistence/mapper/TRefundRequestMapper.java`, `modules/fulfillment/delivery/persistence/mapper/TDeliveryMapper.java`, `modules/commerce/inventory/persistence/mapper/TProductStockRecordMapper.java`, `modules/commerce/catalog/persistence/mapper/TProductMapper.java` |
+| XML | `resources/mapper/fulfillment/transaction/TTranMapper.xml`, `resources/mapper/fulfillment/transaction/TTranProductMapper.xml`, `resources/mapper/fulfillment/invoice/TTranInvoiceMapper.xml`, `resources/mapper/fulfillment/transaction/TTranApproveMapper.xml`, `resources/mapper/fulfillment/transaction/TTranRemarkMapper.xml`, `resources/mapper/fulfillment/payment/TPaymentMapper.xml`, `resources/mapper/fulfillment/payment/TRefundRequestMapper.xml`, `resources/mapper/fulfillment/delivery/TDeliveryMapper.xml`, `resources/mapper/commerce/inventory/TProductStockRecordMapper.xml` |
+| Model/DTO | `modules/fulfillment/transaction/application/api/model/TTran.java`, `modules/fulfillment/transaction/application/api/model/TTranProduct.java`, `modules/fulfillment/invoice/application/api/model/TTranInvoice.java`, `modules/fulfillment/transaction/application/api/model/TTranApprove.java`, `modules/fulfillment/transaction/application/api/model/TTranRemark.java`, `modules/fulfillment/transaction/application/api/dto/CreateTranRequest.java` |
+| Query | `modules/fulfillment/transaction/application/api/query/TranQuery.java`, `modules/fulfillment/transaction/application/api/query/TranProductQuery.java` |
 
 ### 6.2 交易状态流转
 
@@ -716,13 +733,13 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/QuoteController.java` |
-| Service | `service/QuoteService.java` → `service/impl/QuoteServiceImpl.java` |
-| Mapper | `mapper/TQuoteMapper.java`, `mapper/TQuoteVersionMapper.java`, `mapper/TQuoteVersionItemMapper.java`, `mapper/TQuoteStatusHistoryMapper.java` |
-| XML | `resources/mapper/TQuoteMapper.xml`, `resources/mapper/TQuoteVersionMapper.xml`, `resources/mapper/TQuoteVersionItemMapper.xml`, `resources/mapper/TQuoteStatusHistoryMapper.xml` |
-| Model | `model/TQuote.java`, `model/TQuoteVersion.java`, `model/TQuoteVersionItem.java`, `model/TQuoteStatusHistory.java` |
-| DTO | `dto/CreateQuoteRequest.java`, `dto/CreateQuoteVersionRequest.java`, `dto/UpdateQuoteStatusRequest.java`, `dto/QuoteDetailResponse.java` |
-| Query | `query/QuoteQuery.java` |
+| Controller | `modules/commerce/quote/web/QuoteController.java` |
+| Service | `modules/commerce/quote/application/api/QuoteService.java` → `modules/commerce/quote/application/internal/QuoteServiceImpl.java` |
+| Mapper | `modules/commerce/quote/persistence/mapper/TQuoteMapper.java`, `modules/commerce/quote/persistence/mapper/TQuoteVersionMapper.java`, `modules/commerce/quote/persistence/mapper/TQuoteVersionItemMapper.java`, `modules/commerce/quote/persistence/mapper/TQuoteStatusHistoryMapper.java` |
+| XML | `resources/mapper/commerce/quote/TQuoteMapper.xml`, `resources/mapper/commerce/quote/TQuoteVersionMapper.xml`, `resources/mapper/commerce/quote/TQuoteVersionItemMapper.xml`, `resources/mapper/commerce/quote/TQuoteStatusHistoryMapper.xml` |
+| Model | `modules/commerce/quote/application/api/model/TQuote.java`, `modules/commerce/quote/application/api/model/TQuoteVersion.java`, `modules/commerce/quote/application/api/model/TQuoteVersionItem.java`, `modules/commerce/quote/application/api/model/TQuoteStatusHistory.java` |
+| DTO | `modules/commerce/quote/application/api/dto/CreateQuoteRequest.java`, `modules/commerce/quote/application/api/dto/CreateQuoteVersionRequest.java`, `modules/commerce/quote/application/api/dto/UpdateQuoteStatusRequest.java`, `modules/commerce/quote/application/api/dto/QuoteDetailResponse.java` |
+| Query | `modules/commerce/quote/application/api/query/QuoteQuery.java` |
 
 ### 7.2 报价状态流转
 
@@ -790,14 +807,14 @@ ACCEPTED → CONVERTED_TO_ORDER
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/ActivityController.java`, `web/ActivityRemarkController.java` |
-| Service | `service/ActivityService.java` → `service/impl/ActivityServiceImpl.java`, `service/ActivityRemarkService.java` → `service/impl/ActivityRemarkServiceImpl.java` |
-| Mapper | `mapper/TActivityMapper.java`, `mapper/TActivityRemarkMapper.java` |
-| XML | `resources/mapper/TActivityMapper.xml`, `resources/mapper/TActivityRemarkMapper.xml` |
-| Model | `model/TActivity.java`, `model/TActivityRemark.java` |
-| Query | `query/ActivityQuery.java`, `query/ActivityRemarkQuery.java` |
-| DTO/Result | `dto/CreateActivityRequest.java`, `dto/UpdateActivityRequest.java`, `dto/ReviewActivityRequest.java`, `dto/ActivityLifecycleRequest.java`, `dto/ActivityRoiResponse.java`, `result/ActivityExportRow.java` |
-| Enum | `enums/ActivityStatus.java` |
+| Controller | `modules/sales/activity/web/ActivityController.java`, `modules/sales/activity/web/ActivityRemarkController.java` |
+| Service | `modules/sales/activity/application/api/ActivityService.java` → `modules/sales/activity/application/internal/ActivityServiceImpl.java`, `modules/sales/activity/application/api/ActivityRemarkService.java` → `modules/sales/activity/application/internal/ActivityRemarkServiceImpl.java` |
+| Mapper | `modules/sales/activity/persistence/mapper/TActivityMapper.java`, `modules/sales/activity/persistence/mapper/TActivityRemarkMapper.java` |
+| XML | `resources/mapper/sales/activity/TActivityMapper.xml`, `resources/mapper/sales/activity/TActivityRemarkMapper.xml` |
+| Model | `modules/sales/activity/application/api/model/TActivity.java`, `modules/sales/activity/application/api/model/TActivityRemark.java` |
+| Query | `modules/sales/activity/application/api/query/ActivityQuery.java`, `modules/sales/activity/application/api/query/ActivityRemarkQuery.java` |
+| DTO/Result | `modules/sales/activity/application/api/dto/CreateActivityRequest.java`, `modules/sales/activity/application/api/dto/UpdateActivityRequest.java`, `modules/sales/activity/application/api/dto/ReviewActivityRequest.java`, `modules/sales/activity/application/api/dto/ActivityLifecycleRequest.java`, `modules/sales/activity/application/api/dto/ActivityRoiResponse.java`, `modules/sales/activity/application/api/result/ActivityExportRow.java` |
+| Enum | `modules/sales/activity/application/api/enums/ActivityStatus.java` |
 
 ### 8.2 接口方法及业务流程
 
@@ -865,11 +882,11 @@ ACCEPTED → CONVERTED_TO_ORDER
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/ProductController.java`, `web/ProductCategoryController.java`, `web/ProductPromotionController.java`, `web/ProductStockController.java` |
-| Service | `service/ProductService.java` → `service/impl/ProductServiceImpl.java`, `service/ProductCategoryService.java` → `service/impl/ProductCategoryServiceImpl.java`, `service/ProductPromotionService.java` → `service/impl/ProductPromotionServiceImpl.java`, `service/ProductStockRecordService.java` → `service/impl/ProductStockRecordServiceImpl.java`, `service/ProductVehicleService.java` → `service/impl/ProductVehicleServiceImpl.java` |
-| Mapper | `mapper/ProductMapper.java`, `mapper/ProductCategoryMapper.java`, `mapper/ProductPromotionMapper.java`, `mapper/ProductStockRecordMapper.java`, `mapper/TProductVehicleMapper.java` |
-| XML | `resources/mapper/TProductMapper.xml`, `resources/mapper/TProductCategoryMapper.xml`, `resources/mapper/TProductPromotionMapper.xml`, `resources/mapper/TProductStockRecordMapper.xml`, `resources/mapper/TProductVehicleMapper.xml` |
-| Model | `model/Product.java`, `model/ProductCategory.java`, `model/ProductPromotion.java`, `model/ProductStockRecord.java`, `model/TProduct.java`, `model/TProductVehicle.java`, `model/TProductStockRecord.java` |
+| Controller | `modules/commerce/catalog/web/ProductController.java`, `modules/commerce/catalog/web/ProductCategoryController.java`, `modules/commerce/promotion/web/ProductPromotionController.java`, `modules/commerce/inventory/web/ProductStockController.java` |
+| Service | `modules/commerce/catalog/application/api/ProductService.java` → `modules/commerce/catalog/application/internal/ProductServiceImpl.java`, `modules/commerce/catalog/application/api/ProductCategoryService.java` → `modules/commerce/catalog/application/internal/ProductCategoryServiceImpl.java`, `modules/commerce/promotion/application/api/ProductPromotionService.java` → `modules/commerce/promotion/application/internal/ProductPromotionServiceImpl.java`, `modules/commerce/inventory/application/api/ProductStockRecordService.java` → `modules/commerce/inventory/application/internal/ProductStockRecordServiceImpl.java`, `modules/commerce/inventory/application/api/ProductVehicleService.java` → `modules/commerce/inventory/application/internal/ProductVehicleServiceImpl.java` |
+| Mapper | `modules/commerce/catalog/persistence/mapper/TProductMapper.java`, `modules/commerce/catalog/persistence/mapper/TProductCategoryMapper.java`, `modules/commerce/promotion/persistence/mapper/TProductPromotionMapper.java`, `modules/commerce/inventory/persistence/mapper/TProductStockRecordMapper.java`, `modules/commerce/inventory/persistence/mapper/TProductVehicleMapper.java` |
+| XML | `resources/mapper/commerce/catalog/TProductMapper.xml`, `resources/mapper/commerce/catalog/TProductCategoryMapper.xml`, `resources/mapper/commerce/promotion/TProductPromotionMapper.xml`, `resources/mapper/commerce/inventory/TProductStockRecordMapper.xml`, `resources/mapper/commerce/inventory/TProductVehicleMapper.xml` |
+| Model | `modules/commerce/catalog/application/api/model/TProduct.java`, `modules/commerce/catalog/application/api/model/TProductCategory.java`, `modules/commerce/promotion/application/api/model/TProductPromotion.java`, `modules/commerce/inventory/application/api/model/TProductVehicle.java`, `modules/commerce/inventory/application/api/model/TProductStockRecord.java` |
 
 ### 9.2 接口方法及业务流程
 
@@ -951,12 +968,12 @@ ProductStockController.restock()
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/DicController.java` |
-| Service | `service/DicService.java` → `service/impl/DicServiceImpl.java` |
-| Mapper | `mapper/DicMapper.java`, `mapper/TDicTypeMapper.java`, `mapper/TDicValueMapper.java` |
-| XML | `resources/mapper/DicMapper.xml` |
-| Model | `model/TDicType.java`, `model/TDicValue.java` |
-| Query | `query/DicQuery.java` |
+| Controller | `modules/dictionary/web/DicController.java` |
+| Service | `modules/dictionary/application/api/DicService.java` → `modules/dictionary/application/internal/DicServiceImpl.java` |
+| Mapper | `modules/dictionary/persistence/mapper/DicMapper.java`, `modules/dictionary/persistence/mapper/TDicTypeMapper.java`, `modules/dictionary/persistence/mapper/TDicValueMapper.java` |
+| XML | `resources/mapper/dictionary/DicMapper.xml` |
+| Model | `modules/dictionary/application/api/model/TDicType.java`, `modules/dictionary/application/api/model/TDicValue.java` |
+| Query | `modules/dictionary/application/api/query/DicQuery.java` |
 
 ### 10.2 接口方法及业务流程
 
@@ -1011,10 +1028,10 @@ deleteDicType(id):
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/StatisticController.java` |
-| Service | `service/StatisticService.java` → `service/impl/StatisticServiceImpl.java` |
-| Manager | `manager/StatisticManager.java` |
-| Result | `result/SummaryData.java`, `result/NameValue.java` |
+| Controller | `modules/analytics/web/StatisticController.java` |
+| Service | `modules/analytics/application/api/StatisticService.java` → `modules/analytics/application/internal/StatisticServiceImpl.java` |
+| Manager | `modules/analytics/application/internal/StatisticManager.java` |
+| Result | `modules/analytics/application/api/result/SummaryData.java`, `modules/analytics/application/api/result/NameValue.java` |
 
 ### 11.2 接口方法及业务流程
 
@@ -1055,13 +1072,13 @@ deleteDicType(id):
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/DeliveryController.java` |
-| Service | `service/DeliveryService.java` → `service/impl/DeliveryServiceImpl.java` |
-| Mapper | `mapper/TDeliveryMapper.java`, `mapper/TDeliveryCheckItemMapper.java`, `mapper/TProductVehicleMapper.java`, `mapper/TProductStockRecordMapper.java` |
-| XML | `resources/mapper/TDeliveryMapper.xml`, `resources/mapper/TDeliveryCheckItemMapper.xml`, `resources/mapper/TProductVehicleMapper.xml`, `resources/mapper/TProductStockRecordMapper.xml` |
-| Model | `model/TDelivery.java`, `model/TDeliveryCheckItem.java` |
-| DTO | `dto/CreateDeliveryRequest.java`, `dto/UpdateDeliveryCheckItemRequest.java`, `dto/SignDeliveryRequest.java`, `dto/DeliveryExceptionRequest.java`, `dto/DeliveryCancelRequest.java` |
-| Query | `query/DeliveryQuery.java` |
+| Controller | `modules/fulfillment/delivery/web/DeliveryController.java` |
+| Service | `modules/fulfillment/delivery/application/api/DeliveryService.java` → `modules/fulfillment/delivery/application/internal/DeliveryServiceImpl.java` |
+| Mapper | `modules/fulfillment/delivery/persistence/mapper/TDeliveryMapper.java`, `modules/fulfillment/delivery/persistence/mapper/TDeliveryCheckItemMapper.java`, `modules/commerce/inventory/persistence/mapper/TProductVehicleMapper.java`, `modules/commerce/inventory/persistence/mapper/TProductStockRecordMapper.java` |
+| XML | `resources/mapper/fulfillment/delivery/TDeliveryMapper.xml`, `resources/mapper/fulfillment/delivery/TDeliveryCheckItemMapper.xml`, `resources/mapper/commerce/inventory/TProductVehicleMapper.xml`, `resources/mapper/commerce/inventory/TProductStockRecordMapper.xml` |
+| Model | `modules/fulfillment/delivery/application/api/model/TDelivery.java`, `modules/fulfillment/delivery/application/api/model/TDeliveryCheckItem.java` |
+| DTO | `modules/fulfillment/delivery/application/api/dto/CreateDeliveryRequest.java`, `modules/fulfillment/delivery/application/api/dto/UpdateDeliveryCheckItemRequest.java`, `modules/fulfillment/delivery/application/api/dto/SignDeliveryRequest.java`, `modules/fulfillment/delivery/application/api/dto/DeliveryExceptionRequest.java`, `modules/fulfillment/delivery/application/api/dto/DeliveryCancelRequest.java` |
+| Query | `modules/fulfillment/delivery/application/api/query/DeliveryQuery.java` |
 
 ### 12.2 接口方法及业务流程
 
@@ -1116,14 +1133,14 @@ deleteDicType(id):
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/OpportunityController.java` |
-| Service | `service/OpportunityService.java` → `service/impl/OpportunityServiceImpl.java` |
-| Mapper | `mapper/TOpportunityMapper.java`, `mapper/TOpportunityStageHistoryMapper.java` |
-| XML | `resources/mapper/TOpportunityMapper.xml`, `resources/mapper/TOpportunityStageHistoryMapper.xml` |
-| Model | `model/TOpportunity.java`, `model/TOpportunityStageHistory.java` |
-| DTO | `dto/CreateOpportunityRequest.java`, `dto/UpdateOpportunityRequest.java`, `dto/AdvanceOpportunityStageRequest.java`, `dto/OpportunityResultRequest.java` |
-| Enum | `enums/OpportunityStage.java` |
-| Query | `query/OpportunityQuery.java` |
+| Controller | `modules/sales/opportunity/web/OpportunityController.java` |
+| Service | `modules/sales/opportunity/application/api/OpportunityService.java` → `modules/sales/opportunity/application/internal/OpportunityServiceImpl.java` |
+| Mapper | `modules/sales/opportunity/persistence/mapper/TOpportunityMapper.java`, `modules/sales/opportunity/persistence/mapper/TOpportunityStageHistoryMapper.java` |
+| XML | `resources/mapper/sales/opportunity/TOpportunityMapper.xml`, `resources/mapper/sales/opportunity/TOpportunityStageHistoryMapper.xml` |
+| Model | `modules/sales/opportunity/application/api/model/TOpportunity.java`, `modules/sales/opportunity/application/api/model/TOpportunityStageHistory.java` |
+| DTO | `modules/sales/opportunity/application/api/dto/CreateOpportunityRequest.java`, `modules/sales/opportunity/application/api/dto/UpdateOpportunityRequest.java`, `modules/sales/opportunity/application/api/dto/AdvanceOpportunityStageRequest.java`, `modules/sales/opportunity/application/api/dto/OpportunityResultRequest.java` |
+| Enum | `modules/sales/opportunity/application/api/enums/OpportunityStage.java` |
+| Query | `modules/sales/opportunity/application/api/query/OpportunityQuery.java` |
 
 ### 13.2 接口方法及业务流程
 
@@ -1159,14 +1176,14 @@ deleteDicType(id):
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/TestDriveController.java` |
-| Service | `service/TestDriveService.java` → `service/impl/TestDriveServiceImpl.java` |
-| Mapper | `mapper/TTestDriveMapper.java`, `mapper/TTestDriveVehicleHoldMapper.java`, `mapper/TTestDriveStatusHistoryMapper.java` |
-| XML | `resources/mapper/TTestDriveMapper.xml`, `resources/mapper/TTestDriveVehicleHoldMapper.xml`, `resources/mapper/TTestDriveStatusHistoryMapper.xml` |
-| Model | `model/TTestDrive.java`, `model/TTestDriveVehicleHold.java`, `model/TTestDriveStatusHistory.java` |
-| DTO | `dto/CreateTestDriveRequest.java`, `dto/RescheduleTestDriveRequest.java`, `dto/CancelTestDriveRequest.java`, `dto/CheckInTestDriveRequest.java`, `dto/CompleteTestDriveRequest.java` |
-| Enum | `enums/TestDriveStatus.java` |
-| Query | `query/TestDriveQuery.java` |
+| Controller | `modules/sales/testdrive/web/TestDriveController.java` |
+| Service | `modules/sales/testdrive/application/api/TestDriveService.java` → `modules/sales/testdrive/application/internal/TestDriveServiceImpl.java` |
+| Mapper | `modules/sales/testdrive/persistence/mapper/TTestDriveMapper.java`, `modules/sales/testdrive/persistence/mapper/TTestDriveVehicleHoldMapper.java`, `modules/sales/testdrive/persistence/mapper/TTestDriveStatusHistoryMapper.java` |
+| XML | `resources/mapper/sales/testdrive/TTestDriveMapper.xml`, `resources/mapper/sales/testdrive/TTestDriveVehicleHoldMapper.xml`, `resources/mapper/sales/testdrive/TTestDriveStatusHistoryMapper.xml` |
+| Model | `modules/sales/testdrive/application/api/model/TTestDrive.java`, `modules/sales/testdrive/application/api/model/TTestDriveVehicleHold.java`, `modules/sales/testdrive/application/api/model/TTestDriveStatusHistory.java` |
+| DTO | `modules/sales/testdrive/application/api/dto/CreateTestDriveRequest.java`, `modules/sales/testdrive/application/api/dto/RescheduleTestDriveRequest.java`, `modules/sales/testdrive/application/api/dto/CancelTestDriveRequest.java`, `modules/sales/testdrive/application/api/dto/CheckInTestDriveRequest.java`, `modules/sales/testdrive/application/api/dto/CompleteTestDriveRequest.java` |
+| Enum | `modules/sales/testdrive/application/api/enums/TestDriveStatus.java` |
+| Query | `modules/sales/testdrive/application/api/query/TestDriveQuery.java` |
 
 ### 14.2 接口方法及业务流程
 
@@ -1203,15 +1220,15 @@ deleteDicType(id):
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/FollowTaskController.java`, `web/CommunicationRecordController.java` |
-| Service | `service/FollowTaskService.java`, `service/CommunicationRecordService.java` |
-| Service 实现 | `service/impl/FollowTaskServiceImpl.java`, `service/impl/CommunicationRecordServiceImpl.java`, `service/impl/FollowRelatedObjectResolver.java` |
-| Mapper | `mapper/TFollowTaskMapper.java`, `mapper/TCommunicationRecordMapper.java` |
-| XML | `resources/mapper/TFollowTaskMapper.xml`, `resources/mapper/TCommunicationRecordMapper.xml` |
-| Model | `model/TFollowTask.java`, `model/TCommunicationRecord.java` |
-| DTO | `dto/CreateFollowTaskRequest.java`, `dto/PostponeFollowTaskRequest.java`, `dto/CancelFollowTaskRequest.java`, `dto/CompleteFollowTaskRequest.java`, `dto/CreateCommunicationRecordRequest.java`, `dto/CorrectCommunicationRecordRequest.java`, `dto/VoidCommunicationRecordRequest.java` |
-| Enum | `enums/FollowRelatedObjectType.java`, `enums/FollowTaskStatus.java`, `enums/FollowTaskType.java`, `enums/FollowTaskPriority.java`, `enums/CommunicationMethod.java`, `enums/CommunicationRecordStatus.java` |
-| Query | `query/FollowTaskQuery.java`, `query/CommunicationRecordQuery.java` |
+| Controller | `modules/sales/followup/web/FollowTaskController.java`, `modules/sales/followup/web/CommunicationRecordController.java` |
+| Service | `modules/sales/followup/application/api/FollowTaskService.java`, `modules/sales/followup/application/api/CommunicationRecordService.java` |
+| Service 实现 | `modules/sales/followup/application/internal/FollowTaskServiceImpl.java`, `modules/sales/followup/application/internal/CommunicationRecordServiceImpl.java`, `modules/sales/followup/application/internal/FollowRelatedObjectResolver.java` |
+| Mapper | `modules/sales/followup/persistence/mapper/TFollowTaskMapper.java`, `modules/sales/followup/persistence/mapper/TCommunicationRecordMapper.java` |
+| XML | `resources/mapper/sales/followup/TFollowTaskMapper.xml`, `resources/mapper/sales/followup/TCommunicationRecordMapper.xml` |
+| Model | `modules/sales/followup/application/api/model/TFollowTask.java`, `modules/sales/followup/application/api/model/TCommunicationRecord.java` |
+| DTO | `modules/sales/followup/application/api/dto/CreateFollowTaskRequest.java`, `modules/sales/followup/application/api/dto/PostponeFollowTaskRequest.java`, `modules/sales/followup/application/api/dto/CancelFollowTaskRequest.java`, `modules/sales/followup/application/api/dto/CompleteFollowTaskRequest.java`, `modules/sales/followup/application/api/dto/CreateCommunicationRecordRequest.java`, `modules/sales/followup/application/api/dto/CorrectCommunicationRecordRequest.java`, `modules/sales/followup/application/api/dto/VoidCommunicationRecordRequest.java` |
+| Enum | `modules/sales/followup/application/api/enums/FollowRelatedObjectType.java`, `modules/sales/followup/application/api/enums/FollowTaskStatus.java`, `modules/sales/followup/application/api/enums/FollowTaskType.java`, `modules/sales/followup/application/api/enums/FollowTaskPriority.java`, `modules/sales/followup/application/api/enums/CommunicationMethod.java`, `modules/sales/followup/application/api/enums/CommunicationRecordStatus.java` |
+| Query | `modules/sales/followup/application/api/query/FollowTaskQuery.java`, `modules/sales/followup/application/api/query/CommunicationRecordQuery.java` |
 
 ### 15.2 跟进任务流程
 
@@ -1259,13 +1276,13 @@ deleteDicType(id):
 
 | 层级 | 文件路径 |
 |------|----------|
-| Controller | `web/AuditLogController.java` |
-| Service | `service/AuditLogService.java` → `service/impl/AuditLogServiceImpl.java` |
-| Recorder | `audit/LoginAuditRecorder.java`, `audit/OperationAuditRecorder.java` |
-| Mapper | `mapper/TLoginLogMapper.java`, `mapper/TOperationLogMapper.java` |
-| XML | `resources/mapper/TLoginLogMapper.xml`, `resources/mapper/TOperationLogMapper.xml` |
-| Model | `model/TLoginLog.java`, `model/TOperationLog.java` |
-| Query | `query/AuditLoginLogQuery.java`, `query/AuditOperationLogQuery.java` |
+| Controller | `modules/audit/web/AuditLogController.java` |
+| Service | `modules/audit/application/api/AuditLogService.java` → `modules/audit/application/internal/AuditLogServiceImpl.java` |
+| Recorder | `modules/audit/application/api/LoginAuditRecorder.java`, `modules/audit/application/api/OperationAuditRecorder.java` |
+| Mapper | `modules/audit/persistence/mapper/TLoginLogMapper.java`, `modules/audit/persistence/mapper/TOperationLogMapper.java` |
+| XML | `resources/mapper/audit/TLoginLogMapper.xml`, `resources/mapper/audit/TOperationLogMapper.xml` |
+| Model | `modules/audit/persistence/model/TLoginLog.java`, `modules/audit/persistence/model/TOperationLog.java` |
+| Query | `modules/audit/application/api/query/AuditLoginLogQuery.java`, `modules/audit/application/api/query/AuditOperationLogQuery.java` |
 
 ### 16.3 登录记录
 
@@ -1294,7 +1311,7 @@ deleteDicType(id):
 ## 17. 安全配置
 
 ### 17.1 SecurityConfig
-**路径**: `config/SecurityConfig.java`
+**路径**: `bootstrap/security/SecurityConfig.java`
 
 ```java
 @EnableMethodSecurity  // 开启方法级别权限检查
@@ -1313,7 +1330,7 @@ public class SecurityConfig {
 ```
 
 ### 17.2 TokenVerifyFilter
-**路径**: `config/filter/TokenVerifyFilter.java`
+**路径**: `bootstrap/security/TokenVerifyFilter.java`
 
 **执行逻辑**:
 1. 登录请求放行
@@ -1328,11 +1345,11 @@ public class SecurityConfig {
 
 | Handler | 路径 | 功能 |
 |---------|------|------|
-| MyAuthenticationSuccessHandler | `config/handler/MyAuthenticationSuccessHandler.java` | 登录成功：生成 JWT、存入 Redis、写登录审计、返回 token |
-| MyAuthenticationFailureHandler | `config/handler/MyAuthenticationFailureHandler.java` | 登录失败：写失败登录审计并返回 401 |
-| MyLogoutSuccessHandler | `config/handler/MyLogoutSuccessHandler.java` | 退出登录：先提交 authVersion 递增，再尽力清理 Redis 会话 |
-| MyAccessDeniedHandler | `config/handler/MyAccessDeniedHandler.java` | 已认证但权限不足：返回 HTTP 403 和 ACCESS_DENIED |
-| GlobalExceptionHandler | `config/handler/GlobalExceptionHandler.java` | 全局异常处理：统一返回错误 |
+| MyAuthenticationSuccessHandler | `bootstrap/security/MyAuthenticationSuccessHandler.java` | 登录成功：生成 JWT、存入 Redis、写登录审计、返回 token |
+| MyAuthenticationFailureHandler | `bootstrap/security/MyAuthenticationFailureHandler.java` | 登录失败：写失败登录审计并返回 401 |
+| MyLogoutSuccessHandler | `bootstrap/security/MyLogoutSuccessHandler.java` | 退出登录：先提交 authVersion 递增，再尽力清理 Redis 会话 |
+| MyAccessDeniedHandler | `bootstrap/security/MyAccessDeniedHandler.java` | 已认证但权限不足：返回 HTTP 403 和 ACCESS_DENIED |
+| GlobalExceptionHandler | `shared/web/GlobalExceptionHandler.java` | 全局异常处理：统一返回错误 |
 
 ### 17.4 GlobalExceptionHandler 异常处理
 
@@ -1346,7 +1363,7 @@ public class SecurityConfig {
 | `Exception` | 返回通用错误信息 |
 
 ### 17.5 CorsConfig
-**路径**: `config/CorsConfig.java`
+**路径**: `shared/web/CorsConfig.java`
 
 - 允许所有源（`addAllowedOriginPattern("*")`）
 - 允许所有请求头
@@ -1359,7 +1376,7 @@ public class SecurityConfig {
 ## 18. AOP 切面
 
 ### 18.1 DataScopeAspect
-**路径**: `aspect/DataScopeAspect.java`
+**路径**: `modules/identity/application/internal/DataScopeAspect.java`
 
 **功能**: 数据权限过滤，根据用户角色动态添加 SQL 过滤条件。
 
@@ -1383,7 +1400,7 @@ public class DataScopeAspect {
 ```
 
 ### 18.2 DataScope 注解
-**路径**: `commons/DataScope.java`
+**路径**: `modules/identity/application/api/security/DataScope.java`
 
 ```java
 @Target(ElementType.METHOD)
@@ -1405,7 +1422,7 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 ## 19. 工具类
 
 ### 19.1 JWTUtils
-**路径**: `util/JWTUtils.java`
+**路径**: `shared/security/JWTUtils.java`
 
 | 方法 | 功能 |
 |------|------|
@@ -1419,7 +1436,7 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 **密钥**: 从环境变量 `JWT_SECRET` 获取；未配置时应用启动失败，避免使用可预测的默认签名密钥。
 
 ### 19.2 CacheUtils
-**路径**: `util/CacheUtils.java`
+**路径**: `shared/infrastructure/cache/CacheUtils.java`
 
 | 方法 | 功能 |
 |------|------|
@@ -1427,7 +1444,7 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 | `generateKey(Object... params)` | 生成缓存 key |
 
 ### 19.3 JSONUtils
-**路径**: `util/JSONUtils.java`
+**路径**: `shared/infrastructure/json/JSONUtils.java`
 
 | 方法 | 功能 |
 |------|------|
@@ -1435,14 +1452,14 @@ public PageInfo<TActivity> getActivityByPage(Integer current, ActivityQuery acti
 | `toBean(String json, Class<T> clazz)` | JSON 字符串转 Java 对象 |
 
 ### 19.4 ResponseUtils
-**路径**: `util/ResponseUtils.java`
+**路径**: `shared/web/ResponseUtils.java`
 
 | 方法 | 功能 |
 |------|------|
 | `write(HttpServletResponse response, String result)` | 将 JSON 结果写入 HttpServletResponse |
 
 ### 19.5 RedisManager
-**路径**: `manager/RedisManager.java`
+**路径**: `shared/infrastructure/cache/RedisManager.java`
 
 | 方法 | 功能 |
 |------|------|
@@ -1748,21 +1765,21 @@ AI 业务助手已落地为 Spring Boot + 独立 `dealer-ai` 的旁路增强架�
 
 | 类型 | 落点 | 说明 |
 |------|------|------|
-| Controller | `web/AiRunController.java` | 创建 AI Run、查询 Run、查询可恢复追踪、输出 Spring Boot SSE |
-| Controller | `web/AiInternalToolController.java` | `dealer-ai` 内部调用 ToolRegistry，使用 `X-Dealer-AI-Tool-Token` |
-| Controller | `web/AiProposalController.java` | 确认或拒绝低风险 Proposal |
-| Controller | `web/AiWorkflowController.java` | 创建、查询、暂停、恢复、取消、完成和失败处理受控工作流 |
-| Controller | `web/AiProactiveController.java` | 创建、查询、暂停、恢复、取消主动提醒订阅，并查询或生成当前用户提醒事件 |
-| Controller | `web/AiProviderConfigController.java` | 管理员创建、编辑、测试、启用、停用和轮换模型 Provider 配置 |
-| Controller | `web/AiAssistantPolicyController.java` | 管理员查看和更新工具、安全、联网、上下文和运行时限策略 |
-| Registry | `ai/ToolRegistry.java` | Spring Boot 最终工具白名单、权限、风险等级和审计边界 |
-| Trace Service | `ai/service/AiTraceService.java` | 写入 AI Run、Message、ToolCall、Proposal、Approval 和 ExecutionEvent |
-| Provider Service | `ai/service/AiProviderConfigService.java` | 加密保存 API Key、生成运行时 Provider 配置、执行连接测试和启用互斥 |
-| Policy Service | `ai/service/AiAssistantPolicyService.java` | 保存全局策略并用乐观锁防止管理员并发覆盖 |
-| Run Event Store | `ai/service/AiRunEventStore.java` | 持久化脱敏 SSE 事件并按 Run 序号重放 |
-| Proposal Service | `ai/service/AiProposalService.java` | 保存规范化参数、参数哈希、影响说明和过期时间，并在确认时执行已保存参数 |
-| Workflow Service | `ai/service/AiWorkflowService.java` | 持久化工作流、步骤状态和工作流控制事件 |
-| Proactive Service | `ai/service/AiProactiveService.java` | 按当前用户权限和订阅规则生成主动提醒事件 |
+| Controller | `modules/ai/web/AiRunController.java` | 创建 AI Run、查询 Run、查询可恢复追踪、输出 Spring Boot SSE |
+| Controller | `modules/ai/web/AiInternalToolController.java` | `dealer-ai` 内部调用 ToolRegistry，使用 `X-Dealer-AI-Tool-Token` |
+| Controller | `modules/ai/web/AiProposalController.java` | 确认或拒绝低风险 Proposal |
+| Controller | `modules/ai/web/AiWorkflowController.java` | 创建、查询、暂停、恢复、取消、完成和失败处理受控工作流 |
+| Controller | `modules/ai/web/AiProactiveController.java` | 创建、查询、暂停、恢复、取消主动提醒订阅，并查询或生成当前用户提醒事件 |
+| Controller | `modules/ai/web/AiProviderConfigController.java` | 管理员创建、编辑、测试、启用、停用和轮换模型 Provider 配置 |
+| Controller | `modules/ai/web/AiAssistantPolicyController.java` | 管理员查看和更新工具、安全、联网、上下文和运行时限策略 |
+| Registry | `modules/ai/application/api/tool/ToolRegistry.java` | Spring Boot 最终工具白名单、权限、风险等级和审计边界 |
+| Trace Service | `modules/ai/application/api/AiTraceService.java` | 写入 AI Run、Message、ToolCall、Proposal、Approval 和 ExecutionEvent |
+| Provider Service | `modules/ai/application/api/AiProviderConfigService.java` | 加密保存 API Key、生成运行时 Provider 配置、执行连接测试和启用互斥 |
+| Policy Service | `modules/ai/application/api/AiAssistantPolicyService.java` | 保存全局策略并用乐观锁防止管理员并发覆盖 |
+| Run Event Store | `modules/ai/application/internal/AiRunEventStore.java` | 持久化脱敏 SSE 事件并按 Run 序号重放 |
+| Proposal Service | `modules/ai/application/api/AiProposalService.java` | 保存规范化参数、参数哈希、影响说明和过期时间，并在确认时执行已保存参数 |
+| Workflow Service | `modules/ai/application/api/AiWorkflowService.java` | 持久化工作流、步骤状态和工作流控制事件 |
+| Proactive Service | `modules/ai/application/api/AiProactiveService.java` | 按当前用户权限和订阅规则生成主动提醒事件 |
 | Tool Executors | `ai/tool/executor/*` | 第一批只读工具和两个低风险 Proposal 工具 |
 
 业务枚举、状态、类型和值以 Spring Boot Java enum、后端 DTO 校验和 OpenAPI 契约为准。`dealer-ai` 只能生成后端已支持的值，不能在 Python 编排、Prompt 或 Pydantic 默认值中临时创造 CRM 业务值。
@@ -1923,7 +1940,7 @@ Run trace 查询必须恢复 messages、toolCalls、proposals、approvals、work
 
 ## 附录：常量定义
 
-**路径**: `constant/Constants.java`、`constant/RedisKeys.java`
+**路径**: `shared/infrastructure/constants/Constants.java`、`shared/infrastructure/cache/RedisKeys.java`
 
 | 常量 | 值 | 用途 |
 |------|-----|------|

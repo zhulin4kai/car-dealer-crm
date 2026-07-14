@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.modules.commerce.quote.persistence.mapper.TQuoteMapper">
+    <resultMap id="BaseResultMap" type="com.autodealer.crm.modules.commerce.quote.application.api.model.TQuote">
+        <id column="id" property="id" />
+        <result column="quote_no" property="quoteNo" />
+        <result column="customer_id" property="customerId" />
+        <result column="opportunity_id" property="opportunityId" />
+        <result column="current_version_id" property="currentVersionId" />
+        <result column="status" property="status" />
+        <result column="remark" property="remark" />
+        <result column="create_time" property="createTime" />
+        <result column="create_by" property="createBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="update_by" property="updateBy" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        q.id, q.quote_no, q.customer_id, q.opportunity_id, q.current_version_id,
+        q.status, q.remark, q.create_time, q.create_by, q.update_time, q.update_by
+    </sql>
+
+    <select id="selectByQuery" resultMap="BaseResultMap">
+        SELECT DISTINCT <include refid="Base_Column_List" />
+        FROM t_quote q
+        LEFT JOIN t_customer c ON q.customer_id = c.id
+        <where>
+            <if test="query.quoteNo != null and query.quoteNo != ''">
+                AND q.quote_no LIKE CONCAT('%', #{query.quoteNo}, '%')
+            </if>
+            <if test="query.customerId != null">
+                AND q.customer_id = #{query.customerId}
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND q.status = #{query.status}
+            </if>
+            <if test="dataScopeUserId != null">
+                AND c.owner_id = #{dataScopeUserId}
+            </if>
+        </where>
+        ORDER BY q.create_time DESC, q.id DESC
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_quote q
+        WHERE q.id = #{id}
+    </select>
+
+    <select id="countActiveByOpportunityId" resultType="int">
+        SELECT COUNT(1)
+        FROM t_quote
+        WHERE opportunity_id = #{opportunityId}
+          AND status NOT IN ('REFUSED', 'EXPIRED', 'VOIDED')
+    </select>
+
+    <insert id="insert" parameterType="com.autodealer.crm.modules.commerce.quote.application.api.model.TQuote" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_quote (
+            quote_no, customer_id, opportunity_id, current_version_id, status, remark,
+            create_time, create_by, update_time, update_by
+        ) VALUES (
+            #{quoteNo}, #{customerId}, #{opportunityId}, #{currentVersionId}, #{status}, #{remark},
+            #{createTime}, #{createBy}, #{updateTime}, #{updateBy}
+        )
+    </insert>
+
+    <update id="updateCurrentVersion">
+        UPDATE t_quote
+        SET current_version_id = #{currentVersionId},
+            update_time = #{updateTime},
+            update_by = #{updateBy}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatusIfCurrent">
+        UPDATE t_quote
+        SET status = #{targetStatus},
+            update_time = #{updateTime},
+            update_by = #{updateBy}
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+</mapper>

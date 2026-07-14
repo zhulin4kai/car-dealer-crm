@@ -1,10 +1,14 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.constant.Constants;
-import com.autodealer.crm.constant.RedisKeys;
-import com.autodealer.crm.manager.RedisManager;
-import com.autodealer.crm.model.TUser;
-import com.autodealer.crm.util.JWTUtils;
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
+import com.autodealer.crm.bootstrap.security.MyAuthenticationSuccessHandler;
+import com.autodealer.crm.bootstrap.security.SecurityConfig;
+import com.autodealer.crm.bootstrap.security.TokenVerifyFilter;
+import com.autodealer.crm.shared.infrastructure.constants.Constants;
+import com.autodealer.crm.shared.infrastructure.cache.RedisKeys;
+import com.autodealer.crm.shared.infrastructure.cache.RedisManager;
+import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.shared.security.JWTUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Login response contract (per MyAuthenticationSuccessHandler):
  *   { "code": 200, "msg": "操作成功", "data": "<jwt-token-string>" }
  */
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public abstract class BackendIntegrationTestBase {

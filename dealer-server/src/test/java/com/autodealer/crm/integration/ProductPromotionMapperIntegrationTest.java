@@ -1,7 +1,7 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.mapper.TProductPromotionMapper;
-import com.autodealer.crm.model.TProductPromotion;
+import com.autodealer.crm.modules.commerce.promotion.persistence.mapper.TProductPromotionMapper;
+import com.autodealer.crm.modules.commerce.promotion.application.api.model.TProductPromotion;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

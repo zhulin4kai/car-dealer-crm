@@ -1,9 +1,9 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.enums.CredentialPurpose;
-import com.autodealer.crm.service.impl.CapturingCredentialDeliveryAdapter;
-import com.autodealer.crm.service.impl.CredentialIssuanceService;
-import com.autodealer.crm.mapper.TAccountCredentialMapper;
+import com.autodealer.crm.modules.identity.application.api.enums.CredentialPurpose;
+import com.autodealer.crm.modules.identity.application.internal.CapturingCredentialDeliveryAdapter;
+import com.autodealer.crm.modules.identity.application.internal.CredentialIssuanceService;
+import com.autodealer.crm.modules.identity.persistence.mapper.TAccountCredentialMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -14,8 +14,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.result.CodeEnum;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.error.CodeEnum;
 
 import static org.junit.jupiter.api.Assertions.*;
 

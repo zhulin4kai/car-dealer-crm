@@ -1,5 +1,6 @@
 package com.autodealer.crm.integration;
 
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @ActiveProfiles("test")
 class TestDriveScheduleGuardConcurrencyTest {
     @Autowired JdbcTemplate jdbc;

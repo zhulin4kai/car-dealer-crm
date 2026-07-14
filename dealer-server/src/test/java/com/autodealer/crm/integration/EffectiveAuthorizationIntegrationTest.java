@@ -1,12 +1,12 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.mapper.TPermissionMapper;
-import com.autodealer.crm.mapper.TUserPermissionMapper;
-import com.autodealer.crm.mapper.TUserRoleMapper;
-import com.autodealer.crm.mapper.TUserLifecycleMapper;
-import com.autodealer.crm.model.TUserPermission;
-import com.autodealer.crm.model.TUserRole;
-import com.autodealer.crm.model.TPermission;
+import com.autodealer.crm.modules.identity.persistence.mapper.TPermissionMapper;
+import com.autodealer.crm.modules.identity.persistence.mapper.TUserPermissionMapper;
+import com.autodealer.crm.modules.identity.persistence.mapper.TUserRoleMapper;
+import com.autodealer.crm.modules.identity.persistence.mapper.TUserLifecycleMapper;
+import com.autodealer.crm.modules.identity.persistence.model.TUserPermission;
+import com.autodealer.crm.modules.identity.persistence.model.TUserRole;
+import com.autodealer.crm.modules.identity.persistence.model.TPermission;
 import org.apache.ibatis.session.SqlSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

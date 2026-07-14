@@ -1,23 +1,24 @@
 package com.autodealer.crm.integration;
 
-import com.autodealer.crm.audit.AuditActionEnum;
-import com.autodealer.crm.audit.AuthorizationAuditRecorder;
-import com.autodealer.crm.audit.OperationAuditRecorder;
-import com.autodealer.crm.audit.AuditRequestIdProvider;
-import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.constant.RedisKeys;
-import com.autodealer.crm.dto.HandoverUserResponsibilitiesRequest;
-import com.autodealer.crm.enums.AuthorizationChangeType;
-import com.autodealer.crm.enums.AuthorizationSubjectType;
-import com.autodealer.crm.enums.DataScopeCode;
-import com.autodealer.crm.enums.PermissionEffect;
-import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.result.CodeEnum;
-import com.autodealer.crm.manager.RedisManager;
-import com.autodealer.crm.mapper.TUserPermissionMapper;
-import com.autodealer.crm.model.TAuthorizationHistory;
-import com.autodealer.crm.model.TUserPermission;
-import com.autodealer.crm.service.UserService;
+import com.autodealer.crm.bootstrap.DealerCRMApplication;
+import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
+import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
+import com.autodealer.crm.modules.audit.application.api.AuditRequestIdProvider;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.shared.infrastructure.cache.RedisKeys;
+import com.autodealer.crm.modules.identity.application.api.dto.HandoverUserResponsibilitiesRequest;
+import com.autodealer.crm.modules.identity.application.api.enums.AuthorizationChangeType;
+import com.autodealer.crm.modules.identity.application.api.enums.AuthorizationSubjectType;
+import com.autodealer.crm.modules.identity.application.api.enums.DataScopeCode;
+import com.autodealer.crm.modules.identity.application.api.enums.PermissionEffect;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.error.CodeEnum;
+import com.autodealer.crm.shared.infrastructure.cache.RedisManager;
+import com.autodealer.crm.modules.identity.persistence.mapper.TUserPermissionMapper;
+import com.autodealer.crm.modules.identity.persistence.model.TAuthorizationHistory;
+import com.autodealer.crm.modules.identity.persistence.model.TUserPermission;
+import com.autodealer.crm.modules.identity.application.api.UserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +45,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
+@SpringBootTest(classes = DealerCRMApplication.class)
 @ActiveProfiles("test")
 class UserAuditRollbackIntegrationTest {
 

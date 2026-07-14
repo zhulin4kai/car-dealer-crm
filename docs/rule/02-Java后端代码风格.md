@@ -26,7 +26,7 @@ globs: "dealer-server/src/**/*.java"
 ## Controller 类与方法
 
 - 类命名为 `XxxController`，放在 `web` 包并使用 `@RestController`。
-- Controller 只负责 HTTP 参数绑定、Bean Validation、权限入口、调用 Service 和组装统一响应 `R`。
+- Controller 只负责 HTTP 参数绑定、Bean Validation、权限入口、调用 Service 和组装统一响应 `Result`。
 - Controller 禁止编写业务状态迁移、事务、库存或金额计算，禁止直接调用 Mapper 或 RedisManager。
 - 写接口必须使用用途明确的 Request DTO，禁止直接接收持久化 Model 承担新增或修改请求。
 - 请求体使用 `@Valid @RequestBody`；路径、查询参数必须显式声明名称和是否必填。
@@ -40,7 +40,7 @@ globs: "dealer-server/src/**/*.java"
 - 接口命名为 `XxxService`，实现类命名为 `XxxServiceImpl` 并放在 `service.impl`，禁止 `IXxxService`。
 - Service public 方法必须对应完整业务用例，名称必须表达业务动作，禁止只转发 Mapper。
 - Service 负责业务校验、权限与数据范围、状态迁移、事务、并发控制及写入结果判断。
-- Service 禁止依赖 `HttpServletRequest`、`HttpServletResponse`、HTTP 状态码或统一响应类 `R`。
+- Service 禁止依赖 `HttpServletRequest`、`HttpServletResponse`、HTTP 状态码或统一响应类 `Result`。
 - 当前操作者统一从 `CurrentUserProvider` 获取，禁止把客户端 userId 当作可信操作人。
 - 多表写入或“校验后写入”必须由 public Service/Manager 方法建立事务边界。
 - Mapper 写操作必须检查影响行数；`0` 行必须区分不存在、非法状态或并发冲突。
@@ -106,8 +106,8 @@ globs: "dealer-server/src/**/*.java"
 ## 异常处理
 
 - 业务异常必须携带稳定 `CodeEnum`，禁止依赖中文异常文案驱动前端行为。
-- Service 抛业务异常，不返回 `R.FAIL()`；Controller 不翻译同一异常。
-- 全局异常处理器负责业务异常到 HTTP 状态和 `R` 的统一映射。
+- Service 抛业务异常，不返回 `Result.FAIL()`；Controller 不翻译同一异常。
+- 全局异常处理器负责业务异常到 HTTP 状态和 `Result` 的统一映射。
 - 禁止吞异常、空 `catch`、`printStackTrace()` 或捕获后返回成功。
 - 记录异常时必须传递异常对象；禁止只记录 `e.getMessage()` 后丢失堆栈。
 - 同一异常只在责任边界记录一次，具体日志要求遵守 `12-日志与审计规范.md`。

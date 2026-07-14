@@ -4,26 +4,25 @@ spring:
     # 每个 Spring 测试上下文使用独立数据库；同一上下文内仍可复用连接和事务。
     url: jdbc:h2:mem:${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE;
     username: sa
-    password: 
-    
+    password:
+
   h2:
     console:
       enabled: true
-  
+
   sql:
     init:
       data-locations: classpath:data.sql
       schema-locations: classpath:schema-test.sql
       mode: always
-  
+
 # MyBatis 配置
 mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.autodealer.crm.model
+  mapper-locations: classpath*:mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-    
+
 # PageHelper 分页配置
 pagehelper:
   helper-dialect: mysql
@@ -35,7 +34,7 @@ pagehelper:
 logging:
   level:
     com.autodealer.crm: debug
-    org.springframework: info 
+    org.springframework: info
 
 ai:
   provider:
