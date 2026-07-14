@@ -506,30 +506,24 @@ async function openBatchDialog(mode: 'roles' | 'permissions'): Promise<void> {
   }
 }
 
-async function submitBatchRoles(request: BatchUpdateUserRolesRequest): Promise<void> {
-  if (batchSubmitting.value) return
-  batchSubmitting.value = true
-  try {
-    const result = await batchUpdateUserRoleAssignments(request)
-    messageTip(`批量角色调整完成，实际变更 ${result.changedTargetCount} 人`, 'success')
-    await finishBatch()
-  } catch (error) {
-    messageTip(getUserAuthorizationErrorMessage(error, '批量角色调整失败'), 'error')
-    await refreshBatchOnConflict(error)
-  } finally {
-    batchSubmitting.value = false
-  }
-}
+const submitBatchRoles = (request: BatchUpdateUserRolesRequest) =>
+  submitBatch(() => batchUpdateUserRoleAssignments(request), '角色')
 
-async function submitBatchPermissions(request: BatchUpdateUserPermissionsRequest): Promise<void> {
+const submitBatchPermissions = (request: BatchUpdateUserPermissionsRequest) =>
+  submitBatch(() => batchUpdateUserPermissions(request), '个人权限')
+
+async function submitBatch(
+  execute: () => ReturnType<typeof batchUpdateUserPermissions>,
+  subject: string,
+) {
   if (batchSubmitting.value) return
   batchSubmitting.value = true
   try {
-    const result = await batchUpdateUserPermissions(request)
-    messageTip(`批量个人权限调整完成，实际变更 ${result.changedTargetCount} 人`, 'success')
+    const result = await execute()
+    messageTip(`批量${subject}调整完成，实际变更 ${result.changedTargetCount} 人`, 'success')
     await finishBatch()
   } catch (error) {
-    messageTip(getUserAuthorizationErrorMessage(error, '批量个人权限调整失败'), 'error')
+    messageTip(getUserAuthorizationErrorMessage(error, `批量${subject}调整失败`), 'error')
     await refreshBatchOnConflict(error)
   } finally {
     batchSubmitting.value = false

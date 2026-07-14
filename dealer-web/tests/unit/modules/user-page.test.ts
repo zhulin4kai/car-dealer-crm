@@ -271,6 +271,40 @@ describe('user management workbench', () => {
     )
   })
 
+  it('submits a batch personal-permission command through the shared batch flow', async () => {
+    const user = userSummary(21, '李销售')
+    apiMocks.fetchUserPage.mockResolvedValue({
+      list: [user],
+      total: 1,
+      pageSize: 10,
+      pageNum: 1,
+      pages: 1,
+      size: 1,
+    })
+    accessMocks.fetchUserAuthorizationDetail.mockResolvedValue(authorizationDetail(21, 5))
+    accessMocks.batchUpdateUserPermissions.mockResolvedValue({
+      targetCount: 1,
+      changedTargetCount: 1,
+      targets: [],
+    })
+
+    render(UserPage, { global: { directives: { hasPermission: {} } } })
+    await screen.findByText('李销售')
+    await fireEvent.click(screen.getByRole('checkbox', { name: '选择用户李销售' }))
+    await fireEvent.click(screen.getByRole('button', { name: '批量调整个人权限' }))
+    await fireEvent.update(await screen.findByLabelText('权限'), '31')
+    await fireEvent.update(screen.getByLabelText('调整原因'), '统一恢复角色继承')
+    await fireEvent.click(screen.getByRole('button', { name: '确认批量调整' }))
+
+    await waitFor(() =>
+      expect(accessMocks.batchUpdateUserPermissions).toHaveBeenCalledWith({
+        targets: [{ userId: 21, authorizationVersion: 5 }],
+        changes: [{ permissionId: 31, state: 'INHERIT' }],
+        reason: '统一恢复角色继承',
+      }),
+    )
+  })
+
   it('reloads server authorization facts after a batch role CAS conflict', async () => {
     const user = userSummary(21, '李销售')
     apiMocks.fetchUserPage.mockResolvedValue({
@@ -345,7 +379,21 @@ function authorizationDetail(userId: number, authorizationVersion: number) {
         editable: true,
       },
     ],
-    permissions: [],
+    permissions: [
+      {
+        permissionId: 31,
+        code: 'customer:view',
+        name: '客户查看',
+        module: '客户',
+        sensitivityLevel: 'NORMAL',
+        delegable: true,
+        effective: true,
+        personalState: 'INHERIT',
+        editable: true,
+        sources: [],
+        dataScopeCandidates: [{ candidateKey: 'SELF', code: 'SELF', label: '本人' }],
+      },
+    ],
   }
 }
 

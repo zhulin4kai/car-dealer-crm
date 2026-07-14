@@ -214,8 +214,13 @@
 </template>
 
 <script setup lang="ts">
-import * as echarts from 'echarts'
-import type { ECharts, EChartsOption } from 'echarts'
+import { FunnelChart, PieChart } from 'echarts/charts'
+import type { FunnelSeriesOption, PieSeriesOption } from 'echarts/charts'
+import { TooltipComponent } from 'echarts/components'
+import type { TooltipComponentOption } from 'echarts/components'
+import { init, use } from 'echarts/core'
+import type { ComposeOption, EChartsType } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
 import type { Component } from 'vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -243,6 +248,12 @@ defineOptions({
   name: 'StatisticView',
 })
 
+use([FunnelChart, PieChart, TooltipComponent, CanvasRenderer])
+
+type EChartsOption = ComposeOption<
+  FunnelSeriesOption | PieSeriesOption | TooltipComponentOption
+>
+
 const router = useRouter()
 const summaryData = reactive<SummaryData>({})
 const recentClues = ref<Clue[]>([])
@@ -254,8 +265,8 @@ const sourceData = ref<NameValueData[]>([])
 
 const funnelChartRef = ref<HTMLElement | null>(null)
 const sourceChartRef = ref<HTMLElement | null>(null)
-let funnelChart: ECharts | null = null
-let sourceChart: ECharts | null = null
+let funnelChart: EChartsType | null = null
+let sourceChart: EChartsType | null = null
 let resizeObserver: ResizeObserver | null = null
 
 const sourceColors = ['#3370FF', '#34C759', '#FF9500', '#9B59B6', '#0A84FF', '#9CA3AF']
@@ -356,7 +367,7 @@ function renderFunnelChart(): void {
     return
   }
 
-  funnelChart ??= echarts.init(funnelChartRef.value)
+  funnelChart ??= init(funnelChartRef.value)
   const option: EChartsOption = {
     color: ['#3370FF', '#6BA1FF', '#FF9500', '#34C759'],
     tooltip: { trigger: 'item' },
@@ -389,7 +400,7 @@ function renderSourceChart(): void {
     return
   }
 
-  sourceChart ??= echarts.init(sourceChartRef.value)
+  sourceChart ??= init(sourceChartRef.value)
   const option: EChartsOption = {
     color: sourceColors,
     tooltip: { trigger: 'item' },

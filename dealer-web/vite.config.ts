@@ -4,6 +4,17 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
+function manualChunks(id: string): string | undefined {
+  const normalizedId = id.split('\\').join('/')
+  if (
+    normalizedId.includes('/node_modules/echarts/') ||
+    normalizedId.includes('/node_modules/zrender/')
+  ) {
+    return 'vendor-charts'
+  }
+  return undefined
+}
+
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
   resolve: {
@@ -15,6 +26,11 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 8081,
     open: true,
+  },
+  build: {
+    rollupOptions: {
+      output: { manualChunks },
+    },
   },
   test: {
     globals: true,

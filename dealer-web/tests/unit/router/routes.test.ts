@@ -3,6 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { routes } from '@/router/routes'
 
 describe('router routes', () => {
+  it('keeps page and layout components behind route-level lazy boundaries', () => {
+    const componentRoutes = routes.flatMap((route) => [route, ...(route.children ?? [])])
+      .filter((route) => route.component)
+
+    expect(componentRoutes).toHaveLength(41)
+    for (const route of componentRoutes) {
+      expect(route.component, route.path).toEqual(expect.any(Function))
+    }
+  })
+
   it('declares credential lifecycle routes before the catch-all route', () => {
     const routePaths = routes.map((route) => route.path)
 
