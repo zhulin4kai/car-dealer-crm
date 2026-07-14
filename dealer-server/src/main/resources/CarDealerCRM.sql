@@ -2950,7 +2950,8 @@ CREATE TABLE `t_operation_log`
     `create_time` datetime     NULL DEFAULT NULL COMMENT '创建时间',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_operation_log_time` (`create_time` ASC, `id` ASC) USING BTREE,
-    INDEX `idx_operation_log_query` (`module_name` ASC, `action_code` ASC, `user_id` ASC, `result` ASC) USING BTREE
+    INDEX `idx_operation_log_query` (`module_name` ASC, `action_code` ASC, `user_id` ASC, `result` ASC) USING BTREE,
+    INDEX `idx_operation_log_user_history` (`resource_id` ASC, `action_code` ASC, `create_time` ASC, `id` ASC) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
   CHARACTER SET = utf8mb3

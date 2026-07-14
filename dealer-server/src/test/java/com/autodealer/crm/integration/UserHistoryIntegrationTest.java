@@ -221,6 +221,47 @@ class UserHistoryIntegrationTest extends BackendIntegrationTestBase {
     }
 
     @Test
+    void databasePagingPreservesCrossSourceAndSourceLocalTieOrder() throws Exception {
+        LocalDateTime occurredAt = LocalDateTime.of(2026, 7, 13, 12, 0);
+        jdbcTemplate.update("""
+                INSERT INTO t_authorization_history(subject_type,subject_id,change_type,target_user_id,role_id,after_value,reason,operator_id,occurred_time,request_id)
+                VALUES('USER_ROLE','2:2','ASSIGN',2,2,'{"roleId":2,"roleCode":"sales_consultant","roleName":"销售顾问"}','授权先写入',1,?,'history-tie-auth-1')
+                """, occurredAt);
+        jdbcTemplate.update("""
+                INSERT INTO t_authorization_history(subject_type,subject_id,change_type,target_user_id,role_id,after_value,reason,operator_id,occurred_time,request_id)
+                VALUES('USER_ROLE','2:2','ASSIGN',2,2,'{"roleId":2,"roleCode":"sales_consultant","roleName":"销售顾问"}','授权后写入',1,?,'history-tie-auth-2')
+                """, occurredAt);
+        jdbcTemplate.update("""
+                INSERT INTO t_operation_log(user_id,user_name,action_code,module_name,object_type,resource_id,result,detail,request_id,create_time)
+                VALUES(1,'分页管理员','USER_PROFILE_UPDATE','用户管理','USER','2','SUCCESS','{"summary":{"reason":"操作日志"}}','history-tie-operation',?)
+                """, occurredAt);
+        jdbcTemplate.update("""
+                INSERT INTO t_user_lifecycle_event(operation_id,request_id,action,user_id,employee_id,before_value,after_value,reason,operator_id,occurred_time)
+                VALUES('history-tie-lifecycle','history-tie-lifecycle','TRANSFER',2,1,'{"organizationCode":"OLD"}','{"organizationCode":"NEW"}','生命周期',1,?)
+                """, occurredAt);
+
+        String token = historyAdministratorToken();
+        mockMvc.perform(get("/api/users/2/history").header(HttpHeaders.AUTHORIZATION, token)
+                        .param("page", "1").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.total").value(4))
+                .andExpect(jsonPath("$.data.list[0].sourceKey").value("AUTHORIZATION_HISTORY"))
+                .andExpect(jsonPath("$.data.list[0].reason").value("授权后写入"));
+        mockMvc.perform(get("/api/users/2/history").header(HttpHeaders.AUTHORIZATION, token)
+                        .param("page", "2").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.list[0].sourceKey").value("AUTHORIZATION_HISTORY"))
+                .andExpect(jsonPath("$.data.list[0].reason").value("授权先写入"));
+        mockMvc.perform(get("/api/users/2/history").header(HttpHeaders.AUTHORIZATION, token)
+                        .param("page", "3").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.list[0].sourceKey").value("OPERATION_LOG"));
+        mockMvc.perform(get("/api/users/2/history").header(HttpHeaders.AUTHORIZATION, token)
+                        .param("page", "4").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.list[0].sourceKey").value("USER_LIFECYCLE_EVENT"));
+    }
+
+    @Test
     void sanitizesOperatorTargetReasonAndBatchDisplaySurfaces() throws Exception {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update("UPDATE t_user SET name='目标用户 target@example.com 13800138000' WHERE id=2");

@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.autodealer.crm.mapper.UserHistoryProjectionMapper">
+    <resultMap id="ProjectionRowMap" type="com.autodealer.crm.dto.user.UserHistoryRows$ProjectionRow">
+        <result column="id" property="id"/>
+        <result column="source_key" property="sourceKey"/>
+        <result column="subject_type" property="subjectType"/>
+        <result column="subject_id" property="subjectId"/>
+        <result column="change_type" property="changeType"/>
+        <result column="target_user_id" property="targetUserId"/>
+        <result column="role_id" property="roleId"/>
+        <result column="permission_id" property="permissionId"/>
+        <result column="effect" property="effect"/>
+        <result column="data_scope_code" property="dataScopeCode"/>
+        <result column="effective_from" property="effectiveFrom"/>
+        <result column="effective_to" property="effectiveTo"/>
+        <result column="before_value" property="beforeValue"/>
+        <result column="after_value" property="afterValue"/>
+        <result column="reason" property="reason"/>
+        <result column="operator_id" property="operatorId"/>
+        <result column="operator_name" property="operatorName"/>
+        <result column="operator_employee_no" property="operatorEmployeeNo"/>
+        <result column="action_code" property="actionCode"/>
+        <result column="result" property="result"/>
+        <result column="detail" property="detail"/>
+        <result column="occurred_time" property="occurredTime"/>
+    </resultMap>
+
+    <resultMap id="ActionFacetMap" type="com.autodealer.crm.dto.user.UserHistoryRows$ActionFacet">
+        <result column="source_key" property="sourceKey"/>
+        <result column="subject_type" property="subjectType"/>
+        <result column="change_type" property="changeType"/>
+        <result column="action_code" property="actionCode"/>
+    </resultMap>
+
+    <sql id="AuthorizationBaseWhere">
+        WHERE (h.target_user_id = #{query.userId}
+               OR h.affected_user_ids LIKE CONCAT('%,', #{query.userId}, ',%'))
+        <if test="query.startTime != null">AND h.occurred_time &gt;= #{query.startTime}</if>
+        <if test="query.endTime != null">AND h.occurred_time &lt;= #{query.endTime}</if>
+    </sql>
+
+    <sql id="OperationBaseWhere">
+        WHERE l.resource_id = #{query.resourceId}
+          AND l.action_code IN
+          <foreach collection="query.operationActionCodes" item="actionCode" open="(" separator="," close=")">
+              #{actionCode}
+          </foreach>
+        <if test="query.startTime != null">AND l.create_time &gt;= #{query.startTime}</if>
+        <if test="query.endTime != null">AND l.create_time &lt;= #{query.endTime}</if>
+    </sql>
+
+    <sql id="LifecycleBaseWhere">
+        WHERE event.user_id = #{query.userId}
+          AND event.action IN
+          <foreach collection="query.lifecycleActions" item="action" open="(" separator="," close=")">
+              #{action}
+          </foreach>
+        <if test="query.startTime != null">AND event.occurred_time &gt;= #{query.startTime}</if>
+        <if test="query.endTime != null">AND event.occurred_time &lt;= #{query.endTime}</if>
+    </sql>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM (
+            SELECT h.id
+            FROM t_authorization_history h
+            <include refid="AuthorizationBaseWhere"/>
+            <if test="query.filterSource != null">
+                AND #{query.filterSource} = 'AUTHORIZATION_HISTORY'
+                AND h.subject_type = #{query.filterSubjectType}
+                AND h.change_type = #{query.filterChangeType}
+            </if>
+            UNION ALL
+            SELECT CAST(l.id AS BIGINT)
+            FROM t_operation_log l
+            <include refid="OperationBaseWhere"/>
+            <if test="query.filterSource != null">
+                AND #{query.filterSource} = 'OPERATION_LOG'
+                AND l.action_code = #{query.filterActionCode}
+            </if>
+            UNION ALL
+            SELECT event.id
+            FROM t_user_lifecycle_event event
+            <include refid="LifecycleBaseWhere"/>
+            <if test="query.filterSource != null">
+                AND #{query.filterSource} = 'USER_LIFECYCLE_EVENT'
+                AND event.action = #{query.filterActionCode}
+            </if>
+        ) history_count
+    </select>
+
+    <select id="selectPage" resultMap="ProjectionRowMap">
+        SELECT history_rows.*
+        FROM (
+            SELECT h.id, 'AUTHORIZATION_HISTORY' AS source_key,
+                   h.subject_type, h.subject_id, h.change_type, h.target_user_id,
+                   h.role_id, h.permission_id, h.effect, h.data_scope_code,
+                   h.effective_from, h.effective_to, h.before_value, h.after_value,
+                   h.reason, h.operator_id,
+                   COALESCE(NULLIF((SELECT MAX(log_entry.user_name)
+                                    FROM t_operation_log log_entry
+                                    WHERE log_entry.request_id = h.request_id), ''), '系统') AS operator_name,
+                   NULL AS operator_employee_no, NULL AS action_code,
+                   'SUCCESS' AS result, NULL AS detail, h.occurred_time
+            FROM t_authorization_history h
+            <include refid="AuthorizationBaseWhere"/>
+            <if test="query.filterSource != null">
+                AND #{query.filterSource} = 'AUTHORIZATION_HISTORY'
+                AND h.subject_type = #{query.filterSubjectType}
+                AND h.change_type = #{query.filterChangeType}
+            </if>
+            UNION ALL
+            SELECT CAST(l.id AS BIGINT), 'OPERATION_LOG',
+                   NULL, NULL, NULL, NULL,
+                   NULL, NULL, NULL, NULL,
+                   NULL, NULL, NULL, NULL,
+                   NULL, l.user_id,
+                   COALESCE(NULLIF(l.user_name, ''), '系统'),
+                   NULL, l.action_code, l.result, l.detail, l.create_time
+            FROM t_operation_log l
+            <include refid="OperationBaseWhere"/>
+            <if test="query.filterSource != null">
+                AND #{query.filterSource} = 'OPERATION_LOG'
+                AND l.action_code = #{query.filterActionCode}
+            </if>
+            UNION ALL
+            SELECT event.id, 'USER_LIFECYCLE_EVENT',
+                   NULL, NULL, NULL, event.user_id,
+                   NULL, NULL, NULL, NULL,
+                   NULL, NULL, event.before_value, event.after_value,
+                   event.reason, event.operator_id,
+                   COALESCE(NULLIF((SELECT MAX(log_entry.user_name)
+                                    FROM t_operation_log log_entry
+                                    WHERE log_entry.request_id = event.request_id), ''), '系统'),
+                   NULL, CONCAT('USER_', event.action), 'SUCCESS', NULL, event.occurred_time
+            FROM t_user_lifecycle_event event
+            <include refid="LifecycleBaseWhere"/>
+            <if test="query.filterSource != null">
+                AND #{query.filterSource} = 'USER_LIFECYCLE_EVENT'
+                AND event.action = #{query.filterActionCode}
+            </if>
+        ) history_rows
+        ORDER BY history_rows.occurred_time DESC,
+                 history_rows.source_key ASC,
+                 history_rows.id DESC
+        LIMIT #{query.offset}, #{query.limit}
+    </select>
+
+    <select id="selectActionFacets" resultMap="ActionFacetMap">
+        SELECT DISTINCT history_actions.source_key, history_actions.subject_type,
+                        history_actions.change_type, history_actions.action_code
+        FROM (
+            SELECT 'AUTHORIZATION_HISTORY' AS source_key,
+                   h.subject_type, h.change_type, NULL AS action_code
+            FROM t_authorization_history h
+            <include refid="AuthorizationBaseWhere"/>
+            UNION ALL
+            SELECT 'OPERATION_LOG', NULL, NULL, l.action_code
+            FROM t_operation_log l
+            <include refid="OperationBaseWhere"/>
+            UNION ALL
+            SELECT 'USER_LIFECYCLE_EVENT', NULL, NULL, CONCAT('USER_', event.action)
+            FROM t_user_lifecycle_event event
+            <include refid="LifecycleBaseWhere"/>
+        ) history_actions
+        ORDER BY history_actions.source_key, history_actions.subject_type,
+                 history_actions.change_type, history_actions.action_code
+    </select>
+</mapper>

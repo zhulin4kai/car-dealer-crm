@@ -1187,6 +1187,7 @@ CREATE TABLE IF NOT EXISTS t_operation_log
 );
 CREATE INDEX IF NOT EXISTS idx_operation_log_time ON t_operation_log(create_time, id);
 CREATE INDEX IF NOT EXISTS idx_operation_log_query ON t_operation_log(module_name, action_code, user_id, result);
+CREATE INDEX IF NOT EXISTS idx_operation_log_user_history ON t_operation_log(resource_id, action_code, create_time, id);
 
 CREATE TABLE IF NOT EXISTS t_login_log
 (

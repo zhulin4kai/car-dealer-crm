@@ -4,16 +4,14 @@ import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.AuditSensitiveDataSanitizer;
 import com.autodealer.crm.dto.user.UserHistoryDtos;
 import com.autodealer.crm.dto.user.UserHistoryDtos.*;
-import com.autodealer.crm.dto.user.UserHistoryRows.AuthorizationRow;
-import com.autodealer.crm.dto.user.UserHistoryRows.OperationRow;
-import com.autodealer.crm.dto.user.UserHistoryRows.LifecycleRow;
+import com.autodealer.crm.dto.user.UserHistoryRows.ActionFacet;
+import com.autodealer.crm.dto.user.UserHistoryRows.ProjectionQuery;
+import com.autodealer.crm.dto.user.UserHistoryRows.ProjectionRow;
 import com.autodealer.crm.enums.AuthorizationChangeType;
 import com.autodealer.crm.enums.AuthorizationSubjectType;
 import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.mapper.TAuthorizationHistoryMapper;
-import com.autodealer.crm.mapper.TOperationLogMapper;
 import com.autodealer.crm.mapper.TUserMapper;
-import com.autodealer.crm.mapper.TUserLifecycleMapper;
+import com.autodealer.crm.mapper.UserHistoryProjectionMapper;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.UserHistoryService;
@@ -31,6 +29,9 @@ import java.util.regex.Pattern;
 @Service
 public class UserHistoryServiceImpl implements UserHistoryService {
     private static final int MAX_SIZE = 100;
+    private static final String AUTHORIZATION_SOURCE = "AUTHORIZATION_HISTORY";
+    private static final String OPERATION_SOURCE = "OPERATION_LOG";
+    private static final String LIFECYCLE_SOURCE = "USER_LIFECYCLE_EVENT";
     private static final Pattern FORBIDDEN_FIELD = Pattern.compile(
             "(?i)password|passwd|pwd|hash|digest|token|secret|credential|cookie|session.?id|phone|mobile|email|raw|detail|payload|context|headers?|request|response|body|ip(?:address)?|contact|address|key|signature|salt|nonce");
     private static final Set<String> OPERATION_ACTIONS = Set.of(
@@ -74,18 +75,15 @@ public class UserHistoryServiceImpl implements UserHistoryService {
                     AuthorizationChangeType.UPDATE, AuthorizationChangeType.EXPIRE)));
 
     private final TUserMapper users;
-    private final TAuthorizationHistoryMapper authorizationHistory;
-    private final TOperationLogMapper operationLogs;
-    private final TUserLifecycleMapper lifecycleHistory;
+    private final UserHistoryProjectionMapper history;
     private final UserAuthorizationPolicy policy;
     private final ObjectMapper json;
 
-    public UserHistoryServiceImpl(TUserMapper users, TAuthorizationHistoryMapper authorizationHistory,
-                                  TOperationLogMapper operationLogs,TUserLifecycleMapper lifecycleHistory, UserAuthorizationPolicy policy,
+    public UserHistoryServiceImpl(TUserMapper users, UserHistoryProjectionMapper history,
+                                  UserAuthorizationPolicy policy,
                                   ObjectMapper json) {
         this.users = users;
-        this.authorizationHistory = authorizationHistory;
-        this.operationLogs = operationLogs;this.lifecycleHistory=lifecycleHistory;
+        this.history = history;
         this.policy = policy;
         this.json = json;
     }
@@ -100,42 +98,93 @@ public class UserHistoryServiceImpl implements UserHistoryService {
         // 历史比一般用户详情更敏感：本人也不能查询，必须同时满足审计权限和管理范围。
         policy.requireManage(targetUser);
 
-        LocalDateTime start = local(safeQuery.getStartTime());
-        LocalDateTime end = local(safeQuery.getEndTime());
-        List<Item> all = new ArrayList<>();
-        for (AuthorizationRow row : authorizationHistory.selectUserHistoryRows(userId, start, end)) {
-            all.add(mapAuthorization(row));
-        }
-        for (OperationRow row : operationLogs.selectUserHistoryRows(String.valueOf(userId),
-                new ArrayList<>(OPERATION_ACTIONS), start, end)) {
-            all.add(mapOperation(row, targetUser));
-        }
-        for(LifecycleRow row:lifecycleHistory.selectHistoryRows(userId,start,end))all.add(mapLifecycle(row,targetUser));
-        all.sort(Comparator.comparing(Item::occurredAt, Comparator.reverseOrder())
-                .thenComparing(Item::sourceKey)
-                .thenComparing(Comparator.comparingLong(UserHistoryServiceImpl::eventSequence).reversed()));
-
-        List<ActionOption> options = all.stream()
-                .collect(java.util.stream.Collectors.toMap(Item::actionCode, Item::actionName,
-                        (left, right) -> left, TreeMap::new))
-                .entrySet().stream().map(entry -> new ActionOption(entry.getKey(), entry.getValue())).toList();
-        if (StringUtils.hasText(safeQuery.getActionCode())) {
-            all = all.stream().filter(item -> safeQuery.getActionCode().equals(item.actionCode())).toList();
-        }
-        int total = all.size();
-        int from = Math.min((safeQuery.getPage() - 1) * safeQuery.getSize(), total);
-        int to = Math.min(from + safeQuery.getSize(), total);
+        ProjectionQuery projection = projectionQuery(userId, safeQuery);
+        long total = history.count(projection);
+        List<Item> page = total == 0 ? List.of() : history.selectPage(projection).stream()
+                .map(row -> map(row, targetUser))
+                .toList();
+        List<ActionOption> options = actionOptions(history.selectActionFacets(projection));
         UserHistoryDtos.Collection result = new UserHistoryDtos.Collection();
         result.setPageNum(safeQuery.getPage());
         result.setPageSize(safeQuery.getSize());
         result.setTotal(total);
-        result.setPages(total == 0 ? 0 : (total + safeQuery.getSize() - 1) / safeQuery.getSize());
-        result.setList(new ArrayList<>(all.subList(from, to)));
-        result.setSize(to - from);
+        result.setPages(total == 0 ? 0 : (int) ((total + safeQuery.getSize() - 1) / safeQuery.getSize()));
+        result.setList(new ArrayList<>(page));
+        result.setSize(page.size());
         result.setActionOptions(new ArrayList<>(options));
         result.setAllowedActions(List.of("VIEW"));
         result.setUnavailableReasons(new LinkedHashMap<>());
         return result;
+    }
+
+    private ProjectionQuery projectionQuery(Integer userId, Query query) {
+        ProjectionQuery projection = new ProjectionQuery();
+        projection.setUserId(userId);
+        projection.setResourceId(String.valueOf(userId));
+        projection.setOperationActionCodes(OPERATION_ACTIONS.stream().sorted().toList());
+        projection.setLifecycleActions(LIFECYCLE_ACTIONS.stream()
+                .map(action -> action.substring("USER_".length()))
+                .sorted().toList());
+        projection.setStartTime(local(query.getStartTime()));
+        projection.setEndTime(local(query.getEndTime()));
+        projection.setOffset(Math.multiplyExact((long) query.getPage() - 1L, query.getSize()));
+        projection.setLimit(query.getSize());
+        applyActionFilter(projection, query.getActionCode());
+        return projection;
+    }
+
+    private void applyActionFilter(ProjectionQuery projection, String actionCode) {
+        if (!StringUtils.hasText(actionCode)) return;
+        if (OPERATION_ACTIONS.contains(actionCode)) {
+            projection.setFilterSource(OPERATION_SOURCE);
+            projection.setFilterActionCode(actionCode);
+            return;
+        }
+        if (LIFECYCLE_ACTIONS.contains(actionCode)) {
+            projection.setFilterSource(LIFECYCLE_SOURCE);
+            projection.setFilterActionCode(actionCode.substring("USER_".length()));
+            return;
+        }
+        for (Map.Entry<AuthorizationSubjectType, Set<AuthorizationChangeType>> entry
+                : VALID_AUTHORIZATION_ACTIONS.entrySet()) {
+            for (AuthorizationChangeType change : entry.getValue()) {
+                if (actionCode.equals(authorizationActionCode(entry.getKey(), change))) {
+                    projection.setFilterSource(AUTHORIZATION_SOURCE);
+                    projection.setFilterSubjectType(entry.getKey());
+                    projection.setFilterChangeType(change);
+                    return;
+                }
+            }
+        }
+        throw new BusinessException(CodeEnum.PARAM_ERROR, "历史动作编码不合法");
+    }
+
+    private List<ActionOption> actionOptions(List<ActionFacet> facets) {
+        Map<String, String> options = new TreeMap<>();
+        for (ActionFacet facet : facets) {
+            String code;
+            String name;
+            if (AUTHORIZATION_SOURCE.equals(facet.getSourceKey())) {
+                code = authorizationActionCode(facet.getSubjectType(), facet.getChangeType());
+                name = authorizationActionName(facet.getSubjectType(), facet.getChangeType());
+            } else {
+                code = facet.getActionCode();
+                name = auditActionName(code);
+            }
+            if (StringUtils.hasText(code)) options.putIfAbsent(code, name);
+        }
+        return options.entrySet().stream()
+                .map(entry -> new ActionOption(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    private Item map(ProjectionRow row, TUser targetUser) {
+        return switch (row.getSourceKey()) {
+            case AUTHORIZATION_SOURCE -> mapAuthorization(row);
+            case OPERATION_SOURCE -> mapOperation(row, targetUser);
+            case LIFECYCLE_SOURCE -> mapLifecycle(row, targetUser);
+            default -> throw new IllegalStateException("未知用户历史来源: " + row.getSourceKey());
+        };
     }
 
     private void validate(Query query) {
@@ -164,7 +213,7 @@ public class UserHistoryServiceImpl implements UserHistoryService {
         return codes;
     }
 
-    private Item mapAuthorization(AuthorizationRow row) {
+    private Item mapAuthorization(ProjectionRow row) {
         String actionCode = authorizationActionCode(row.getSubjectType(), row.getChangeType());
         String categoryCode = authorizationCategory(row.getSubjectType());
         JsonNode before = parse(row.getBeforeValue());
@@ -179,7 +228,7 @@ public class UserHistoryServiceImpl implements UserHistoryService {
                 offset(row.getOccurredTime()));
     }
 
-    private Item mapOperation(OperationRow row, TUser targetUser) {
+    private Item mapOperation(ProjectionRow row, TUser targetUser) {
         AuditActionEnum action;
         try { action = AuditActionEnum.fromActionCode(row.getActionCode()); }
         catch (IllegalArgumentException ignored) { action = null; }
@@ -197,17 +246,17 @@ public class UserHistoryServiceImpl implements UserHistoryService {
                 safeFields(summary == null ? null : summary.get("before")),
                 safeFields(summary == null ? null : summary.get("after")), reason,
                 null, null, resultCode, "SUCCESS".equals(resultCode) ? "成功" : "失败",
-                batch(summary, resultCode), offset(row.getCreateTime()));
+                batch(summary, resultCode), offset(row.getOccurredTime()));
     }
 
-    private Item mapLifecycle(LifecycleRow row,TUser targetUser){String actionCode="USER_"+row.getAction();AuditActionEnum action=AuditActionEnum.fromActionCode(actionCode);
+    private Item mapLifecycle(ProjectionRow row,TUser targetUser){String actionCode=row.getActionCode();AuditActionEnum action=AuditActionEnum.fromActionCode(actionCode);
         TargetSummary target=new TargetSummary("USER_LIFECYCLE","人员生命周期",targetUser.getId(),safe(targetUser.getLoginAct(),null),safe(targetUser.getName(),null));
         return new Item("lifecycle:"+row.getId(),"USER_LIFECYCLE_EVENT",actionCode,action.getActionName(),"ORGANIZATION","组织任职",target,
                 new OperatorSummary(row.getOperatorId(),safe(row.getOperatorName(),"系统"),safe(row.getOperatorEmployeeNo(),null)),
                 safeFields(parse(row.getBeforeValue())),safeFields(parse(row.getAfterValue())),safe(row.getReason(),null),null,null,
                 "SUCCESS","成功",null,offset(row.getOccurredTime()));}
 
-    private TargetSummary authorizationTarget(AuthorizationRow row, JsonNode before, JsonNode after) {
+    private TargetSummary authorizationTarget(ProjectionRow row, JsonNode before, JsonNode after) {
         JsonNode source = after != null && !after.isNull() ? after : before;
         String type = row.getSubjectType() == null ? "AUTHORIZATION" : row.getSubjectType().name();
         JsonNode nested = source;
@@ -305,6 +354,10 @@ public class UserHistoryServiceImpl implements UserHistoryService {
         if ("USER_HANDOVER".equals(action)) return "ORGANIZATION";
         return "ACCOUNT";
     }
+    private static String auditActionName(String actionCode) {
+        try { return AuditActionEnum.fromActionCode(actionCode).getActionName(); }
+        catch (IllegalArgumentException ignored) { return actionCode; }
+    }
     private static String categoryName(String category) { return switch (category) { case "AUTHORIZATION" -> "授权"; case "ORGANIZATION" -> "组织任职"; case "SECURITY" -> "账号安全"; default -> "账号资料"; }; }
     private static String subjectName(String subject) { return switch (subject) {
         case "ROLE", "USER_ROLE" -> "角色"; case "ROLE_PERMISSION", "USER_PERMISSION" -> "权限";
@@ -331,6 +384,4 @@ public class UserHistoryServiceImpl implements UserHistoryService {
     private static String firstText(JsonNode node, String... keys) { if (node == null) return null; for (String key : keys) if (node.hasNonNull(key)) return node.get(key).asText(); return null; }
     private static LocalDateTime local(OffsetDateTime value) { return value == null ? null : value.atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime(); }
     private static OffsetDateTime offset(LocalDateTime value) { return value == null ? null : value.atZone(ZoneId.systemDefault()).toOffsetDateTime(); }
-    private static OffsetDateTime offset(Date value) { return value == null ? null : value.toInstant().atZone(ZoneId.systemDefault()).toOffsetDateTime(); }
-    private static long eventSequence(Item item) { try { return Long.parseLong(item.eventId().substring(item.eventId().lastIndexOf(':') + 1)); } catch (RuntimeException ignored) { return 0L; } }
 }

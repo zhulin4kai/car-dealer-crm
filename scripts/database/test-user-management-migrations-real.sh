@@ -109,6 +109,12 @@ user_rows="$(mysql_admin "${LEGACY_DB}" --skip-column-names --execute "SELECT CO
 "${SCRIPT_DIR}/user-management-migrate.sh" verify
 "${SCRIPT_DIR}/user-management-migrate.sh" apply APPLY
 
+operation_log_history_index_definition="$(mysql_admin "${LEGACY_DB}" --skip-column-names --execute "SELECT CONCAT(GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX),':',MIN(NON_UNIQUE),':',MIN(INDEX_TYPE)) FROM information_schema.statistics WHERE table_schema='${LEGACY_DB}' AND table_name='t_operation_log' AND index_name='idx_operation_log_user_history'" | tail -n 1)"
+[ "${operation_log_history_index_definition}" = "resource_id,action_code,create_time,id:1:BTREE" ] || {
+  printf '[ERROR] 用户历史操作日志索引定义错误：%s\n' "${operation_log_history_index_definition}" >&2
+  exit 1
+}
+
 state_rows="$(mysql_admin "${LEGACY_DB}" --skip-column-names --execute "SELECT CONCAT(login_act,':',account_status,':',manual_locked) FROM t_user WHERE id IN (2,3,4) ORDER BY id" | tr '\n' ' ')"
 [[ "${state_rows}" == *"disabled:DISABLED:0"* ]] || { printf '[ERROR] 旧禁用账号未保真迁移：%s\n' "${state_rows}" >&2; exit 1; }
 [[ "${state_rows}" == *"locked:ACTIVE:1"* ]] || { printf '[ERROR] 旧锁定账号未保真迁移：%s\n' "${state_rows}" >&2; exit 1; }
@@ -147,6 +153,10 @@ expect_sql_failure_message "${LEGACY_DB}" "DELETE FROM t_user WHERE id=1" '受�
 
 # 完整迁移后的每份业务脚本都制造一个可识别缺口，再用 mysql --force 直接执行。
 # context 只能位于文件首行是不够的：--force 会继续执行，业务过程必须在首个变更前二次校验。
+expect_force_does_not_restore \
+  20260713_task19_operation_log_history_index 20260713_task19_operation_log_history_index.sql \
+  "ALTER TABLE t_operation_log DROP INDEX idx_operation_log_user_history" \
+  "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='${LEGACY_DB}' AND table_name='t_operation_log' AND index_name='idx_operation_log_user_history'" 0
 expect_force_does_not_restore \
   20260713_task22_user_management_hardening 20260713_task22_user_management_hardening.sql \
   "DROP TRIGGER trg_login_identifier_immutable_bu; DROP TRIGGER trg_login_identifier_immutable_bd; DROP TRIGGER trg_recovery_account_identity_bi; DROP TRIGGER trg_recovery_account_identity_bu; DROP TRIGGER trg_recovery_account_identity_bd" \
@@ -219,4 +229,4 @@ export CRM_MIGRATION_DB_NAME="${BASELINE_DB}"
 after_counts="$(mysql_admin "${BASELINE_DB}" --skip-column-names --execute "SELECT CONCAT((SELECT COUNT(*) FROM t_user),':',(SELECT COUNT(*) FROM t_user_role),':',(SELECT COUNT(*) FROM t_role_permission))" | tail -n 1)"
 [ "${before_counts}" = "${after_counts}" ] || { printf '[ERROR] baseline 改变业务行数：%s -> %s\n' "${before_counts}" "${after_counts}" >&2; exit 1; }
 
-printf '[PASS] 旧库首跑、四处真实中断恢复、账号永久归属、状态保真、逐脚本 --force 拒绝、三类不可变触发器、固定恢复身份、重复执行和完整库 baseline 均通过\n'
+printf '[PASS] 旧库首跑、四处真实中断恢复、账号永久归属、状态保真、用户历史索引定义、逐脚本 --force 拒绝、三类不可变触发器、固定恢复身份、重复执行和完整库 baseline 均通过\n'

@@ -4,7 +4,6 @@ import com.autodealer.crm.dto.user.UserLifecycleDtos.HandoverCandidate;
 import com.autodealer.crm.dto.user.UserLifecycleDtos.LifecycleEvent;
 import com.autodealer.crm.dto.user.UserLifecycleDtos.ResponsibilityRow;
 import com.autodealer.crm.dto.user.UserLifecycleDtos.SnapshotFact;
-import com.autodealer.crm.dto.user.UserHistoryRows.LifecycleRow;
 import com.autodealer.crm.model.TEmployee;
 import com.autodealer.crm.model.TUser;
 import org.apache.ibatis.annotations.Param;
@@ -58,5 +57,4 @@ public interface TUserLifecycleMapper {
     int insertSnapshot(SnapshotFact snapshot);
     SnapshotFact lockSnapshotByDigest(String tokenDigest);
     int consumeSnapshot(@Param("id") Long id,@Param("expectedVersion") Integer expectedVersion,@Param("consumedAt") LocalDateTime consumedAt);
-    List<LifecycleRow> selectHistoryRows(@Param("userId") Integer userId,@Param("startTime") LocalDateTime startTime,@Param("endTime") LocalDateTime endTime);
 }

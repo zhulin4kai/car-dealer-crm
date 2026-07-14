@@ -218,14 +218,4 @@
     UPDATE t_user_lifecycle_snapshot SET consumed_at=#{consumedAt},version=version+1
     WHERE id=#{id} AND version=#{expectedVersion} AND consumed_at IS NULL AND expires_at&gt;#{consumedAt}
   </update>
-  <select id="selectHistoryRows" resultType="com.autodealer.crm.dto.user.UserHistoryRows$LifecycleRow">
-    SELECT event.id,event.operation_id,event.action,event.user_id,event.employee_id,event.before_value,event.after_value,event.reason,
-      event.operator_id,COALESCE(NULLIF((SELECT MAX(log_entry.user_name) FROM t_operation_log log_entry WHERE log_entry.request_id=event.request_id),''),'系统') AS operator_name,
-      NULL AS operator_employee_no,event.occurred_time
-    FROM t_user_lifecycle_event event
-    WHERE event.user_id=#{userId}
-    <if test="startTime != null">AND event.occurred_time&gt;=#{startTime}</if>
-    <if test="endTime != null">AND event.occurred_time&lt;=#{endTime}</if>
-    ORDER BY event.occurred_time DESC,event.id DESC
-  </select>
 </mapper>

@@ -23,29 +23,6 @@
         <result column="affected_users_snapshot" property="affectedUsersSnapshot"/>
     </resultMap>
 
-    <resultMap id="UserHistoryAuthorizationRowMap" type="com.autodealer.crm.dto.user.UserHistoryRows$AuthorizationRow">
-        <id column="id" property="id"/>
-        <result column="subject_type" property="subjectType"/>
-        <result column="subject_id" property="subjectId"/>
-        <result column="change_type" property="changeType"/>
-        <result column="target_user_id" property="targetUserId"/>
-        <result column="role_id" property="roleId"/>
-        <result column="permission_id" property="permissionId"/>
-        <result column="effect" property="effect"/>
-        <result column="data_scope_code" property="dataScopeCode"/>
-        <result column="effective_from" property="effectiveFrom"/>
-        <result column="effective_to" property="effectiveTo"/>
-        <result column="before_value" property="beforeValue"/>
-        <result column="after_value" property="afterValue"/>
-        <result column="reason" property="reason"/>
-        <result column="operator_id" property="operatorId"/>
-        <result column="operator_name" property="operatorName"/>
-        <result column="operator_employee_no" property="operatorEmployeeNo"/>
-        <result column="occurred_time" property="occurredTime"/>
-        <result column="request_id" property="requestId"/>
-        <result column="affected_users_snapshot" property="affectedUsersSnapshot"/>
-    </resultMap>
-
     <sql id="Base_Column_List">
         id, subject_type, subject_id, change_type, target_user_id, role_id,
         permission_id, effect, data_scope_code, effective_from, effective_to,
@@ -82,20 +59,4 @@
         ORDER BY occurred_time DESC, id DESC
     </select>
 
-    <select id="selectUserHistoryRows" resultMap="UserHistoryAuthorizationRowMap">
-        SELECT h.id, h.subject_type, h.subject_id, h.change_type, h.target_user_id,
-               h.role_id, h.permission_id, h.effect, h.data_scope_code,
-               h.effective_from, h.effective_to, h.before_value, h.after_value,
-               h.reason, h.operator_id, h.occurred_time, h.request_id,
-               h.affected_users_snapshot,
-               COALESCE(NULLIF((SELECT MAX(l.user_name) FROM t_operation_log l
-                                WHERE l.request_id = h.request_id), ''), '系统') AS operator_name,
-               NULL AS operator_employee_no
-        FROM t_authorization_history h
-        WHERE (h.target_user_id = #{userId}
-               OR h.affected_user_ids LIKE CONCAT('%,', #{userId}, ',%'))
-          <if test="startTime != null">AND h.occurred_time &gt;= #{startTime}</if>
-          <if test="endTime != null">AND h.occurred_time &lt;= #{endTime}</if>
-        ORDER BY h.occurred_time DESC, h.id DESC
-    </select>
 </mapper>
