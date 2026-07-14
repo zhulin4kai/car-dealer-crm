@@ -3,26 +3,19 @@ package com.autodealer.crm.service.impl;
 import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.AuthorizationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator;
 import com.autodealer.crm.constant.PermissionCodes;
 import com.autodealer.crm.dto.organization.*;
 import com.autodealer.crm.enums.*;
 import com.autodealer.crm.exception.BusinessException;
 import com.autodealer.crm.mapper.*;
-import com.autodealer.crm.manager.RedisManager;
-import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.OrganizationService;
-import com.autodealer.crm.service.UserSessionService;
-import jakarta.annotation.Resource;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -44,11 +37,9 @@ public class OrganizationServiceImpl implements OrganizationService {
     private final AuthorizationAuditRecorder authorizationAuditRecorder;
     private final CurrentUserProvider currentUserProvider;
     private final ObjectMapper objectMapper;
-    private final RedisManager redisManager;
     private final DirectManagerPolicy directManagerPolicy;
     private final UserAuthorizationPolicy authorizationPolicy;
-    private final OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
-    @Resource private UserSessionService userSessionService;
+    private final UserSecurityMutationCoordinator securityMutations;
 
     public OrganizationServiceImpl(TOrganizationUnitMapper organizationUnitMapper,
                                    TPositionMapper positionMapper,
@@ -61,10 +52,9 @@ public class OrganizationServiceImpl implements OrganizationService {
                                    AuthorizationAuditRecorder authorizationAuditRecorder,
                                    CurrentUserProvider currentUserProvider,
                                    ObjectMapper objectMapper,
-                                   RedisManager redisManager,
                                    DirectManagerPolicy directManagerPolicy,
                                    UserAuthorizationPolicy authorizationPolicy,
-                                   OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator) {
+                                   UserSecurityMutationCoordinator securityMutations) {
         this.organizationUnitMapper = organizationUnitMapper;
         this.positionMapper = positionMapper;
         this.employeeMapper = employeeMapper;
@@ -76,10 +66,9 @@ public class OrganizationServiceImpl implements OrganizationService {
         this.authorizationAuditRecorder = authorizationAuditRecorder;
         this.currentUserProvider = currentUserProvider;
         this.objectMapper = objectMapper;
-        this.redisManager = redisManager;
         this.directManagerPolicy = directManagerPolicy;
         this.authorizationPolicy = authorizationPolicy;
-        this.ownerCandidateCacheInvalidator = ownerCandidateCacheInvalidator;
+        this.securityMutations = securityMutations;
     }
 
     @Override
@@ -182,7 +171,7 @@ public class OrganizationServiceImpl implements OrganizationService {
         recordCatalogHistory(id, AuthorizationSubjectType.ORGANIZATION_UNIT,
                 AuthorizationChangeType.UPDATE, organizationSnapshot(existing), organizationSnapshot(update),
                 "编辑组织", AuditActionEnum.ORGANIZATION_CATALOG_CHANGE);
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
+        securityMutations.ownerEligibilityChanged();
         return toOrganizationResponse(update, LocalDateTime.now());
     }
 
@@ -215,7 +204,7 @@ public class OrganizationServiceImpl implements OrganizationService {
                 enabled ? AuthorizationChangeType.ENABLE : AuthorizationChangeType.DISABLE,
                 organizationSnapshot(existing), organizationSnapshot(update), request.getReason(),
                 AuditActionEnum.ORGANIZATION_CATALOG_CHANGE);
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
+        securityMutations.ownerEligibilityChanged();
         return toOrganizationResponse(update, LocalDateTime.now());
     }
 
@@ -296,6 +285,7 @@ public class OrganizationServiceImpl implements OrganizationService {
         update.setVersion(request.getExpectedVersion() + 1);
         recordCatalogHistory(id, AuthorizationSubjectType.POSITION, AuthorizationChangeType.UPDATE,
                 positionSnapshot(existing), positionSnapshot(update), "编辑岗位", AuditActionEnum.POSITION_CHANGE);
+        securityMutations.ownerEligibilityChanged();
         return toPositionResponse(update);
     }
 
@@ -321,7 +311,7 @@ public class OrganizationServiceImpl implements OrganizationService {
         recordCatalogHistory(id, AuthorizationSubjectType.POSITION,
                 enabled ? AuthorizationChangeType.ENABLE : AuthorizationChangeType.DISABLE,
                 positionSnapshot(existing), positionSnapshot(update), request.getReason(), AuditActionEnum.POSITION_CHANGE);
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
+        securityMutations.ownerEligibilityChanged();
         return toPositionResponse(update);
     }
 
@@ -410,14 +400,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     }
 
     private void scheduleAssignmentSecurityCleanup(Integer userId) {
-        if(userSessionService!=null)userSessionService.revokeAllForSecurityChange(userId,currentUserProvider.getCurrentUserId(),"组织任职或汇报关系变化");
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override public void afterCommit() {
-                if(userSessionService==null)redisManager.delete(RedisKeys.userLogin(userId));
-            }
-        });
+        securityMutations.accessChanged(userId, "组织任职或汇报关系变化");
     }
 
     @Override
@@ -813,21 +796,6 @@ public class OrganizationServiceImpl implements OrganizationService {
             response.getAllowedActions().add("reporting");
         } else response.getUnavailableReasons().put("reporting", self ? "不能调整本人管理关系" : "无管理范围、汇报关系权限或员工已离职");
         if (!response.getAllowedActions().contains("history")) response.getUnavailableReasons().put("history", "无组织历史查看权限");
-    }
-
-    private boolean wouldCreateReportingCycle(Integer subordinateId, Integer managerId, LocalDateTime at) {
-        Deque<Integer> queue = new ArrayDeque<>();
-        Set<Integer> visited = new HashSet<>();
-        queue.add(managerId);
-        while (!queue.isEmpty()) {
-            Integer current = queue.removeFirst();
-            if (current.equals(subordinateId)) return true;
-            if (!visited.add(current)) continue;
-            for (TEmployeeReporting relation : reportingMapper.selectEffectiveManagers(current, at)) {
-                queue.addLast(relation.getManagerEmployeeId());
-            }
-        }
-        return false;
     }
 
     private void validateParent(OrganizationUnitType childType, Integer parentId, Integer editingId) {

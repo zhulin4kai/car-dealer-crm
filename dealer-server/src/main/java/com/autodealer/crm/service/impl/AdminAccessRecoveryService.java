@@ -19,7 +19,6 @@ import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.CredentialService;
-import com.autodealer.crm.service.UserSessionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,18 +36,18 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class AdminAccessRecoveryService {
     private final TUserMapper users;private final TAuthorizationGraphLockMapper graphLocks;
     private final CurrentUserProvider current;private final UserManagementAccessGate gate;
-    private final CredentialService credentials;private final UserSessionService sessions;private final String recoveryKey;
+    private final CredentialService credentials;private final UserSecurityMutationCoordinator securityMutations;private final String recoveryKey;
     private final SecurityFailureAuditService failureAudit;
     private final TEmployeeMapper employees;private final RedisManager redis;private final CredentialDerivationCodec digester;
     private final boolean rateLimitEnabled;
     public AdminAccessRecoveryService(TUserMapper users,TAuthorizationGraphLockMapper graphLocks,
                                       CurrentUserProvider current,UserManagementAccessGate gate,
-                                      CredentialService credentials,UserSessionService sessions,SecurityFailureAuditService failureAudit,
+                                      CredentialService credentials,UserSecurityMutationCoordinator securityMutations,SecurityFailureAuditService failureAudit,
                                       TEmployeeMapper employees,RedisManager redis,CredentialDerivationCodec digester,
                                       @Value("${security.recovery.break-glass.key:${RECOVERY_BREAK_GLASS_KEY:}}") String recoveryKey,
                                       @Value("${security.credential-rate-limit.enabled:true}") boolean rateLimitEnabled){
         this.users=users;this.graphLocks=graphLocks;this.current=current;this.gate=gate;
-        this.credentials=credentials;this.sessions=sessions;this.failureAudit=failureAudit;this.recoveryKey=recoveryKey==null?"":recoveryKey;
+        this.credentials=credentials;this.securityMutations=securityMutations;this.failureAudit=failureAudit;this.recoveryKey=recoveryKey==null?"":recoveryKey;
         this.employees=employees;this.redis=redis;this.digester=digester;this.rateLimitEnabled=rateLimitEnabled;
     }
 
@@ -84,11 +83,11 @@ public class AdminAccessRecoveryService {
         if(target.getAccountStatus()!=AccountStatus.INVITED){
             if(users.recoverOrdinaryAdminSecurityByExpected(target.getId(),target.getVersion(),operator.getId(),now)!=1)
                 throw new BusinessException(CodeEnum.ACCOUNT_VERSION_CONFLICT,"待恢复管理员状态已变化");
-            sessions.revokeAllForSecurityChange(target.getId(),operator.getId(),"降级状态恢复普通管理员入口");
+            securityMutations.accessChanged(target.getId(),operator.getId(),"降级状态恢复普通管理员入口");
         }else{
             if(users.recoverInvitedAdminSecurityByExpected(target.getId(),target.getVersion(),operator.getId(),now)!=1)
                 throw new BusinessException(CodeEnum.ACCOUNT_VERSION_CONFLICT,"待恢复邀请管理员状态已变化");
-            sessions.revokeAllForSecurityChange(target.getId(),operator.getId(),"降级状态重发管理员邀请");
+            securityMutations.accessChanged(target.getId(),operator.getId(),"降级状态重发管理员邀请");
         }
         ManagedDeliveryResult delivery=credentials.issueDegradedAdminRecovery(target.getId(),request.getReason());
         return new AdminAccessRecoveryResult(target.getId(),target.getLoginAct(),target.getAccountStatus().name(),

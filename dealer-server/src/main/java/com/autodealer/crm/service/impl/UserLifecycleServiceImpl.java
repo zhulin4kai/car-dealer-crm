@@ -2,7 +2,6 @@ package com.autodealer.crm.service.impl;
 
 import com.autodealer.crm.audit.*;
 import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator;
 import com.autodealer.crm.constant.PermissionCodes;
 import com.autodealer.crm.dto.user.UserLifecycleDtos.*;
 import com.autodealer.crm.enums.*;
@@ -11,7 +10,6 @@ import com.autodealer.crm.mapper.*;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.UserLifecycleService;
-import com.autodealer.crm.service.UserSessionService;
 import com.autodealer.crm.service.DataScopeResolver;
 import com.autodealer.crm.service.AuthorizationDataScope;
 import com.autodealer.crm.service.CredentialService;
@@ -46,12 +44,12 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
     private final TAuthorizationGraphLockMapper graphLocks;
     private final UserAuthorizationPolicy policy; private final CurrentUserProvider current;
     private final DataScopeResolver dataScopes;
-    private final UserSessionService sessions; private final OperationAuditRecorder audit;
+    private final OperationAuditRecorder audit;
     private final CredentialService credentials;
     private final AuthorizationAuditRecorder authorizationAudit;
     private final AuditRequestIdProvider requestIds; private final ObjectMapper json; private final Clock clock;
     private final DirectManagerPolicy directManagerPolicy;
-    private final OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
+    private final UserSecurityMutationCoordinator securityMutations;
 
     public UserLifecycleServiceImpl(TUserLifecycleMapper lifecycle,TUserMapper users,TEmployeeMapper employees,
             TEmployeeAssignmentMapper assignments,TEmployeeReportingMapper reporting,TOrganizationUnitMapper organizations,
@@ -60,18 +58,18 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
             TClueOwnerHistoryMapper clueOwnerHistory,TCustomerOwnerHistoryMapper customerOwnerHistory,
             TAuthorizationGraphLockMapper graphLocks,UserAuthorizationPolicy policy,CurrentUserProvider current,
             DataScopeResolver dataScopes,
-            UserSessionService sessions,CredentialService credentials,OperationAuditRecorder audit,AuditRequestIdProvider requestIds,
+            CredentialService credentials,OperationAuditRecorder audit,AuditRequestIdProvider requestIds,
             AuthorizationAuditRecorder authorizationAudit,ObjectMapper json,Clock clock,
             DirectManagerPolicy directManagerPolicy,
-            OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator){
+            UserSecurityMutationCoordinator securityMutations){
         this.lifecycle=lifecycle;this.users=users;this.employees=employees;this.assignments=assignments;this.reporting=reporting;
         this.organizations=organizations;this.positions=positions;this.userRoles=userRoles;this.userPermissions=userPermissions;
         this.roles=roles;this.permissions=permissions;
         this.clueOwnerHistory=clueOwnerHistory;this.customerOwnerHistory=customerOwnerHistory;
-        this.graphLocks=graphLocks;this.policy=policy;this.current=current;this.dataScopes=dataScopes;this.sessions=sessions;this.credentials=credentials;this.audit=audit;
+        this.graphLocks=graphLocks;this.policy=policy;this.current=current;this.dataScopes=dataScopes;this.credentials=credentials;this.audit=audit;
         this.requestIds=requestIds;this.authorizationAudit=authorizationAudit;this.json=json;this.clock=clock;
         this.directManagerPolicy=directManagerPolicy;
-        this.ownerCandidateCacheInvalidator=ownerCandidateCacheInvalidator;
+        this.securityMutations=securityMutations;
     }
 
     @Override public Context getContext(Integer userId,Integer targetOrganizationId){
@@ -98,8 +96,7 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
         String after=json(Map.of("status",employee.getEmploymentStatus().name(),"version",employee.getVersion(),"assignment",assignmentSnapshot(employee.getId(),at)));
         recordEvent(AuditActionEnum.USER_TRANSFER,"TRANSFER",target,employee,before,after,request.getReason(),at);
         if(users.incrementAuthVersion(userId)!=1)throw new BusinessException(CodeEnum.SYSTEM_ERROR,"调岗安全版本更新失败");
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
-        sessions.revokeAllForSecurityChange(userId,operator,"员工调岗");
+        securityMutations.accessChanged(userId,"员工调岗");
         return context(target,employee,at);
     }
 
@@ -126,8 +123,7 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
         if(lifecycle.transitionEmployee(employee.getId(),employee.getVersion(),"ACTIVE","HANDOVER",at,current.getCurrentUserId(),false,false)!=1)conflict();
         employee.setEmploymentStatus(EmployeeStatus.HANDOVER);employee.setVersion(employee.getVersion()+1);
         if(users.incrementAuthVersion(userId)!=1)throw new BusinessException(CodeEnum.SYSTEM_ERROR,"进入待交接后的安全版本更新失败");
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
-        sessions.revokeAllForSecurityChange(userId,current.getCurrentUserId(),"员工进入待交接");
+        securityMutations.accessChanged(userId,"员工进入待交接");
         recordEvent(AuditActionEnum.USER_DEPARTURE_START,"DEPARTURE_START",target,employee,before,
                 json(Map.of("employmentStatus","HANDOVER","employeeVersion",employee.getVersion())),request.getReason(),at);
         return context(target,employee,at);
@@ -191,8 +187,7 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
         if(lifecycle.transitionEmployee(employee.getId(),employee.getVersion(),"HANDOVER","LEFT",at,current.getCurrentUserId(),false,true)!=1)conflict();
         employee.setEmploymentStatus(EmployeeStatus.LEFT);employee.setVersion(employee.getVersion()+1);
         credentials.revokeAll(userId);
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
-        sessions.revokeAllForSecurityChange(userId,current.getCurrentUserId(),"完成员工离职");
+        securityMutations.accessChanged(userId,"完成员工离职");
         recordOrganizationHistory(employee,organizationBefore,organizationAfter,
                 request.getReason(),"DEPARTURE_COMPLETE");
         recordEvent(AuditActionEnum.USER_DEPARTURE_COMPLETE,"DEPARTURE_COMPLETE",target,employee,before,
@@ -218,7 +213,7 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
         if(users.updateAccountStatusByExpected(userId,target.getVersion(),accountStatus,enabled,current.getCurrentUserId())!=1)conflict();
         if(lifecycle.transitionEmployee(employee.getId(),employee.getVersion(),"LEFT","ACTIVE",at,current.getCurrentUserId(),true,false)!=1)conflict();
         employee.setEmploymentStatus(EmployeeStatus.ACTIVE);employee.setVersion(employee.getVersion()+1);
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
+        securityMutations.ownerEligibilityChanged();
         String deliveryStatus="NOT_REQUIRED";if(request.getAccountActivationMode()==AccountActivationMode.INVITE){ManagedDeliveryResult delivery=credentials.issueInvitation(userId,request.getReason());if(!delivery.accepted())throw new BusinessException(CodeEnum.CREDENTIAL_DELIVERY_FAILED,"返聘邀请凭证未成功投递");deliveryStatus=delivery.deliveryStatus();}
         recordOrganizationHistory(employee,organizationBefore,organizationHistoryState(employee,at),
                 request.getReason(),"REHIRE");

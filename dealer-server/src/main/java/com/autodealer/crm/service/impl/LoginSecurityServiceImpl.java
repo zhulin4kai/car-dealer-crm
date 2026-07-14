@@ -7,7 +7,6 @@ import com.autodealer.crm.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.service.LoginSecurityService;
-import com.autodealer.crm.service.UserSessionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -17,9 +16,9 @@ public class LoginSecurityServiceImpl implements LoginSecurityService {
     private final TUserMapper mapper;
     private final TAuthorizationGraphLockMapper graphLock;
     private final OperationAuditRecorder audit;
-    private final UserSessionService sessions;
+    private final UserSecurityMutationCoordinator securityMutations;
     public LoginSecurityServiceImpl(TUserMapper mapper,TAuthorizationGraphLockMapper graphLock,
-                                    OperationAuditRecorder audit,UserSessionService sessions){this.mapper=mapper;this.graphLock=graphLock;this.audit=audit;this.sessions=sessions;}
+                                    OperationAuditRecorder audit,UserSecurityMutationCoordinator securityMutations){this.mapper=mapper;this.graphLock=graphLock;this.audit=audit;this.securityMutations=securityMutations;}
     @Override
     @Transactional
     public void recordFailure(String loginAct) {
@@ -41,7 +40,7 @@ public class LoginSecurityServiceImpl implements LoginSecurityService {
             if (mapper.recordLoginFailureByExpected(user.getId(), expected,
                     LocalDateTime.now().plusMinutes(15), lockAccount) != 1) continue;
             if (lockAccount) {
-                sessions.revokeAllForSecurityChange(user.getId(), null, "登录失败自动锁定");
+                securityMutations.accessChanged(user.getId(), null, "登录失败自动锁定");
                 audit.recordAnonymous(AuditActionEnum.USER_LOGIN_AUTO_LOCK, String.valueOf(user.getId()),
                         "SUCCESS", "{\"threshold\":5,\"lockMinutes\":15}");
             } else if (threshold && expected + 1 == 5) {

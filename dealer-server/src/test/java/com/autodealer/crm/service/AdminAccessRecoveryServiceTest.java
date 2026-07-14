@@ -17,6 +17,7 @@ import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.model.TUser;
 import com.autodealer.crm.service.impl.AdminAccessRecoveryService;
 import com.autodealer.crm.service.impl.CredentialDerivationCodec;
+import com.autodealer.crm.service.impl.UserSecurityMutationCoordinator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -32,7 +33,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AdminAccessRecoveryServiceTest {
     @Mock TUserMapper users;@Mock TAuthorizationGraphLockMapper locks;@Mock CurrentUserProvider current;
-    @Mock UserManagementAccessGate gate;@Mock CredentialService credentials;@Mock UserSessionService sessions;@Mock SecurityFailureAuditService failureAudit;
+    @Mock UserManagementAccessGate gate;@Mock CredentialService credentials;@Mock UserSecurityMutationCoordinator securityMutations;@Mock SecurityFailureAuditService failureAudit;
     @Mock TEmployeeMapper employees;@Mock RedisManager redis;
     private final CredentialDerivationCodec digester=new CredentialDerivationCodec("test-only-credential-derivation-key-00000001");
 
@@ -45,7 +46,7 @@ class AdminAccessRecoveryServiceTest {
         TUser target=humanAdmin(8,AccountStatus.ACTIVE);when(users.selectRecoverableAdminCandidatesForUpdate()).thenReturn(List.of(target));
         when(users.recoverOrdinaryAdminSecurityByExpected(eq(8),eq(3),eq(1),any())).thenReturn(1);
         when(credentials.issueDegradedAdminRecovery(8,"恢复唯一管理员")).thenReturn(new ManagedDeliveryResult(true,"QUEUED"));
-        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,sessions,failureAudit,employees,redis,digester,key,false);
+        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,securityMutations,failureAudit,employees,redis,digester,key,false);
         AdminAccessRecoveryRequest request=new AdminAccessRecoveryRequest();request.setRecoveryKey(key);request.setReason("恢复唯一管理员");
 
         var result=service.recover(request);
@@ -54,7 +55,7 @@ class AdminAccessRecoveryServiceTest {
         InOrder order=inOrder(locks);order.verify(locks).lockByName("AUTHORIZATION_MEMBERSHIP_GUARD");
         order.verify(locks).lockByName("ORGANIZATION_HIERARCHY");order.verify(locks).lockByName("REPORTING_GRAPH");
         order.verify(locks).lockByName("AVAILABLE_ADMIN_GUARD");
-        verify(sessions).revokeAllForSecurityChange(8,1,"降级状态恢复普通管理员入口");
+        verify(securityMutations).accessChanged(8,1,"降级状态恢复普通管理员入口");
     }
 
     @Test
@@ -65,13 +66,13 @@ class AdminAccessRecoveryServiceTest {
         when(users.selectRecoverableAdminCandidatesForUpdate()).thenReturn(List.of(humanAdmin(8,AccountStatus.INVITED)));
         when(users.recoverInvitedAdminSecurityByExpected(eq(8),eq(3),eq(1),any())).thenReturn(1);
         when(credentials.issueDegradedAdminRecovery(8,"重发首个邀请")).thenReturn(new ManagedDeliveryResult(true,"QUEUED"));
-        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,sessions,failureAudit,employees,redis,digester,key,false);
+        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,securityMutations,failureAudit,employees,redis,digester,key,false);
         AdminAccessRecoveryRequest request=new AdminAccessRecoveryRequest();request.setRecoveryKey(key);request.setReason("重发首个邀请");
 
         assertEquals("QUEUED",service.recover(request).deliveryStatus());
         verify(users).recoverInvitedAdminSecurityByExpected(eq(8),eq(3),eq(1),any());
         verify(users,never()).recoverOrdinaryAdminSecurityByExpected(anyInt(),anyInt(),anyInt(),any());
-        verify(sessions).revokeAllForSecurityChange(8,1,"降级状态重发管理员邀请");
+        verify(securityMutations).accessChanged(8,1,"降级状态重发管理员邀请");
     }
 
     @Test
@@ -80,21 +81,21 @@ class AdminAccessRecoveryServiceTest {
         when(current.getCurrentUser()).thenReturn(recovery);when(locks.lockByName(anyString())).thenAnswer(invocation->invocation.getArgument(0));
         when(gate.state()).thenReturn(UserManagementAccessGate.BootstrapState.DEGRADED);
         when(users.selectRecoverableAdminCandidatesForUpdate()).thenReturn(List.of());
-        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,sessions,failureAudit,employees,redis,digester,key,false);
+        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,securityMutations,failureAudit,employees,redis,digester,key,false);
         AdminAccessRecoveryRequest request=new AdminAccessRecoveryRequest();request.setRecoveryKey(key);request.setReason("无可投递候选");
 
         BusinessException error=assertThrows(BusinessException.class,()->service.recover(request));
 
         assertEquals(CodeEnum.LAST_AVAILABLE_ADMIN_REQUIRED,error.getCodeEnum());
         verify(failureAudit).recordAuthenticated(eq(AuditActionEnum.USER_MANAGEMENT_GATE_REJECTED),eq("ADMIN_ACCESS"),contains("NO_DELIVERABLE_ADMIN_CANDIDATE"),eq(recovery));
-        verifyNoInteractions(credentials);verifyNoInteractions(sessions);
+        verifyNoInteractions(credentials);verifyNoInteractions(securityMutations);
     }
 
     @Test
     void wrongRecoveryKeyWritesIndependentRejectedAudit() {
         String key="recovery-key-for-test-environment-000001";TUser recovery=recovery();
         when(current.getCurrentUser()).thenReturn(recovery);
-        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,sessions,
+        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,securityMutations,
                 failureAudit,employees,redis,digester,key,false);
         AdminAccessRecoveryRequest request=new AdminAccessRecoveryRequest();request.setRecoveryKey("wrong-key-for-test-environment-0000001");request.setReason("错误恢复");
 
@@ -110,7 +111,7 @@ class AdminAccessRecoveryServiceTest {
         String key="recovery-key-for-test-environment-000001";TUser recovery=recovery();
         when(current.getCurrentUser()).thenReturn(recovery);
         when(redis.incrementSlidingWindow(anyString(),eq(3600L))).thenReturn(null);
-        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,sessions,
+        AdminAccessRecoveryService service=new AdminAccessRecoveryService(users,locks,current,gate,credentials,securityMutations,
                 failureAudit,employees,redis,digester,key,true);
         AdminAccessRecoveryRequest request=new AdminAccessRecoveryRequest();request.setRecoveryKey(key);request.setReason("恢复入口");
 

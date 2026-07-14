@@ -11,6 +11,7 @@ import com.autodealer.crm.enums.EmployeeStatus;
 import com.autodealer.crm.mapper.*;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.service.impl.ProfileServiceImpl;
+import com.autodealer.crm.service.impl.UserSecurityMutationCoordinator;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -32,7 +33,7 @@ class ProfileAuthorizationSourceTest {
         TUserPermissionMapper userPermissions=mock(TUserPermissionMapper.class);TUserPermissionOrganizationMapper userPermissionOrganizations=mock(TUserPermissionOrganizationMapper.class);
         TPermissionMapper permissions=mock(TPermissionMapper.class);OperationAuditRecorder audit=mock(OperationAuditRecorder.class);
         CredentialService credentials=mock(CredentialService.class);TAuthorizationGraphLockMapper graphLocks=mock(TAuthorizationGraphLockMapper.class);
-        ProfileServiceImpl service=new ProfileServiceImpl(current,users,employees,assignments,reporting,organizations,positions,roles,userRoles,rolePermissions,rolePermissionOrganizations,userPermissions,userPermissionOrganizations,permissions,audit,credentials,graphLocks);
+        ProfileServiceImpl service=new ProfileServiceImpl(current,users,employees,assignments,reporting,organizations,positions,roles,userRoles,rolePermissions,rolePermissionOrganizations,userPermissions,userPermissionOrganizations,permissions,audit,credentials,graphLocks,mock(UserSecurityMutationCoordinator.class));
 
         when(current.getCurrentUserId()).thenReturn(7);
         TUser user=new TUser();user.setId(7);user.setLoginAct("sales07");user.setName("销售七");user.setAccountType(AccountType.HUMAN);when(users.selectByPrimaryKey(7)).thenReturn(user);

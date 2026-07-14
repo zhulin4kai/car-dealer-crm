@@ -12,6 +12,7 @@ import com.autodealer.crm.model.*;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.ProfileService;
 import com.autodealer.crm.service.CredentialService;
+import com.autodealer.crm.service.command.UserManagementCommand;
 import com.autodealer.crm.util.PhoneNormalizer;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -35,22 +36,23 @@ public class ProfileServiceImpl implements ProfileService {
     private final OperationAuditRecorder audit;
     private final CredentialService credentials;
     private final TAuthorizationGraphLockMapper graphLocks;
+    private final UserSecurityMutationCoordinator securityMutations;
 
     public ProfileServiceImpl(CurrentUserProvider current,TUserMapper users,TEmployeeMapper employees,
       TEmployeeAssignmentMapper assignments,TEmployeeReportingMapper reporting,TOrganizationUnitMapper organizations,
       TPositionMapper positions,TRoleMapper roles,TUserRoleMapper userRoles,TRolePermissionMapper rolePermissions,
       TRolePermissionOrganizationMapper rolePermissionOrganizations,TUserPermissionMapper userPermissions,
       TUserPermissionOrganizationMapper userPermissionOrganizations,TPermissionMapper permissions,OperationAuditRecorder audit,
-      CredentialService credentials,TAuthorizationGraphLockMapper graphLocks){
+      CredentialService credentials,TAuthorizationGraphLockMapper graphLocks,UserSecurityMutationCoordinator securityMutations){
       this.current=current;this.users=users;this.employees=employees;this.assignments=assignments;this.reporting=reporting;
       this.organizations=organizations;this.positions=positions;this.roles=roles;this.userRoles=userRoles;this.rolePermissions=rolePermissions;
       this.rolePermissionOrganizations=rolePermissionOrganizations;this.userPermissions=userPermissions;
-      this.userPermissionOrganizations=userPermissionOrganizations;this.permissions=permissions;this.audit=audit;this.credentials=credentials;this.graphLocks=graphLocks;
+      this.userPermissionOrganizations=userPermissionOrganizations;this.permissions=permissions;this.audit=audit;this.credentials=credentials;this.graphLocks=graphLocks;this.securityMutations=securityMutations;
     }
 
     @Override public Profile getOwn(){return build(current.getCurrentUserId());}
 
-    @Override @Transactional public Profile updateOwn(UpdateRequest request){
+    @Override @Transactional @UserManagementCommand("PROFILE_UPDATE_OWN") public Profile updateOwn(UpdateRequest request){
         lockGraph("AVAILABLE_ADMIN_GUARD");
         Integer userId=current.getCurrentUserId(); TUser user=users.selectByPrimaryKeyForUpdate(userId);
         if(user==null)throw new BusinessException(CodeEnum.NOT_FOUND,"账号不存在");
@@ -92,6 +94,7 @@ public class ProfileServiceImpl implements ProfileService {
         TEmployee afterEmployee=employees.selectByUserId(userId);
         Map<String,Object> before=new LinkedHashMap<>();before.put("name",oldName);before.put("phoneChanged",false);before.put("emailChanged",false);before.put("phoneVerified",oldPhoneVerified);before.put("emailVerified",oldEmailVerified);
         Map<String,Object> after=new LinkedHashMap<>();after.put("name",name);after.put("phoneChanged",!Objects.equals(initialPhone,phone));after.put("emailChanged",!Objects.equals(initialEmail,email));after.put("phoneVerified",afterEmployee!=null&&Boolean.TRUE.equals(afterEmployee.getPhoneVerified()));after.put("emailVerified",afterEmployee!=null&&Boolean.TRUE.equals(afterEmployee.getEmailVerified()));
+        if(!Objects.equals(oldName,name))securityMutations.ownerEligibilityChanged();
         audit.record(AuditActionEnum.USER_PROFILE_UPDATE,String.valueOf(userId),"SUCCESS",auditJson(Map.of("scope","OWN_PROFILE","changedFieldCodes",changed,"before",before,"after",after)));
         return build(userId);
     }

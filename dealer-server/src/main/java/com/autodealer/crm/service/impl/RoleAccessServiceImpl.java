@@ -2,26 +2,19 @@ package com.autodealer.crm.service.impl;
 
 import com.autodealer.crm.audit.*;
 import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator;
-import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.dto.access.RoleDtos.*;
 import com.autodealer.crm.enums.*;
 import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.*;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.RoleAccessService;
-import com.autodealer.crm.service.UserSessionService;
-import jakarta.annotation.Resource;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,11 +28,10 @@ public class RoleAccessServiceImpl implements RoleAccessService {
     private final TUserMapper userMapper; private final TEmployeeMapper employeeMapper;
     private final TEmployeeAssignmentMapper assignmentMapper; private final TEmployeeReportingMapper reportingMapper;
     private final AuthorizationAuditRecorder auditRecorder; private final CurrentUserProvider currentUser;
-    private final RedisManager redis; private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
     private final TAuthorizationGraphLockMapper graphLock;
     private final UserAuthorizationPolicy authorizationPolicy;
-    private final OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
-    @Resource private UserSessionService userSessionService;
+    private final UserSecurityMutationCoordinator securityMutations;
 
     public RoleAccessServiceImpl(TRoleMapper roleMapper, TPermissionMapper permissionMapper,
       TRolePermissionMapper rolePermissionMapper, TRoleOrganizationMapper roleOrganizationMapper,
@@ -47,16 +39,16 @@ public class RoleAccessServiceImpl implements RoleAccessService {
       TOrganizationUnitMapper organizationMapper, TUserRoleMapper userRoleMapper, TUserMapper userMapper,
       TEmployeeMapper employeeMapper, TEmployeeAssignmentMapper assignmentMapper,
       TEmployeeReportingMapper reportingMapper, AuthorizationAuditRecorder auditRecorder,
-      CurrentUserProvider currentUser, RedisManager redis, ObjectMapper objectMapper,
+      CurrentUserProvider currentUser, ObjectMapper objectMapper,
       TAuthorizationGraphLockMapper graphLock, UserAuthorizationPolicy authorizationPolicy,
-      OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator) {
+      UserSecurityMutationCoordinator securityMutations) {
         this.roleMapper=roleMapper; this.permissionMapper=permissionMapper; this.rolePermissionMapper=rolePermissionMapper;
         this.rolePermissionOrganizationMapper=rolePermissionOrganizationMapper;
         this.roleOrganizationMapper=roleOrganizationMapper; this.organizationMapper=organizationMapper;
         this.userRoleMapper=userRoleMapper; this.userMapper=userMapper; this.employeeMapper=employeeMapper;
         this.assignmentMapper=assignmentMapper; this.reportingMapper=reportingMapper; this.auditRecorder=auditRecorder;
-        this.currentUser=currentUser; this.redis=redis; this.objectMapper=objectMapper; this.graphLock=graphLock;
-        this.authorizationPolicy=authorizationPolicy; this.ownerCandidateCacheInvalidator=ownerCandidateCacheInvalidator;
+        this.currentUser=currentUser; this.objectMapper=objectMapper; this.graphLock=graphLock;
+        this.authorizationPolicy=authorizationPolicy; this.securityMutations=securityMutations;
     }
 
     @Override public PageInfo<RoleResponse> page(int page,int size,String keyword,Boolean enabled) {
@@ -191,7 +183,7 @@ public class RoleAccessServiceImpl implements RoleAccessService {
     private String matrixSnapshot(TRole role,TPermission permission,ScopeValue value){Map<String,Object> snapshot=new LinkedHashMap<>();snapshot.put("roleId",role.getId());snapshot.put("roleCode",role.getRole());snapshot.put("roleName",role.getRoleName());snapshot.put("permissionId",permission==null?null:permission.getId());snapshot.put("permissionCode",permission==null?null:permission.getCode());snapshot.put("permissionName",permission==null?null:permission.getName());snapshot.put("dataScopeCode",value.scope().name());snapshot.put("organizations",organizationSnapshots(value.organizationIds()));return json(snapshot);}
     private List<Map<String,Object>> organizationSnapshots(List<Integer>ids){List<Map<String,Object>>out=new ArrayList<>();for(Integer id:ids){TOrganizationUnit organization=organizationMapper.selectByPrimaryKey(id);Map<String,Object>item=new LinkedHashMap<>();item.put("id",id);item.put("code",organization==null?null:organization.getCode());item.put("name",organization==null?null:organization.getName());out.add(item);}return out;}
     private String affectedUserSnapshot(List<Integer> userIds){List<Map<String,Object>> snapshots=new ArrayList<>();for(Integer userId:userIds){TUser user=userMapper.selectByPrimaryKey(userId);if(user==null)continue;Map<String,Object> snapshot=new LinkedHashMap<>();snapshot.put("id",user.getId());snapshot.put("code",user.getLoginAct());snapshot.put("name",user.getName());snapshots.add(snapshot);}return json(snapshots);}
-    private void scheduleCleanup(List<Integer> ids){if(ids.isEmpty())return;ownerCandidateCacheInvalidator.invalidateAfterCommit();if(userSessionService!=null){for(Integer id:ids)userSessionService.revokeAllForSecurityChange(id,currentUser.getCurrentUserId(),"角色或权限矩阵变化");return;}TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){@Override public void afterCommit(){for(Integer id:ids){boolean ok=false;for(int i=0;i<2&&!ok;i++)ok=Boolean.TRUE.equals(redis.delete(RedisKeys.userLogin(id)));if(!ok)org.slf4j.LoggerFactory.getLogger(RoleAccessServiceImpl.class).warn("角色矩阵会话缓存清理失败 userId={}",id);}}});}
+    private void scheduleCleanup(List<Integer> ids){securityMutations.accessChanged(ids,"角色或权限矩阵变化");}
     private String json(Object x){try{return objectMapper.writeValueAsString(x);}catch(JsonProcessingException e){throw new IllegalStateException(e);}}
     private void lockMembership(){lockGraph("AUTHORIZATION_MEMBERSHIP_GUARD");}
     private void lockAuthorizationScope(){lockGraph("ORGANIZATION_HIERARCHY");lockGraph("REPORTING_GRAPH");}

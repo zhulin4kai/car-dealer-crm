@@ -25,6 +25,7 @@ import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.OrganizationServiceImpl;
 import com.autodealer.crm.service.impl.DirectManagerPolicy;
 import com.autodealer.crm.service.impl.UserAuthorizationPolicy;
+import com.autodealer.crm.service.impl.UserSecurityMutationCoordinator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,10 +56,9 @@ class OrganizationServiceImplTest {
     @Mock private TUserMapper userMapper;
     @Mock private AuthorizationAuditRecorder authorizationAuditRecorder;
     @Mock private CurrentUserProvider currentUserProvider;
-    @Mock private com.autodealer.crm.manager.RedisManager redisManager;
     @Mock private DirectManagerPolicy directManagerPolicy;
     @Mock private UserAuthorizationPolicy authorizationPolicy;
-    @Mock private OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
+    @Mock private UserSecurityMutationCoordinator securityMutations;
 
     private OrganizationServiceImpl service;
 
@@ -67,8 +67,8 @@ class OrganizationServiceImplTest {
         lenient().when(graphLockMapper.lockByName(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         service = new OrganizationServiceImpl(organizationUnitMapper, positionMapper, employeeMapper,
                 assignmentMapper, reportingMapper, historyMapper, graphLockMapper, userMapper,
-                authorizationAuditRecorder, currentUserProvider, new ObjectMapper(), redisManager,
-                directManagerPolicy, authorizationPolicy, ownerCandidateCacheInvalidator);
+                authorizationAuditRecorder, currentUserProvider, new ObjectMapper(),
+                directManagerPolicy, authorizationPolicy, securityMutations);
     }
 
     @Test
@@ -300,7 +300,7 @@ class OrganizationServiceImplTest {
         verify(reportingMapper).expireElapsedActingMarkers(eq(10), any(), eq(1));
         verify(reportingMapper, never()).expireElapsedMarkers(anyInt(), any(), anyInt());
         verify(reportingMapper, never()).endByIdAndVersion(eq(direct.getId()), anyInt(), any(), any(), anyInt());
-        verify(ownerCandidateCacheInvalidator).invalidateAfterCommit();
+        verify(securityMutations).accessChanged(20, "组织任职或汇报关系变化");
     }
 
     @Test

@@ -2,7 +2,6 @@ package com.autodealer.crm.service;
 
 import com.autodealer.crm.audit.*;
 import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator;
 import com.autodealer.crm.constant.PermissionCodes;
 import com.autodealer.crm.dto.credential.CredentialDtos.ManagedDeliveryResult;
 import com.autodealer.crm.dto.user.UserLifecycleDtos.*;
@@ -13,6 +12,7 @@ import com.autodealer.crm.model.*;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.impl.UserAuthorizationPolicy;
 import com.autodealer.crm.service.impl.UserLifecycleServiceImpl;
+import com.autodealer.crm.service.impl.UserSecurityMutationCoordinator;
 import com.autodealer.crm.service.impl.DirectManagerPolicy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -40,11 +40,11 @@ class UserLifecycleServiceImplTest {
     @Mock TClueOwnerHistoryMapper clueHistory; @Mock TCustomerOwnerHistoryMapper customerHistory;
     @Mock TAuthorizationGraphLockMapper graphLocks; @Mock UserAuthorizationPolicy policy;
     @Mock CurrentUserProvider current; @Mock DataScopeResolver dataScopes;
-    @Mock UserSessionService sessions; @Mock CredentialService credentials;
+    @Mock CredentialService credentials;
     @Mock OperationAuditRecorder operationAudit; @Mock AuditRequestIdProvider requestIds;
     @Mock AuthorizationAuditRecorder authorizationAudit;
     @Mock DirectManagerPolicy directManagerPolicy;
-    @Mock OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
+    @Mock UserSecurityMutationCoordinator securityMutations;
     UserLifecycleServiceImpl service;
     final Clock clock=Clock.fixed(Instant.parse("2026-07-12T10:00:00Z"),ZoneId.of("Asia/Shanghai"));
 
@@ -52,8 +52,8 @@ class UserLifecycleServiceImplTest {
         ObjectMapper json=new ObjectMapper().registerModule(new JavaTimeModule());
         service=new UserLifecycleServiceImpl(lifecycle,users,employees,assignments,reporting,organizations,positions,
                 userRoles,userPermissions,roles,permissions,clueHistory,customerHistory,graphLocks,policy,current,
-                dataScopes,sessions,credentials,operationAudit,requestIds,authorizationAudit,json,clock,
-                directManagerPolicy,ownerCandidateCacheInvalidator);
+                dataScopes,credentials,operationAudit,requestIds,authorizationAudit,json,clock,
+                directManagerPolicy,securityMutations);
         lenient().when(current.getCurrentUserId()).thenReturn(1);
         lenient().when(current.hasAuthority(anyString())).thenReturn(true);
         lenient().when(policy.isGlobalOperator()).thenReturn(true);
@@ -143,7 +143,7 @@ class UserLifecycleServiceImplTest {
         assertEquals("CAPTURED",result.getCredentialDeliveryStatus());assertEquals(0,result.getRestoredLegacyAuthorizationCount());
         verify(credentials).issueInvitation(2,"返聘重新邀请");
         verify(users).updateAccountStatusByExpected(2,0,"INVITED",false,1);
-        verify(ownerCandidateCacheInvalidator).invalidateAfterCommit();
+        verify(securityMutations).ownerEligibilityChanged();
     }
 
     @Test void rehireRecoverRejectsExpiredExistingCredentialBeforeCreatingAssignment(){

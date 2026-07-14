@@ -3,31 +3,23 @@ package com.autodealer.crm.service.impl;
 import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.AuthorizationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator;
-import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.dto.access.UserAuthorizationDtos.*;
 import com.autodealer.crm.enums.*;
 import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.*;
 import com.autodealer.crm.model.*;
 import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.AuthorizationService;
-import com.autodealer.crm.service.UserSessionService;
-import jakarta.annotation.Resource;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.*;
 import java.util.*;
 
 @Service
 public class AuthorizationServiceImpl implements AuthorizationService {
-    private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(AuthorizationServiceImpl.class);
     private static final ZoneId ZONE = ZoneId.systemDefault();
     private static final int MAX_PERMISSION_SCHEDULE_YEARS = 1;
     private static final ObjectMapper HISTORY_OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
@@ -39,10 +31,9 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     private final TUserPermissionOrganizationMapper userPermissionOrganizationMapper;
     private final TRolePermissionOrganizationMapper rolePermissionOrganizationMapper;
     private final UserAuthorizationPolicy policy; private final CurrentUserProvider currentUserProvider;
-    private final AuthorizationAuditRecorder auditRecorder; private final RedisManager redisManager;
+    private final AuthorizationAuditRecorder auditRecorder;
     private final TAuthorizationGraphLockMapper graphLock;
-    private final OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
-    @Resource private UserSessionService userSessionService;
+    private final UserSecurityMutationCoordinator securityMutations;
 
     public AuthorizationServiceImpl(TUserMapper userMapper, TEmployeeMapper employeeMapper,
                                     TEmployeeAssignmentMapper assignmentMapper, TOrganizationUnitMapper organizationMapper,
@@ -52,17 +43,17 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                                     TUserPermissionOrganizationMapper userPermissionOrganizationMapper,
                                     TRolePermissionOrganizationMapper rolePermissionOrganizationMapper,
                                     UserAuthorizationPolicy policy, CurrentUserProvider currentUserProvider,
-                                    AuthorizationAuditRecorder auditRecorder, RedisManager redisManager,
+                                    AuthorizationAuditRecorder auditRecorder,
                                     TAuthorizationGraphLockMapper graphLock,
-                                    OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator) {
+                                    UserSecurityMutationCoordinator securityMutations) {
         this.userMapper=userMapper; this.employeeMapper=employeeMapper; this.assignmentMapper=assignmentMapper;
         this.organizationMapper=organizationMapper; this.positionMapper=positionMapper; this.roleMapper=roleMapper;
         this.rolePermissionMapper=rolePermissionMapper; this.permissionMapper=permissionMapper;
         this.userRoleMapper=userRoleMapper; this.userPermissionMapper=userPermissionMapper;
         this.userPermissionOrganizationMapper=userPermissionOrganizationMapper;
         this.rolePermissionOrganizationMapper=rolePermissionOrganizationMapper; this.policy=policy;
-        this.currentUserProvider=currentUserProvider; this.auditRecorder=auditRecorder; this.redisManager=redisManager; this.graphLock=graphLock;
-        this.ownerCandidateCacheInvalidator=ownerCandidateCacheInvalidator;
+        this.currentUserProvider=currentUserProvider; this.auditRecorder=auditRecorder; this.graphLock=graphLock;
+        this.securityMutations=securityMutations;
     }
 
     @Override public Detail get(Integer userId) {
@@ -347,7 +338,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         return role!=null&&Boolean.TRUE.equals(role.getProtectedRole())&&"admin".equals(role.getRole());}
     private TAuthorizationHistory roleHistory(Integer userId,Integer roleId,AuthorizationChangeType type,String reason,LocalDateTime now){TRole role=roleMapper.selectByPrimaryKey(roleId);Map<String,Object>snapshot=new LinkedHashMap<>();snapshot.put("roleId",roleId);snapshot.put("roleCode",role==null?null:role.getRole());snapshot.put("roleName",role==null?null:role.getRoleName());String stable=json(snapshot);TAuthorizationHistory h=new TAuthorizationHistory();h.setSubjectType(AuthorizationSubjectType.USER_ROLE);h.setSubjectId(userId+":"+roleId);h.setTargetUserId(userId);h.setRoleId(roleId);h.setChangeType(type);if(type==AuthorizationChangeType.UNASSIGN)h.setBeforeValue(stable);else h.setAfterValue(stable);h.setReason(reason);h.setEffectiveFrom(now);return h;}
     private TAuthorizationHistory permissionHistory(Integer userId,Integer permissionId,AuthorizationChangeType type,PermissionEffect effect,DataScopeCode scope,LocalDateTime from,LocalDateTime to,String reason){TAuthorizationHistory h=new TAuthorizationHistory();h.setSubjectType(AuthorizationSubjectType.USER_PERMISSION);h.setSubjectId(userId+":"+permissionId);h.setTargetUserId(userId);h.setPermissionId(permissionId);h.setChangeType(type);h.setEffect(effect);h.setDataScopeCode(scope);h.setEffectiveFrom(from);h.setEffectiveTo(to);h.setReason(reason);return h;}
-    private void scheduleCleanup(Integer userId){ownerCandidateCacheInvalidator.invalidateAfterCommit();if(userSessionService!=null){userSessionService.revokeAllForSecurityChange(userId,currentUserProvider.getCurrentUserId(),"授权变化");return;}if(TransactionSynchronizationManager.isSynchronizationActive())TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){@Override public void afterCommit(){boolean deleted=false;for(int attempt=1;attempt<=2&&!deleted;attempt++){try{deleted=redisManager.delete(RedisKeys.userLogin(userId));}catch(RuntimeException exception){log.warn("授权变更会话缓存清理失败 userId={} attempt={}",userId,attempt,exception);}}if(!deleted)log.warn("授权变更会话缓存清理重试耗尽 userId={}，数据库 authVersion 已生效",userId);}});}
+    private void scheduleCleanup(Integer userId){securityMutations.accessChanged(userId,"授权变化");}
     private void lockMembership(){if(!"AUTHORIZATION_MEMBERSHIP_GUARD".equals(graphLock.lockByName("AUTHORIZATION_MEMBERSHIP_GUARD")))throw new IllegalStateException("授权成员图锁缺失");}
     private void lockGraph(String name){if(!name.equals(graphLock.lockByName(name)))throw new IllegalStateException("授权范围图锁缺失: "+name);}
     private LocalDateTime local(OffsetDateTime value){return LocalDateTime.ofInstant(value.toInstant(),ZONE);}

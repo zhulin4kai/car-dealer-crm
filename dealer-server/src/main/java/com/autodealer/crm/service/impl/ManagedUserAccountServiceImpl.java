@@ -3,8 +3,6 @@ package com.autodealer.crm.service.impl;
 import com.autodealer.crm.audit.AuditActionEnum;
 import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator;
-import com.autodealer.crm.constant.RedisKeys;
 import com.autodealer.crm.constant.PermissionCodes;
 import com.autodealer.crm.dto.user.ManagedUserDtos.Detail;
 import com.autodealer.crm.dto.user.ManagedUserDtos.FilterOption;
@@ -22,7 +20,6 @@ import com.autodealer.crm.enums.AccountStatus;
 import com.autodealer.crm.enums.EmployeeStatus;
 import com.autodealer.crm.enums.OrganizationUnitType;
 import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.TEmployeeAssignmentMapper;
 import com.autodealer.crm.mapper.TEmployeeMapper;
 import com.autodealer.crm.mapper.TEmployeeReportingMapper;
@@ -43,18 +40,14 @@ import com.autodealer.crm.result.CodeEnum;
 import com.autodealer.crm.service.ManagedUserAccountService;
 import com.autodealer.crm.service.AuthorizationDataScope;
 import com.autodealer.crm.service.DataScopeResolver;
-import com.autodealer.crm.service.UserSessionService;
 import com.autodealer.crm.service.CredentialService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import jakarta.annotation.Resource;
 import com.autodealer.crm.util.PhoneNormalizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -106,16 +99,14 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
     private final TRoleMapper roles;
     private final CurrentUserProvider current;
     private final UserAuthorizationPolicy policy;
-    private final RedisManager redis;
     private final OperationAuditRecorder audit;
     private final DataScopeResolver dataScopeResolver;
     private final TAuthorizationGraphLockMapper graphLock;
     private final CredentialService credentialService;
     private final DirectManagerPolicy directManagerPolicy;
-    private final OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
+    private final UserSecurityMutationCoordinator securityMutations;
     @Value("${security.user-management-bootstrap-gate.enabled:true}")
     private boolean bootstrapGateEnabled;
-    @Resource private UserSessionService userSessionService;
 
     public ManagedUserAccountServiceImpl(TUserMapper users, TLoginIdentifierMapper loginIdentifiers,
                                          TEmployeeMapper employees,
@@ -124,12 +115,12 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
                                          TOrganizationUnitMapper organizations,
                                          TPositionMapper positions, TRoleMapper roles,
                                          CurrentUserProvider current, UserAuthorizationPolicy policy,
-                                         RedisManager redis, OperationAuditRecorder audit,
+                                         OperationAuditRecorder audit,
                                          DataScopeResolver dataScopeResolver,
                                          TAuthorizationGraphLockMapper graphLock,
                                          CredentialService credentialService,
                                          DirectManagerPolicy directManagerPolicy,
-                                         OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator) {
+                                         UserSecurityMutationCoordinator securityMutations) {
         this.users = users;
         this.loginIdentifiers = loginIdentifiers;
         this.employees = employees;
@@ -140,13 +131,12 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
         this.roles = roles;
         this.current = current;
         this.policy = policy;
-        this.redis = redis;
         this.audit = audit;
         this.dataScopeResolver = dataScopeResolver;
         this.graphLock = graphLock;
         this.credentialService = credentialService;
         this.directManagerPolicy = directManagerPolicy;
-        this.ownerCandidateCacheInvalidator = ownerCandidateCacheInvalidator;
+        this.securityMutations = securityMutations;
     }
 
     @Override
@@ -305,8 +295,7 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
         };
         if (!changed) throw new BusinessException(CodeEnum.ACCOUNT_VERSION_CONFLICT, "账号版本冲突");
         if ("DISABLE".equals(request.getCommand())) credentialService.revokeAll(userId);
-        ownerCandidateCacheInvalidator.invalidateAfterCommit();
-        if(userSessionService!=null)userSessionService.revokeAllForSecurityChange(userId,current.getCurrentUserId(),"账号状态变化");else schedule(userId);
+        securityMutations.accessChanged(userId, "账号状态变化");
         AuditActionEnum auditAction = "LOCK".equals(request.getCommand()) || "UNLOCK".equals(request.getCommand())
                 ? AuditActionEnum.USER_MANUAL_LOCK_CHANGE : AuditActionEnum.USER_STATUS_CHANGE;
         TUser afterUser = users.selectByPrimaryKey(userId);
@@ -375,6 +364,7 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
         if (!Objects.equals(oldPhone, phone)) changed.add("PHONE");
         if (!Objects.equals(oldEmail, email)) changed.add("EMAIL");
         if (!Objects.equals(oldPhone, phone) || !Objects.equals(oldEmail, email)) credentialService.revokeAll(userId);
+        if (!Objects.equals(oldName, employee.getName())) securityMutations.ownerEligibilityChanged();
         audit.record(AuditActionEnum.USER_PROFILE_UPDATE, String.valueOf(userId), "SUCCESS", auditJson(Map.of(
                 "scope", "MANAGED_PROFILE", "changedFieldCodes", changed,
                 "before", Map.of("name", oldName, "phoneChanged", false, "emailChanged", false,
@@ -447,11 +437,7 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
         } catch (DuplicateKeyException exception) {
             throw new BusinessException(CodeEnum.DUPLICATE, "登录账号已被当前或历史用户占用");
         }
-        if (userSessionService != null) {
-            userSessionService.revokeAllForSecurityChange(userId, current.getCurrentUserId(), "登录账号变化");
-        } else {
-            schedule(userId);
-        }
+        securityMutations.authenticationChanged(userId, "登录账号变化");
         audit.record(AuditActionEnum.USER_LOGIN_ACCOUNT_CHANGE, String.valueOf(userId), "SUCCESS",
                 auditJson(Map.of("reason", reason, "before", Map.of("loginAct", user.getLoginAct()),
                         "after", Map.of("loginAct", loginAct))));
@@ -484,11 +470,7 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
             throw new BusinessException(CodeEnum.ACCOUNT_VERSION_CONFLICT, "账号版本冲突");
         }
         credentialService.revokeAll(userId);
-        if (userSessionService != null) {
-            userSessionService.revokeAllForSecurityChange(userId, current.getCurrentUserId(), "账号安全到期变化");
-        } else {
-            schedule(userId);
-        }
+        securityMutations.authenticationChanged(userId, "账号安全到期变化");
         TUser after = users.selectByPrimaryKey(userId);
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("reason", reason);
@@ -814,11 +796,4 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
         }
     }
 
-    private void schedule(Integer id) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override public void afterCommit() { redis.delete(RedisKeys.userLogin(id)); }
-            });
-        }
-    }
 }

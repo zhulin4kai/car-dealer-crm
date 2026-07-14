@@ -1,6 +1,5 @@
 package com.autodealer.crm.service;
 
-import com.autodealer.crm.audit.OperationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
 import com.autodealer.crm.config.security.PrincipalEligibilityPolicy;
 import com.autodealer.crm.constant.RedisKeys;
@@ -19,7 +18,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 
@@ -30,11 +28,10 @@ import static org.mockito.Mockito.*;
 /** 旧 UserService 只保留读取与认证失效；所有用户资料、状态、授权、密码和交接写入必须 fail-close。 */
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
-    @Mock TUserMapper users; @Mock TClueOwnerHistoryMapper clueHistory; @Mock TCustomerOwnerHistoryMapper customerHistory;
-    @Mock PasswordEncoder passwords; @Mock TRoleMapper roles; @Mock TPermissionMapper permissions;
-    @Mock RedisManager redis; @Mock CurrentUserProvider current; @Mock OperationAuditRecorder audit;
+    @Mock TUserMapper users; @Mock TRoleMapper roles; @Mock TPermissionMapper permissions;
+    @Mock RedisManager redis; @Mock CurrentUserProvider current;
     @Mock DataScopeResolver dataScopes; @Mock PrincipalEligibilityPolicy principalEligibility;
-    @Mock com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
+    @Mock com.autodealer.crm.service.impl.UserSecurityMutationCoordinator securityMutations;
     @InjectMocks UserServiceImpl service;
 
     @BeforeEach void setUp(){lenient().when(current.getDataScopeUserId()).thenReturn(null);lenient().when(principalEligibility.isEligible(any())).thenReturn(true);}
@@ -71,15 +68,16 @@ class UserServiceImplTest {
         assertDenied(()->service.batchDisableUsers(List.of(2,3)));assertDenied(()->service.assignRoles(roleRequest));
         assertDenied(()->service.changePassword(password));assertDenied(()->service.handoverResponsibilities(2,handover));
 
-        verifyNoInteractions(clueHistory,customerHistory,passwords,roles,permissions,audit,dataScopes);
+        verifyNoInteractions(roles,permissions,dataScopes,securityMutations);
         verifyNoMoreInteractions(users,redis,current);
     }
 
-    @Test void revokeAuthenticationDatabaseFailureRejectsAndSuccessKeepsSecurityVersionEvenIfCacheCleanupFails(){
+    @Test void revokeAuthenticationDatabaseFailureRejectsAndSuccessDelegatesCleanup(){
         when(users.incrementAuthVersion(2)).thenReturn(0);BusinessException failure=assertThrows(BusinessException.class,()->service.revokeAuthentication(2));
-        assertEquals(CodeEnum.SYSTEM_ERROR,failure.getCodeEnum());verifyNoInteractions(redis);
-        reset(users,redis);when(users.incrementAuthVersion(2)).thenReturn(1);when(redis.delete(RedisKeys.userLogin(2))).thenReturn(false);
-        assertDoesNotThrow(()->service.revokeAuthentication(2));verify(redis,times(2)).delete(RedisKeys.userLogin(2));
+        assertEquals(CodeEnum.SYSTEM_ERROR,failure.getCodeEnum());verifyNoInteractions(securityMutations);
+        reset(users,securityMutations);when(users.incrementAuthVersion(2)).thenReturn(1);
+        assertDoesNotThrow(()->service.revokeAuthentication(2));
+        verify(securityMutations).authenticationChanged(2,"账号安全状态变化");
     }
 
     private void assertDenied(org.junit.jupiter.api.function.Executable action){BusinessException error=assertThrows(BusinessException.class,action);assertEquals(CodeEnum.ACCESS_DENIED,error.getCodeEnum());}

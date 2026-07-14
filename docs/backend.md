@@ -59,6 +59,7 @@ dealer-server/src/main/java/com/autodealer/crm/
 ├── result/                 # 返回结果对象
 ├── dto/                    # 数据传输对象
 ├── config/                 # 配置类
+│   ├── aop/                # 轻量命令上下文切面
 │   ├── handler/            # Security Handler
 │   ├── filter/             # Security Filter
 │   ├── converter/          # Excel 转换器
@@ -223,11 +224,19 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 | 授权与角色 | `service/AuthorizationService.java` → `service/impl/AuthorizationServiceImpl.java`, `service/RoleAccessService.java` → `service/impl/RoleAccessServiceImpl.java`, `service/impl/UserAuthorizationPolicy.java` |
 | 组织与生命周期 | `service/OrganizationService.java` → `service/impl/OrganizationServiceImpl.java`, `service/UserLifecycleService.java` → `service/impl/UserLifecycleServiceImpl.java` |
 | 个人资料、凭证、会话与历史 | `service/ProfileService.java`, `service/CredentialService.java`, `service/UserSessionService.java`, `service/UserHistoryService.java` 及其 `impl` 实现 |
+| 根命令观测 | `service/command/UserManagementCommand.java`, `config/aop/UserManagementCommandAspect.java` |
+| 安全副作用 | `service/impl/UserSecurityMutationCoordinator.java`, `config/security/OwnerCandidateCacheInvalidator.java` |
 | 认证兼容 Service | `service/UserService.java` → `service/impl/UserServiceImpl.java`；保留登录读取和负责人候选能力，缺少版本、原因、管理边界的旧写入口统一 fail-close |
 | Mapper | `TUserMapper`, `TLoginIdentifierMapper`, `TEmployeeMapper`, `TEmployeeAssignmentMapper`, `TEmployeeReportingMapper`, `TOrganizationUnitMapper`, `TPositionMapper`, `TRoleMapper`, `TRolePermissionMapper`, `TRoleOrganizationMapper`, `TUserRoleMapper`, `TUserPermissionMapper`, `TUserSessionMapper`, `TAccountCredentialMapper`, `TAuthorizationHistoryMapper`, `TUserLifecycleMapper` |
 | Model/DTO | `TUser`, `TLoginIdentifier`, `TEmployee`, `TEmployeeAssignment`, `TEmployeeReporting`, `TOrganizationUnit`, `TPosition`, `TRole`, `TPermission`, `TUserRole`, `TUserPermission`, `TUserSession`, `TAccountCredential` 及 `dto/user/`, `dto/access/`, `dto/organization/`, `dto/profile/`, `dto/credential/` |
 
 ### 3.2 接口方法及业务流程
+
+#### 命令上下文与安全副作用边界
+- `@UserManagementCommand` 目前只用于低风险的本人资料更新试点。切面识别一次根调用并输出一条脱敏完成观测；嵌套标注调用不重复记录，观测不改变业务返回或异常。
+- 切面不得承载权限判断、事务、锁、CAS、状态机、Mapper、历史或审计写入。上述规则继续由具体 Service 和显式领域策略执行，调用点可以直接定位。
+- `UserSecurityMutationCoordinator` 只统一三类重复副作用：访问事实变化撤销会话并失效负责人候选缓存，认证事实变化只撤销会话，姓名/岗位等负责人资格变化只失效候选缓存。所有入口要求已有事务，实际 Redis 清理由 `UserSessionServiceImpl` 在数据库提交后执行。
+- 不建立通用事件总线或可变安全计划对象；当前两个集中边界已经覆盖真实重复，继续抽象只会增加代码和隐藏安全语义。
 
 #### 获取登录人信息
 - **接口**: `GET /api/login/info`

@@ -2,7 +2,6 @@ package com.autodealer.crm.service.impl;
 
 import com.autodealer.crm.audit.AuthorizationAuditRecorder;
 import com.autodealer.crm.config.security.CurrentUserProvider;
-import com.autodealer.crm.config.security.OwnerCandidateCacheInvalidator;
 import com.autodealer.crm.dto.access.UserAuthorizationDtos.PermissionChange;
 import com.autodealer.crm.dto.access.UserAuthorizationDtos.PersonalState;
 import com.autodealer.crm.dto.access.UserAuthorizationDtos.BatchRoleOperation;
@@ -12,7 +11,6 @@ import com.autodealer.crm.dto.access.UserAuthorizationDtos.BatchUpdateRolesReque
 import com.autodealer.crm.dto.access.UserAuthorizationDtos.UpdatePermissionsRequest;
 import com.autodealer.crm.dto.access.UserAuthorizationDtos.UpdateRolesRequest;
 import com.autodealer.crm.exception.BusinessException;
-import com.autodealer.crm.manager.RedisManager;
 import com.autodealer.crm.mapper.*;
 import com.autodealer.crm.model.TRole;
 import com.autodealer.crm.model.TUserPermission;
@@ -47,9 +45,9 @@ class AuthorizationServiceImplTest {
     @Mock TUserPermissionOrganizationMapper userPermissionOrganizationMapper;
     @Mock TRolePermissionOrganizationMapper rolePermissionOrganizationMapper;
     @Mock UserAuthorizationPolicy policy; @Mock CurrentUserProvider currentUserProvider;
-    @Mock AuthorizationAuditRecorder auditRecorder; @Mock RedisManager redisManager;
+    @Mock AuthorizationAuditRecorder auditRecorder;
     @Mock TAuthorizationGraphLockMapper graphLockMapper;
-    @Mock OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
+    @Mock UserSecurityMutationCoordinator securityMutations;
     @InjectMocks AuthorizationServiceImpl service;
 
     @BeforeEach
@@ -93,7 +91,7 @@ class AuthorizationServiceImplTest {
         order.verify(permissionMapper).selectByPrimaryKey(7);
         verify(userPermissionMapper).insert(argThat(value->value.getUserId()==2
                 &&value.getPermissionId()==7&&value.getEffect()==com.autodealer.crm.enums.PermissionEffect.DENY));
-        verify(ownerCandidateCacheInvalidator).invalidateAfterCommit();
+        verify(securityMutations).accessChanged(2,"授权变化");
     }
 
     @Test
@@ -209,7 +207,8 @@ class AuthorizationServiceImplTest {
         verify(userRoleMapper,times(2)).insert(argThat(value->value.getRoleId()==7));
         verify(auditRecorder).recordAll(argThat(histories->histories.size()==2),
                 eq(com.autodealer.crm.audit.AuditActionEnum.USER_ROLE_CHANGE),eq("batch:ROLE_ASSIGN"),contains("\"totalCount\":2"));
-        verify(ownerCandidateCacheInvalidator,times(2)).invalidateAfterCommit();
+        verify(securityMutations).accessChanged(2,"授权变化");
+        verify(securityMutations).accessChanged(3,"授权变化");
         InOrder locks=inOrder(graphLockMapper,userMapper);
         locks.verify(graphLockMapper).lockByName("AUTHORIZATION_MEMBERSHIP_GUARD");
         locks.verify(graphLockMapper).lockByName("ORGANIZATION_HIERARCHY");
@@ -235,7 +234,8 @@ class AuthorizationServiceImplTest {
         var result=service.batchUpdatePermissions(request);
 
         assertEquals(2,result.getChangedTargetCount());verify(userPermissionMapper,times(2)).insert(any());
-        verify(ownerCandidateCacheInvalidator,times(2)).invalidateAfterCommit();
+        verify(securityMutations).accessChanged(2,"授权变化");
+        verify(securityMutations).accessChanged(3,"授权变化");
         verify(auditRecorder).recordAll(argThat(histories->histories.size()==2),
                 eq(com.autodealer.crm.audit.AuditActionEnum.USER_PERMISSION_CHANGE),eq("batch:PERMISSION_BATCH_UPDATE"),contains("\"totalCount\":2"));
     }
@@ -285,7 +285,7 @@ class AuthorizationServiceImplTest {
         verify(userRoleMapper).insert(inserted.capture());
         assertEquals(2,inserted.getValue().getRoleId());assertTrue(inserted.getValue().getActiveMarker());
         assertNotNull(inserted.getValue().getEffectiveFrom());
-        verify(ownerCandidateCacheInvalidator).invalidateAfterCommit();
+        verify(securityMutations).accessChanged(2,"授权变化");
     }
 
     @Test
