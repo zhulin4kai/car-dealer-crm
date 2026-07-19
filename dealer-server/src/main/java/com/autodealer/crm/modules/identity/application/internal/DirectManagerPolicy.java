@@ -120,7 +120,7 @@ public class DirectManagerPolicy {
     private TOrganizationUnit requireTargetOrganization(Integer organizationId) {
         TOrganizationUnit organization = organizations.selectByPrimaryKey(organizationId);
         if (organization == null || !Boolean.TRUE.equals(organization.getEnabled())
-                || Boolean.TRUE.equals(organization.getMigrationPlaceholder())) {
+                || Boolean.TRUE.equals(organization.getPlaceholder())) {
             throw new BusinessException(CodeEnum.ORGANIZATION_HIERARCHY_INVALID, "目标任职组织不可用");
         }
         return organization;
@@ -151,7 +151,7 @@ public class DirectManagerPolicy {
         while (currentId != null && visited.add(currentId)) {
             TOrganizationUnit value = organizations.selectByPrimaryKey(currentId);
             if (value == null || !Boolean.TRUE.equals(value.getEnabled())
-                    || Boolean.TRUE.equals(value.getMigrationPlaceholder())) break;
+                    || Boolean.TRUE.equals(value.getPlaceholder())) break;
             result.add(value.getId());
             currentId = value.getParentId();
         }

@@ -72,7 +72,7 @@ class OrganizationFoundationMapperIntegrationTest extends BackendIntegrationTest
         assertEquals(List.of("DEFAULT_COMPANY"),
                 organizationUnitMapper.selectRoots().stream().map(TOrganizationUnit::getCode).toList());
         TOrganizationUnit placeholder = organizationUnitMapper.selectByCode("UNASSIGNED_ORG");
-        assertTrue(placeholder.getMigrationPlaceholder());
+        assertTrue(placeholder.getPlaceholder());
         assertEquals(organizationUnits.get(0).getId(), placeholder.getParentId());
 
         List<TPosition> positions = positionMapper.selectAll();
@@ -87,7 +87,7 @@ class OrganizationFoundationMapperIntegrationTest extends BackendIntegrationTest
     void disabledHistoricalRoot_shouldNotAppearInActiveRoots() {
         jdbcTemplate.update("""
                 INSERT INTO t_organization_unit
-                  (code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time)
+                  (code,name,type,parent_id,order_no,placeholder,enabled,version,create_time)
                 VALUES ('HISTORICAL_ROOT','历史根公司','COMPANY',NULL,99,0,0,0,CURRENT_TIMESTAMP)
                 """);
 

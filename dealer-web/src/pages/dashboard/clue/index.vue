@@ -324,7 +324,11 @@
                 <SelectValue placeholder="请选择负责人" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="String(item.id)">
+                <SelectItem
+                  v-for="item in ownerOptions"
+                  :key="item.userId"
+                  :value="String(item.userId)"
+                >
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -528,7 +532,11 @@ import {
   addClue as addClueAPI,
   updateClue,
 } from '@/modules/clue/api/clue-api'
-import { getOwnerList } from '@/modules/activity/api/activity-api'
+import { fetchOwnerList } from '@/modules/user/api/user-api'
+import {
+  OWNER_QUALIFICATION_CONTEXT,
+  type OwnerCandidate,
+} from '@/modules/user/model/owner.types'
 import { getDictValueList } from '@/modules/dict/api/dict-api'
 import router from '@/router'
 import { useRoute } from 'vue-router'
@@ -627,7 +635,7 @@ const isMainlandMobile = (value: string) => /^1[3-9]\d{9}$/.test(value)
 const activityOptions = ref<Activity[]>([])
 const productOptions = ref<Product[]>([])
 // 加载字典数据
-const ownerOptions = ref<User[]>([])
+const ownerOptions = ref<OwnerCandidate[]>([])
 const appellationOptions = ref<DictValue[]>([])
 const needLoanOptions = ref<DictValue[]>([])
 const intentionStateOptions = ref<DictValue[]>([])
@@ -941,7 +949,7 @@ const addClue = async () => {
   dialogTitle.value = '录入线索'
   resetClueForm()
   await loadData()
-  await loadOwner()
+  await loadOwner(PERMISSIONS.clue.add)
   await loadLoginUser()
   clueDialogVisible.value = true
 }
@@ -950,7 +958,7 @@ const edit = async (id: number | string) => {
   dialogTitle.value = '编辑线索'
   resetClueForm()
   await loadData()
-  await loadOwner()
+  await loadOwner(PERMISSIONS.clue.edit)
   await loadClue(id)
   clueDialogVisible.value = true
 }
@@ -1034,9 +1042,10 @@ const loadDicValue = async (typeCode: string) => {
 }
 
 // 加载负责人 (严禁修改)
-const loadOwner = async () => {
-  await getOwnerList().then((resp: User[]) => {
-    ownerOptions.value = resp
+const loadOwner = async (permissionCode: string) => {
+  ownerOptions.value = await fetchOwnerList({
+    permissionCode,
+    qualificationContext: OWNER_QUALIFICATION_CONTEXT.CLUE_OWNER,
   })
 }
 

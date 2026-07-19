@@ -31,14 +31,6 @@ class DataLayerContractTest {
             "dealer-server/src/main/resources/CarDealerCRM.sql");
     private static final Path H2_SCHEMA = PROJECT_ROOT.resolve(
             "dealer-server/src/main/resources/schema-test.sql");
-    private static final Path H2_DATA = PROJECT_ROOT.resolve(
-            "dealer-server/src/main/resources/data.sql");
-    private static final Path TASK09_MIGRATION = PROJECT_ROOT.resolve(
-            "dealer-server/src/main/resources/migration/20260711_task09_organization_foundation.sql");
-    private static final Path TASK03_MIGRATION = PROJECT_ROOT.resolve(
-            "dealer-server/src/main/resources/migration/20260711_task03_auth_version.sql");
-    private static final Path TASK10_MIGRATION = PROJECT_ROOT.resolve(
-            "dealer-server/src/main/resources/migration/20260711_task10_authorization_history.sql");
     private static final Path TRAN_PRODUCT_MAPPER = PROJECT_ROOT.resolve(
             "dealer-server/src/main/resources/mapper/fulfillment/transaction/TTranProductMapper.xml");
     private static final Path TRAN_MAPPER = PROJECT_ROOT.resolve(
@@ -47,6 +39,8 @@ class DataLayerContractTest {
             "dealer-server/src/main/resources/mapper/sales/lead/TClueMapper.xml");
     private static final Path ACTIVITY_MAPPER = PROJECT_ROOT.resolve(
             "dealer-server/src/main/resources/mapper/sales/activity/TActivityMapper.xml");
+    private static final Path USER_HISTORY_MAPPER = PROJECT_ROOT.resolve(
+            "dealer-server/src/main/resources/mapper/identity/UserHistoryProjectionMapper.xml");
     private static final Path MAPPER_DIR = PROJECT_ROOT.resolve(
             "dealer-server/src/main/resources/mapper");
     private static final Pattern CREATE_TABLE = Pattern.compile(
@@ -153,12 +147,10 @@ class DataLayerContractTest {
     }
 
     @Test
-    @DisplayName("认证安全版本在生产、H2和人工迁移中保持一致")
-    void authVersionSchemaAndMigrationMustRemainCompatible() throws IOException {
+    @DisplayName("认证安全版本在生产与H2基线中保持一致")
+    void authVersionSchemaMustRemainConsistent() throws IOException {
         String productionSql = normalizeSql(Files.readString(PRODUCTION_SCHEMA));
         String h2Sql = normalizeSql(Files.readString(H2_SCHEMA));
-        String migrationSql = normalizeSql(Files.readString(TASK03_MIGRATION));
-        String lowerMigrationSql = migrationSql.toLowerCase();
 
         assertSqlContainsAll(productionSql,
                 "auth_version           bigint      not null default 0",
@@ -166,75 +158,6 @@ class DataLayerContractTest {
         assertSqlContainsAll(h2Sql,
                 "auth_version           BIGINT NOT NULL DEFAULT 0",
                 "CONSTRAINT chk_user_auth_version CHECK (auth_version >= 0)");
-        assertTrue(lowerMigrationSql.contains("information_schema.columns"));
-        assertTrue(lowerMigrationSql.contains("add column auth_version bigint not null default 0"));
-        assertFalse(lowerMigrationSql.contains("update t_user set login_pwd"));
-        assertFalse(lowerMigrationSql.contains("delete from t_user_role"));
-    }
-
-    @Test
-    @DisplayName("Task09人工迁移必须保持新增回填和占位组织边界")
-    void task09MigrationMustBeAdditiveAndMarkPlaceholderScope() throws IOException {
-        String migrationSql = normalizeSql(Files.readString(TASK09_MIGRATION));
-        String lowerMigrationSql = migrationSql.toLowerCase();
-
-        assertTrue(lowerMigrationSql.contains("information_schema.columns"),
-                "t_user 兼容字段必须按存在性判断后新增");
-        assertTrue(lowerMigrationSql.contains("create table if not exists t_organization_unit"),
-                "迁移必须以可重复执行方式新增组织表");
-        assertTrue(lowerMigrationSql.contains("migration_placeholder"),
-                "待分配组织必须有明确迁移占位标识");
-        assertFalse(lowerMigrationSql.contains("default_store"),
-                "迁移不得伪造默认门店");
-        assertFalse(lowerMigrationSql.contains("rehired"),
-                "返聘是动作而不是员工持久状态");
-        assertTrue(lowerMigrationSql.contains("where u.account_type = 'human'"),
-                "只允许普通人员账号回填员工档案");
-        assertTrue(migrationSql.contains("SIGNAL SQLSTATE '45000'"),
-                "恢复账号和占位种子漂移必须主动中止迁移");
-        assertTrue(migrationSql.contains("未找到固定恢复账号 id=1/login_act=admin"),
-                "必须保留恢复账号身份校验");
-        assertTrue(migrationSql.contains("DEFAULT_COMPANY与预期根公司不一致"));
-        assertTrue(migrationSql.contains("UNASSIGNED_ORG与预期占位组织不一致"));
-        assertTrue(migrationSql.contains("UNASSIGNED_POSITION与预期占位岗位不一致"));
-        assertFalse(lowerMigrationSql.contains("update t_user set login_pwd"),
-                "迁移禁止修改原用户密码");
-        assertFalse(lowerMigrationSql.contains("delete from t_user_role"),
-                "迁移禁止改变原用户角色关系");
-        assertFalse(lowerMigrationSql.contains("drop column"),
-                "兼容迁移禁止删除旧字段");
-        assertTrue(lowerMigrationSql.contains("task09_validate_recovery_account"));
-        assertTrue(lowerMigrationSql.contains("task09_validate_seed_objects"));
-        assertTrue(lowerMigrationSql.contains("signal sqlstate '45000'"));
-    }
-
-    @Test
-    @DisplayName("Task10迁移重跑不得覆盖后续角色和权限矩阵配置")
-    void task10MigrationBackfillMustOnlyRunForNewColumns() throws IOException {
-        String productionSql = normalizeSql(Files.readString(PRODUCTION_SCHEMA));
-        String h2Sql = normalizeSql(Files.readString(H2_SCHEMA));
-        String h2DataSql = normalizeSql(Files.readString(H2_DATA));
-        String migrationSql = normalizeSql(Files.readString(TASK10_MIGRATION));
-        String lowerMigrationSql = migrationSql.toLowerCase();
-
-        assertSqlContainsAll(productionSql,
-                "CREATE TABLE `t_user_management_migration`",
-                "'20260711_task10_authorization_history'");
-        assertSqlContainsAll(h2Sql,
-                "CREATE TABLE IF NOT EXISTS t_user_management_migration");
-        assertSqlContainsAll(h2DataSql,
-                "'20260711_task03_auth_version'",
-                "'20260711_task09_organization_foundation'",
-                "'20260711_task10_authorization_history'");
-        assertTrue(lowerMigrationSql.contains(
-                "call crm_require_migration_context('20260711_task10_authorization_history')"));
-        assertTrue(lowerMigrationSql.contains("@task10_backfill_required"));
-        assertTrue(lowerMigrationSql.contains(
-                "from t_user_management_migration_step where migration_key='20260711_task10_authorization_history'"));
-        assertTrue(lowerMigrationSql.contains(
-                "step_code='first_run_compatibility_backfill_ready'"));
-        assertTrue(lowerMigrationSql.contains(
-                "call crm_migration_mark_step('20260711_task10_authorization_history', 'first_run_compatibility_backfill_ready')"));
     }
 
     @Test
@@ -337,6 +260,19 @@ class DataLayerContractTest {
                         mapper + " 禁止使用不受控 ${} 占位符");
             }
         }
+    }
+
+    @Test
+    @DisplayName("用户历史联合查询必须使用MySQL与H2共同支持的ID投影")
+    void userHistoryUnionMustUsePortableIdProjection() throws IOException {
+        String mapper = normalizeSql(Files.readString(USER_HISTORY_MAPPER)).toLowerCase();
+
+        assertFalse(mapper.contains("cast(l.id as bigint)"),
+                "MySQL 不支持 CAST(... AS BIGINT)，联合查询应直接投影数值 ID");
+        assertTrue(mapper.contains("union all select l.id from t_operation_log l"),
+                "历史计数必须直接投影操作日志 ID");
+        assertTrue(mapper.contains("union all select l.id, 'operation_log'"),
+                "历史分页必须直接投影操作日志 ID");
     }
 
     private Map<String, Set<String>> extractColumns(String sql) {

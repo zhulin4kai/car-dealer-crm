@@ -460,7 +460,11 @@
               <SelectValue placeholder="请选择目标负责人" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem v-for="item in ownerOptions" :key="item.id" :value="String(item.id)">
+              <SelectItem
+                v-for="item in ownerOptions"
+                :key="item.userId"
+                :value="String(item.userId)"
+              >
                 {{ item.name }}
               </SelectItem>
             </SelectContent>
@@ -537,11 +541,14 @@ import {
 } from '@/modules/clue/api/clue-api'
 import { getDictValueList } from '@/modules/dict/api/dict-api'
 import { getProductList } from '@/modules/product/api/product-api'
-import { getOwnerList } from '@/modules/activity/api/activity-api'
+import { fetchOwnerList } from '@/modules/user/api/user-api'
+import {
+  OWNER_QUALIFICATION_CONTEXT,
+  type OwnerCandidate,
+} from '@/modules/user/model/owner.types'
 import type { Clue, ClueOwnerHistory, ClueRemark } from '@/modules/clue/model/clue.types'
 import type { DictValue } from '@/modules/dict/model/dict.types'
 import type { Product } from '@/modules/product/model/product.types'
-import type { User } from '@/modules/user/model/user.types'
 import { fromLocalDateTimeInput } from '@/shared/datetime/local-date'
 
 import { Button } from '@/components/ui/button'
@@ -605,7 +612,7 @@ const noteWayOptions = ref<DictValue[]>([])
 
 // 意向产品选项
 const productOptions = ref<Product[]>([])
-const ownerOptions = ref<User[]>([])
+const ownerOptions = ref<OwnerCandidate[]>([])
 
 // 加载状态
 const submitting = ref(false)
@@ -715,7 +722,10 @@ const loadOwnerHistory = async () => {
 
 const loadOwnerOptions = async () => {
   try {
-    ownerOptions.value = await getOwnerList()
+    ownerOptions.value = await fetchOwnerList({
+      permissionCode: PERMISSIONS.clue.transfer,
+      qualificationContext: OWNER_QUALIFICATION_CONTEXT.CLUE_OWNER,
+    })
   } catch (error) {
     messageTip('加载负责人失败', 'error')
   }

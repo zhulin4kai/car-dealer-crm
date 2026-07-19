@@ -452,7 +452,7 @@ public class UserAuthorizationPolicy {
 
     private boolean availableOrganization(TOrganizationUnit organization) {
         return organization != null && Boolean.TRUE.equals(organization.getEnabled())
-                && !Boolean.TRUE.equals(organization.getMigrationPlaceholder());
+                && !Boolean.TRUE.equals(organization.getPlaceholder());
     }
 
     private boolean roleAppliesToUser(TRole role, Integer userId, LocalDateTime at) {

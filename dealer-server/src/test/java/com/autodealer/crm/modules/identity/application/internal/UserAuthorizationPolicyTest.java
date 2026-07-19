@@ -292,7 +292,7 @@ class UserAuthorizationPolicyTest {
     private TEmployeeAssignment assignment(int orgId){TEmployeeAssignment value=new TEmployeeAssignment();value.setOrganizationUnitId(orgId);return value;}
     private TEmployeeReporting reporting(int subordinate,int manager){TEmployeeReporting value=new TEmployeeReporting();value.setSubordinateEmployeeId(subordinate);value.setManagerEmployeeId(manager);return value;}
     private TUserRole userRole(int roleId){TUserRole value=new TUserRole();value.setRoleId(roleId);return value;}
-    private TOrganizationUnit org(int id,Integer parent){TOrganizationUnit value=new TOrganizationUnit();value.setId(id);value.setParentId(parent);value.setEnabled(true);value.setMigrationPlaceholder(false);return value;}
+    private TOrganizationUnit org(int id,Integer parent){TOrganizationUnit value=new TOrganizationUnit();value.setId(id);value.setParentId(parent);value.setEnabled(true);value.setPlaceholder(false);return value;}
     private TRole protectedRole(String code){TRole value=new TRole();value.setRole(code);value.setEnabled(1);value.setProtectedRole(true);value.setScopeType(RoleScopeType.GLOBAL);value.setAuthorizationLevel(100);value.setDefaultDataScope(DataScopeCode.GLOBAL);return value;}
     private TRole role(int id,int level){TRole value=new TRole();value.setId(id);value.setRole("role_"+id);value.setEnabled(1);value.setProtectedRole(false);value.setScopeType(RoleScopeType.GLOBAL);value.setAuthorizationLevel(level);return value;}
 }

@@ -72,7 +72,7 @@
                 AND h.change_type = #{query.filterChangeType}
             </if>
             UNION ALL
-            SELECT CAST(l.id AS BIGINT)
+            SELECT l.id
             FROM t_operation_log l
             <include refid="OperationBaseWhere"/>
             <if test="query.filterSource != null">
@@ -111,7 +111,7 @@
                 AND h.change_type = #{query.filterChangeType}
             </if>
             UNION ALL
-            SELECT CAST(l.id AS BIGINT), 'OPERATION_LOG',
+            SELECT l.id, 'OPERATION_LOG',
                    NULL, NULL, NULL, NULL,
                    NULL, NULL, NULL, NULL,
                    NULL, NULL, NULL, NULL,

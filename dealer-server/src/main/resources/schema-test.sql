@@ -503,11 +503,11 @@ CREATE TABLE IF NOT EXISTS t_organization_unit
     parent_id          INTEGER,
     leader_employee_id INTEGER,
     order_no           INTEGER NOT NULL DEFAULT 0,
-    migration_placeholder TINYINT NOT NULL DEFAULT 0,
+    placeholder TINYINT NOT NULL DEFAULT 0,
     enabled            TINYINT NOT NULL DEFAULT 1,
     active_root_marker TINYINT GENERATED ALWAYS AS (
       CASE WHEN `type`='COMPANY' AND `parent_id` IS NULL
-        AND `migration_placeholder`=0 AND `enabled`=1 THEN 1 ELSE NULL END
+        AND `placeholder`=0 AND `enabled`=1 THEN 1 ELSE NULL END
     ),
     version            INTEGER NOT NULL DEFAULT 0,
     create_time        TIMESTAMP NOT NULL,
@@ -520,7 +520,7 @@ CREATE TABLE IF NOT EXISTS t_organization_unit
     CONSTRAINT fk_organization_unit_parent FOREIGN KEY (parent_id) REFERENCES t_organization_unit(id) ON DELETE RESTRICT,
     CONSTRAINT fk_organization_unit_leader FOREIGN KEY (leader_employee_id) REFERENCES t_employee(id) ON DELETE RESTRICT,
     CONSTRAINT chk_organization_unit_type CHECK (type IN ('COMPANY', 'STORE', 'DEPARTMENT', 'TEAM')),
-    CONSTRAINT chk_organization_unit_migration_placeholder CHECK (migration_placeholder IN (0, 1)),
+    CONSTRAINT chk_organization_unit_placeholder CHECK (placeholder IN (0, 1)),
     CONSTRAINT chk_organization_unit_enabled CHECK (enabled IN (0, 1)),
     CONSTRAINT chk_organization_unit_hierarchy CHECK (
       (type='COMPANY' AND parent_id IS NULL)
@@ -776,13 +776,6 @@ CREATE INDEX IF NOT EXISTS idx_authorization_history_subject
     ON t_authorization_history(subject_type, subject_id, occurred_time, id);
 CREATE INDEX IF NOT EXISTS idx_authorization_history_target
     ON t_authorization_history(target_user_id, occurred_time, id);
-
-CREATE TABLE IF NOT EXISTS t_user_management_migration
-(
-    migration_key VARCHAR(128) NOT NULL,
-    completed_at TIMESTAMP NOT NULL,
-    PRIMARY KEY (migration_key)
-);
 
 CREATE TABLE IF NOT EXISTS t_authorization_graph_lock
 (

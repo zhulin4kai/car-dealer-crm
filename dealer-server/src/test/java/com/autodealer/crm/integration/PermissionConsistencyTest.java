@@ -68,7 +68,7 @@ class PermissionConsistencyTest extends BackendIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("Task11 三套种子中的模块、敏感级别和可委派标记必须一致")
+    @DisplayName("组织岗位权限在生产基线、H2种子和运行时数据中必须一致")
     void task11PermissionMetadataMustRemainExactAcrossSeeds() throws IOException {
         Map<String, List<Object>> expected = new LinkedHashMap<>();
         expected.put("organization:list", List.of("organization", "NORMAL", true));
@@ -91,15 +91,14 @@ class PermissionConsistencyTest extends BackendIntegrationTestBase {
                         row.get("SENSITIVITY_LEVEL"), ((Number) row.get("DELEGABLE")).intValue() == 1)));
         assertEquals(expected, actual);
 
-        String migration = Files.readString(PROJECT_ROOT.resolve(
-                "dealer-server/src/main/resources/migration/20260711_task11_organization_management.sql"));
+        String productionSql = Files.readString(PRODUCTION_SQL);
         expected.forEach((code, metadata) -> {
-            String row = "('" + code + "'";
-            org.junit.jupiter.api.Assertions.assertTrue(migration.contains(row), "Task11 migration 缺少 " + code);
-            org.junit.jupiter.api.Assertions.assertTrue(migration.contains("'" + metadata.get(0) + "'"),
-                    "Task11 migration 缺少 module=" + metadata.get(0));
-            org.junit.jupiter.api.Assertions.assertTrue(migration.contains("'" + metadata.get(1) + "'"),
-                    "Task11 migration 缺少 sensitivity=" + metadata.get(1));
+            org.junit.jupiter.api.Assertions.assertTrue(productionSql.contains("'" + code + "'"),
+                    "生产基线缺少 " + code);
+            org.junit.jupiter.api.Assertions.assertTrue(productionSql.contains("'" + metadata.get(0) + "'"),
+                    "生产基线缺少 module=" + metadata.get(0));
+            org.junit.jupiter.api.Assertions.assertTrue(productionSql.contains("'" + metadata.get(1) + "'"),
+                    "生产基线缺少 sensitivity=" + metadata.get(1));
         });
     }
 
@@ -117,8 +116,8 @@ class PermissionConsistencyTest extends BackendIntegrationTestBase {
                 .forEach(row->actual.put((String)row.get("CODE"),List.of(row.get("MODULE"),row.get("SENSITIVITY_LEVEL"),((Number)row.get("DELEGABLE")).intValue()==1)));
         assertEquals(expected,actual);
         assertEquals(0,jdbcTemplate.queryForObject("SELECT COUNT(*) FROM t_role_permission rp JOIN t_role r ON r.id=rp.role_id WHERE rp.data_scope_code<>r.default_data_scope",Integer.class));
-        String migration=Files.readString(PROJECT_ROOT.resolve("dealer-server/src/main/resources/migration/20260711_task12_role_permission_matrix.sql"));
-        expected.keySet().forEach(code->org.junit.jupiter.api.Assertions.assertTrue(migration.contains("'"+code+"'"),"Task12 migration 缺少 "+code));
+        String productionSql=Files.readString(PRODUCTION_SQL);
+        expected.keySet().forEach(code->org.junit.jupiter.api.Assertions.assertTrue(productionSql.contains("'"+code+"'"),"生产基线缺少 "+code));
     }
 
     private String readConstant(Field field) {

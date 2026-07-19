@@ -134,4 +134,3 @@ export function changeUserPassword(id: EntityId, data: ChangePasswordRequest): P
 
 export const getUserList = fetchUserPage
 export const getUserDetail = fetchUserDetail
-export const getOwnerList = fetchOwnerList

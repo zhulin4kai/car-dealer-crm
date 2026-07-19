@@ -161,7 +161,7 @@ public class OrganizationServiceImpl implements OrganizationService {
         unit.setParentId(request.getParentId());
         unit.setLeaderEmployeeId(request.getLeaderEmployeeId());
         unit.setOrderNo(request.getOrderNo());
-        unit.setMigrationPlaceholder(false);
+        unit.setPlaceholder(false);
         unit.setEnabled(true);
         unit.setVersion(0);
         unit.setCreateTime(now);
@@ -613,7 +613,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     private void validateAssignmentInput(AssignmentInput input, LocalDateTime now, boolean endRequired) {
         TOrganizationUnit organization = requireOrganization(input.getOrganizationUnitId());
         TPosition position = requirePosition(input.getPositionId());
-        if (!Boolean.TRUE.equals(organization.getEnabled()) || Boolean.TRUE.equals(organization.getMigrationPlaceholder())) {
+        if (!Boolean.TRUE.equals(organization.getEnabled()) || Boolean.TRUE.equals(organization.getPlaceholder())) {
             throw new BusinessException(CodeEnum.ORGANIZATION_HIERARCHY_INVALID, "任职组织不可用");
         }
         if (!Boolean.TRUE.equals(position.getEnabled()) || Boolean.TRUE.equals(position.getBuiltIn())) {
@@ -806,7 +806,7 @@ public class OrganizationServiceImpl implements OrganizationService {
         if (primary != null) {
             TOrganizationUnit org = organizationUnitMapper.selectByPrimaryKey(primary.getOrganizationUnitId());
             TPosition position = positionMapper.selectByPrimaryKey(primary.getPositionId());
-            if (org != null && !Boolean.TRUE.equals(org.getMigrationPlaceholder())
+            if (org != null && !Boolean.TRUE.equals(org.getPlaceholder())
                     && position != null && !Boolean.TRUE.equals(position.getBuiltIn())) {
                 response.setOrganizationUnitId(org.getId());
                 response.setOrganizationUnitName(org.getName());
@@ -874,7 +874,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     private boolean isRootCompany(TOrganizationUnit unit) {
         return unit != null && unit.getType() == OrganizationUnitType.COMPANY
                 && unit.getParentId() == null
-                && !Boolean.TRUE.equals(unit.getMigrationPlaceholder());
+                && !Boolean.TRUE.equals(unit.getPlaceholder());
     }
 
     private void ensureNoEnabledRoot(Integer excludeId) {
@@ -1031,7 +1031,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private List<TOrganizationUnit> visibleOrganizationUnits(LocalDateTime at) {
         List<TOrganizationUnit> allUnits = organizationUnitMapper.selectAll().stream()
-                .filter(unit -> !Boolean.TRUE.equals(unit.getMigrationPlaceholder()))
+                .filter(unit -> !Boolean.TRUE.equals(unit.getPlaceholder()))
                 .toList();
         if (hasGlobalOrganizationScope()) return allUnits;
         TEmployee operator = employeeMapper.selectByUserId(currentUserProvider.getCurrentUserId());
@@ -1252,7 +1252,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private TOrganizationUnit requireOrganization(Integer id) {
         TOrganizationUnit value = id == null ? null : organizationUnitMapper.selectByPrimaryKey(id);
-        if (value == null || Boolean.TRUE.equals(value.getMigrationPlaceholder())) {
+        if (value == null || Boolean.TRUE.equals(value.getPlaceholder())) {
             throw new BusinessException(CodeEnum.NOT_FOUND, "组织不存在");
         }
         return value;
@@ -1282,7 +1282,7 @@ public class OrganizationServiceImpl implements OrganizationService {
         TOrganizationUnit copy = new TOrganizationUnit();
         copy.setId(source.getId()); copy.setCode(source.getCode()); copy.setName(source.getName());
         copy.setType(source.getType()); copy.setParentId(source.getParentId()); copy.setLeaderEmployeeId(source.getLeaderEmployeeId());
-        copy.setOrderNo(source.getOrderNo()); copy.setMigrationPlaceholder(source.getMigrationPlaceholder());
+        copy.setOrderNo(source.getOrderNo()); copy.setPlaceholder(source.getPlaceholder());
         copy.setEnabled(source.getEnabled()); copy.setVersion(source.getVersion());
         return copy;
     }

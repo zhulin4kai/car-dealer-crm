@@ -55,11 +55,22 @@ globs: "dealer-server/src/**/*"
 
 ## Schema 变更
 
-1. 说明变更原因、受影响表、数据量、锁表风险和兼容窗口。
-2. 优先采用可向前兼容的“新增、回填、切换、清理”步骤，禁止直接破坏旧代码读取。
-3. 提供历史数据回填和校验 SQL，明确失败后的回滚或继续策略。
-4. 同步生产 Schema、测试 H2 Schema、初始化数据、Model、Mapper XML 和测试数据。
+### 唯一数据库基线
+
+- 本项目禁止创建任何 migration，包括但不限于 `migration/` 目录、版本化增量 SQL、Flyway、Liquibase、迁移执行器、迁移清单、迁移账本表和迁移契约测试。
+- 数据库结构变动直接修改 `dealer-server/src/main/resources/CarDealerCRM.sql`，该文件必须能够从空数据库一次性建立完整生产结构和初始化数据。
+- H2 测试结构同步修改 `dealer-server/src/main/resources/schema-test.sql`，测试初始化数据同步修改 `dealer-server/src/main/resources/data.sql`。
+- Plan、Task 和交付说明不得要求新增或执行 migration；数据库文件范围只能指向上述三个基线 SQL。
+- 禁止为已删除的 migration 保留入口脚本、转发脚本、状态表、完成标记、校验清单或其他过渡产物。
+
+### 修改要求
+
+1. 说明变更原因、受影响表、数据量和锁表风险。
+2. 直接把最终表、字段、约束、索引、触发器和种子数据写入生产基线 SQL，不保留增量变更语句。
+3. 同步生产 Schema、H2 Schema、初始化数据、Model、Mapper XML 和测试数据。
+4. 涉及既有业务数据语义时，在 Task 中记录数据核对 SQL，但不得在仓库中创建升级脚本。
 5. 删除字段、索引或旧 code 前必须确认所有代码和初始化数据已同步更新。
+6. 修改完成后必须从空库执行基线初始化，并运行数据库约束测试与后端完整测试。
 
 ## 验证
 

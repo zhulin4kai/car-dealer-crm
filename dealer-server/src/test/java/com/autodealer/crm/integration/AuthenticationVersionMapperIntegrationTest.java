@@ -116,7 +116,7 @@ class AuthenticationVersionMapperIntegrationTest {
     }
 
     private void insertAvailableOrdinaryAdmin() {
-        jdbcTemplate.update("INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) VALUES(991,'COUNT_ADMIN_ORG','有效管理员组织','DEPARTMENT',1,1,0,1,0,CURRENT_TIMESTAMP,1)");
+        jdbcTemplate.update("INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,placeholder,enabled,version,create_time,create_by) VALUES(991,'COUNT_ADMIN_ORG','有效管理员组织','DEPARTMENT',1,1,0,1,0,CURRENT_TIMESTAMP,1)");
         jdbcTemplate.update("INSERT INTO t_position(id,code,name,position_level,built_in,enabled,version,create_time,create_by) VALUES(991,'COUNT_ADMIN_POSITION','有效管理员岗位',100,0,1,0,CURRENT_TIMESTAMP,1)");
         jdbcTemplate.update("INSERT INTO t_user(id,login_act,login_pwd,name,account_no_expired,credentials_no_expired,account_no_locked,account_enabled,account_status,account_type,protected_account,manual_locked,version,authorization_version,auth_version,session_revision,create_time,create_by) VALUES(91,'ordinary_admin_91','x','普通管理员',1,1,1,1,'ACTIVE','HUMAN',0,0,0,0,0,0,CURRENT_TIMESTAMP,1)");
         jdbcTemplate.update("INSERT INTO t_employee(id,user_id,employee_no,name,phone,employment_status,profile_completed,version,profile_version,phone_verified,email_verified,create_time,create_by) VALUES(91,91,'EMP-000091','普通管理员','13900000091','ACTIVE',1,0,0,1,0,CURRENT_TIMESTAMP,1)");

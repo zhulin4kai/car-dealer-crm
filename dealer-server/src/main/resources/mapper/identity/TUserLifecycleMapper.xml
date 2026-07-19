@@ -116,7 +116,7 @@
   <select id="countCurrentAndFutureSubordinates" resultType="int">SELECT COUNT(*) FROM t_employee_reporting WHERE manager_employee_id=#{employeeId} AND status IN ('PLANNED','ACTIVE') AND (effective_to IS NULL OR effective_to&gt;#{at})</select>
   <select id="countCurrentAndFutureRoles" resultType="int">SELECT COUNT(*) FROM t_user_role WHERE user_id=#{userId} AND active_marker=1 AND (effective_to IS NULL OR effective_to&gt;#{at})</select>
   <select id="countCurrentAndFuturePermissions" resultType="int">SELECT COUNT(*) FROM t_user_permission WHERE user_id=#{userId} AND active_marker=1 AND (effective_to IS NULL OR effective_to&gt;#{at})</select>
-  <select id="countEnabledLedOrganizations" resultType="int">SELECT COUNT(*) FROM t_organization_unit WHERE leader_employee_id=#{employeeId} AND enabled=1 AND migration_placeholder=0</select>
+  <select id="countEnabledLedOrganizations" resultType="int">SELECT COUNT(*) FROM t_organization_unit WHERE leader_employee_id=#{employeeId} AND enabled=1 AND placeholder=0</select>
 
   <select id="selectLifecycleFacts" resultType="string">
     SELECT fact FROM (
@@ -142,8 +142,8 @@
       SELECT CONCAT_WS('|','REPORTING_SUBORDINATE',id,subordinate_employee_id,relation_type,status,version,CAST(effective_from AS CHAR),COALESCE(CAST(effective_to AS CHAR),'~'))
         FROM t_employee_reporting WHERE manager_employee_id=#{employeeId} AND status IN ('PLANNED','ACTIVE') AND (effective_to IS NULL OR effective_to&gt;#{at})
       UNION ALL
-      SELECT CONCAT_WS('|','LEADER',id,code,type,version,enabled,COALESCE(migration_placeholder,0))
-        FROM t_organization_unit WHERE leader_employee_id=#{employeeId} AND enabled=1 AND migration_placeholder=0
+      SELECT CONCAT_WS('|','LEADER',id,code,type,version,enabled,COALESCE(placeholder,0))
+        FROM t_organization_unit WHERE leader_employee_id=#{employeeId} AND enabled=1 AND placeholder=0
     ) lifecycle_fact ORDER BY fact
   </select>
 
@@ -168,7 +168,7 @@
     INNER JOIN t_employee_assignment assignment ON assignment.employee_id=employee.id AND assignment.assignment_type='PRIMARY'
       AND assignment.status='ACTIVE' AND assignment.active_primary_marker=1 AND assignment.effective_from&lt;=#{at}
       AND (assignment.effective_to IS NULL OR assignment.effective_to&gt;#{at})
-    INNER JOIN t_organization_unit organization ON organization.id=assignment.organization_unit_id AND organization.enabled=1 AND organization.migration_placeholder=0
+    INNER JOIN t_organization_unit organization ON organization.id=assignment.organization_unit_id AND organization.enabled=1 AND organization.placeholder=0
     INNER JOIN t_position position ON position.id=assignment.position_id AND position.enabled=1 AND position.code&lt;&gt;'UNASSIGNED_POSITION'
     WHERE employee.employment_status='ACTIVE'
     <if test="permissionCodes != null and !permissionCodes.isEmpty()">

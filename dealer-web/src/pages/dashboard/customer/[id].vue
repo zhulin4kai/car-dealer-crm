@@ -160,7 +160,11 @@
                 <SelectValue placeholder="请选择目标负责人" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="String(item.id)">
+                <SelectItem
+                  v-for="item in ownerOptions"
+                  :key="item.userId"
+                  :value="String(item.userId)"
+                >
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -220,8 +224,11 @@ import {
   transferCustomerOwner,
 } from '@/modules/customer/api/customer-api'
 import type { CustomerDetail } from '@/modules/customer/model/customer.types'
-import { getOwnerList } from '@/modules/activity/api/activity-api'
-import type { User } from '@/modules/user/model/user.types'
+import { fetchOwnerList } from '@/modules/user/api/user-api'
+import {
+  OWNER_QUALIFICATION_CONTEXT,
+  type OwnerCandidate,
+} from '@/modules/user/model/owner.types'
 import { ApiError } from '@/shared/api/api-error'
 import { useLatestRequest } from '@/shared/composables/use-latest-request'
 import { toRouteId } from '@/shared/types/id'
@@ -257,7 +264,7 @@ const customer = ref<CustomerDetail | null>(null)
 const { run: runCustomerDetail, loading } = useLatestRequest<CustomerDetail>()
 const errorKind = ref<'invalid-id' | 'not-found' | 'forbidden' | 'network' | null>(null)
 const customerId = ref('')
-const ownerOptions = ref<User[]>([])
+const ownerOptions = ref<OwnerCandidate[]>([])
 const transferDialogOpen = ref(false)
 const transferOwnerId = ref('')
 const transferReason = ref('')
@@ -308,7 +315,10 @@ function goBack(): void {
 
 async function loadOwnerOptions(): Promise<void> {
   try {
-    ownerOptions.value = await getOwnerList()
+    ownerOptions.value = await fetchOwnerList({
+      permissionCode: PERMISSIONS.customer.transfer,
+      qualificationContext: OWNER_QUALIFICATION_CONTEXT.CUSTOMER_OWNER,
+    })
   } catch {
     messageTip('加载负责人失败', 'error')
   }

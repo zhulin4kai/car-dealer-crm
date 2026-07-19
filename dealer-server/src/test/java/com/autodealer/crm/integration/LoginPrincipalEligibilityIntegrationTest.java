@@ -80,7 +80,7 @@ class LoginPrincipalEligibilityIntegrationTest extends BackendIntegrationTestBas
         int organizationId = userId;
         int positionId = placeholderPosition ? 1 : userId;
         jdbcTemplate.update("""
-                INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,migration_placeholder,
+                INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,placeholder,
                   enabled,version,create_time,create_by)
                 VALUES(?,?,?,'TEAM',1,100,0,?,0,CURRENT_TIMESTAMP,1)
                 """, organizationId, "LOGIN_ORG_" + userId, "认证资格组织" + userId,

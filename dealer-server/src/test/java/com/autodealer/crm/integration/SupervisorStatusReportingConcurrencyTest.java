@@ -80,7 +80,7 @@ class SupervisorStatusReportingConcurrencyTest {
         when(currentUser.getCurrentUserId()).thenReturn(1);
         when(currentUser.hasAuthority(anyString())).thenReturn(true);
         when(authorizationPolicy.isGlobalOperator()).thenReturn(true);
-        jdbc.update("INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) VALUES(?, 'SUPERVISOR_RACE_ORG', '主管并发组织', 'DEPARTMENT', 1, 1, 0, 1, 0, CURRENT_TIMESTAMP, 1)", ORGANIZATION_ID);
+        jdbc.update("INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,placeholder,enabled,version,create_time,create_by) VALUES(?, 'SUPERVISOR_RACE_ORG', '主管并发组织', 'DEPARTMENT', 1, 1, 0, 1, 0, CURRENT_TIMESTAMP, 1)", ORGANIZATION_ID);
         jdbc.update("INSERT INTO t_position(id,code,name,position_level,built_in,enabled,version,create_time,create_by) VALUES(?, 'SUPERVISOR_RACE_POS', '主管并发岗位', 100, 0, 1, 0, CURRENT_TIMESTAMP, 1)", POSITION_ID);
         insertEmployee(MANAGER_USER_ID, MANAGER_EMPLOYEE_ID, "supervisor_race_manager", "MGR-9961", "并发主管");
         insertEmployee(SUBORDINATE_USER_ID, SUBORDINATE_EMPLOYEE_ID, "supervisor_race_subordinate", "SUB-9962", "并发下属");
@@ -132,7 +132,7 @@ class SupervisorStatusReportingConcurrencyTest {
     void managerInPlaceholderOrganizationIsNotEffective() {
         writeRelation(ReportingType.DIRECT);
         assertEffectiveReporting(true);
-        jdbc.update("UPDATE t_organization_unit SET migration_placeholder=1 WHERE id=?", ORGANIZATION_ID);
+        jdbc.update("UPDATE t_organization_unit SET placeholder=1 WHERE id=?", ORGANIZATION_ID);
         assertEffectiveReporting(false);
     }
 

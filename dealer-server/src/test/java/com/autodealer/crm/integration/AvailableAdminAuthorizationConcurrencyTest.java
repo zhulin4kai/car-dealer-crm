@@ -57,7 +57,7 @@ class AvailableAdminAuthorizationConcurrencyTest {
         when(policy.roleCandidates(any())).thenReturn(List.of());
         when(policy.delegableScopes(any(), any())).thenReturn(List.<DataScopeCode>of());
 
-        jdbc.update("INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) VALUES(?, 'ADMIN_GUARD_ORG', '管理员保护组织', 'DEPARTMENT', 1, 1, 0, 1, 0, CURRENT_TIMESTAMP, 1)", ORGANIZATION_ID);
+        jdbc.update("INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,placeholder,enabled,version,create_time,create_by) VALUES(?, 'ADMIN_GUARD_ORG', '管理员保护组织', 'DEPARTMENT', 1, 1, 0, 1, 0, CURRENT_TIMESTAMP, 1)", ORGANIZATION_ID);
         jdbc.update("INSERT INTO t_position(id,code,name,position_level,built_in,enabled,version,create_time,create_by) VALUES(?, 'ADMIN_GUARD_POSITION', '管理员保护岗位', 100, 0, 1, 0, CURRENT_TIMESTAMP, 1)", POSITION_ID);
         insertAdmin(FIRST_USER_ID);
         insertAdmin(SECOND_USER_ID);

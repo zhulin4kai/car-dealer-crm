@@ -30,14 +30,6 @@ public final class RedisKeys {
 
     public static String userSessionIndex(Integer userId) { return USER_SESSION_INDEX_PREFIX + userId; }
 
-    public static String ownerList() {
-        return OWNER_LIST;
-    }
-
-    public static String ownerList(Integer operatorUserId) {
-        return OWNER_LIST + ":" + operatorUserId;
-    }
-
     public static String ownerList(Integer operatorUserId, String permissionCode, String qualificationContext) {
         return OWNER_LIST + ":" + operatorUserId + ":" + permissionCode + ":" + qualificationContext;
     }

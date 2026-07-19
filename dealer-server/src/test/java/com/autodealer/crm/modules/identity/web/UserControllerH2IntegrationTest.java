@@ -364,7 +364,7 @@ class UserControllerH2IntegrationTest extends BackendIntegrationTestBase {
     void owner_returnsOnlyEnabledUnlockedSalesUsers() throws Exception {
         String recoveryToken=super.loginAsAdmin();
         String orgCode="OWNER_VALID_ORG_"+System.nanoTime();
-        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) VALUES(?,?,'STORE',1,1,0,1,0,CURRENT_TIMESTAMP,1)",orgCode,orgCode);
+        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,order_no,placeholder,enabled,version,create_time,create_by) VALUES(?,?,'STORE',1,1,0,1,0,CURRENT_TIMESTAMP,1)",orgCode,orgCode);
         int organizationId=jdbcTemplate.queryForObject("SELECT id FROM t_organization_unit WHERE code=?",Integer.class,orgCode);
         String positionCode="OWNER_VALID_POSITION_"+System.nanoTime();
         jdbcTemplate.update("INSERT INTO t_position(code,name,position_level,built_in,enabled,version,create_time,create_by) VALUES(?,?,10,0,1,0,CURRENT_TIMESTAMP,1)",positionCode,positionCode);

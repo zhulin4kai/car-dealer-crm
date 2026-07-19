@@ -28,7 +28,7 @@
 ## 允许修改范围
 
 - 后端凭证服务、投递端口、Outbox Worker、门禁、降级恢复服务、Mapper、模型、审计动作和控制器。
-- Fresh Schema、H2 Schema、Task 24 迁移和 migration manifest。
+- 生产 Schema、H2 Schema 和初始化数据基线。
 - OpenAPI、后端/集成测试、前端受理状态展示与契约测试。
 
 ## 禁止修改范围
@@ -48,7 +48,7 @@
 5. 可用管理员计数加入 `must_change_password=0` 和至少一个当前已验证员工联系方式；待验证当前恢复渠道的管理员仍属于 `PENDING_FIRST_CHANGE`，可访问本人资料和联系方式验证窄入口。
 6. 增加 `/api/recovery/admin-access`：仅固定恢复账号、仅 PENDING/DEGRADED、再次校验外部恢复密钥；请求不得携带目标 ID。
 7. 降级恢复按 `AUTHORIZATION_MEMBERSHIP_GUARD → ORGANIZATION_HIERARCHY → REPORTING_GRAPH → AVAILABLE_ADMIN_GUARD` 加锁，只选择保留有效 admin 角色、有效任职和至少一个当前员工联系方式的普通 HUMAN 账号；无联系方式候选必须跳过。
-8. 同步 OpenAPI 202 契约、Spec/Plan/Task、前端状态和数据库迁移。
+8. 同步 OpenAPI 202 契约、Spec/Plan/Task、前端状态和数据库基线 SQL。
 9. 凭证拒绝、限流、错误恢复密钥和门禁拒绝使用独立事务写脱敏安全审计，业务事务回滚不得抹除失败事实。
 10. HUMAN 投递只比对员工档案当前联系方式；签发事务使用用户行锁和最近签发事实实现用途族冷却，防止并发重签和投递失败后立即轰炸。
 11. 本人资料和受管资料共用 `AVAILABLE_ADMIN_GUARD`，禁止并发替换或清空最后一个可恢复管理员的唯一已验证渠道；`INVITED` 降级候选在重发前以 CAS 清理锁定、过期和失败计数但保持邀请状态。
@@ -75,18 +75,18 @@
 | 降级恢复不能指定目标，错误身份/密钥/状态失败且无部分事实 | `AdminAccessRecoveryServiceTest`、`ManagedUserAccountSecurityIntegrationTest` |
 | 最后恢复渠道、最后管理员和并发授权变化不能被清空 | `AvailableAdminAuthorizationConcurrencyTest`、`ManagedUserAccountSecurityIntegrationTest` |
 | 限流、错误密钥、门禁拒绝和失败回滚仍写脱敏安全审计 | `SecurityFailureAuditIntegrationTest`、`GlobalExceptionHandlerTest` |
-| Schema、迁移顺序、摘要长度和 Outbox 状态约束一致 | `SchemaConstraintsTest`、`UserManagementMigrationRunnerContractTest` |
+| 生产/H2 Schema、摘要长度和 Outbox 状态约束一致 | `SchemaConstraintsTest`、`DatabaseBaselinePolicyTest` |
 
 ## 验证命令
 
 ```bash
 cd dealer-server
-./mvnw -q -Dtest=CredentialServiceImplTest,CredentialDeliveryOutboxWorkerTest,CredentialOutboxIntegrationTest,AdminAccessRecoveryServiceTest,UserManagementAccessGateTest,UserControllerH2IntegrationTest,ManagedUserAccountSecurityIntegrationTest,AvailableAdminAuthorizationConcurrencyTest,SecurityFailureAuditIntegrationTest,GlobalExceptionHandlerTest,SchemaConstraintsTest,UserManagementMigrationRunnerContractTest test
+./mvnw -q -Dtest=CredentialServiceImplTest,CredentialDeliveryOutboxWorkerTest,CredentialOutboxIntegrationTest,AdminAccessRecoveryServiceTest,UserManagementAccessGateTest,UserControllerH2IntegrationTest,ManagedUserAccountSecurityIntegrationTest,AvailableAdminAuthorizationConcurrencyTest,SecurityFailureAuditIntegrationTest,GlobalExceptionHandlerTest,SchemaConstraintsTest,DatabaseBaselinePolicyTest test
 ```
 
 - `cd dealer-web && npm test -- tests/unit/modules/credential-api.test.ts tests/unit/modules/credential-pages.test.ts tests/unit/modules/profile-page.test.ts tests/unit/modules/user-credential-profile-openapi-contract.test.ts tests/unit/modules/user-management-openapi-error-contract.test.ts`
 - `cd dealer-web && npm run check`
-- `scripts/database/test-user-management-migrations-real.sh`，分别验证受支持的 MySQL 与 MariaDB。
+- 在空 MySQL 与 MariaDB 数据库中分别执行 `CarDealerCRM.sql`，验证基线对象和触发器。
 - `git diff --check`
 
 ## 手工验收
@@ -103,4 +103,4 @@ cd dealer-server
 - 不存在事务内外部凭证投递。
 - 不存在外部已经收到但数据库回滚导致凭证永久无效的窗口。
 - 不存在首次初始化后零管理员无法恢复的死锁。
-- Task 24 的定向自动化、真实 MySQL/MariaDB 场景和人工场景全部通过；模块级后端全量、前端全量和全链路联调由后续 Task 21 统一执行并宣告。
+- Task 24 的定向自动化、真实 MySQL/MariaDB 空库初始化和人工场景全部通过；模块级后端全量、前端全量和全链路联调由后续 Task 21 统一执行并宣告。

@@ -18,7 +18,7 @@ public class TOrganizationUnit implements Serializable {
     private Integer parentId;
     private Integer leaderEmployeeId;
     private Integer orderNo;
-    private Boolean migrationPlaceholder;
+    private Boolean placeholder;
     private Boolean enabled;
     private Integer version;
     private LocalDateTime createTime;

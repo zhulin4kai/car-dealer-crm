@@ -2387,11 +2387,11 @@ CREATE TABLE `t_organization_unit`
     `parent_id`          int          NULL,
     `leader_employee_id` int          NULL,
     `order_no`           int          NOT NULL DEFAULT 0,
-    `migration_placeholder` tinyint(1) NOT NULL DEFAULT 0,
+    `placeholder` tinyint(1) NOT NULL DEFAULT 0,
     `enabled`            tinyint(1)   NOT NULL DEFAULT 1,
     `active_root_marker` tinyint(1) GENERATED ALWAYS AS (
       CASE WHEN `type`='COMPANY' AND `parent_id` IS NULL
-        AND `migration_placeholder`=0 AND `enabled`=1 THEN 1 ELSE NULL END
+        AND `placeholder`=0 AND `enabled`=1 THEN 1 ELSE NULL END
     ) STORED,
     `version`            int          NOT NULL DEFAULT 0,
     `create_time`        datetime     NOT NULL,
@@ -2406,7 +2406,7 @@ CREATE TABLE `t_organization_unit`
     CONSTRAINT `fk_organization_unit_parent` FOREIGN KEY (`parent_id`) REFERENCES `t_organization_unit` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_organization_unit_leader` FOREIGN KEY (`leader_employee_id`) REFERENCES `t_employee` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `chk_organization_unit_type` CHECK (`type` IN ('COMPANY', 'STORE', 'DEPARTMENT', 'TEAM')),
-    CONSTRAINT `chk_organization_unit_migration_placeholder` CHECK (`migration_placeholder` IN (0, 1)),
+    CONSTRAINT `chk_organization_unit_placeholder` CHECK (`placeholder` IN (0, 1)),
     CONSTRAINT `chk_organization_unit_enabled` CHECK (`enabled` IN (0, 1)),
     CONSTRAINT `chk_organization_unit_hierarchy` CHECK (
       (`type`='COMPANY' AND `parent_id` IS NULL)
@@ -2532,7 +2532,7 @@ CREATE TABLE `t_employee_reporting`
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '员工汇报关系事实表';
 
 INSERT INTO `t_organization_unit`
-(`id`, `code`, `name`, `type`, `parent_id`, `leader_employee_id`, `order_no`, `migration_placeholder`,
+(`id`, `code`, `name`, `type`, `parent_id`, `leader_employee_id`, `order_no`, `placeholder`,
  `enabled`, `version`, `create_time`, `create_by`)
 VALUES
 (1, 'DEFAULT_COMPANY', '启程汽车', 'COMPANY', NULL, NULL, 0, 0, 1, 0, NOW(), 1),
@@ -2541,7 +2541,7 @@ VALUES
 INSERT INTO `t_position`
 (`id`, `code`, `name`, `description`, `position_level`, `built_in`, `enabled`, `version`, `create_time`, `create_by`)
 VALUES
-(1, 'UNASSIGNED_POSITION', '待分配岗位', '兼容迁移占位岗位，完成员工资料补录后应替换。', 0, 1, 1, 0, NOW(), 1),
+(1, 'UNASSIGNED_POSITION', '待分配岗位', '待分配占位岗位，完成员工资料补录后应替换。', 0, 1, 1, 0, NOW(), 1),
 (2, 'DEMO_STAFF', '演示员工', '完整初始化普通员工岗位。', 30, 0, 1, 0, NOW(), 1),
 (3, 'DEMO_MANAGER', '演示主管', '完整初始化主管岗位。', 60, 0, 1, 0, NOW(), 1),
 (4, 'DEMO_ADMIN', '演示管理员', '完整初始化普通管理员岗位。', 100, 0, 1, 0, NOW(), 1);
@@ -2737,14 +2737,6 @@ CREATE TABLE `t_authorization_history`
     CONSTRAINT `chk_authorization_history_period` CHECK (`effective_to` IS NULL OR `effective_from` IS NULL OR `effective_to` > `effective_from`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '授权变化不可变历史表';
 
-DROP TABLE IF EXISTS `t_user_management_migration`;
-CREATE TABLE `t_user_management_migration`
-(
-    `migration_key` varchar(128) NOT NULL,
-    `completed_at` datetime NOT NULL,
-    PRIMARY KEY (`migration_key`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '用户管理人工迁移完成标记';
-
 CREATE TABLE `t_authorization_graph_lock`
 (
     `lock_name` varchar(64) NOT NULL,
@@ -2794,14 +2786,6 @@ CREATE TABLE `t_user_lifecycle_snapshot`
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='一次性离职预检快照';
 
 INSERT INTO `t_authorization_graph_lock` (`lock_name`) VALUES ('ORGANIZATION_HIERARCHY'), ('REPORTING_GRAPH'), ('AVAILABLE_ADMIN_GUARD'), ('AUTHORIZATION_MEMBERSHIP_GUARD'), ('TEST_DRIVE_SCHEDULE_GUARD'), ('LOGIN_IDENTIFIER_GUARD');
-
-INSERT INTO `t_user_management_migration` (`migration_key`, `completed_at`) VALUES
-('20260711_task03_auth_version', NOW()),
-('20260711_task09_organization_foundation', NOW()),
-('20260711_task10_authorization_history', NOW()),
-('20260711_task11_organization_management', NOW()),
-('20260711_task12_role_permission_matrix', NOW()),
-('20260711_task13_user_authorization', NOW());
 
 DROP TRIGGER IF EXISTS `trg_authorization_history_no_update`;
 DROP TRIGGER IF EXISTS `trg_authorization_history_no_delete`;

@@ -16,7 +16,6 @@ import com.autodealer.crm.modules.identity.application.api.*;
 
 import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.modules.identity.application.api.security.PrincipalEligibilityPolicy;
-import com.autodealer.crm.shared.infrastructure.cache.RedisKeys;
 import com.autodealer.crm.modules.identity.application.api.dto.*;
 import com.autodealer.crm.shared.error.BusinessException;
 import com.autodealer.crm.shared.infrastructure.cache.RedisManager;
@@ -64,11 +63,6 @@ class UserServiceImplTest {
         assertNull(service.getLoginUserById(2));verifyNoInteractions(roles,permissions);}
 
     @Test void detailReadStillWorks(){TUser user=new TUser();user.setId(2);when(users.selectAuthUserById(2)).thenReturn(user);assertNotNull(service.getUserById(2));}
-
-    @Test void ownerListCacheHitAndMissRemainReadOnly(){TUser owner=new TUser();owner.setId(2);when(redis.get(RedisKeys.ownerList())).thenReturn(List.of(owner));
-        assertEquals(List.of(owner),service.getOwnerList());verify(users,never()).selectByOwner();
-        reset(redis,users);when(redis.get(RedisKeys.ownerList())).thenReturn(null);when(users.selectByOwner()).thenReturn(List.of(owner));
-        assertEquals(List.of(owner),service.getOwnerList());verify(redis).set(RedisKeys.ownerList(),List.of(owner),300L);}
 
     @Test void everyLegacyWriteEntryFailsClosedBeforeMapperAuditOrSessionSideEffects(){
         CreateUserRequest create=new CreateUserRequest();UpdateUserRequest update=new UpdateUserRequest();update.setId(2);

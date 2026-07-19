@@ -331,7 +331,6 @@ AI 业务助手后端由 Spring Boot 作为业务控制面，负责 Conversation
 - 角色与授权：`t_role`、`t_permission`、`t_role_permission`、`t_role_organization`、`t_role_permission_organization`、`t_user_role`、`t_user_permission`、`t_user_permission_organization`、`t_authorization_history`、`t_authorization_graph_lock`。
 - 凭证与会话：`t_account_credential`、`t_password_history`、`t_user_session`；登录标识不属于一次性凭证，永久保存在 `t_login_identifier`。
 - 生命周期与历史：`t_user_lifecycle_snapshot`、`t_user_lifecycle_event`、`t_operation_log`。
-- 迁移治理：`t_user_management_migration`、`t_user_management_migration_step`。
 
 ---
 
@@ -1856,16 +1855,15 @@ Run trace 查询必须恢复 messages、toolCalls、proposals、approvals、work
 
 审计 `requestId` 由 `AuditRequestIdProvider` 统一生成：外部请求头仅作为经清理的相关性前缀，不能成为最终可信标识；同一 HTTP 请求或同一非 HTTP 事务复用一个可信标识，事务结束后解除线程资源绑定。授权事实和配套操作审计写入失败时必须使业务事务回滚。
 
-### 22.7 用户管理数据库迁移治理
+### 22.7 数据库基线治理
 
-用户管理升级不由应用启动流程自动执行，也不允许直接运行单份业务 SQL。唯一入口是 `scripts/database/user-management-migrate.sh`，迁移顺序、依赖、脚本 SHA-256、发布状态、恢复模式和对象 probe 由 `dealer-server/src/main/resources/migration/manifest.tsv` 管理。
+本项目不维护增量数据库升级链，也不允许创建 migration。数据库最终结构只有以下三个正式来源：
 
-- `plan/status` 只展示计划和账本状态；`apply APPLY` 执行尚无账本事实的迁移；`resume <migration_key> RESUME` 只恢复 `RUNNING/FAILED` 且 checksum 未漂移的同一迁移。
-- `baseline BASELINE` 仅用于已由完整初始化脚本建立的数据库，必须逐项通过 manifest probe 后才能绑定 checksum；不能伪造业务迁移执行事实。
-- 执行器使用数据库命名锁串行化执行，并要求脚本在业务 DDL、约束、种子和回填过程内再次验证当前连接持锁、迁移键、checksum 与 `RUNNING` 账本。Task10 的不可变审计触发器因 MySQL/MariaDB 方言限制保留为过程外唯一例外。
-- `t_user_management_migration` 保存 `RUNNING/SUCCEEDED/FAILED`、checksum、开始/完成/失败时间、最后完成步骤、尝试次数、错误摘要和执行器版本；`t_user_management_migration_step` 保存可恢复步骤。只有脚本成功、对象 probe 通过且成功状态影响一行时才能标记完成。
-- Task15 在受控 context 内新增 `account_expires_at`、登录标识表和 `LOGIN_IDENTIFIER_GUARD`，首次把全部现有 `t_user.login_act` 回填为 ACTIVE 永久归属。空账号或既有归属冲突必须中止；`LOGIN_IDENTIFIER_BACKFILL_READY` 已记录后不得用重放回填虚构丢失的历史。
-- 真实数据库验收使用 `scripts/database/test-user-management-migrations-real.sh`，覆盖旧库首跑、中断恢复、重复执行、完整初始化库 baseline、不可变触发器和 `mysql --force` 防绕过；H2 或静态契约不能替代 MySQL/MariaDB 方言结果。
+- `dealer-server/src/main/resources/CarDealerCRM.sql`：从空数据库一次性创建完整生产 Schema、约束、索引、触发器和生产初始化数据。
+- `dealer-server/src/main/resources/schema-test.sql`：与生产结构同步的 H2 测试 Schema。
+- `dealer-server/src/main/resources/data.sql`：H2 自动化测试初始化数据。
+
+任何数据库变更必须直接修改上述基线，并同步 Model、Mapper XML、测试数据和数据库约束测试。仓库中不得出现 `migration/` 目录、版本化增量 SQL、迁移执行器、迁移清单、迁移账本表或迁移契约测试。完整规则见 `docs/rule/04-数据库与MyBatis规范.md`。
 
 ## 23. 数据库表汇总
 
@@ -1895,8 +1893,6 @@ Run trace 查询必须恢复 messages、toolCalls、proposals、approvals、work
 | `t_user_session` | 多设备数据库会话及撤销事实 | id, session_id, user_id, token_digest, issued_auth_version, last_activity_time, idle_expires_at, absolute_expires_at, revoked_at, version |
 | `t_user_lifecycle_snapshot` | 一次性离职预检摘要 | id, token_digest, user_id, employee_id, employee_version, reason_digest, fact_digest, expires_at, consumed_at, version |
 | `t_user_lifecycle_event` | 不可变调岗、离职、交接和返聘事件 | id, operation_id, request_id, action, user_id, employee_id, before_value, after_value, reason, operator_id, occurred_time |
-| `t_user_management_migration` | 用户管理统一迁移账本 | migration_key, status, checksum_sha256, started_at, completed_at, failed_at, last_completed_step, attempt_count, error_summary, executor_version |
-| `t_user_management_migration_step` | 用户管理迁移已完成步骤 | migration_key, step_code, completed_at |
 | `t_clue` | 线索表 | id, owner_id, activity_id, activity_name_snapshot, full_name, phone, state, source |
 | `t_clue_remark` | 线索跟踪记录表 | id, clue_id, note_way, note_content |
 | `t_customer` | 客户主档表 | id, clue_id, owner_id, customer_name, phone, source, original_clue_source, customer_status, product, description |

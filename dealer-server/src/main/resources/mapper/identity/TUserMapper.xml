@@ -237,7 +237,7 @@
     INNER JOIN t_employee employee ON employee.user_id = user_account.id
     <include refid="CurrentPrimaryAssignmentJoin"/>
     INNER JOIN t_organization_unit organization ON organization.id = primary_assignment.organization_unit_id
-    WHERE organization.enabled = 1 AND organization.migration_placeholder = 0
+    WHERE organization.enabled = 1 AND organization.placeholder = 0
     <include refid="ManagedUserScopeCondition"/>
     ORDER BY option_label ASC, option_id ASC
   </select>
@@ -307,7 +307,7 @@
       and assignment.active_primary_marker = 1 and assignment.effective_from &lt;= CURRENT_TIMESTAMP
       and (assignment.effective_to is null or assignment.effective_to &gt; CURRENT_TIMESTAMP)
     inner join t_organization_unit organization on organization.id=assignment.organization_unit_id
-      and organization.enabled=1 and organization.migration_placeholder=0
+      and organization.enabled=1 and organization.placeholder=0
     inner join t_position position on position.id = assignment.position_id and position.enabled = 1
       and position.code &lt;&gt; 'UNASSIGNED_POSITION'
     where tu.account_enabled = 1 and tu.account_no_locked = 1
@@ -380,7 +380,7 @@
       and assignment.effective_from &lt;= CURRENT_TIMESTAMP
       and (assignment.effective_to is null or assignment.effective_to &gt; CURRENT_TIMESTAMP)
     inner join t_organization_unit organization_unit on organization_unit.id = assignment.organization_unit_id
-      and organization_unit.enabled = 1 and organization_unit.migration_placeholder = 0
+      and organization_unit.enabled = 1 and organization_unit.placeholder = 0
     inner join t_position position on position.id = assignment.position_id
       and position.enabled = 1 and position.code &lt;&gt; 'UNASSIGNED_POSITION'
     where tr.role = 'admin' and tr.enabled = 1
@@ -411,7 +411,7 @@
       AND assignment.assignment_type='PRIMARY' AND assignment.status='ACTIVE' AND assignment.active_primary_marker=1
       AND assignment.effective_from&lt;=CURRENT_TIMESTAMP AND (assignment.effective_to IS NULL OR assignment.effective_to&gt;CURRENT_TIMESTAMP)
     INNER JOIN t_organization_unit organization_unit ON organization_unit.id=assignment.organization_unit_id
-      AND organization_unit.enabled=1 AND organization_unit.migration_placeholder=0
+      AND organization_unit.enabled=1 AND organization_unit.placeholder=0
     INNER JOIN t_position position ON position.id=assignment.position_id
       AND position.enabled=1 AND position.code&lt;&gt;'UNASSIGNED_POSITION'
     WHERE tu.account_type='HUMAN' AND tu.protected_account=0
@@ -443,7 +443,7 @@
         AND assignment.assignment_type='PRIMARY' AND assignment.status='ACTIVE' AND assignment.active_primary_marker=1
         AND assignment.effective_from&lt;=CURRENT_TIMESTAMP AND (assignment.effective_to IS NULL OR assignment.effective_to&gt;CURRENT_TIMESTAMP)
       INNER JOIN t_organization_unit organization_unit ON organization_unit.id=assignment.organization_unit_id
-        AND organization_unit.enabled=1 AND organization_unit.migration_placeholder=0
+        AND organization_unit.enabled=1 AND organization_unit.placeholder=0
       INNER JOIN t_position position ON position.id=assignment.position_id
         AND position.enabled=1 AND position.code&lt;&gt;'UNASSIGNED_POSITION'
       WHERE tu.account_type='HUMAN' AND tu.protected_account=0 AND tu.account_status IN ('INVITED','ACTIVE')
@@ -467,7 +467,7 @@
       AND assignment.effective_from&lt;=CURRENT_TIMESTAMP
       AND (assignment.effective_to IS NULL OR assignment.effective_to&gt;CURRENT_TIMESTAMP)
     INNER JOIN t_organization_unit organization ON organization.id=assignment.organization_unit_id
-      AND organization.enabled=1 AND organization.migration_placeholder=0
+      AND organization.enabled=1 AND organization.placeholder=0
     INNER JOIN t_position position ON position.id=assignment.position_id
       AND position.enabled=1 AND position.code&lt;&gt;'UNASSIGNED_POSITION'
     WHERE account.id=#{userId}

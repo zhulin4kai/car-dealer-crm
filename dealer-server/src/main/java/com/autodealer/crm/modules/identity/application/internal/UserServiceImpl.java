@@ -38,8 +38,6 @@ import com.autodealer.crm.modules.identity.application.api.AuthorizationDataScop
 import com.autodealer.crm.modules.identity.application.internal.UserConverter;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -55,7 +53,6 @@ import java.util.stream.Collectors;
 @Service
 public class UserServiceImpl implements UserService {
 
-    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
     private static final long OWNER_LIST_CACHE_EXPIRE_SECONDS = 300L;
 
     private final TUserMapper tUserMapper;
@@ -270,35 +267,6 @@ public class UserServiceImpl implements UserService {
     public HandoverUserResponsibilitiesResponse handoverResponsibilities(
             Integer sourceUserId, HandoverUserResponsibilitiesRequest request) {
         throw legacyWriteDisabled();
-    }
-
-    @Override
-    public List<TUser> getOwnerList() {
-        Integer operatorId = currentUserProvider.getCurrentUserId();
-        AuthorizationDataScope scope = dataScopeResolver.resolve(operatorId, PermissionCodes.USER_LIST);
-        if (scope == null) {
-            List<TUser> legacy = redisManager.get(RedisKeys.ownerList());
-            if (legacy != null && !legacy.isEmpty()) return legacy;
-            List<TUser> owners = tUserMapper.selectByOwner();
-            if (owners != null && !owners.isEmpty()) redisManager.set(RedisKeys.ownerList(), owners, OWNER_LIST_CACHE_EXPIRE_SECONDS);
-            return owners;
-        }
-        if (!scope.global() && scope.visibleUserIds().isEmpty()) return List.of();
-        String cacheKey = RedisKeys.ownerList(operatorId);
-        List<TUser> cachedOwners = redisManager.get(cacheKey);
-        if (cachedOwners != null && !cachedOwners.isEmpty()) {
-            return cachedOwners;
-        }
-
-        List<Integer> visibleUserIds = scope.global() ? null : new ArrayList<>(scope.visibleUserIds());
-        List<TUser> owners = tUserMapper.selectEligibleOwners(visibleUserIds, PermissionCodes.USER_LIST);
-        if (owners != null && !owners.isEmpty()) {
-            boolean cached = redisManager.set(cacheKey, owners, OWNER_LIST_CACHE_EXPIRE_SECONDS);
-            if (!cached) {
-                log.warn("event=owner_list_cache_write result=failed ttlSeconds={}", OWNER_LIST_CACHE_EXPIRE_SECONDS);
-            }
-        }
-        return owners;
     }
 
     @Override

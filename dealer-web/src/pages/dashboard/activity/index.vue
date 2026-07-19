@@ -10,7 +10,11 @@
                 <SelectValue placeholder="请选择负责人" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="item in ownerOptions" :key="item.id" :value="String(item.id)">
+                <SelectItem
+                  v-for="item in ownerOptions"
+                  :key="item.userId"
+                  :value="String(item.userId)"
+                >
                   {{ item.name }}
                 </SelectItem>
               </SelectContent>
@@ -360,12 +364,16 @@ import {
   exportActivities,
   getActivityById,
   getActivityList,
-  getOwnerList,
   publishActivity,
   reviewActivity,
   startActivity,
   updateActivity,
 } from '@/modules/activity/api/activity-api'
+import { fetchOwnerList } from '@/modules/user/api/user-api'
+import {
+  OWNER_QUALIFICATION_CONTEXT,
+  type OwnerCandidate,
+} from '@/modules/user/model/owner.types'
 import {
   activityStatusLabel,
   activityStatusOptions,
@@ -373,7 +381,7 @@ import {
   isActivityCoreLocked,
   type Activity,
 } from '@/modules/activity/model/activity.types'
-import type { User } from '@/modules/user/model/user.types'
+import { usePermissionStore } from '@/stores/permission.store'
 import type { EntityId } from '@/shared/types/id'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -426,13 +434,14 @@ type ReasonAction = 'close' | 'cancel'
 type StatusAction = 'publish' | 'start' | 'end'
 
 const router = useRouter()
+const permissionStore = usePermissionStore()
 const activityQuery = reactive<Record<string, unknown>>({})
 const searchStartTime = ref('')
 const searchEndTime = ref('')
 const activityList = ref<Activity[]>([])
 const pageSize = ref(10)
 const total = ref(0)
-const ownerOptions = ref<User[]>([])
+const ownerOptions = ref<OwnerCandidate[]>([])
 const currentPage = ref(1)
 const selectedActivityIds = ref<EntityId[]>([])
 const submitting = ref(false)
@@ -590,9 +599,22 @@ function toPage(current: number) {
   void getData(current)
 }
 
-async function loadOwner() {
+async function loadOwner(permissionCode?: string) {
+  const effectivePermission = permissionCode
+    ?? (permissionStore.hasPermission(PERMISSIONS.activity.add)
+      ? PERMISSIONS.activity.add
+      : permissionStore.hasPermission(PERMISSIONS.activity.edit)
+        ? PERMISSIONS.activity.edit
+        : undefined)
+  if (!effectivePermission) {
+    ownerOptions.value = []
+    return
+  }
   try {
-    ownerOptions.value = await getOwnerList()
+    ownerOptions.value = await fetchOwnerList({
+      permissionCode: effectivePermission,
+      qualificationContext: OWNER_QUALIFICATION_CONTEXT.ACTIVITY_OWNER,
+    })
   } catch {
     ownerOptions.value = []
   }
@@ -609,7 +631,8 @@ function onReset() {
   void getData(1)
 }
 
-function add() {
+async function add() {
+  await loadOwner(PERMISSIONS.activity.add)
   dialogTitle.value = '录入市场活动'
   isEditing.value = false
   editingId.value = null
@@ -629,6 +652,7 @@ function add() {
 
 async function edit(id: EntityId | undefined) {
   if (id == null) return
+  await loadOwner(PERMISSIONS.activity.edit)
   dialogTitle.value = '编辑市场活动'
   isEditing.value = true
   await loadActivityForEdit(id)

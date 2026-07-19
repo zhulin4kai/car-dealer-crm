@@ -133,7 +133,7 @@ class UserLifecycleServiceImplTest {
         when(graphLocks.lockByName(anyString())).thenAnswer(invocation->invocation.getArgument(0));
         when(lifecycle.lockUserById(2)).thenReturn(target);when(lifecycle.lockEmployeeByUserId(2)).thenReturn(employee);
         TOrganizationUnit company=new TOrganizationUnit();company.setId(7);company.setCode("ROOT");company.setName("根公司");
-        company.setType(OrganizationUnitType.COMPANY);company.setEnabled(true);company.setMigrationPlaceholder(false);company.setParentId(null);company.setLeaderEmployeeId(999);
+        company.setType(OrganizationUnitType.COMPANY);company.setEnabled(true);company.setPlaceholder(false);company.setParentId(null);company.setLeaderEmployeeId(999);
         TPosition position=new TPosition();position.setId(8);position.setCode("MANAGER");position.setName("经理");position.setEnabled(true);position.setBuiltIn(false);
         when(organizations.selectByPrimaryKey(7)).thenReturn(company);when(positions.selectByPrimaryKey(8)).thenReturn(position);
         doThrow(new BusinessException(CodeEnum.INVALID_MANAGER)).when(directManagerPolicy)
@@ -150,7 +150,7 @@ class UserLifecycleServiceImplTest {
     @Test void transferRejectsCycleIntroducedByFutureDirectReportingFact(){
         TUser target=user(2);TEmployee employee=employee(10,2,EmployeeStatus.ACTIVE,3);
         when(lifecycle.lockUserById(2)).thenReturn(target);when(lifecycle.lockEmployeeByUserId(2)).thenReturn(employee);
-        TOrganizationUnit organization=new TOrganizationUnit();organization.setId(7);organization.setCode("STORE");organization.setName("门店");organization.setType(OrganizationUnitType.STORE);organization.setEnabled(true);organization.setMigrationPlaceholder(false);organization.setParentId(1);
+        TOrganizationUnit organization=new TOrganizationUnit();organization.setId(7);organization.setCode("STORE");organization.setName("门店");organization.setType(OrganizationUnitType.STORE);organization.setEnabled(true);organization.setPlaceholder(false);organization.setParentId(1);
         TPosition position=new TPosition();position.setId(8);position.setCode("SALES");position.setName("销售");position.setEnabled(true);position.setBuiltIn(false);
         when(organizations.selectByPrimaryKey(7)).thenReturn(organization);when(positions.selectByPrimaryKey(8)).thenReturn(position);
         doThrow(new BusinessException(CodeEnum.INVALID_MANAGER)).when(directManagerPolicy)
@@ -201,7 +201,7 @@ class UserLifecycleServiceImplTest {
     private void stubRehire(TUser target,TEmployee employee){
         when(lifecycle.lockUserById(2)).thenReturn(target);when(lifecycle.lockEmployeeByUserId(2)).thenReturn(employee);
         TOrganizationUnit company=new TOrganizationUnit();company.setId(7);company.setCode("ROOT");company.setName("根公司");company.setType(OrganizationUnitType.COMPANY);
-        company.setEnabled(true);company.setMigrationPlaceholder(false);company.setParentId(null);company.setLeaderEmployeeId(employee.getId());
+        company.setEnabled(true);company.setPlaceholder(false);company.setParentId(null);company.setLeaderEmployeeId(employee.getId());
         TPosition position=new TPosition();position.setId(8);position.setCode("MANAGER");position.setName("经理");position.setEnabled(true);position.setBuiltIn(false);
         when(organizations.selectByPrimaryKey(7)).thenReturn(company);when(positions.selectByPrimaryKey(8)).thenReturn(position);
         when(assignments.insert(any())).thenReturn(1);when(users.updateAccountStatusByExpected(2,0,"INVITED",false,1)).thenReturn(1);

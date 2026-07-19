@@ -188,7 +188,7 @@ class DirectManagerPolicyTest {
         value.setType(type);
         value.setLeaderEmployeeId(leaderId);
         value.setEnabled(true);
-        value.setMigrationPlaceholder(false);
+        value.setPlaceholder(false);
         return value;
     }
 

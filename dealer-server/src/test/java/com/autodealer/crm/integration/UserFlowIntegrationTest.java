@@ -426,7 +426,7 @@ class UserFlowIntegrationTest extends BackendIntegrationTestBase {
 
     private int[] insertRealWorkplace(String prefix) {
         String suffix = prefix + System.nanoTime();
-        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) VALUES(?,?, 'STORE',1,10,0,1,0,CURRENT_TIMESTAMP,1)", "T18_ORG_" + suffix, "Task18真实组织" + prefix);
+        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,order_no,placeholder,enabled,version,create_time,create_by) VALUES(?,?, 'STORE',1,10,0,1,0,CURRENT_TIMESTAMP,1)", "T18_ORG_" + suffix, "Task18真实组织" + prefix);
         int organizationId = jdbcTemplate.queryForObject("SELECT id FROM t_organization_unit WHERE code=?", Integer.class, "T18_ORG_" + suffix);
         jdbcTemplate.update("INSERT INTO t_position(code,name,position_level,built_in,enabled,version,create_time,create_by) VALUES(?,?,10,0,1,0,CURRENT_TIMESTAMP,1)", "T18_POS_" + suffix, "Task18真实岗位" + prefix);
         int positionId = jdbcTemplate.queryForObject("SELECT id FROM t_position WHERE code=?", Integer.class, "T18_POS_" + suffix);

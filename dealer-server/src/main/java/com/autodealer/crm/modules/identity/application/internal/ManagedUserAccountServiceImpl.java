@@ -207,7 +207,7 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
         Set<Integer> effectiveAllowedIds = allowedIds;
         return organizations.selectAll().stream()
                 .filter(item -> Boolean.TRUE.equals(item.getEnabled()))
-                .filter(item -> !Boolean.TRUE.equals(item.getMigrationPlaceholder()))
+                .filter(item -> !Boolean.TRUE.equals(item.getPlaceholder()))
                 .filter(item -> effectiveAllowedIds == null || effectiveAllowedIds.contains(item.getId()))
                 .map(item -> filterOption(item.getId(), item.getName()))
                 .toList();
@@ -245,7 +245,7 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
                     && root.getParentId() == null
                     && root.getLeaderEmployeeId() == null
                     && Boolean.TRUE.equals(root.getEnabled())
-                    && !Boolean.TRUE.equals(root.getMigrationPlaceholder());
+                    && !Boolean.TRUE.equals(root.getPlaceholder());
             result.setBootstrapAllowed(availableRoot);
             if (availableRoot) {
                 result.setBootstrapRootOrganizationId(root.getId());

@@ -76,7 +76,7 @@
         INNER JOIN t_organization_unit manager_organization
                 ON manager_organization.id = manager_assignment.organization_unit_id
                AND manager_organization.enabled = 1
-               AND manager_organization.migration_placeholder = 0
+               AND manager_organization.placeholder = 0
         INNER JOIN t_position manager_position
                 ON manager_position.id = manager_assignment.position_id
                AND manager_position.enabled = 1
@@ -115,7 +115,7 @@
         INNER JOIN t_organization_unit manager_organization
                 ON manager_organization.id = manager_assignment.organization_unit_id
                AND manager_organization.enabled = 1
-               AND manager_organization.migration_placeholder = 0
+               AND manager_organization.placeholder = 0
         INNER JOIN t_position manager_position
                 ON manager_position.id = manager_assignment.position_id
                AND manager_position.enabled = 1

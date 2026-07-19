@@ -97,7 +97,7 @@ class UserAuthorizationControllerH2IntegrationTest extends BackendIntegrationTes
                 WHERE employee.user_id=2 AND assignment.active_primary_marker=1
                 """,Integer.class);
         String code="USER_CUSTOM_ORG_"+System.nanoTime();
-        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) VALUES(?,?,'STORE',?,1,0,1,0,CURRENT_TIMESTAMP,1)",code,code,targetOrganization);
+        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,order_no,placeholder,enabled,version,create_time,create_by) VALUES(?,?,'STORE',?,1,0,1,0,CURRENT_TIMESTAMP,1)",code,code,targetOrganization);
         int organization=jdbcTemplate.queryForObject("SELECT id FROM t_organization_unit WHERE code=?",Integer.class,code);
         mockMvc.perform(put("/api/users/2/authorization/permissions").header(HttpHeaders.AUTHORIZATION,adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -280,7 +280,7 @@ class UserAuthorizationControllerH2IntegrationTest extends BackendIntegrationTes
     private int authorizationVersion(int userId){return jdbcTemplate.queryForObject("SELECT authorization_version FROM t_user WHERE id=?",Integer.class,userId);}
     private void grantAdminRolePermission(int permissionId){jdbcTemplate.update("INSERT INTO t_role_permission(role_id,permission_id,delegable,data_scope_code) SELECT id,?,1,'GLOBAL' FROM t_role WHERE role='admin'",permissionId);}
     private void insertAvailableAdmin(int userId,int baseId){
-        jdbcTemplate.update("INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) VALUES(?,?,?,'DEPARTMENT',1,1,0,1,0,CURRENT_TIMESTAMP,1)",baseId,"BATCH_ADMIN_ORG_"+baseId,"批量管理员组织"+baseId);
+        jdbcTemplate.update("INSERT INTO t_organization_unit(id,code,name,type,parent_id,order_no,placeholder,enabled,version,create_time,create_by) VALUES(?,?,?,'DEPARTMENT',1,1,0,1,0,CURRENT_TIMESTAMP,1)",baseId,"BATCH_ADMIN_ORG_"+baseId,"批量管理员组织"+baseId);
         jdbcTemplate.update("INSERT INTO t_position(id,code,name,position_level,built_in,enabled,version,create_time,create_by) VALUES(?,?,?,100,0,1,0,CURRENT_TIMESTAMP,1)",baseId,"BATCH_ADMIN_POSITION_"+baseId,"批量管理员岗位"+baseId);
         jdbcTemplate.update("INSERT INTO t_user(id,login_act,login_pwd,name,account_no_expired,credentials_no_expired,account_no_locked,account_enabled,account_status,account_type,protected_account,manual_locked,version,authorization_version,auth_version,session_revision,create_time,create_by) VALUES(?,?, 'x',?,1,1,1,1,'ACTIVE','HUMAN',0,0,0,0,0,0,CURRENT_TIMESTAMP,1)",userId,"batch_admin_"+userId,"普通管理员"+userId);
         jdbcTemplate.update("INSERT INTO t_employee(id,user_id,employee_no,name,phone,employment_status,profile_completed,version,profile_version,phone_verified,email_verified,create_time,create_by) VALUES(?,?,?,?,?,'ACTIVE',1,0,0,1,0,CURRENT_TIMESTAMP,1)",userId,userId,"EMP-BATCH-"+userId,"普通管理员"+userId,"139"+String.format("%08d",userId));

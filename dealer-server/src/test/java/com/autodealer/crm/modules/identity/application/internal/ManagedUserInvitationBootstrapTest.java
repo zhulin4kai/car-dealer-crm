@@ -85,7 +85,7 @@ class ManagedUserInvitationBootstrapTest {
         root = new TOrganizationUnit();
         root.setId(9);root.setCode("ROOT");root.setName("集团公司");
         root.setType(OrganizationUnitType.COMPANY);root.setEnabled(true);
-        root.setMigrationPlaceholder(false);root.setVersion(4);
+        root.setPlaceholder(false);root.setVersion(4);
         when(organizations.selectByPrimaryKey(9)).thenReturn(root);
         when(organizations.selectRoots()).thenReturn(List.of(root));
 

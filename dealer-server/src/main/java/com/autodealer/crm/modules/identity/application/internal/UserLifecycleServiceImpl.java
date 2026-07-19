@@ -405,7 +405,7 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
         out.setEffectiveFrom(offset(primary.getEffectiveFrom()));return out;}
 
     private void validateAssignmentChoice(TEmployee employee,AssignmentCommand request,LocalDateTime at){TOrganizationUnit org=organizations.selectByPrimaryKey(request.getOrganizationUnitId());TPosition pos=positions.selectByPrimaryKey(request.getPositionId());
-        if(org==null||!Boolean.TRUE.equals(org.getEnabled())||Boolean.TRUE.equals(org.getMigrationPlaceholder()))throw new BusinessException(CodeEnum.ORGANIZATION_HIERARCHY_INVALID,"任职组织不可用");
+        if(org==null||!Boolean.TRUE.equals(org.getEnabled())||Boolean.TRUE.equals(org.getPlaceholder()))throw new BusinessException(CodeEnum.ORGANIZATION_HIERARCHY_INVALID,"任职组织不可用");
         if(pos==null||!Boolean.TRUE.equals(pos.getEnabled())||Boolean.TRUE.equals(pos.getBuiltIn()))throw new BusinessException(CodeEnum.ASSIGNMENT_CONFLICT,"任职岗位不可用");
         Set<Integer> scope=manageableOrganizationIds(at);if(scope!=null&&!scope.contains(org.getId()))throw new BusinessException(CodeEnum.ACCESS_DENIED,"目标任职组织超出操作者范围");
         directManagerPolicy.validate(employee.getId(),request.getOrganizationUnitId(),request.getManagerEmployeeId(),at);}

@@ -19,7 +19,7 @@ WHERE id IN (1, 2, 3);
 
 -- ==================== Organization and employees ====================
 MERGE INTO t_organization_unit
-(id, code, name, type, parent_id, leader_employee_id, order_no, migration_placeholder,
+(id, code, name, type, parent_id, leader_employee_id, order_no, placeholder,
  enabled, version, create_time, create_by) KEY(id)
 VALUES
 (1, 'DEFAULT_COMPANY', '测试公司', 'COMPANY', NULL, NULL, 0, 0, 1, 0, CURRENT_TIMESTAMP, 1),
@@ -28,7 +28,7 @@ VALUES
 MERGE INTO t_position
 (id, code, name, description, position_level, built_in, enabled, version, create_time, create_by) KEY(id)
 VALUES
-(1, 'UNASSIGNED_POSITION', '待分配岗位', '兼容迁移占位岗位，完成员工资料补录后应替换。',
+(1, 'UNASSIGNED_POSITION', '待分配岗位', '待分配占位岗位，完成员工资料补录后应替换。',
  0, 1, 1, 0, CURRENT_TIMESTAMP, 1),
 (2, 'TEST_STAFF', '测试员工', 'H2 测试普通员工岗位。',
  30, 0, 1, 0, CURRENT_TIMESTAMP, 1),
@@ -858,24 +858,9 @@ UPDATE t_role_permission
 SET delegable = (SELECT p.delegable FROM t_permission p WHERE p.id = t_role_permission.permission_id),
     data_scope_code = (SELECT r.default_data_scope FROM t_role r WHERE r.id = t_role_permission.role_id);
 
--- 当前初始化脚本已内建这些结构和回填，防止后续误跑旧人工迁移覆盖现有配置。
-MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
-VALUES ('20260711_task03_auth_version', CURRENT_TIMESTAMP);
-MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
-VALUES ('20260711_task09_organization_foundation', CURRENT_TIMESTAMP);
-MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
-VALUES ('20260711_task10_authorization_history', CURRENT_TIMESTAMP);
-MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
-VALUES ('20260711_task11_organization_management', CURRENT_TIMESTAMP);
-MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
-VALUES ('20260711_task12_role_permission_matrix', CURRENT_TIMESTAMP);
-MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
-VALUES ('20260711_task13_user_authorization', CURRENT_TIMESTAMP);
 MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('ORGANIZATION_HIERARCHY');
 MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('REPORTING_GRAPH');
 MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('AVAILABLE_ADMIN_GUARD');
 MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('AUTHORIZATION_MEMBERSHIP_GUARD');
 MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('TEST_DRIVE_SCHEDULE_GUARD');
 MERGE INTO t_authorization_graph_lock (lock_name) KEY(lock_name) VALUES ('LOGIN_IDENTIFIER_GUARD');
-MERGE INTO t_user_management_migration (migration_key, completed_at) KEY(migration_key)
-VALUES ('20260712_task20_user_lifecycle', CURRENT_TIMESTAMP);

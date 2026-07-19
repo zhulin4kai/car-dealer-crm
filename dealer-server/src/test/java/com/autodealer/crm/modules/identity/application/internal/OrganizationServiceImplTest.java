@@ -403,7 +403,7 @@ class OrganizationServiceImplTest {
         unit.setName("公司");
         unit.setType(OrganizationUnitType.COMPANY);
         unit.setEnabled(true);
-        unit.setMigrationPlaceholder(false);
+        unit.setPlaceholder(false);
         unit.setOrderNo(0);
         unit.setVersion(0);
         return unit;

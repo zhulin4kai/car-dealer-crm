@@ -121,7 +121,7 @@ class AuthorizationServiceImplTest {
         permission.setId(7);permission.setEnabled(1);
         when(permissionMapper.selectByPrimaryKey(7)).thenReturn(permission);
         com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit organization=new com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit();
-        organization.setId(9);organization.setEnabled(true);organization.setMigrationPlaceholder(false);
+        organization.setId(9);organization.setEnabled(true);organization.setPlaceholder(false);
         when(organizationMapper.selectByPrimaryKey(9)).thenReturn(organization);
         when(policy.delegableCustomOrganizationIds(permission,target)).thenReturn(List.of(8));
         PermissionChange change=new PermissionChange();change.setPermissionId(7);change.setState(PersonalState.GRANT);

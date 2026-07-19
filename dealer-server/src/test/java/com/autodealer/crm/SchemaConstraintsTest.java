@@ -54,7 +54,6 @@ class SchemaConstraintsTest {
             "t_delivery", "t_delivery_check_item",
             "t_payment", "t_refund_request",
             "t_user", "t_login_identifier", "t_user_session", "t_user_role", "t_user_permission", "t_authorization_history", "t_credential_delivery_outbox",
-            "t_user_management_migration",
             "t_authorization_graph_lock", "t_role_organization",
             "t_clue_owner_history",
             "t_organization_unit", "t_position", "t_employee",
@@ -1150,7 +1149,7 @@ class SchemaConstraintsTest {
     void organizationFoundationBusinessKeysRejectDuplicates() {
         assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""
             INSERT INTO t_organization_unit
-            (code, name, type, order_no, migration_placeholder, enabled, version, create_time)
+            (code, name, type, order_no, placeholder, enabled, version, create_time)
             VALUES ('DEFAULT_COMPANY', '重复公司', 'COMPANY', 0, 0, 1, 0, CURRENT_TIMESTAMP)
             """));
         assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update("""

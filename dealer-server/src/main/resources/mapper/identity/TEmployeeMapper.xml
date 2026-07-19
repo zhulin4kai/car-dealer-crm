@@ -57,7 +57,7 @@
         INNER JOIN t_organization_unit organization_unit
           ON organization_unit.id = assignment.organization_unit_id
          AND organization_unit.enabled = 1
-         AND organization_unit.migration_placeholder = 0
+         AND organization_unit.placeholder = 0
         INNER JOIN t_position position
           ON position.id = assignment.position_id
          AND position.enabled = 1
@@ -126,7 +126,7 @@
         INNER JOIN t_organization_unit organization_unit
           ON organization_unit.id = assignment.organization_unit_id
          AND organization_unit.enabled = 1
-         AND organization_unit.migration_placeholder = 0
+         AND organization_unit.placeholder = 0
         INNER JOIN t_position position
           ON position.id = assignment.position_id
          AND position.enabled = 1

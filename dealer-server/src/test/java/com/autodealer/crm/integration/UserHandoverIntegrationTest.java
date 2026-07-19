@@ -203,7 +203,7 @@ class UserHandoverIntegrationTest {
         command.setTransfers(java.util.Arrays.stream(DirectResourceType.values()).map(type->{TransferSelection value=new TransferSelection();value.setResourceType(type);value.setTargetEmployeeId(2);return value;}).toList());return command;}
     private void prepareRealRecipientAndSource(){
         jdbc.update("UPDATE t_employee SET employment_status='HANDOVER',version=0 WHERE user_id=2");
-        jdbc.update("MERGE INTO t_organization_unit(id,code,name,type,parent_id,order_no,migration_placeholder,enabled,version,create_time,create_by) KEY(id) VALUES(990,'HANDOVER_ORG','交接组织','DEPARTMENT',1,0,0,1,0,CURRENT_TIMESTAMP,1)");
+        jdbc.update("MERGE INTO t_organization_unit(id,code,name,type,parent_id,order_no,placeholder,enabled,version,create_time,create_by) KEY(id) VALUES(990,'HANDOVER_ORG','交接组织','DEPARTMENT',1,0,0,1,0,CURRENT_TIMESTAMP,1)");
         jdbc.update("MERGE INTO t_position(id,code,name,position_level,built_in,enabled,version,create_time,create_by) KEY(id) VALUES(990,'HANDOVER_POSITION','交接岗位',1,0,1,0,CURRENT_TIMESTAMP,1)");
         jdbc.update("UPDATE t_employee_assignment SET organization_unit_id=990,position_id=990,assignment_type='PRIMARY',status='ACTIVE',active_primary_marker=1,effective_from=DATEADD('DAY',-1,CURRENT_TIMESTAMP),effective_to=NULL WHERE employee_id=2");
         jdbc.update("UPDATE t_user SET account_status='ACTIVE',account_enabled=1,account_no_locked=1,account_no_expired=1,manual_locked=0,auto_locked_until=NULL,account_type='HUMAN',protected_account=0 WHERE id=3");

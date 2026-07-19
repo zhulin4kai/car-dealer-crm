@@ -155,7 +155,7 @@ class ManagedUserAccountSecurityIntegrationTest extends BackendIntegrationTestBa
         String adminToken = loginAs("security_expiration_operator", "123456", operatorId);
         jdbcTemplate.update("UPDATE t_user SET account_enabled=0,account_status='DISABLED' WHERE id=?", QUALIFIED_ADMIN_USER_ID);
         int userId = 9918;
-        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,migration_placeholder,enabled,version,create_time,create_by) VALUES('SEC_ADMIN_ORG','安全管理门店','STORE',1,0,1,0,CURRENT_TIMESTAMP,1)");
+        jdbcTemplate.update("INSERT INTO t_organization_unit(code,name,type,parent_id,placeholder,enabled,version,create_time,create_by) VALUES('SEC_ADMIN_ORG','安全管理门店','STORE',1,0,1,0,CURRENT_TIMESTAMP,1)");
         int organizationId = jdbcTemplate.queryForObject("SELECT id FROM t_organization_unit WHERE code='SEC_ADMIN_ORG'", Integer.class);
         jdbcTemplate.update("INSERT INTO t_position(code,name,position_level,built_in,enabled,version,create_time,create_by) VALUES('SEC_ADMIN_POS','安全管理员',99,0,1,0,CURRENT_TIMESTAMP,1)");
         int positionId = jdbcTemplate.queryForObject("SELECT id FROM t_position WHERE code='SEC_ADMIN_POS'", Integer.class);

@@ -1,6 +1,5 @@
 import { httpClient } from '@/shared/api/http-client'
 import type { DownloadResult, PageResult } from '@/shared/api/api-types'
-import type { SelectOption } from '@/shared/types/common'
 import type { EntityId } from '@/shared/types/id'
 import type {
   Activity,
@@ -13,10 +12,6 @@ import type {
 
 export function fetchActivityPage(params: ActivityQuery): Promise<PageResult<Activity>> {
   return httpClient.get<PageResult<Activity>>('/api/activities', { params })
-}
-
-export function fetchOwnerList(): Promise<SelectOption[]> {
-  return httpClient.get<SelectOption[]>('/api/owner')
 }
 
 export function batchDeleteActivities(ids: EntityId[]): Promise<unknown> {
@@ -86,5 +81,4 @@ export function deleteActivityRemark(id: EntityId): Promise<unknown> {
 }
 
 export const getActivityList = fetchActivityPage
-export const getOwnerList = fetchOwnerList
 export const getActivityById = fetchActivityById

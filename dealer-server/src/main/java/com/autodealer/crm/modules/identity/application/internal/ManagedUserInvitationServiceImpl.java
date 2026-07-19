@@ -274,7 +274,7 @@ public class ManagedUserInvitationServiceImpl implements ManagedUserInvitationSe
         if (organization == null || position == null
                 || !Boolean.TRUE.equals(organization.getEnabled())
                 || !Boolean.TRUE.equals(position.getEnabled())
-                || Boolean.TRUE.equals(organization.getMigrationPlaceholder())
+                || Boolean.TRUE.equals(organization.getPlaceholder())
                 || "UNASSIGNED_POSITION".equals(position.getCode())) {
             throw new BusinessException(CodeEnum.PARAM_ERROR, "组织或岗位不可用");
         }

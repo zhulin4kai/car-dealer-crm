@@ -765,45 +765,21 @@ apiFunction(params).then(response => {
 
 `CarDealerCRM.sql` 是生产空库初始化入口。系统配置与系统监控能力已下线，初始化脚本不再包含 `t_system_info`。
 
-### 7.1 用户管理基础模型升级
+### 7.1 数据库基线与初始化
 
-已有数据库禁止重新执行完整初始化脚本，也禁止直接执行 `dealer-server/src/main/resources/migration/*.sql`。用户管理迁移的唯一入口是：
+本项目禁止创建或执行 migration。数据库结构和初始化数据只允许维护以下文件：
 
-```bash
-scripts/database/user-management-migrate.sh plan
-scripts/database/user-management-migrate.sh status
-scripts/database/user-management-migrate.sh apply APPLY
-scripts/database/user-management-migrate.sh resume <migration_key> RESUME
-scripts/database/user-management-migrate.sh verify
-```
+- `dealer-server/src/main/resources/CarDealerCRM.sql`：生产空库完整初始化入口。
+- `dealer-server/src/main/resources/schema-test.sql`：H2 完整测试结构。
+- `dealer-server/src/main/resources/data.sql`：H2 测试初始化数据。
 
-完整初始化库使用 `CarDealerCRM.sql` 建库后，不重复执行历史回填，而是逐项核验现有对象并绑定 baseline：
+数据库变更必须直接把最终表、字段、约束、索引、触发器和种子写入上述文件，同时修改 Model、Mapper XML 和测试。不得新增版本化增量 SQL、`migration/` 目录、迁移执行器、迁移清单、迁移状态表或完成标记。完整约束见 `docs/rule/04-数据库与MyBatis规范.md`。
 
-```bash
-scripts/database/user-management-migrate.sh baseline BASELINE
-scripts/database/user-management-migrate.sh verify
-```
+生产初始化必须从空数据库一次执行 `CarDealerCRM.sql`，随后核对核心表、约束、索引、触发器、账号、角色、权限和初始化组织数据。H2 会在后端完整测试中从空库加载 `schema-test.sql` 与 `data.sql`；生产与 H2 的表字段集合由 `DataLayerContractTest` 检查，已进入基线的数据库对象由 `DatabaseBaselinePolicyTest` 检查。
 
-执行前必须停止写入流量、完成数据库备份，并设置 `CRM_MIGRATION_DB_HOST`、`CRM_MIGRATION_DB_PORT`、`CRM_MIGRATION_DB_NAME`、`CRM_MIGRATION_DB_USERNAME`、`CRM_MIGRATION_DB_PASSWORD`。可通过 `CRM_MIGRATION_MYSQL_BIN=mysql` 或 `mariadb` 选择兼容客户端。必须记录当前应用版本、`t_user`、`t_user_role`、`t_role_permission` 行数、每个用户的 `id + login_act` 映射和各用户当前有效权限 code 集合。
+`placeholder=1` 表示待分配组织，不是真实门店或团队。管理范围、负责人资格、接收人资格和业务数据范围必须排除该记录；补录真实组织和岗位前不得把占位任职作为授权依据。
 
-`dealer-server/src/main/resources/migration/manifest.tsv` 是 Task 03、09、10、11、12、13、15、16、17、18、19、20 的唯一顺序、依赖、脚本 checksum、恢复模式和对象探针清单。执行器遵守以下边界：
-
-- 获取 `car_dealer_crm:user_management_migration` 数据库命名锁后才允许建立或恢复迁移尝试。
-- `t_user_management_migration` 记录 `RUNNING/SUCCEEDED/FAILED`、checksum、执行次数、错误摘要和最后完成步骤；`t_user_management_migration_step` 保存可恢复步骤。
-- `apply APPLY` 只执行没有账本记录的迁移；`RUNNING/FAILED` 必须使用指定 migration key 的 `resume ... RESUME`，不得删除或伪造账本后重放。
-- 每个建表、改表、索引、约束、种子或回填过程都在首个变更前再次校验命名锁、连接、migration key、checksum 和 `RUNNING` 状态；即使直接使用 `mysql --force` 执行 SQL，也不得改变业务 Schema 或回填数据。
-- 授权历史和生命周期事件的不可变触发器是过程外方言定义，但只增加审计保护；其余业务对象仍必须在受控过程内完成。
-- 只有脚本执行、步骤账本和 manifest 对象探针全部成功，执行器才把迁移标记为 `SUCCEEDED`；对象已存在但账本缺失不能视为成功。
-- baseline 逐项执行与 manifest 相同的对象探针并绑定当前 checksum，不执行兼容回填，不得改变核心业务行数。
-- Task15 在迁移 context 内新增 `account_expires_at`、`t_login_identifier` 和 `LOGIN_IDENTIFIER_GUARD`，并把所有现有非空 `t_user.login_act` 幂等回填为 ACTIVE 永久归属。账号为空、标识已归属其他用户或用户已有冲突当前标识时必须失败，不能使用 `IGNORE`、覆盖更新或手工删历史继续迁移。
-
-迁移占位组织不是真实门店或团队。管理范围、负责人资格、接收人资格和业务数据范围必须排除 `migration_placeholder=1`；补录真实组织和岗位前不得把占位任职作为授权依据。
-
-故障恢复时先运行 `status`，核对失败 key、checksum 和 `last_completed_step`，修复明确原因后只对该 key 执行 `resume`。禁止从 SQL 文件开头手工重跑、删除字段、清空角色关系、修改 checksum 或伪造成功账本。成功后必须运行 `verify`，并重新核对账号状态、账号/凭证期限、登录标识永久归属、密码摘要、用户角色、角色权限、有效权限集合、孤儿关系、主任职、迁移占位和历史触发器。
-
-H2 只用于 Mapper、约束近似和事务测试，不能证明 MySQL/MariaDB 方言。发布验收必须在受支持的 MySQL 和 MariaDB 实例上分别执行：旧库首次升级、Task 10/12/13/15 故障注入与恢复、登录账号永久不可转让、重复 `apply`、逐脚本 `mysql --force` 防绕过、完整库 baseline，以及授权历史和生命周期事件拒绝 `UPDATE/DELETE`。真实验证入口为 `scripts/database/test-user-management-migrations-real.sh`；该脚本一次验证当前环境变量指定的一种数据库，双库验收必须分别运行并保存厂商、版本和输出证据。
-
-Task15 成功或 baseline 绑定前，至少执行以下只读核对；任一结果不符合预期都不能发布：
+初始化完成后至少执行以下只读核对；任一结果不符合预期都不能交付：
 
 ```sql
 -- 应为 0：每个现有用户都有与当前 login_act 完全匹配的 ACTIVE 归属。
@@ -863,7 +839,6 @@ WHERE table_schema=DATABASE() AND table_name='t_user'
 - 登录账号修改同样携带 `accountVersion` 和原因。服务端持有 `LOGIN_IDENTIFIER_GUARD` 后同时检查 `t_user` 当前账号与 `t_login_identifier` 历史；旧标识只能由原用户重新启用，不能转给其他员工。
 - 安全期限修改分别使用 `accountExpiresAt` 与 `credentialExpiresAt`；前端不得根据一个值推导另一个值。设置、清空或改动任一安全期限都会提升认证版本并撤销旧会话，且不能使最后一个有效普通管理员失效。
 - 旧 `/api/user` 万能创建/更新、单数状态、角色、密码和交接写路径已停用并 fail-close；只读 `GET /api/user/{id}` 仅作 deprecated 兼容。
-- Task 18 由 manifest 在 Task 17 后调度；索引过程在内部二次校验迁移上下文，步骤完成后写入步骤账本，最终由统一对象探针和 checksum 决定是否标记 `SUCCEEDED`。
 
 #### 7.4.1 登录标识与安全期限手工验收
 
