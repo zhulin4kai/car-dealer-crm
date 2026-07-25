@@ -28,7 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -65,14 +65,14 @@ class SupervisorStatusReportingConcurrencyTest {
     @Autowired TEmployeeMapper employeeMapper;
     @Autowired TEmployeeReportingMapper reportingMapper;
 
-    @MockBean CurrentUserProvider currentUser;
-    @MockBean UserAuthorizationPolicy authorizationPolicy;
-    @MockBean OperationAuditRecorder operationAuditRecorder;
-    @MockBean AuthorizationAuditRecorder authorizationAuditRecorder;
-    @MockBean UserSessionService userSessionService;
-    @MockBean CredentialService credentialService;
-    @MockBean RedisManager redisManager;
-    @MockBean OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
+    @MockitoBean CurrentUserProvider currentUser;
+    @MockitoBean UserAuthorizationPolicy authorizationPolicy;
+    @MockitoBean OperationAuditRecorder operationAuditRecorder;
+    @MockitoBean AuthorizationAuditRecorder authorizationAuditRecorder;
+    @MockitoBean UserSessionService userSessionService;
+    @MockitoBean CredentialService credentialService;
+    @MockitoBean RedisManager redisManager;
+    @MockitoBean OwnerCandidateCacheInvalidator ownerCandidateCacheInvalidator;
 
     @BeforeEach
     void seed() {

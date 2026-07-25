@@ -27,8 +27,8 @@ import com.autodealer.crm.shared.error.CodeEnum;
 import com.autodealer.crm.modules.sales.followup.application.api.CommunicationRecordService;
 import com.autodealer.crm.modules.sales.followup.application.api.FollowTaskService;
 import com.autodealer.crm.modules.sales.followup.application.internal.FollowRelatedObjectResolver;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,8 +67,7 @@ class AiProposalServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper = JsonMapper.builder().build();
         service = new AiProposalServiceImpl(
                 proposalMapper,
                 traceService,

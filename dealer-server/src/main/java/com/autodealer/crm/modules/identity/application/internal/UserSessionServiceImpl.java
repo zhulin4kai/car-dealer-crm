@@ -23,8 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.security.SecureRandom;
 import java.time.*;
@@ -34,7 +35,7 @@ import java.util.*;
 public class UserSessionServiceImpl implements UserSessionService {
     private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(UserSessionServiceImpl.class);
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final ObjectMapper AUDIT_JSON = new ObjectMapper().findAndRegisterModules();
+    private static final ObjectMapper AUDIT_JSON = JsonMapper.builder().build();
     private final TUserSessionMapper sessions;
     private final TUserMapper users;
     private final RedisManager redis;
@@ -218,7 +219,7 @@ public class UserSessionServiceImpl implements UserSessionService {
     private LocalDateTime min(LocalDateTime a,LocalDateTime b){return a.isBefore(b)?a:b;}
     private long ttlSeconds(LocalDateTime from,LocalDateTime to){return Math.max(1,Duration.between(from,to).getSeconds());}
     private String randomSessionId(){byte[]bytes=new byte[32];RANDOM.nextBytes(bytes);return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);}
-    private static String jsonSummary(String type,String reason,int count){try{return AUDIT_JSON.writeValueAsString(Map.of("type",type,"reason",reason==null?"":reason,"count",count));}catch(JsonProcessingException e){throw new IllegalStateException("会话审计摘要序列化失败",e);}}
+    private static String jsonSummary(String type,String reason,int count){try{return AUDIT_JSON.writeValueAsString(Map.of("type",type,"reason",reason==null?"":reason,"count",count));}catch(JacksonException e){throw new IllegalStateException("会话审计摘要序列化失败",e);}}
     private String deviceSummary(HttpServletRequest r){String ua=safe(r.getHeader("User-Agent"),256);return ua.toLowerCase(Locale.ROOT).contains("mobile")?"移动设备":"桌面设备";}
     private String clientSummary(HttpServletRequest r){String ua=safe(r.getHeader("User-Agent"),256);String lower=ua.toLowerCase(Locale.ROOT);if(lower.contains("edg/"))return "Edge 浏览器";if(lower.contains("chrome/"))return "Chrome 浏览器";if(lower.contains("firefox/"))return "Firefox 浏览器";if(lower.contains("safari/"))return "Safari 浏览器";return "未知客户端";}
     private String networkSummary(HttpServletRequest r){String ip=safe(r.getRemoteAddr(),64);if(ip.matches("\\d{1,3}(\\.\\d{1,3}){3}")){String[]p=ip.split("\\.");return p[0]+"."+p[1]+".*.*";}if(ip.contains(":")){String[]p=ip.split(":");return String.join(":",Arrays.copyOf(p,Math.min(4,p.length)))+"::/64";}return "未知网络";}

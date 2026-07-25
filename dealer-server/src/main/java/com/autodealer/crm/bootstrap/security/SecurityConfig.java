@@ -80,8 +80,7 @@ public class SecurityConfig {
 
                 // 退出登录
                 .logout((logout) -> {
-                    logout.logoutUrl(SecurityPaths.LOGOUT) // 退出提交到该地址，该地址不需要我们写controller的，是框架处理
-                            .logoutRequestMatcher(new org.springframework.security.web.util.matcher.AntPathRequestMatcher(SecurityPaths.LOGOUT, "POST"))
+                    logout.logoutUrl(SecurityPaths.LOGOUT)
                             .logoutSuccessHandler(myLogoutSuccessHandler);
                 })
 

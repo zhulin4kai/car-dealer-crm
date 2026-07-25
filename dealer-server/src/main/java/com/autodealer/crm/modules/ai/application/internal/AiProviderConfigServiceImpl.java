@@ -1,27 +1,5 @@
 package com.autodealer.crm.modules.ai.application.internal;
 
-import com.autodealer.crm.modules.ai.application.api.dto.AiProviderConfigResponse;
-import com.autodealer.crm.modules.ai.application.api.dto.AiProviderConfigTestResponse;
-import com.autodealer.crm.modules.ai.application.api.dto.CreateAiProviderConfigRequest;
-import com.autodealer.crm.modules.ai.application.api.dto.ProviderRuntimeConfig;
-import com.autodealer.crm.modules.ai.application.api.dto.RotateAiProviderKeyRequest;
-import com.autodealer.crm.modules.ai.application.api.dto.UpdateAiProviderConfigRequest;
-import com.autodealer.crm.modules.ai.application.api.enums.AiProviderFormat;
-import com.autodealer.crm.modules.ai.application.api.enums.AiProviderTestStatus;
-import com.autodealer.crm.modules.ai.persistence.mapper.TAiProviderConfigMapper;
-import com.autodealer.crm.modules.ai.persistence.model.TAiProviderConfig;
-import com.autodealer.crm.modules.ai.application.api.AiProviderConfigService;
-import com.autodealer.crm.modules.ai.application.internal.AiProviderKeyCipher;
-import com.autodealer.crm.modules.ai.application.internal.AiSensitiveDataSanitizer;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.shared.error.CodeEnum;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetAddress;
@@ -35,6 +13,27 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import com.autodealer.crm.modules.ai.application.api.AiProviderConfigService;
+import com.autodealer.crm.modules.ai.application.api.dto.AiProviderConfigResponse;
+import com.autodealer.crm.modules.ai.application.api.dto.AiProviderConfigTestResponse;
+import com.autodealer.crm.modules.ai.application.api.dto.CreateAiProviderConfigRequest;
+import com.autodealer.crm.modules.ai.application.api.dto.ProviderRuntimeConfig;
+import com.autodealer.crm.modules.ai.application.api.dto.RotateAiProviderKeyRequest;
+import com.autodealer.crm.modules.ai.application.api.dto.UpdateAiProviderConfigRequest;
+import com.autodealer.crm.modules.ai.application.api.enums.AiProviderFormat;
+import com.autodealer.crm.modules.ai.application.api.enums.AiProviderTestStatus;
+import com.autodealer.crm.modules.ai.persistence.mapper.TAiProviderConfigMapper;
+import com.autodealer.crm.modules.ai.persistence.model.TAiProviderConfig;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.error.CodeEnum;
+
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AiProviderConfigServiceImpl implements AiProviderConfigService {
@@ -225,7 +224,7 @@ public class AiProviderConfigServiceImpl implements AiProviderConfigService {
     private HttpRequest buildTestRequest(TAiProviderConfig config,
                                          String apiKey,
                                          int timeoutSeconds,
-                                         int maxTokens) throws JsonProcessingException {
+                                         int maxTokens) {
         AiProviderFormat format = AiProviderFormat.valueOf(config.getProviderFormat());
         if (format == AiProviderFormat.OPENAI_COMPATIBLE) {
             Map<String, Object> body = Map.of(

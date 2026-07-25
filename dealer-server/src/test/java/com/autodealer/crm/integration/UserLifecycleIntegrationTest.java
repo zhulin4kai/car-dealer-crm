@@ -17,7 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -45,11 +45,11 @@ class UserLifecycleIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired UserLifecycleService service;
     @Autowired OrganizationService organizationService;
-    @MockBean CurrentUserProvider current;
-    @MockBean UserAuthorizationPolicy policy;
-    @MockBean DataScopeResolver dataScopes;
-    @MockBean UserSessionService sessions;
-    @MockBean OperationAuditRecorder operationAudit;
+    @MockitoBean CurrentUserProvider current;
+    @MockitoBean UserAuthorizationPolicy policy;
+    @MockitoBean DataScopeResolver dataScopes;
+    @MockitoBean UserSessionService sessions;
+    @MockitoBean OperationAuditRecorder operationAudit;
 
     @BeforeEach
     void seed(){

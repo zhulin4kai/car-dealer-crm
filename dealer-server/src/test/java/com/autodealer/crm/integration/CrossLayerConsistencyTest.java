@@ -5,7 +5,7 @@ import com.autodealer.crm.modules.identity.web.UserController;
 import com.autodealer.crm.shared.security.SecurityPaths;
 import com.autodealer.crm.shared.web.Result;
 import com.autodealer.crm.shared.infrastructure.constants.Constants;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -348,8 +348,8 @@ class CrossLayerConsistencyTest extends BackendIntegrationTestBase {
         Matcher m = Pattern.compile("AntPathRequestMatcher\\(\\s*(?:\\\"/api/logout\\\"|SecurityPaths\\.LOGOUT)\\s*,\\s*\\\"([A-Z]+)\\\"\\s*\\)")
                 .matcher(content);
         if (m.find()) return m.group(1);
-        // fallback: formLogout only
-        if (content.contains("logout.logoutUrl(\"/api/logout\")") && !content.contains("AntPathRequestMatcher")) {
+        // fallback: formLogout only (Spring Boot 4 / Security 7: AntPathRequestMatcher removed)
+        if (content.contains("logout.logoutUrl(") && !content.contains("AntPathRequestMatcher")) {
             return "POST";
         }
         fail("SecurityConfig.java does not declare an explicit HTTP method for /api/logout");

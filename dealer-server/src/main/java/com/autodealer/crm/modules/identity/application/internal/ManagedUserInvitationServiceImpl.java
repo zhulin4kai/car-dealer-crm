@@ -1,5 +1,32 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
+import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.CredentialService;
+import com.autodealer.crm.modules.identity.application.api.ManagedUserAccountService;
+import com.autodealer.crm.modules.identity.application.api.ManagedUserInvitationService;
+import com.autodealer.crm.modules.identity.application.api.PhoneNormalizer;
+import com.autodealer.crm.modules.identity.application.api.dto.credential.CredentialDtos.ManagedDeliveryResult;
+import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.CreateRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.CreateResult;
 import com.autodealer.crm.modules.identity.application.api.enums.AccountStatus;
 import com.autodealer.crm.modules.identity.application.api.enums.AccountType;
 import com.autodealer.crm.modules.identity.application.api.enums.AssignmentStatus;
@@ -11,6 +38,7 @@ import com.autodealer.crm.modules.identity.application.api.enums.OrganizationUni
 import com.autodealer.crm.modules.identity.application.api.enums.ReportingStatus;
 import com.autodealer.crm.modules.identity.application.api.enums.ReportingType;
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeAssignmentMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeMapper;
@@ -30,33 +58,11 @@ import com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit;
 import com.autodealer.crm.modules.identity.persistence.model.TPosition;
 import com.autodealer.crm.modules.identity.persistence.model.TRole;
 import com.autodealer.crm.modules.identity.persistence.model.TUserRole;
-import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
-import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
-import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.modules.identity.application.api.dto.credential.CredentialDtos.ManagedDeliveryResult;
-import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.CreateRequest;
-import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.CreateResult;
-import com.autodealer.crm.modules.identity.application.api.enums.*;
 import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.modules.identity.persistence.mapper.*;
-import com.autodealer.crm.modules.identity.persistence.model.*;
-import com.autodealer.crm.modules.identity.application.api.model.*;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.identity.application.api.CredentialService;
-import com.autodealer.crm.modules.identity.application.api.ManagedUserAccountService;
-import com.autodealer.crm.modules.identity.application.api.ManagedUserInvitationService;
-import com.autodealer.crm.modules.identity.application.api.PhoneNormalizer;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.*;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class ManagedUserInvitationServiceImpl implements ManagedUserInvitationService {
@@ -444,7 +450,7 @@ public class ManagedUserInvitationServiceImpl implements ManagedUserInvitationSe
     private String json(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("初始用户历史快照序列化失败", exception);
         }
     }

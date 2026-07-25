@@ -1,10 +1,67 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
-import com.autodealer.crm.modules.sales.customer.application.api.port.CustomerOwnerHistoryDataPort;
-import com.autodealer.crm.modules.sales.lead.application.api.port.LeadOwnerHistoryDataPort;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Date;
+import java.util.Deque;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
 import com.autodealer.crm.modules.audit.application.api.AuditRequestIdProvider;
 import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationDataScope;
+import com.autodealer.crm.modules.identity.application.api.CredentialService;
+import com.autodealer.crm.modules.identity.application.api.DataScopeResolver;
+import com.autodealer.crm.modules.identity.application.api.UserLifecycleService;
+import com.autodealer.crm.modules.identity.application.api.dto.credential.CredentialDtos.ManagedDeliveryResult;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.*;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.AccountActivationMode;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.AssignmentCommand;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.AssignmentSummary;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.Candidate;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.CompleteDepartureRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.ConfirmHandoverRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.Context;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.DeparturePrecheck;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.DeparturePrecheckRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.DirectResourceType;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.DomainResult;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.HandoverCandidate;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.HandoverResult;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.LifecycleEvent;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.RehireRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.RehireResult;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.ResponsibilityConflict;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.ResponsibilityRow;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.ResponsibilitySummary;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.SnapshotFact;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.StartDepartureRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.TransferSelection;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.Transition;
 import com.autodealer.crm.modules.identity.application.api.enums.AssignmentStatus;
 import com.autodealer.crm.modules.identity.application.api.enums.AssignmentType;
 import com.autodealer.crm.modules.identity.application.api.enums.AuthorizationChangeType;
@@ -14,6 +71,7 @@ import com.autodealer.crm.modules.identity.application.api.enums.OrganizationUni
 import com.autodealer.crm.modules.identity.application.api.enums.ReportingStatus;
 import com.autodealer.crm.modules.identity.application.api.enums.ReportingType;
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeAssignmentMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeMapper;
@@ -37,33 +95,15 @@ import com.autodealer.crm.modules.identity.persistence.model.TRole;
 import com.autodealer.crm.modules.identity.persistence.model.TUserPermission;
 import com.autodealer.crm.modules.identity.persistence.model.TUserRole;
 import com.autodealer.crm.modules.sales.customer.application.api.model.TCustomerOwnerHistory;
+import com.autodealer.crm.modules.sales.customer.application.api.port.CustomerOwnerHistoryDataPort;
 import com.autodealer.crm.modules.sales.lead.application.api.model.TClueOwnerHistory;
-import com.autodealer.crm.modules.audit.application.api.*;
-import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.shared.security.PermissionCodes;
-import com.autodealer.crm.modules.identity.application.api.dto.user.UserLifecycleDtos.*;
-import com.autodealer.crm.modules.identity.application.api.enums.*;
+import com.autodealer.crm.modules.sales.lead.application.api.port.LeadOwnerHistoryDataPort;
 import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.modules.identity.persistence.mapper.*;
-import com.autodealer.crm.modules.identity.persistence.model.*;
-import com.autodealer.crm.modules.identity.application.api.model.*;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.identity.application.api.UserLifecycleService;
-import com.autodealer.crm.modules.identity.application.api.DataScopeResolver;
-import com.autodealer.crm.modules.identity.application.api.AuthorizationDataScope;
-import com.autodealer.crm.modules.identity.application.api.CredentialService;
-import com.autodealer.crm.modules.identity.application.api.dto.credential.CredentialDtos.ManagedDeliveryResult;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.autodealer.crm.shared.security.PermissionCodes;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.time.*;
-import java.util.*;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class UserLifecycleServiceImpl implements UserLifecycleService {
@@ -522,6 +562,6 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
     private void recordOwnerHistory(DirectResourceType domain,Long resourceId,Integer from,Integer to,String reason,LocalDateTime at){if(domain==DirectResourceType.CLUE){TClueOwnerHistory value=new TClueOwnerHistory();value.setClueId(resourceId.intValue());value.setFromOwnerId(from);value.setToOwnerId(to);value.setAssignedBy(current.getCurrentUserId());value.setReason(reason);value.setAssignedTime(Date.from(at.atZone(BUSINESS_ZONE).toInstant()));if(clueOwnerHistory.insert(value)!=1)throw new IllegalStateException("线索负责人历史写入失败");}
         if(domain==DirectResourceType.CUSTOMER){TCustomerOwnerHistory value=new TCustomerOwnerHistory();value.setCustomerId(resourceId.intValue());value.setFromOwnerId(from);value.setToOwnerId(to);value.setOperatorId(current.getCurrentUserId());value.setReason(reason);value.setTransferTime(Date.from(at.atZone(BUSINESS_ZONE).toInstant()));if(customerOwnerHistory.insert(value)!=1)throw new IllegalStateException("客户负责人历史写入失败");}}
     private boolean isBlocking(DeparturePrecheck check){return !check.getBlockingReasons().isEmpty()||check.getResponsibilities().stream().anyMatch(ResponsibilitySummary::isBlocking);}
-    private String json(Object value){try{return json.writeValueAsString(value);}catch(JsonProcessingException e){throw new IllegalStateException("生命周期快照序列化失败",e);}}
+    private String json(Object value){try{return json.writeValueAsString(value);}catch(JacksonException e){throw new IllegalStateException("生命周期快照序列化失败",e);}}
     private record OrganizationHistoryState(String assignments,String directReporting,String actingReportings){}
 }

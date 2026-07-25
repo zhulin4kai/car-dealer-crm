@@ -9,13 +9,13 @@ import com.autodealer.crm.shared.infrastructure.cache.RedisKeys;
 import com.autodealer.crm.shared.infrastructure.cache.RedisManager;
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
 import com.autodealer.crm.shared.security.JWTUtils;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -65,7 +65,7 @@ public abstract class BackendIntegrationTestBase {
     @Autowired
     protected org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
-    @MockBean
+    @MockitoBean
     protected RedisManager redisManager;
 
     private final Map<String, String> tokenStore = new HashMap<>();

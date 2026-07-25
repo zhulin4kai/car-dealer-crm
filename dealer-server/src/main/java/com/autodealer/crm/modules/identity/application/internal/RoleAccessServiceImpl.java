@@ -1,12 +1,51 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
+import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.RoleAccessService;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.*;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.ChangeRoleStatusRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.CopyRoleRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.CreateRoleRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.DifferenceItem;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.MatrixRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.MatrixResponse;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.OrganizationOption;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.PermissionDataScopeCandidate;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.PermissionItem;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.PermissionScopeAssignment;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.PermissionScopeDifference;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.PermissionScopeOption;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.PreviewResponse;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.RoleResponse;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.UpdateMatrixRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.UpdateMatrixResponse;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.UpdateRoleRequest;
 import com.autodealer.crm.modules.identity.application.api.enums.AuthorizationChangeType;
 import com.autodealer.crm.modules.identity.application.api.enums.AuthorizationSubjectType;
 import com.autodealer.crm.modules.identity.application.api.enums.DataScopeCode;
 import com.autodealer.crm.modules.identity.application.api.enums.PermissionSensitivityLevel;
 import com.autodealer.crm.modules.identity.application.api.enums.RoleScopeType;
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeAssignmentMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeMapper;
@@ -29,26 +68,13 @@ import com.autodealer.crm.modules.identity.persistence.model.TRoleOrganization;
 import com.autodealer.crm.modules.identity.persistence.model.TRolePermission;
 import com.autodealer.crm.modules.identity.persistence.model.TRolePermissionOrganization;
 import com.autodealer.crm.modules.identity.persistence.model.TUserRole;
-import com.autodealer.crm.modules.audit.application.api.*;
-import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.*;
-import com.autodealer.crm.modules.identity.application.api.enums.*;
 import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.modules.identity.persistence.mapper.*;
-import com.autodealer.crm.modules.identity.persistence.model.*;
-import com.autodealer.crm.modules.identity.application.api.model.*;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.identity.application.api.RoleAccessService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class RoleAccessServiceImpl implements RoleAccessService {
@@ -215,7 +241,7 @@ public class RoleAccessServiceImpl implements RoleAccessService {
     private List<Map<String,Object>> organizationSnapshots(List<Integer>ids){List<Map<String,Object>>out=new ArrayList<>();for(Integer id:ids){TOrganizationUnit organization=organizationMapper.selectByPrimaryKey(id);Map<String,Object>item=new LinkedHashMap<>();item.put("id",id);item.put("code",organization==null?null:organization.getCode());item.put("name",organization==null?null:organization.getName());out.add(item);}return out;}
     private String affectedUserSnapshot(List<Integer> userIds){List<Map<String,Object>> snapshots=new ArrayList<>();for(Integer userId:userIds){TUser user=userMapper.selectByPrimaryKey(userId);if(user==null)continue;Map<String,Object> snapshot=new LinkedHashMap<>();snapshot.put("id",user.getId());snapshot.put("code",user.getLoginAct());snapshot.put("name",user.getName());snapshots.add(snapshot);}return json(snapshots);}
     private void scheduleCleanup(List<Integer> ids){securityMutations.accessChanged(ids,"角色或权限矩阵变化");}
-    private String json(Object x){try{return objectMapper.writeValueAsString(x);}catch(JsonProcessingException e){throw new IllegalStateException(e);}}
+    private String json(Object x){try{return objectMapper.writeValueAsString(x);}catch(JacksonException e){throw new IllegalStateException(e);}}
     private void lockMembership(){lockGraph("AUTHORIZATION_MEMBERSHIP_GUARD");}
     private void lockAuthorizationScope(){lockGraph("ORGANIZATION_HIERARCHY");lockGraph("REPORTING_GRAPH");}
     private void lockGraph(String name){if(!name.equals(graphLock.lockByName(name)))throw new IllegalStateException("授权图锁缺失: "+name);}

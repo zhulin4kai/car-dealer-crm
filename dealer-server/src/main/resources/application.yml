@@ -34,12 +34,6 @@ spring:
   jackson:
     time-zone: GMT+8
     date-format: yyyy-MM-dd HH:mm:ss
-    serialization:
-      WRITE_DATES_AS_TIMESTAMPS: false
-    deserialization:
-      ADJUST_DATES_TO_CONTEXT_TIME_ZONE: false
-    modules:
-      - com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 
 # 指定一下 mapper.xml 文件的位置
 mybatis:

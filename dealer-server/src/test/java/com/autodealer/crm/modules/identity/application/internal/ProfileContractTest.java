@@ -1,12 +1,12 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
-import com.autodealer.crm.modules.identity.application.api.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
 
 import com.autodealer.crm.modules.identity.application.api.dto.profile.ProfileDtos.UpdateRequest;
 import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.ProfileRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import tools.jackson.databind.ObjectMapper;
 
 class ProfileContractTest {
  @Test void authorizationFieldsAreRejectedInsteadOfIgnored(){ObjectMapper mapper=new ObjectMapper();String json="{\"profileVersion\":1,\"name\":\"张三\",\"phone\":null,\"email\":null,\"avatarUrl\":null,\"authorizationVersion\":99}";assertThrows(Exception.class,()->mapper.readValue(json,UpdateRequest.class));}

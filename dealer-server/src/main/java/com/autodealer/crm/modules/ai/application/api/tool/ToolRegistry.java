@@ -1,16 +1,5 @@
 package com.autodealer.crm.modules.ai.application.api.tool;
 
-import com.autodealer.crm.modules.ai.application.api.dto.AiToolCallCommand;
-import com.autodealer.crm.modules.ai.application.api.enums.AiResultStatus;
-import com.autodealer.crm.modules.ai.application.internal.AiSensitiveDataSanitizer;
-import com.autodealer.crm.modules.ai.application.api.AiTraceService;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.shared.error.CodeEnum;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -19,6 +8,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import com.autodealer.crm.modules.ai.application.api.AiTraceService;
+import com.autodealer.crm.modules.ai.application.api.dto.AiToolCallCommand;
+import com.autodealer.crm.modules.ai.application.api.enums.AiResultStatus;
+import com.autodealer.crm.modules.ai.application.internal.AiSensitiveDataSanitizer;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.error.CodeEnum;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class ToolRegistry {
@@ -163,7 +165,7 @@ public class ToolRegistry {
     private String toSummary(Object value, int maxLength) {
         try {
             return sanitizer.sanitize(objectMapper.writeValueAsString(value), maxLength);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             return sanitizer.sanitize(String.valueOf(value), maxLength);
         }
     }

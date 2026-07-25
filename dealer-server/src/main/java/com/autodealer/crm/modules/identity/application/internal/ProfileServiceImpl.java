@@ -43,15 +43,16 @@ import com.autodealer.crm.modules.identity.application.api.PhoneNormalizer;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 public class ProfileServiceImpl implements ProfileService {
-    private static final ObjectMapper AUDIT_JSON = new ObjectMapper().findAndRegisterModules();
+    private static final ObjectMapper AUDIT_JSON = JsonMapper.builder().build();
     private final CurrentUserProvider current; private final TUserMapper users; private final TEmployeeMapper employees;
     private final TEmployeeAssignmentMapper assignments; private final TEmployeeReportingMapper reporting;
     private final TOrganizationUnitMapper organizations; private final TPositionMapper positions;
@@ -139,7 +140,7 @@ public class ProfileServiceImpl implements ProfileService {
         buildAuthorization(userId,now,out);return out;
     }
 
-    private static String auditJson(Object value){try{return AUDIT_JSON.writeValueAsString(value);}catch(JsonProcessingException e){throw new IllegalStateException("个人资料审计摘要序列化失败",e);}}
+    private static String auditJson(Object value){try{return AUDIT_JSON.writeValueAsString(value);}catch(JacksonException e){throw new IllegalStateException("个人资料审计摘要序列化失败",e);}}
 
     private void buildAuthorization(Integer userId,LocalDateTime now,Profile out){
         Map<Integer,List<PermissionSourceDetail>> sources=new HashMap<>();

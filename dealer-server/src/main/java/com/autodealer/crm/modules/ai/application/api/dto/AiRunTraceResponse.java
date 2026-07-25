@@ -1,5 +1,8 @@
 package com.autodealer.crm.modules.ai.application.api.dto;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import com.autodealer.crm.modules.ai.persistence.model.TAiActionProposal;
 import com.autodealer.crm.modules.ai.persistence.model.TAiApproval;
 import com.autodealer.crm.modules.ai.persistence.model.TAiExecutionEvent;
@@ -8,16 +11,15 @@ import com.autodealer.crm.modules.ai.persistence.model.TAiRun;
 import com.autodealer.crm.modules.ai.persistence.model.TAiToolCall;
 import com.autodealer.crm.modules.ai.persistence.model.TAiWorkflow;
 import com.autodealer.crm.modules.ai.persistence.model.TAiWorkflowStep;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Data;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import lombok.Data;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @Data
 public class AiRunTraceResponse {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder().build();
 
     private AiRunResponse run;
     private List<MessageTrace> messages;
@@ -87,7 +89,7 @@ public class AiRunTraceResponse {
         }
         try {
             return OBJECT_MAPPER.readValue(displayPayloadJson, Object.class);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             return null;
         }
     }

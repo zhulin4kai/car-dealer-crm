@@ -1,29 +1,27 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
-import com.autodealer.crm.modules.fulfillment.delivery.application.api.enums.DeliveryStatus;
-import com.autodealer.crm.modules.identity.application.api.*;
-
-import com.autodealer.crm.modules.identity.application.api.enums.CredentialPurpose;
-import com.autodealer.crm.modules.identity.application.api.CredentialDeliveryPort;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.io.ByteArrayOutputStream;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.autodealer.crm.modules.identity.application.api.CredentialDeliveryPort;
+import com.autodealer.crm.modules.identity.application.api.enums.CredentialPurpose;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 class ProductionCredentialDeliveryAdapterTest {
 

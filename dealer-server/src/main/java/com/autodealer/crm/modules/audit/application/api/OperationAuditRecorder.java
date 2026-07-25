@@ -1,21 +1,22 @@
 package com.autodealer.crm.modules.audit.application.api;
 
-import com.autodealer.crm.modules.audit.application.api.AuditSensitiveDataSanitizer;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.modules.audit.persistence.mapper.TOperationLogMapper;
-import com.autodealer.crm.modules.audit.persistence.model.TOperationLog;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Date;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Date;
+import com.autodealer.crm.modules.audit.persistence.mapper.TOperationLogMapper;
+import com.autodealer.crm.modules.audit.persistence.model.TOperationLog;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * 操作审计记录器，业务模块 Service 调用审计的统一入口。
@@ -220,7 +221,7 @@ public class OperationAuditRecorder {
             try {
                 JsonNode summaryNode = AUDIT_OBJECT_MAPPER.readTree(sanitized);
                 detail.set("summary", summaryNode == null ? AUDIT_OBJECT_MAPPER.nullNode() : summaryNode);
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 detail.put("summary", sanitized);
             }
         }
@@ -238,7 +239,7 @@ public class OperationAuditRecorder {
     private String serializeDetail(ObjectNode detail) {
         try {
             return AUDIT_OBJECT_MAPPER.writeValueAsString(detail);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("审计明细序列化失败", e);
         }
     }

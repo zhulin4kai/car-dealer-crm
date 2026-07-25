@@ -2,7 +2,7 @@ package com.autodealer.crm.modules.commerce.catalog.web;
 
 import com.autodealer.crm.modules.commerce.catalog.application.api.ProductService;
 import com.autodealer.crm.integration.BackendIntegrationTestBase;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Real H2 + real Service + real Mapper + real Security integration tests
  * for ProductController. This class is the replacement for the previous
- * addFilters=false + @MockBean ProductService test that didn't actually
+ * addFilters=false + @MockitoBean ProductService test that didn't actually
  * touch the database, the security chain, or the SQL.
  *
  * <p>ProductController has no @PreAuthorize annotations, so a logged-in

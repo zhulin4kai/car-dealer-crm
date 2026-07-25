@@ -1,6 +1,6 @@
 ARG DOCKERHUB_LIBRARY_PREFIX=
 
-FROM ${DOCKERHUB_LIBRARY_PREFIX}maven:3.9.9-eclipse-temurin-17 AS build
+FROM ${DOCKERHUB_LIBRARY_PREFIX}maven:3.9.9-eclipse-temurin-25 AS build
 WORKDIR /workspace/dealer-server
 
 COPY docker/maven/settings.xml /root/.m2/settings.xml
@@ -12,7 +12,7 @@ COPY dealer-server/src src
 
 RUN mvn -B -s /root/.m2/settings.xml -DskipTests package
 
-FROM ${DOCKERHUB_LIBRARY_PREFIX}eclipse-temurin:17-jre
+FROM ${DOCKERHUB_LIBRARY_PREFIX}eclipse-temurin:25-jre
 WORKDIR /app
 
 ENV TZ=Asia/Shanghai

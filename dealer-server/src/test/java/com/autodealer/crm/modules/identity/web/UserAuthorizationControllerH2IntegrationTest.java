@@ -7,7 +7,7 @@ import com.autodealer.crm.modules.identity.persistence.mapper.TUserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Transactional
 class UserAuthorizationControllerH2IntegrationTest extends BackendIntegrationTestBase {
-    @MockBean OperationAuditRecorder operationAuditRecorder;
+    @MockitoBean OperationAuditRecorder operationAuditRecorder;
     @Autowired TUserMapper userMapper;
     private String adminToken;
 

@@ -18,7 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -35,10 +35,10 @@ import static org.mockito.Mockito.*;
 class UserHandoverIntegrationTest {
     @Autowired JdbcTemplate jdbc; @Autowired TUserLifecycleMapper lifecycle; @Autowired TransactionTemplate transactions;
     @Autowired UserLifecycleService service;
-    @MockBean CurrentUserProvider current;
-    @MockBean UserAuthorizationPolicy policy;
-    @MockBean DataScopeResolver dataScopes;
-    @MockBean OperationAuditRecorder operationAudit;
+    @MockitoBean CurrentUserProvider current;
+    @MockitoBean UserAuthorizationPolicy policy;
+    @MockitoBean DataScopeResolver dataScopes;
+    @MockitoBean OperationAuditRecorder operationAudit;
 
     @BeforeEach void seedSixDomains(){
         when(current.getCurrentUserId()).thenReturn(1);when(current.hasAuthority(anyString())).thenReturn(true);

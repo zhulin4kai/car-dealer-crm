@@ -24,7 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -75,13 +75,13 @@ class UserAuditRollbackIntegrationTest {
     @Autowired
     private AuditRequestIdProvider requestIdProvider;
 
-    @MockBean
+    @MockitoBean
     private OperationAuditRecorder auditRecorder;
 
-    @MockBean
+    @MockitoBean
     private CurrentUserProvider currentUserProvider;
 
-    @MockBean
+    @MockitoBean
     private RedisManager redisManager;
 
     @BeforeEach

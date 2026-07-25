@@ -6,7 +6,7 @@ import com.autodealer.crm.modules.ai.application.internal.AiProviderConfigServic
 import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.shared.error.BusinessException;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

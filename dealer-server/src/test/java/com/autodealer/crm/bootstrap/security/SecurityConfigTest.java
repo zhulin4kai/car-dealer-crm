@@ -4,7 +4,7 @@ import com.autodealer.crm.modules.identity.web.UserController;
 import com.autodealer.crm.shared.infrastructure.constants.Constants;
 import com.autodealer.crm.shared.security.SecurityPaths;
 import com.autodealer.crm.integration.BackendIntegrationTestBase;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -24,7 +24,7 @@ import static org.mockito.ArgumentMatchers.startsWith;
 
 /**
  * Real auth/authorization/logout tests driven by SecurityConfig + MyAuthenticationSuccessHandler
- * + TokenVerifyFilter + H2 seed data, NOT by @MockBean or @AutoConfigureMockMvc(addFilters = false).
+ * + TokenVerifyFilter + H2 seed data, NOT by @MockitoBean or @AutoConfigureMockMvc(addFilters = false).
  */
 class SecurityConfigTest extends BackendIntegrationTestBase {
 

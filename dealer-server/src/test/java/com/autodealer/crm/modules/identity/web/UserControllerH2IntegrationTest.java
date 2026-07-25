@@ -3,7 +3,7 @@ package com.autodealer.crm.modules.identity.web;
 import com.autodealer.crm.modules.identity.application.api.UserService;
 import com.autodealer.crm.modules.identity.application.api.query.UserQuery;
 import com.autodealer.crm.integration.BackendIntegrationTestBase;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Real H2 + real Service + real Mapper + real Security integration tests
  * for UserController. The legacy UserControllerTest was removed because it
- * used {@code @MockBean UserService} with {@code addFilters = false}, which
+ * used {@code @MockitoBean UserService} with {@code addFilters = false}, which
  * never actually executed the security chain or the SQL.
  *
  * <p>Setup strategy: tests own the rows they insert. {@code @AfterEach}

@@ -44,8 +44,8 @@ import com.autodealer.crm.modules.identity.application.internal.UserAuthorizatio
 import com.autodealer.crm.modules.identity.application.internal.UserLifecycleServiceImpl;
 import com.autodealer.crm.modules.identity.application.internal.UserSecurityMutationCoordinator;
 import com.autodealer.crm.modules.identity.application.internal.DirectManagerPolicy;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -79,7 +79,7 @@ class UserLifecycleServiceImplTest {
     final Clock clock=Clock.fixed(Instant.parse("2026-07-12T10:00:00Z"),ZoneId.of("Asia/Shanghai"));
 
     @BeforeEach void setUp(){
-        ObjectMapper json=new ObjectMapper().registerModule(new JavaTimeModule());
+        ObjectMapper json=JsonMapper.builder().build();
         service=new UserLifecycleServiceImpl(lifecycle,users,employees,assignments,reporting,organizations,positions,
                 userRoles,userPermissions,roles,permissions,clueHistory,customerHistory,graphLocks,policy,current,
                 dataScopes,credentials,operationAudit,requestIds,authorizationAudit,json,clock,

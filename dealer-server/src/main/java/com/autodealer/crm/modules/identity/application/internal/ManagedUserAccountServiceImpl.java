@@ -48,8 +48,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -64,7 +65,7 @@ import java.util.Set;
 
 @Service
 public class ManagedUserAccountServiceImpl implements ManagedUserAccountService {
-    private static final ObjectMapper AUDIT_JSON = new ObjectMapper().findAndRegisterModules();
+    private static final ObjectMapper AUDIT_JSON = JsonMapper.builder().build();
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final int MAX_PAGE_SIZE = 100;
     private static final List<String> ALL_ACTIONS = List.of(
@@ -503,7 +504,7 @@ public class ManagedUserAccountServiceImpl implements ManagedUserAccountService 
 
     private static String auditJson(Object value) {
         try { return AUDIT_JSON.writeValueAsString(value); }
-        catch (JsonProcessingException exception) { throw new IllegalStateException("用户审计摘要序列化失败", exception); }
+        catch (JacksonException exception) { throw new IllegalStateException("用户审计摘要序列化失败", exception); }
     }
 
     private TUser requireViewableUser(Integer userId) {

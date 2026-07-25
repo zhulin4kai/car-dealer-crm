@@ -19,7 +19,7 @@ import com.autodealer.crm.shared.error.BusinessException;
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
 import com.autodealer.crm.shared.error.CodeEnum;
 import com.autodealer.crm.modules.identity.application.api.UserService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -41,8 +41,9 @@ import com.autodealer.crm.modules.identity.persistence.model.*;
 import com.autodealer.crm.modules.identity.application.api.model.*;
 import com.autodealer.crm.shared.error.CodeEnum;
 import com.autodealer.crm.modules.identity.application.api.AuthorizationService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,7 +54,7 @@ import java.util.*;
 public class AuthorizationServiceImpl implements AuthorizationService {
     private static final ZoneId ZONE = ZoneId.systemDefault();
     private static final int MAX_PERMISSION_SCHEDULE_YEARS = 1;
-    private static final ObjectMapper HISTORY_OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
+    private static final ObjectMapper HISTORY_OBJECT_MAPPER = JsonMapper.builder().build();
     private final TUserMapper userMapper; private final TEmployeeMapper employeeMapper;
     private final TEmployeeAssignmentMapper assignmentMapper; private final TOrganizationUnitMapper organizationMapper;
     private final TPositionMapper positionMapper; private final TRoleMapper roleMapper;
@@ -363,7 +364,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     private String scopeCandidateKey(DataScopeCode scope,List<Integer>organizationIds){return scope==null?null:scope.name();}
     private List<String>organizationNames(List<Integer>ids){return ids.stream().map(organizationMapper::selectByPrimaryKey).filter(Objects::nonNull).map(TOrganizationUnit::getName).toList();}
     private record ScopeSelection(DataScopeCode scope,List<Integer>organizationIds){}
-    private String json(Object value){try{return HISTORY_OBJECT_MAPPER.writeValueAsString(value);}catch(JsonProcessingException exception){throw new IllegalStateException("授权历史快照序列化失败",exception);}}
+    private String json(Object value){try{return HISTORY_OBJECT_MAPPER.writeValueAsString(value);}catch(JacksonException exception){throw new IllegalStateException("授权历史快照序列化失败",exception);}}
     private Set<Integer> union(Set<Integer>a,Set<Integer>b){Set<Integer>r=new LinkedHashSet<>(a);r.addAll(b);return r;}
     private boolean isProtectedAdministratorRoleId(Integer roleId){TRole role=roleMapper.selectByPrimaryKey(roleId);
         return role!=null&&Boolean.TRUE.equals(role.getProtectedRole())&&"admin".equals(role.getRole());}

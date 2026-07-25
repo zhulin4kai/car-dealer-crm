@@ -1,38 +1,35 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
-import com.autodealer.crm.modules.identity.application.api.*;
-
-import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryDtos.Collection;
-import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryDtos.Query;
-import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryRows.ActionFacet;
-import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryRows.ProjectionQuery;
-import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryRows.ProjectionRow;
-import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.modules.identity.persistence.mapper.TUserMapper;
-import com.autodealer.crm.modules.identity.persistence.mapper.UserHistoryProjectionMapper;
-import com.autodealer.crm.modules.identity.application.api.model.TUser;
-import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.identity.application.internal.UserAuthorizationPolicy;
-import com.autodealer.crm.modules.identity.application.internal.UserHistoryServiceImpl;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryDtos.Collection;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryDtos.Query;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryRows.ActionFacet;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryRows.ProjectionQuery;
+import com.autodealer.crm.modules.identity.application.api.dto.user.UserHistoryRows.ProjectionRow;
+import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.modules.identity.persistence.mapper.TUserMapper;
+import com.autodealer.crm.modules.identity.persistence.mapper.UserHistoryProjectionMapper;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.error.CodeEnum;
+
+import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class UserHistoryServiceImplTest {

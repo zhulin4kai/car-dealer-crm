@@ -1,5 +1,26 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.OrganizationService;
 import com.autodealer.crm.modules.identity.application.api.dto.organization.ActingReportingCollectionResponse;
 import com.autodealer.crm.modules.identity.application.api.dto.organization.ActingReportingInput;
 import com.autodealer.crm.modules.identity.application.api.dto.organization.ActingReportingRelationResponse;
@@ -30,6 +51,7 @@ import com.autodealer.crm.modules.identity.application.api.enums.OrganizationUni
 import com.autodealer.crm.modules.identity.application.api.enums.ReportingStatus;
 import com.autodealer.crm.modules.identity.application.api.enums.ReportingType;
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationHistoryMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeAssignmentMapper;
@@ -44,28 +66,12 @@ import com.autodealer.crm.modules.identity.persistence.model.TEmployeeAssignment
 import com.autodealer.crm.modules.identity.persistence.model.TEmployeeReporting;
 import com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit;
 import com.autodealer.crm.modules.identity.persistence.model.TPosition;
-import com.autodealer.crm.modules.audit.application.api.AuditActionEnum;
-import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.shared.security.PermissionCodes;
-import com.autodealer.crm.modules.identity.application.api.dto.organization.*;
-import com.autodealer.crm.modules.identity.application.api.enums.*;
 import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.modules.identity.persistence.mapper.*;
-import com.autodealer.crm.modules.identity.persistence.model.*;
-import com.autodealer.crm.modules.identity.application.api.model.*;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.identity.application.api.OrganizationService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.autodealer.crm.shared.security.PermissionCodes;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.*;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class OrganizationServiceImpl implements OrganizationService {
@@ -1247,7 +1253,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     private String json(Object value) {
         if (value == null) return null;
         try { return objectMapper.writeValueAsString(value); }
-        catch (JsonProcessingException e) { throw new IllegalStateException("组织审计摘要序列化失败", e); }
+        catch (JacksonException e) { throw new IllegalStateException("组织审计摘要序列化失败", e); }
     }
 
     private TOrganizationUnit requireOrganization(Integer id) {

@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.0</version>
+        <version>4.0.6</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -17,9 +17,9 @@
     <description>dealer-server</description>
 
     <properties>
-        <java.version>17</java.version>
-        <lombok.version>1.18.30</lombok.version>
-        <byte-buddy.version>1.14.10</byte-buddy.version>
+        <java.version>25</java.version>
+        <lombok.version>1.18.44</lombok.version>
+        <byte-buddy.version>1.17.6</byte-buddy.version>
     </properties>
 
     <dependencies>
@@ -35,13 +35,13 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>3.0.3</version>
+            <version>4.0.0</version>
         </dependency>
 
         <dependency>
@@ -72,20 +72,19 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <artifactId>spring-boot-starter-test-classic</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>org.mybatis.spring.boot</groupId>
-            <artifactId>mybatis-spring-boot-starter-test</artifactId>
-            <version>3.0.3</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -93,27 +92,27 @@
         <dependency>
             <groupId>com.auth0</groupId>
             <artifactId>java-jwt</artifactId>
-            <version>4.4.0</version>
+            <version>4.5.0</version>
         </dependency>
 
         <!--Page Helper分页插件的依赖-->
         <dependency>
             <groupId>com.github.pagehelper</groupId>
             <artifactId>pagehelper-spring-boot-starter</artifactId>
-            <version>1.4.7</version>
+            <version>4.1.0</version>
         </dependency>
 
-        <!--aop-->
+        <!--AspectJ (原 spring-boot-starter-aop，Boot 4 改名)-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
 
         <!--EasyExcel-->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
-            <version>3.3.3</version>
+            <version>4.0.3</version>
         </dependency>
 
         <dependency>
@@ -124,9 +123,9 @@
 
         <!-- Embedded Redis for testing -->
         <dependency>
-            <groupId>it.ozimov</groupId>
+            <groupId>com.github.codemonstur</groupId>
             <artifactId>embedded-redis</artifactId>
-            <version>0.7.3</version>
+            <version>1.4.3</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -136,11 +135,15 @@
             </exclusions>
         </dependency>
 
-        <!-- Jackson Java 8 Date/Time Support -->
+        <!-- Jackson Java 8 Date/Time Support (managed by Spring Boot 4) -->
+
+        <!-- Jackson 2 兼容模块（Spring Data Redis 序列化器仍依赖 Jackson 2） -->
         <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency>        <!-- Validation -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
+        </dependency>
+
+        <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
@@ -165,7 +168,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.1.2</version>
+                <version>3.5.2</version>
                 <configuration>
                     <argLine>@{argLine} -javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/${byte-buddy.version}/byte-buddy-agent-${byte-buddy.version}.jar</argLine>
                     <systemPropertyVariables>
@@ -181,7 +184,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.14.0</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
@@ -197,7 +200,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.13</version>
                 <executions>
                     <execution>
                         <goals>

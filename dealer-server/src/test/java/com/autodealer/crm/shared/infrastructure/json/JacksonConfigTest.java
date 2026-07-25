@@ -1,10 +1,10 @@
 package com.autodealer.crm.shared.infrastructure.json;
 
 import com.autodealer.crm.modules.fulfillment.transaction.application.api.dto.UpdateTranRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import java.time.LocalDateTime;
@@ -75,8 +75,9 @@ class JacksonConfigTest {
 
             String json = objectMapper.writeValueAsString(request);
 
-            assertEquals("{\"id\":1,\"customerId\":null,\"products\":null,\"description\":null,"
-                    + "\"expectedDeliveryDate\":\"2026-07-12 00:00:00\"}", json);
+            assertEquals("{\"customerId\":null,\"description\":null,"
+                    + "\"expectedDeliveryDate\":\"2026-07-12 00:00:00\","
+                    + "\"id\":1,\"products\":null}", json);
         });
     }
 }

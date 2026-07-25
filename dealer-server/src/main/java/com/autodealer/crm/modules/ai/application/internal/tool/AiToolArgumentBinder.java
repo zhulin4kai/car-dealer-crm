@@ -1,15 +1,17 @@
 package com.autodealer.crm.modules.ai.application.internal.tool;
 
-import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.shared.error.CodeEnum;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validator;
-import org.springframework.stereotype.Component;
-
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.error.CodeEnum;
+
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class AiToolArgumentBinder {

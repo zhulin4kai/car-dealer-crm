@@ -1,14 +1,5 @@
 package com.autodealer.crm.modules.ai.application.internal;
 
-import com.autodealer.crm.modules.ai.application.api.dto.DealerAiEventResponse;
-import com.autodealer.crm.modules.ai.application.api.dto.DealerAiRunRequest;
-import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.shared.error.CodeEnum;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -17,6 +8,17 @@ import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import com.autodealer.crm.modules.ai.application.api.dto.DealerAiEventResponse;
+import com.autodealer.crm.modules.ai.application.api.dto.DealerAiRunRequest;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.error.CodeEnum;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class DealerAiClient {
@@ -118,7 +120,7 @@ public class DealerAiClient {
         }
         try {
             consumer.accept(objectMapper.readValue(data.toString(), DealerAiEventResponse.class));
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new BusinessException(CodeEnum.AI_SSE_FAILED, "AI 事件解析失败", ex);
         }
     }

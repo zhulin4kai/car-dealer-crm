@@ -1,8 +1,38 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import org.mockito.InOrder;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
 import com.autodealer.crm.modules.identity.application.api.CredentialService;
 import com.autodealer.crm.modules.identity.application.api.ManagedUserAccountService;
+import com.autodealer.crm.modules.identity.application.api.dto.credential.CredentialDtos.ManagedDeliveryResult;
+import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.CreateRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.Detail;
+import com.autodealer.crm.modules.identity.application.api.enums.AccountType;
+import com.autodealer.crm.modules.identity.application.api.enums.OrganizationUnitType;
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeAssignmentMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeMapper;
@@ -17,36 +47,10 @@ import com.autodealer.crm.modules.identity.persistence.model.TEmployee;
 import com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit;
 import com.autodealer.crm.modules.identity.persistence.model.TPosition;
 import com.autodealer.crm.modules.identity.persistence.model.TRole;
-import com.autodealer.crm.modules.identity.application.api.*;
-
-import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
-import com.autodealer.crm.modules.audit.application.api.OperationAuditRecorder;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.modules.identity.application.api.dto.credential.CredentialDtos.ManagedDeliveryResult;
-import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.CreateRequest;
-import com.autodealer.crm.modules.identity.application.api.dto.user.ManagedUserDtos.Detail;
-import com.autodealer.crm.modules.identity.application.api.enums.AccountType;
-import com.autodealer.crm.modules.identity.application.api.enums.OrganizationUnitType;
 import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.modules.identity.persistence.mapper.*;
-import com.autodealer.crm.modules.identity.persistence.model.*;
-import com.autodealer.crm.modules.identity.application.api.model.*;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.identity.application.internal.DirectManagerPolicy;
-import com.autodealer.crm.modules.identity.application.internal.ManagedUserInvitationServiceImpl;
-import com.autodealer.crm.modules.identity.application.internal.UserAuthorizationPolicy;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.mockito.InOrder;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import tools.jackson.databind.ObjectMapper;
 
 class ManagedUserInvitationBootstrapTest {
     private final TUserMapper users = mock(TUserMapper.class);

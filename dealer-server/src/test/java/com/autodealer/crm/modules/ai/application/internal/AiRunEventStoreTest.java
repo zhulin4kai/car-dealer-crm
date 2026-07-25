@@ -3,7 +3,7 @@ package com.autodealer.crm.modules.ai.application.internal;
 import com.autodealer.crm.modules.ai.application.api.dto.AiSseEventResponse;
 import com.autodealer.crm.modules.ai.persistence.mapper.TAiRunEventMapper;
 import com.autodealer.crm.modules.ai.persistence.model.TAiRunEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 

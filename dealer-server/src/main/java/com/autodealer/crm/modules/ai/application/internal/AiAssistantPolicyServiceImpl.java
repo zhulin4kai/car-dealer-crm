@@ -1,24 +1,26 @@
 package com.autodealer.crm.modules.ai.application.internal;
 
-import com.autodealer.crm.modules.ai.application.api.tool.ToolRegistry;
-import com.autodealer.crm.modules.ai.application.api.dto.AiAssistantPolicyResponse;
-import com.autodealer.crm.modules.ai.application.api.dto.UpdateAiAssistantPolicyRequest;
-import com.autodealer.crm.modules.ai.persistence.mapper.TAiAssistantPolicyMapper;
-import com.autodealer.crm.modules.ai.persistence.model.TAiAssistantPolicy;
-import com.autodealer.crm.modules.ai.application.api.AiAssistantPolicyService;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.shared.error.CodeEnum;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.autodealer.crm.modules.ai.application.api.AiAssistantPolicyService;
+import com.autodealer.crm.modules.ai.application.api.dto.AiAssistantPolicyResponse;
+import com.autodealer.crm.modules.ai.application.api.dto.UpdateAiAssistantPolicyRequest;
+import com.autodealer.crm.modules.ai.application.api.tool.ToolRegistry;
+import com.autodealer.crm.modules.ai.persistence.mapper.TAiAssistantPolicyMapper;
+import com.autodealer.crm.modules.ai.persistence.model.TAiAssistantPolicy;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
+import com.autodealer.crm.shared.error.BusinessException;
+import com.autodealer.crm.shared.error.CodeEnum;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AiAssistantPolicyServiceImpl implements AiAssistantPolicyService {
@@ -119,7 +121,7 @@ public class AiAssistantPolicyServiceImpl implements AiAssistantPolicyService {
     private List<String> readTools(String value) {
         try {
             return objectMapper.readValue(value == null ? "[]" : value, new TypeReference<>() { });
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new BusinessException(CodeEnum.SYSTEM_ERROR, "AI 策略工具配置损坏", ex);
         }
     }
@@ -127,7 +129,7 @@ public class AiAssistantPolicyServiceImpl implements AiAssistantPolicyService {
     private String writeTools(List<String> tools) {
         try {
             return objectMapper.writeValueAsString(tools);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new BusinessException(CodeEnum.SYSTEM_ERROR, "AI 策略工具配置失败", ex);
         }
     }

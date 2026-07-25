@@ -14,12 +14,12 @@ import com.autodealer.crm.modules.identity.application.api.model.TUser;
 import com.autodealer.crm.shared.error.CodeEnum;
 import com.autodealer.crm.modules.identity.application.api.OrganizationService;
 import com.autodealer.crm.modules.identity.application.api.UserService;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
@@ -53,7 +53,7 @@ class OrganizationControllerH2IntegrationTest extends BackendIntegrationTestBase
     private static final String QUALIFIED_ADMIN_LOGIN="organization_test_admin";
     private String adminToken;
 
-    @MockBean
+    @MockitoBean
     private OperationAuditRecorder operationAuditRecorder;
 
     @Autowired private OrganizationService organizationService;

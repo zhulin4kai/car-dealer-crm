@@ -1,6 +1,19 @@
 package com.autodealer.crm.modules.ai.application.internal;
 
-import com.autodealer.crm.modules.ai.application.api.tool.ToolExecutionContext;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.util.HexFormat;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.StringUtils;
+
+import com.autodealer.crm.modules.ai.application.api.AiProposalService;
+import com.autodealer.crm.modules.ai.application.api.AiTraceService;
 import com.autodealer.crm.modules.ai.application.api.dto.AiApprovalCommand;
 import com.autodealer.crm.modules.ai.application.api.dto.AiExecutionEventCommand;
 import com.autodealer.crm.modules.ai.application.api.dto.AiProposalCommand;
@@ -11,38 +24,26 @@ import com.autodealer.crm.modules.ai.application.api.enums.AiProposalStatus;
 import com.autodealer.crm.modules.ai.application.api.enums.AiProposalType;
 import com.autodealer.crm.modules.ai.application.api.enums.AiResultStatus;
 import com.autodealer.crm.modules.ai.application.api.enums.AiRiskLevel;
+import com.autodealer.crm.modules.ai.application.api.tool.ToolExecutionContext;
 import com.autodealer.crm.modules.ai.persistence.mapper.TAiActionProposalMapper;
 import com.autodealer.crm.modules.ai.persistence.model.TAiActionProposal;
-import com.autodealer.crm.modules.ai.application.api.AiProposalService;
-import com.autodealer.crm.modules.ai.application.internal.AiSensitiveDataSanitizer;
-import com.autodealer.crm.modules.ai.application.api.AiTraceService;
 import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.shared.security.PermissionCodes;
+import com.autodealer.crm.modules.sales.followup.application.api.CommunicationRecordService;
+import com.autodealer.crm.modules.sales.followup.application.api.FollowRelatedObjectAccess;
+import com.autodealer.crm.modules.sales.followup.application.api.FollowTaskService;
 import com.autodealer.crm.modules.sales.followup.application.api.dto.CreateCommunicationRecordRequest;
 import com.autodealer.crm.modules.sales.followup.application.api.dto.CreateFollowTaskRequest;
 import com.autodealer.crm.modules.sales.followup.application.api.enums.CommunicationMethod;
 import com.autodealer.crm.modules.sales.followup.application.api.enums.FollowTaskPriority;
 import com.autodealer.crm.modules.sales.followup.application.api.enums.FollowTaskType;
-import com.autodealer.crm.shared.error.BusinessException;
 import com.autodealer.crm.modules.sales.followup.application.api.model.TCommunicationRecord;
 import com.autodealer.crm.modules.sales.followup.application.api.model.TFollowTask;
+import com.autodealer.crm.shared.error.BusinessException;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.sales.followup.application.api.CommunicationRecordService;
-import com.autodealer.crm.modules.sales.followup.application.api.FollowTaskService;
-import com.autodealer.crm.modules.sales.followup.application.api.FollowRelatedObjectAccess;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.util.StringUtils;
+import com.autodealer.crm.shared.security.PermissionCodes;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
-import java.util.HexFormat;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AiProposalServiceImpl implements AiProposalService {
@@ -338,7 +339,7 @@ public class AiProposalServiceImpl implements AiProposalService {
     private String toJson(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new BusinessException(CodeEnum.AI_TOOL_ARGUMENT_INVALID, "AI 提议参数序列化失败", ex);
         }
     }
@@ -346,7 +347,7 @@ public class AiProposalServiceImpl implements AiProposalService {
     private <T> T fromJson(String value, Class<T> targetType) {
         try {
             return objectMapper.readValue(value, targetType);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new BusinessException(CodeEnum.AI_TOOL_ARGUMENT_INVALID, "AI 提议参数解析失败", ex);
         }
     }

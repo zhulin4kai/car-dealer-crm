@@ -16,7 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -43,10 +43,10 @@ class AvailableAdminAuthorizationConcurrencyTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired TUserMapper userMapper;
     @Autowired AuthorizationService authorizationService;
-    @MockBean CurrentUserProvider currentUserProvider;
-    @MockBean UserAuthorizationPolicy policy;
-    @MockBean AuthorizationAuditRecorder auditRecorder;
-    @MockBean UserSessionService userSessionService;
+    @MockitoBean CurrentUserProvider currentUserProvider;
+    @MockitoBean UserAuthorizationPolicy policy;
+    @MockitoBean AuthorizationAuditRecorder auditRecorder;
+    @MockitoBean UserSessionService userSessionService;
 
     @BeforeEach
     void seed() {

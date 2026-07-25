@@ -15,8 +15,8 @@ import com.autodealer.crm.modules.identity.persistence.mapper.UserHistoryProject
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
 import com.autodealer.crm.shared.error.CodeEnum;
 import com.autodealer.crm.modules.identity.application.api.UserHistoryService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -281,7 +281,7 @@ public class UserHistoryServiceImpl implements UserHistoryService {
         if (node == null || node.isNull() || node.isMissingNode()) return List.of();
         List<ValueField> fields = new ArrayList<>();
         if (node.isObject()) {
-            node.fields().forEachRemaining(entry -> addSafeField(fields, entry.getKey(), entry.getValue()));
+            node.properties().forEach(entry -> addSafeField(fields, entry.getKey(), entry.getValue()));
         } else if (node.isArray()) {
             int index = 0;
             for (JsonNode item : node) addSafeField(fields, "item" + (++index), item);
@@ -303,7 +303,7 @@ public class UserHistoryServiceImpl implements UserHistoryService {
                 fields.add(new ValueField(code, fieldLabel(code), safe(stableCode, null), safe(stableName, null), null));
                 return;
             }
-            value.fields().forEachRemaining(child -> addSafeField(fields, code + "." + child.getKey(), child.getValue()));
+            value.properties().forEach(child -> addSafeField(fields, code + "." + child.getKey(), child.getValue()));
         } else if (value.isArray()) {
             List<String> names = new ArrayList<>();
             for (JsonNode item : value) {

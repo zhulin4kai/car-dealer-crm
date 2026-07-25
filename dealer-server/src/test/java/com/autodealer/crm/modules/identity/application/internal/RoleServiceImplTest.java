@@ -1,6 +1,24 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.ChangeRoleStatusRequest;
 import com.autodealer.crm.modules.identity.application.api.enums.RoleScopeType;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeAssignmentMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeMapper;
@@ -14,27 +32,10 @@ import com.autodealer.crm.modules.identity.persistence.mapper.TRolePermissionOrg
 import com.autodealer.crm.modules.identity.persistence.mapper.TUserMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TUserRoleMapper;
 import com.autodealer.crm.modules.identity.persistence.model.TRole;
-import com.autodealer.crm.modules.identity.application.api.*;
-
-import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.modules.identity.application.api.dto.access.RoleDtos.ChangeRoleStatusRequest;
-import com.autodealer.crm.modules.identity.application.api.enums.*;
 import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.modules.identity.persistence.mapper.*;
-import com.autodealer.crm.modules.identity.persistence.model.*;
-import com.autodealer.crm.modules.identity.application.api.model.*;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.identity.application.internal.RoleAccessServiceImpl;
-import com.autodealer.crm.modules.identity.application.internal.UserSecurityMutationCoordinator;
-import com.autodealer.crm.modules.identity.application.internal.UserAuthorizationPolicy;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+
+import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class RoleServiceImplTest {

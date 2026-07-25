@@ -1,5 +1,42 @@
 package com.autodealer.crm.modules.identity.application.internal;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.ActingReportingInput;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.CreateOrganizationUnitRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.ReplaceActingReportingsRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.UpdateEmployeeOrganizationRequest;
+import com.autodealer.crm.modules.identity.application.api.dto.organization.UpdateOrganizationUnitRequest;
+import com.autodealer.crm.modules.identity.application.api.enums.AccountType;
+import com.autodealer.crm.modules.identity.application.api.enums.EmployeeStatus;
+import com.autodealer.crm.modules.identity.application.api.enums.OrganizationUnitType;
+import com.autodealer.crm.modules.identity.application.api.enums.ReportingStatus;
+import com.autodealer.crm.modules.identity.application.api.enums.ReportingType;
+import com.autodealer.crm.modules.identity.application.api.model.TUser;
+import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationGraphLockMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TAuthorizationHistoryMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeAssignmentMapper;
@@ -8,50 +45,15 @@ import com.autodealer.crm.modules.identity.persistence.mapper.TEmployeeReporting
 import com.autodealer.crm.modules.identity.persistence.mapper.TOrganizationUnitMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TPositionMapper;
 import com.autodealer.crm.modules.identity.persistence.mapper.TUserMapper;
-import com.autodealer.crm.modules.identity.application.api.*;
-
-import com.autodealer.crm.modules.identity.application.api.AuthorizationAuditRecorder;
-import com.autodealer.crm.modules.identity.application.api.security.CurrentUserProvider;
-import com.autodealer.crm.shared.security.PermissionCodes;
-import com.autodealer.crm.modules.identity.application.api.dto.organization.CreateOrganizationUnitRequest;
-import com.autodealer.crm.modules.identity.application.api.dto.organization.UpdateEmployeeOrganizationRequest;
-import com.autodealer.crm.modules.identity.application.api.dto.organization.UpdateOrganizationUnitRequest;
-import com.autodealer.crm.modules.identity.application.api.dto.organization.ActingReportingInput;
-import com.autodealer.crm.modules.identity.application.api.dto.organization.ReplaceActingReportingsRequest;
-import com.autodealer.crm.modules.identity.application.api.enums.AccountType;
-import com.autodealer.crm.modules.identity.application.api.enums.EmployeeStatus;
-import com.autodealer.crm.modules.identity.application.api.enums.OrganizationUnitType;
-import com.autodealer.crm.shared.error.BusinessException;
-import com.autodealer.crm.modules.identity.persistence.mapper.*;
 import com.autodealer.crm.modules.identity.persistence.model.TEmployee;
-import com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit;
 import com.autodealer.crm.modules.identity.persistence.model.TEmployeeAssignment;
-import com.autodealer.crm.modules.identity.application.api.model.TUser;
 import com.autodealer.crm.modules.identity.persistence.model.TEmployeeReporting;
-import com.autodealer.crm.modules.identity.application.api.enums.ReportingStatus;
-import com.autodealer.crm.modules.identity.application.api.enums.ReportingType;
+import com.autodealer.crm.modules.identity.persistence.model.TOrganizationUnit;
+import com.autodealer.crm.shared.error.BusinessException;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.autodealer.crm.modules.identity.application.internal.OrganizationServiceImpl;
-import com.autodealer.crm.modules.identity.application.internal.DirectManagerPolicy;
-import com.autodealer.crm.modules.identity.application.internal.UserAuthorizationPolicy;
-import com.autodealer.crm.modules.identity.application.internal.UserSecurityMutationCoordinator;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import com.autodealer.crm.shared.security.PermissionCodes;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class OrganizationServiceImplTest {

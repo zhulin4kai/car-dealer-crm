@@ -1,19 +1,21 @@
 package com.autodealer.crm.modules.ai.application.internal;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Component;
+
 import com.autodealer.crm.modules.ai.application.api.dto.AiSseEventResponse;
 import com.autodealer.crm.modules.ai.persistence.mapper.TAiRunEventMapper;
 import com.autodealer.crm.modules.ai.persistence.model.TAiRunEvent;
 import com.autodealer.crm.shared.error.BusinessException;
 import com.autodealer.crm.shared.error.CodeEnum;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
-import org.springframework.dao.DataIntegrityViolationException;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class AiRunEventStore {
@@ -66,7 +68,7 @@ public class AiRunEventStore {
     private String writePayload(Map<String, Object> payload) {
         try {
             return objectMapper.writeValueAsString(payload == null ? Map.of() : payload);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new BusinessException(CodeEnum.AI_SSE_FAILED, "AI Run 事件序列化失败", ex);
         }
     }
@@ -74,7 +76,7 @@ public class AiRunEventStore {
     private Map<String, Object> readPayload(String payload) {
         try {
             return objectMapper.readValue(payload, new TypeReference<>() { });
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new BusinessException(CodeEnum.AI_SSE_FAILED, "AI Run 事件恢复失败", ex);
         }
     }

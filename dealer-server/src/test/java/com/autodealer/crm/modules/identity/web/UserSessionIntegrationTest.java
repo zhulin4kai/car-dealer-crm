@@ -3,7 +3,7 @@ package com.autodealer.crm.modules.identity.web;
 import com.autodealer.crm.shared.infrastructure.cache.RedisKeys;
 import com.autodealer.crm.integration.BackendIntegrationTestBase;
 import com.autodealer.crm.modules.identity.application.api.model.TUser;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.http.*;
